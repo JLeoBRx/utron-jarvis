@@ -1,0 +1,114 @@
+"""Tipos de evento do ULTRON.
+
+Os eventos são a linguagem comum entre módulos. Nenhum módulo chama a HUD ou a voz
+diretamente: ele publica um evento e quem estiver interessado reage.
+"""
+from __future__ import annotations
+
+import itertools
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+
+class EventType(str, Enum):
+    # ciclo de vida
+    SYSTEM_BOOT = "SYSTEM_BOOT"
+    SYSTEM_READY = "SYSTEM_READY"
+    SYSTEM_SHUTDOWN = "SYSTEM_SHUTDOWN"
+    COMPONENT_STARTED = "COMPONENT_STARTED"
+    COMPONENT_FAILED = "COMPONENT_FAILED"
+    COMPONENT_STOPPED = "COMPONENT_STOPPED"
+    STATE_CHANGED = "STATE_CHANGED"
+    COGNITIVE_PHASE = "COGNITIVE_PHASE"
+    # voz
+    VOICE_RECEIVED = "VOICE_RECEIVED"
+    VOICE_STARTED = "VOICE_STARTED"
+    VOICE_FINISHED = "VOICE_FINISHED"
+    LISTENING_STARTED = "LISTENING_STARTED"
+    LISTENING_STOPPED = "LISTENING_STOPPED"
+    WAKE_WORD = "WAKE_WORD"
+    # percepção
+    SCREEN_CHANGED = "SCREEN_CHANGED"
+    WINDOW_CHANGED = "WINDOW_CHANGED"
+    APPLICATION_CHANGED = "APPLICATION_CHANGED"
+    APPLICATION_HUNG = "APPLICATION_HUNG"
+    PROCESS_ENDED = "PROCESS_ENDED"
+    FILESYSTEM_CHANGED = "FILESYSTEM_CHANGED"
+    VISION_UPDATED = "VISION_UPDATED"
+    OCR_UPDATED = "OCR_UPDATED"
+    PERCEPTION_FUSED = "PERCEPTION_FUSED"
+    NETWORK_CHANGED = "NETWORK_CHANGED"
+    DEVICE_DETECTED = "DEVICE_DETECTED"
+    # interação
+    USER_INPUT = "USER_INPUT"
+    RESPONSE_READY = "RESPONSE_READY"
+    AUTHORIZATION_REQUIRED = "AUTHORIZATION_REQUIRED"
+    AUTHORIZATION_RESOLVED = "AUTHORIZATION_RESOLVED"
+    INSIGHT = "INSIGHT"
+    # objetivos e planos
+    GOAL_CREATED = "GOAL_CREATED"
+    GOAL_UPDATED = "GOAL_UPDATED"
+    GOAL_COMPLETED = "GOAL_COMPLETED"
+    GOAL_FAILED = "GOAL_FAILED"
+    PLAN_CREATED = "PLAN_CREATED"
+    PLAN_UPDATED = "PLAN_UPDATED"
+    # execução
+    ACTION_STARTED = "ACTION_STARTED"
+    ACTION_FINISHED = "ACTION_FINISHED"
+    VERIFICATION_STARTED = "VERIFICATION_STARTED"
+    VERIFICATION_SUCCESS = "VERIFICATION_SUCCESS"
+    VERIFICATION_FAILED = "VERIFICATION_FAILED"
+    VERIFICATION_UNCONFIRMED = "VERIFICATION_UNCONFIRMED"
+    ERROR_DETECTED = "ERROR_DETECTED"
+    RECOVERY_STARTED = "RECOVERY_STARTED"
+    RECOVERY_FINISHED = "RECOVERY_FINISHED"
+    # memória e grafo
+    MEMORY_CREATED = "MEMORY_CREATED"
+    MEMORY_RECALLED = "MEMORY_RECALLED"
+    MEMORY_CONSOLIDATED = "MEMORY_CONSOLIDATED"
+    GRAPH_NODE_ADDED = "GRAPH_NODE_ADDED"
+    GRAPH_EDGE_ADDED = "GRAPH_EDGE_ADDED"
+    GRAPH_ACTIVATED = "GRAPH_ACTIVATED"
+    # modelos
+    MODEL_SELECTED = "MODEL_SELECTED"
+    MODEL_CHANGED = "MODEL_CHANGED"
+    MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+    # skills
+    SKILL_ACTIVATED = "SKILL_ACTIVATED"
+    SKILL_COMPLETED = "SKILL_COMPLETED"
+    # imaginação
+    IMAGINATION_STARTED = "IMAGINATION_STARTED"
+    CONCEPT_CREATED = "CONCEPT_CREATED"
+    SCENARIO_CREATED = "SCENARIO_CREATED"
+    SCENARIO_BRANCHED = "SCENARIO_BRANCHED"
+    WORLD_CREATED = "WORLD_CREATED"
+    WORLD_EXPANDED = "WORLD_EXPANDED"
+    IMAGE_GENERATED = "IMAGE_GENERATED"
+    DREAM_STARTED = "DREAM_STARTED"
+    DREAM_FINISHED = "DREAM_FINISHED"
+    # sistema
+    HEALTH_UPDATED = "HEALTH_UPDATED"
+    PRIVACY_UPDATED = "PRIVACY_UPDATED"
+    WORLD_MODEL_UPDATED = "WORLD_MODEL_UPDATED"
+    LOG = "LOG"
+
+
+_ids = itertools.count(1)
+
+
+@dataclass(frozen=True)
+class Event:
+    type: EventType
+    payload: dict[str, Any] = field(default_factory=dict)
+    source: str = ""
+    timestamp: float = field(default_factory=time.time)
+    id: int = field(default_factory=lambda: next(_ids))
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.payload.get(key, default)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"id": self.id, "type": self.type.value, "source": self.source,
+                "timestamp": self.timestamp, "payload": dict(self.payload)}
