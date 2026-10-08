@@ -1,0 +1,24 @@
+# ULTRON — dependências (Python 3.11 recomendado, Windows 10/11 64 bits)
+# Instale com INSTALL_ULTRON.bat ou: python -m pip install -r requirements.txt
+
+# Núcleo
+numpy>=1.24
+psutil>=5.9
+
+# ULTRON NEURAL HUB (sem ela o ULTRON roda em modo console)
+PySide6-Essentials>=6.6
+
+# Voz: reconhecimento offline, microfone/saída de áudio e voz neural
+vosk>=0.3.45
+PyAudio>=0.2.14
+piper-tts>=1.2
+pyttsx3>=2.90                                   # voz alternativa (SAPI) se a voz neural faltar
+
+# Percepção e controle do Windows (cada skill informa quando a sua dependência falta)
+mss>=9.0                                        # captura de tela
+Pillow>=10.0
+pyautogui>=0.9.54                               # teclado, mouse e teclas de mídia
+send2trash>=1.8                                 # exclusão sempre pela Lixeira
+pywinauto>=0.6.8; sys_platform == "win32"       # elementos de interface (UI Automation)
+pycaw>=20240210; sys_platform == "win32"        # volume do sistema com leitura verificável
+comtypes>=1.2; sys_platform == "win32"

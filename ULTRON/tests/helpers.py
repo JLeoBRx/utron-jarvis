@@ -21,6 +21,7 @@ if str(TESTS) not in sys.path:
 _SESSION_DIR = Path(tempfile.mkdtemp(prefix="ultron-tests-"))
 os.environ.setdefault("ULTRON_DATA_DIR", str(_SESSION_DIR / "data"))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+QUICK = os.environ.get("ULTRON_TEST_QUICK") == "1"           # TEST_ULTRON.py --quick
 
 
 def temp_dir(prefix: str = "case-") -> Path:
@@ -39,8 +40,9 @@ def module_available(name: str) -> bool:
 def qt_available() -> bool:
     if not module_available("PySide6"):
         return False
+    import importlib
     try:
-        from PySide6 import QtWidgets  # noqa: F401
+        importlib.import_module("PySide6.QtWidgets")
         return True
     except ImportError:                  # biblioteca do sistema ausente (ex.: libEGL em servidores)
         return False

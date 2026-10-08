@@ -282,3 +282,36 @@ O código legado completo continua acessível no histórico:
 Subsistemas transversais: `ultron/models` (router), `ultron/voice`, `ultron/network`,
 `ultron/privacy`, `ultron/imagination`, `ultron/audio`, `ultron/health`, `ultron/plugins`,
 `ultron/proactive`, `ultron/hud`.
+
+---
+
+## 9. Estado da implementação e verificação
+
+O que foi verificado executando o código (container Linux, sem GPU, sem microfone,
+sem alto-falante e sem Ollama real):
+
+| Área | Evidência |
+|---|---|
+| Suíte de testes | `python TEST_ULTRON.py`: 121 testes aprovados (core, event bus, memória, World Model, rede, planejador, executor, verificador, recuperação, voz, roteador de modelos, imaginação, HUD, plugins/saúde/proatividade) |
+| Fluxo "prepare meu projeto" | projeto Python real localizado, executado após autorização e verificado (saída e código de retorno); IDE ausente registrada como falha não crítica |
+| Neural Core | boot de 16 componentes em ~1,3 s; parada ordenada; pedidos por texto, controle de voz, cancelamento |
+| Modelos | cliente Ollama real contra servidor HTTP que imita a API: streaming, cancelamento no meio, modelo ausente, servidor parado, bloqueio de URL remota no LOCAL MODE |
+| Voz | Piper + DSP do ULTRON: altura 140→120 Hz, energia acima de 5 kHz ~26× menor; fala sintetizada reconhecida pelo Vosk através do pipeline real; ativação, continuação, filtro de eco, barge-in e pausa testados |
+| HUB neural | renderização offscreen com o Core real: boot por eventos, autorização pelo botão (arquivo movido e verificado), imaginação; ~60 quadros/s; pintura 2–8 ms (repouso/atividade), ~10 ms durante movimento de câmera |
+| Diagnóstico | `python main.py --diagnose` informa corretamente Ollama ausente, modelos faltantes, GPU sem telemetria e plugins |
+
+O que **não** pôde ser verificado aqui e depende da máquina do usuário:
+
+- skills específicas do Windows (janelas, UI Automation, volume via pycaw, energia, Wi-Fi,
+  captura de tela) — implementadas com verificação própria e indisponibilidade informada,
+  mas executadas de fato só no Windows;
+- microfone e alto-falante reais (o pipeline foi testado com fala sintetizada); a precisão
+  da palavra "Ultron" depende da voz do usuário — a calibração (`python -m
+  ultron.voice.calibrate`) existe para isso. Reconhecimento por gramática restrita foi
+  medido e descartado (transforma qualquer fala em "ultron");
+- respostas reais dos modelos `qwen2.5:3b`/`qwen2.5vl:3b` (a integração foi exercitada contra
+  a API simulada; a qualidade das respostas depende do modelo).
+
+O diretório `JARVIS/` foi removido da árvore de trabalho; o código legado permanece no
+histórico (`git checkout 53e5a31 -- JARVIS`). Modelos de fala e a voz neural foram movidos
+para `ULTRON/assets/`.

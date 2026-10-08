@@ -2,10 +2,12 @@ import threading
 import time
 import unittest
 
-import helpers  # noqa: F401  (isola dados e caminhos)
+import helpers
 
 from ultron.core.event_bus import EventBus
 from ultron.core.events import EventType
+
+assert helpers.ROOT.is_dir()          # helpers isola dados e caminhos antes do import do ULTRON
 
 
 class EventBusTest(unittest.TestCase):
