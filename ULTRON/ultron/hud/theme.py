@@ -2,6 +2,7 @@
 branco quente. Fontes com alternativas (Bahnschrift/Segoe UI no Windows)."""
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 
 from PySide6 import QtCore, QtGui
@@ -146,3 +147,32 @@ def quantize_radius(radius_px: float) -> int:
     if radius_px <= 96:
         return int(round(radius_px / 4.0) * 4)
     return int(round(radius_px / 24.0) * 24)
+
+
+@lru_cache(maxsize=1024)
+def dot_px(rgb: tuple[int, int, int], radius: float, qx: int, qy: int, dpr: float = 1.0) -> QtGui.QPixmap:
+    """Nó da malha pré-renderizado, com o centro deslocado em quartos de pixel (``qx``, ``qy``):
+    desenhado em coordenadas inteiras, o movimento continua suave (subpixel) e barato."""
+    size = dot_size(radius)
+    pix = QtGui.QPixmap(max(1, int(round(size * dpr))), max(1, int(round(size * dpr))))
+    pix.fill(QtCore.Qt.transparent)
+    p = QtGui.QPainter(pix)
+    p.setRenderHint(QtGui.QPainter.Antialiasing)
+    cx, cy = (size / 2 + qx / 4.0) * dpr, (size / 2 + qy / 4.0) * dpr
+    outer = (radius + 0.9) * dpr
+    grad = QtGui.QRadialGradient(cx, cy, outer)
+    c = QtGui.QColor(*rgb)
+    grad.setColorAt(0.0, with_alpha(c, 1.0))
+    grad.setColorAt(radius / (radius + 0.9), with_alpha(c, 0.92))
+    grad.setColorAt(1.0, with_alpha(c, 0.0))
+    p.setBrush(grad)
+    p.setPen(QtCore.Qt.NoPen)
+    p.drawEllipse(QtCore.QPointF(cx, cy), outer, outer)
+    p.end()
+    pix.setDevicePixelRatio(dpr)
+    return pix
+
+
+def dot_size(radius: float) -> int:
+    """Lado (px lógicos, par) do sprite de um nó de raio ``radius``."""
+    return 2 * int(math.ceil(radius + 1.4))

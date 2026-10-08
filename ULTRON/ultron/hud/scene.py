@@ -3,9 +3,13 @@
 A cena só muda por dados reais: eventos do Event Bus, o ULTRON_STATE e a telemetria.
 Nada aqui é decorativo ou aleatório sem causa:
 
-* nós e sinapses = nós e arestas do Neural Graph (mesma posição sempre);
+* malha neural 3D: densidade proporcional ao tamanho real do Neural Graph; os nós e as
+  arestas do grafo aparecem como nós e sinapses fortes, sempre na mesma posição;
 * ativação de nós, partículas e pulsos = eventos de grafo, percepção, voz e execução;
-* câmera e profundidade cognitiva (0–9) = estado de runtime e complexidade da tarefa;
+* câmera (giro, foco e zoom) e profundidade cognitiva (0–9) = estado de runtime e
+  complexidade da tarefa; ao ouvir, falar ou agir, o cérebro vira a região certa para frente;
+* anel de subsistemas: status vem do ciclo de vida e da saúde reais; a sinapse até cada
+  subsistema só cresce enquanto ele é usado de fato;
 * inicialização em 12 fases = eventos COMPONENT_STARTED/FAILED reais;
 * módulos neurais nascem de uma região do cérebro só quando há algo real a mostrar
   (plano em execução, autorização pendente, insight, rede, imaginação, simulação...).
@@ -18,7 +22,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from .brain_model import REGIONS, BrainGeometry, development_for
+from .brain_model import REGIONS, STRETCH, BrainMesh, development_for
 
 CAMERA_STATES = ("OVERVIEW", "FOCUS", "THINKING", "MEMORY_DIVE", "IDEA_FOCUS", "IMAGINATION", "SIMULATION",
                  "WORLD_EXPLORATION", "NETWORK_FOCUS")
@@ -35,8 +39,8 @@ RUNTIME_CAMERA = {
 }
 # câmera → (zoom, deslocamento horizontal da tela para abrir espaço aos módulos)
 CAMERA_PRESETS = {
-    "OVERVIEW": (1.0, 0.0), "FOCUS": (1.22, 0.0), "THINKING": (1.12, 0.0), "MEMORY_DIVE": (1.85, 0.0),
-    "IDEA_FOCUS": (1.5, 0.0), "IMAGINATION": (0.86, -0.16), "SIMULATION": (0.84, -0.18),
+    "OVERVIEW": (1.0, 0.0), "FOCUS": (1.10, 0.0), "THINKING": (1.06, 0.0), "MEMORY_DIVE": (1.75, 0.0),
+    "IDEA_FOCUS": (1.45, 0.0), "IMAGINATION": (0.86, -0.16), "SIMULATION": (0.84, -0.18),
     "WORLD_EXPLORATION": (0.80, -0.20), "NETWORK_FOCUS": (0.92, -0.14),
 }
 RUNTIME_DEPTH = {"IDLE": 0, "LISTENING": 1, "SPEAKING": 1, "THINKING": 2, "PLANNING": 3, "NETWORK": 3,
@@ -69,6 +73,45 @@ EVENT_REGION = {
 }
 LEFT_REGIONS = {"prefrontal", "frontal", "broca", "motor"}
 MODULE_SHIFT = 0.13
+
+# giro livre (rad/s) por estado; estados de foco viram a região para o observador
+SPIN = {"IDLE": 0.16, "DREAMING": 0.06, "THINKING": 0.42, "PLANNING": 0.32, "RECOVERY": 0.36,
+        "IMAGINING": 0.22, "SIMULATING": 0.18, "BOOTING": 0.5, "ERROR": 0.0, "SHUTDOWN": 0.0}
+FACING = {"LISTENING": "auditory", "SPEAKING": "broca", "EXECUTING": "motor", "VERIFYING": "motor",
+          "NETWORK": "parietal", "AWAITING_AUTHORIZATION": "prefrontal"}
+
+# anel de subsistemas: (nome, ângulo na tela em graus — 0 = direita, horário —, região de origem
+# da sinapse, componentes do ciclo de vida que o sustentam). Topo e base ficam livres (título).
+SUBSYSTEM_DEFS = (
+    ("OLLAMA", -118, "core", ("models",)), ("MEMÓRIA", -139, "hippocampus", ("memory",)),
+    ("VISÃO", -159, "occipital", ("perception",)), ("PERCEPÇÃO", 180, "parietal", ("perception",)),
+    ("VOZ", 159, "auditory", ("voice", "voice_output")), ("TELEMETRIA", 139, "cerebellum", ("health",)),
+    ("REDE", 118, "parietal", ("network",)), ("IMAGINAÇÃO", -62, "prefrontal", ("imagination",)),
+    ("OBJETIVOS", -41, "frontal", ("goals",)), ("CÓDIGO", -21, "frontal", ("agent", "skills")),
+    ("WEB", 0, "temporal", ("agent", "skills")), ("AUTOMAÇÃO", 21, "motor", ("agent", "skills")),
+    ("WINDOWS", 41, "motor", ("agent", "skills")), ("ARQUIVOS", 62, "temporal", ("agent", "skills")),
+)
+EVENT_SUBSYSTEM = {
+    "COGNITIVE_PHASE": ("OLLAMA", 0.35), "MODEL_SELECTED": ("OLLAMA", 0.6), "MODEL_CHANGED": ("OLLAMA", 0.6),
+    "MEMORY_RECALLED": ("MEMÓRIA", 0.8), "MEMORY_CREATED": ("MEMÓRIA", 0.8), "MEMORY_CONSOLIDATED": ("MEMÓRIA", 0.6),
+    "GRAPH_NODE_ADDED": ("MEMÓRIA", 0.3), "VISION_UPDATED": ("VISÃO", 0.9), "OCR_UPDATED": ("VISÃO", 0.7),
+    "SCREEN_CHANGED": ("VISÃO", 0.3), "WINDOW_CHANGED": ("PERCEPÇÃO", 0.35), "APPLICATION_CHANGED": ("PERCEPÇÃO", 0.5),
+    "PROCESS_ENDED": ("PERCEPÇÃO", 0.3), "PERCEPTION_FUSED": ("PERCEPÇÃO", 0.8),
+    "FILESYSTEM_CHANGED": ("ARQUIVOS", 0.4), "WAKE_WORD": ("VOZ", 1.0), "VOICE_RECEIVED": ("VOZ", 0.9),
+    "VOICE_STARTED": ("VOZ", 0.7), "LISTENING_STARTED": ("VOZ", 0.6), "HEALTH_UPDATED": ("TELEMETRIA", 0.25),
+    "NETWORK_CHANGED": ("REDE", 0.8), "DEVICE_DETECTED": ("REDE", 0.6), "IMAGINATION_STARTED": ("IMAGINAÇÃO", 0.9),
+    "CONCEPT_CREATED": ("IMAGINAÇÃO", 1.0), "SCENARIO_BRANCHED": ("IMAGINAÇÃO", 0.9),
+    "WORLD_CREATED": ("IMAGINAÇÃO", 1.0), "WORLD_EXPANDED": ("IMAGINAÇÃO", 0.8), "DREAM_STARTED": ("IMAGINAÇÃO", 0.5),
+    "DREAM_FINISHED": ("IMAGINAÇÃO", 0.9), "IMAGE_GENERATED": ("IMAGINAÇÃO", 1.0), "GOAL_CREATED": ("OBJETIVOS", 0.9),
+    "PLAN_CREATED": ("OBJETIVOS", 0.9), "PLAN_UPDATED": ("OBJETIVOS", 0.6), "GOAL_COMPLETED": ("OBJETIVOS", 0.8),
+    "GOAL_FAILED": ("OBJETIVOS", 0.8),
+}
+CATEGORY_SUBSYSTEM = {"development": "CÓDIGO", "browser": "WEB", "automation": "AUTOMAÇÃO", "applications": "WINDOWS",
+                      "windows": "WINDOWS", "system": "WINDOWS", "audio": "WINDOWS", "devices": "WINDOWS",
+                      "filesystem": "ARQUIVOS", "network": "REDE", "vision": "VISÃO", "memory": "MEMÓRIA",
+                      "imagination": "IMAGINAÇÃO", "diagnostics": "TELEMETRIA"}
+HEALTH_SUBSYSTEM = {"OLLAMA": "OLLAMA", "VOICE": "VOZ", "VISION": "VISÃO", "NETWORK": "REDE", "MEMORY": "MEMÓRIA"}
+STATUS_FROM_HEALTH = {"OK": "ok", "WARN": "warn", "FAIL": "fail", "UNAVAILABLE": "off", "UNKNOWN": "unknown"}
 NODE_TYPE_COLOR = {"MEMORY": "amber", "IDEA": "white", "CONCEPT": "white", "SKILL": "gold", "PROJECT": "gold",
                    "WORLD": "white", "SCENARIO": "white", "DEVICE": "amber", "APPLICATION": "gold"}
 
@@ -85,6 +128,7 @@ class SceneNode:
     label: str
     x: float
     y: float
+    z: float
     strength: float = 0.3
     activation: float = 0.0
     born: float = 0.0
@@ -96,35 +140,47 @@ class SceneEdge:
     b: str
     type: str
     weight: float
-    cx: float
-    cy: float
     activation: float = 0.0
 
 
 @dataclass
 class Particle:
-    points: tuple                          # (x0, y0, cx, cy, x1, y1) curva quadrática no espaço do cérebro
+    points: tuple                          # (x0, y0, z0, cx, cy, cz, x1, y1, z1): curva quadrática em 3D
     t: float = 0.0
     speed: float = 0.8
     size: float = 1.0
     tone: str = "gold"
 
-    def position(self) -> tuple[float, float]:
-        x0, y0, cx, cy, x1, y1 = self.points
-        u = 1 - self.t
-        return (u * u * x0 + 2 * u * self.t * cx + self.t * self.t * x1,
-                u * u * y0 + 2 * u * self.t * cy + self.t * self.t * y1)
+    def position(self) -> tuple[float, float, float]:
+        x0, y0, z0, cx, cy, cz, x1, y1, z1 = self.points
+        u, t = 1 - self.t, self.t
+        return (u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1,
+                u * u * z0 + 2 * u * t * cz + t * t * z1)
 
 
 @dataclass
 class Pulse:
     x: float
     y: float
+    z: float
     born: float
     duration: float = 1.2
     radius: float = 0.18
     tone: str = "gold"
     strength: float = 1.0
+
+
+@dataclass
+class Subsystem:
+    name: str
+    angle: float
+    region: str
+    components: tuple
+    status: str = "unknown"                # unknown | ok | warn | fail | off
+    activity: float = 0.0                  # 0..1 (decai)
+    grow: float = 0.0                      # 0..1: sinapse do cérebro até o nó
+    detail: str = ""
+    arrived_at: float = 0.0
 
 
 @dataclass
@@ -144,7 +200,7 @@ class Module:
 class Camera:
     state: str = "OVERVIEW"
     region: str = "core"
-    x: float = 0.0
+    x: float = 0.0                          # deslocamento de foco (unidades projetadas do cérebro)
     y: float = 0.0
     zoom: float = 1.0
     shift: float = 0.0
@@ -152,25 +208,38 @@ class Camera:
     ty: float = 0.0
     tzoom: float = 1.0
     tshift: float = 0.0
+    angle: float = 0.6                      # giro em torno do eixo vertical (rad)
+    spin: float = 0.16                      # giro livre (rad/s) quando não há região em foco
+    target_angle: float | None = None
+    focus: float = 0.0
     tau: float = 0.65                       # constante de tempo da suavização
 
-    def aim(self, state: str, region: str = "core", *, depth: float = 0.0) -> None:
+    def aim(self, state: str, region: str = "core", *, depth: float = 0.0, spin: float = 0.16,
+            face: bool = False) -> None:
         zoom, shift = CAMERA_PRESETS.get(state, (1.0, 0.0))
-        rx, ry, _r = REGIONS.get(region, REGIONS["core"])
-        focus = 0.0 if state in ("OVERVIEW", "IMAGINATION", "SIMULATION", "WORLD_EXPLORATION") else 0.55
-        if state in ("MEMORY_DIVE", "IDEA_FOCUS"):
-            focus = 0.9
+        # FOCUS só gira a região para a frente; mergulhos também a trazem para o centro da tela
+        self.focus = 0.9 if state in ("MEMORY_DIVE", "IDEA_FOCUS") else 0.0
         self.state, self.region = state, region
-        self.tx, self.ty = rx * focus, ry * focus
-        self.tzoom = zoom * (1.0 + 0.025 * depth)
+        self.tzoom = zoom * (1.0 + 0.012 * depth)
         self.tshift = shift
+        self.spin = spin
+        self.target_angle = BrainMesh.facing_angle(region) if face else None
 
     def step(self, dt: float) -> None:
         k = 1.0 - math.exp(-dt / self.tau)
+        if self.target_angle is None:
+            self.angle = (self.angle + self.spin * dt) % (2 * math.pi)
+        else:                                             # menor arco até a região em foco
+            delta = (self.target_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
+            self.angle = (self.angle + delta * (1.0 - math.exp(-dt / 0.8))) % (2 * math.pi)
         for name in ("x", "y", "zoom", "shift"):
             current, target = getattr(self, name), getattr(self, "t" + name)
             value = current + (target - current) * k
             setattr(self, name, target if abs(target - value) < 0.0008 else value)
+
+    def facing_side(self) -> float:
+        """Hemisfério voltado para o observador (+1 direito, −1 esquerdo)."""
+        return 1.0 if math.cos(self.angle) >= 0 else -1.0
 
 
 class BootSequence:
@@ -239,9 +308,12 @@ class NeuralScene:
     MAX_PULSES = 40
     MAX_MODULES = 3
 
-    def __init__(self, geometry: BrainGeometry | None = None, *, clock: Callable[[], float] = time.monotonic):
-        self.geometry = geometry or BrainGeometry()
+    def __init__(self, mesh: BrainMesh | None = None, *, clock: Callable[[], float] = time.monotonic):
+        self.mesh = mesh or BrainMesh()
         self.clock = clock
+        self.subsystems: dict[str, Subsystem] = {name: Subsystem(name, angle, region, comps)
+                                                 for name, angle, region, comps in SUBSYSTEM_DEFS}
+        self.ring_pulses: list[tuple[str, float]] = []
         self.nodes: dict[str, SceneNode] = {}
         self.edges: dict[tuple[str, str], SceneEdge] = {}
         self._adjacency: dict[str, set[str]] = {}
@@ -292,8 +364,8 @@ class NeuralScene:
             return None
         node = self.nodes.get(node_id)
         if node is None:
-            x, y = self.geometry.place(node_id, type_)
-            node = SceneNode(node_id, type_, label, x, y, strength, 0.0, self.clock() if born is None else born)
+            x, y, z = self.mesh.place(node_id, type_)
+            node = SceneNode(node_id, type_, label, x, y, z, strength, 0.0, self.clock() if born is None else born)
             self.nodes[node_id] = node
             self.graph_version += 1
         else:
@@ -306,11 +378,7 @@ class NeuralScene:
         key = (a, b) if a < b else (b, a)
         edge = self.edges.get(key)
         if edge is None:
-            na, nb = self.nodes[key[0]], self.nodes[key[1]]
-            mx, my = (na.x + nb.x) / 2, (na.y + nb.y) / 2
-            dx, dy = nb.x - na.x, nb.y - na.y
-            bend = 0.18 * (1 if (hash(key) & 1) else -1)
-            edge = SceneEdge(key[0], key[1], type_, weight, mx - dy * bend, my + dx * bend)
+            edge = SceneEdge(key[0], key[1], type_, weight)
             self.edges[key] = edge
             self._adjacency.setdefault(a, set()).add(b)
             self._adjacency.setdefault(b, set()).add(a)
@@ -320,13 +388,24 @@ class NeuralScene:
         return edge
 
     # ================================================================ estímulos
+    def region_point(self, region: str) -> tuple[float, float, float]:
+        """Centro da região no hemisfério voltado para o observador."""
+        x, y, z = self.mesh.region_center(region, self.camera.facing_side())
+        return float(x), float(y), float(z)
+
     def stimulate(self, region: str, amount: float = 0.6, *, pulse: bool = True, tone: str = "gold") -> None:
         if region not in REGIONS:
             return
         self.region_activity[region] = _clamp(self.region_activity[region] + amount)
         if pulse and len(self.pulses) < self.MAX_PULSES:
-            x, y, r = REGIONS[region]
-            self.pulses.append(Pulse(x, y, self.clock(), 1.1 + 0.6 * amount, r * (0.8 + amount), tone, amount))
+            x, y, z = self.region_point(region)
+            radius = REGIONS[region][3]
+            self.pulses.append(Pulse(x, y, z, self.clock(), 1.1 + 0.6 * amount, radius * (0.8 + amount), tone, amount))
+
+    def touch_subsystem(self, name: str, amount: float) -> None:
+        sub = self.subsystems.get(name)
+        if sub is not None:
+            sub.activity = _clamp(max(sub.activity, amount))
 
     def activate_nodes(self, ids: list[str], *, spread: bool = True, tone: str = "gold") -> None:
         for node_id in ids:
@@ -348,31 +427,53 @@ class NeuralScene:
         if edge is None or na is None or nb is None:
             return
         edge.activation = 1.0
-        self.particles.append(Particle((na.x, na.y, edge.cx, edge.cy, nb.x, nb.y), 0.0,
+        mx, my, mz = (na.x + nb.x) / 2, (na.y + nb.y) / 2, (na.z + nb.z) / 2
+        self.particles.append(Particle((na.x, na.y, na.z, mx * 0.8, my * 0.8, mz * 0.8, nb.x, nb.y, nb.z), 0.0,
                                        0.55 + 0.5 * edge.weight, 1.0 + edge.weight, tone))
 
     def region_particles(self, src: str, dst: str, count: int = 3, tone: str = "gold") -> None:
         """Sinal entre regiões (ex.: percepção → córtex), em arco pelo interior do cérebro."""
         if src not in REGIONS or dst not in REGIONS:
             return
-        x0, y0, _ = REGIONS[src]
-        x1, y1, _ = REGIONS[dst]
+        x0, y0, z0 = self.region_point(src)
+        x1, y1, z1 = self.region_point(dst)
         for i in range(count):
             if len(self.particles) >= self.MAX_PARTICLES:
                 return
-            off = (i - (count - 1) / 2) * 0.05
-            cx, cy = (x0 + x1) / 2 - (y1 - y0) * (0.2 + off), (y0 + y1) / 2 + (x1 - x0) * (0.2 + off)
-            self.particles.append(Particle((x0, y0, cx, cy, x1, y1), -0.15 * i, 0.9, 1.2, tone))
+            off = (i - (count - 1) / 2) * 0.12
+            control = ((x0 + x1) * 0.25, (y0 + y1) * 0.25 + off, (z0 + z1) * 0.25 - off)
+            self.particles.append(Particle((x0, y0, z0, *control, x1, y1, z1), -0.15 * i, 0.9, 1.2, tone))
 
     # ================================================================ eventos
     def on_event(self, kind: str, payload: dict | None = None) -> None:
         p = payload or {}
         now = self.clock()
         region = EVENT_REGION.get(kind)
+        target = EVENT_SUBSYSTEM.get(kind)
+        if target is not None and not (kind == "DEVICE_DETECTED" and p.get("origin") == "peripheral"):
+            self.touch_subsystem(*target)
+        if kind in ("ACTION_STARTED", "ACTION_FINISHED"):
+            name = CATEGORY_SUBSYSTEM.get(str(p.get("category", "")))
+            if name is None:
+                skill = str(p.get("skill", ""))
+                name = next((sub for prefix, sub in (("dev.", "CÓDIGO"), ("web.", "WEB"), ("fs.", "ARQUIVOS"),
+                                                     ("input.", "AUTOMAÇÃO"), ("automation.", "AUTOMAÇÃO"),
+                                                     ("app.", "WINDOWS"), ("window.", "WINDOWS"),
+                                                     ("network.", "REDE"), ("vision.", "VISÃO"))
+                             if skill.startswith(prefix)), None)
+            if name:
+                self.touch_subsystem(name, 1.0 if kind == "ACTION_STARTED" else 0.6)
         if kind == "SYSTEM_BOOT":
             self.boot.start()
-        elif kind in ("COMPONENT_STARTED", "COMPONENT_FAILED"):
-            self.boot.component(str(p.get("component", "")), kind == "COMPONENT_STARTED", str(p.get("error", "")))
+        elif kind in ("COMPONENT_STARTED", "COMPONENT_FAILED", "COMPONENT_STOPPED"):
+            component = str(p.get("component", ""))
+            if kind != "COMPONENT_STOPPED":
+                self.boot.component(component, kind == "COMPONENT_STARTED", str(p.get("error", "")))
+            status = {"COMPONENT_STARTED": "ok", "COMPONENT_FAILED": "fail", "COMPONENT_STOPPED": "off"}[kind]
+            for sub in self.subsystems.values():
+                if component in sub.components and not (status == "ok" and sub.status == "fail"):
+                    sub.status = status
+                    sub.detail = str(p.get("error", ""))[:60] if status == "fail" else ""
         elif kind == "SYSTEM_READY":
             self.boot.ready()
         elif kind == "GRAPH_NODE_ADDED":
@@ -381,7 +482,7 @@ class NeuralScene:
             if node is not None:
                 node.activation = 1.0
                 self.total_nodes += 1
-                self.pulses.append(Pulse(node.x, node.y, now, 1.4, 0.07, "white", 0.8))
+                self.pulses.append(Pulse(node.x, node.y, node.z, now, 1.4, 0.07, "white", 0.8))
                 parent = p.get("parent")
                 if parent:
                     self._add_edge(str(parent), node.id, "DERIVED", 0.3)
@@ -491,6 +592,16 @@ class NeuralScene:
             if runtime in ("THINKING", "PLANNING") and not self._waiting_since:
                 self._waiting_since = self.clock()
         self.cognitive_phase = str(state.get("cognitive_phase", ""))
+        health = state.get("health") or {}
+        for check, name in HEALTH_SUBSYSTEM.items():
+            entry = (health.get("checks") or {}).get(check)
+            if entry:
+                sub = self.subsystems[name]
+                sub.status = STATUS_FROM_HEALTH.get(str(entry.get("status", "")).upper(), sub.status)
+                sub.detail = str(entry.get("detail", ""))[:60] if sub.status in ("warn", "fail", "off") else ""
+        if health.get("overall"):
+            sub = self.subsystems["TELEMETRIA"]
+            sub.status = STATUS_FROM_HEALTH.get(str(health["overall"]).upper(), sub.status)
         self._plan_module(state)
         self._authorization_module(state)
         self._imagination_modules(state)
@@ -583,9 +694,11 @@ class NeuralScene:
         if telemetry.get("listening"):
             self.region_activity["auditory"] = max(self.region_activity["auditory"],
                                                    _clamp(0.25 + float(telemetry.get("mic_level", 0.0))))
+            self.touch_subsystem("VOZ", 0.5)
         if telemetry.get("speaking"):
             self.region_activity["broca"] = max(self.region_activity["broca"],
                                                 _clamp(0.2 + 2.2 * float(telemetry.get("out_level", 0.0))))
+            self.touch_subsystem("VOZ", 0.6)
 
     # ================================================================ animação
     def _target_depth(self) -> float:
@@ -600,18 +713,20 @@ class NeuralScene:
             depth += 1
         return float(min(9, depth))
 
-    def _choose_camera(self) -> tuple[str, str]:
+    def _choose_camera(self) -> tuple[str, str, bool]:
+        """(estado da câmera, região, virar a região para o observador)."""
         now = self.clock()
         if self._camera_override and now < self._camera_override[2]:
-            return self._camera_override[0], self._camera_override[1]
+            return self._camera_override[0], self._camera_override[1], True
         self._camera_override = None
         if self.boot.active:
-            return "OVERVIEW", "core"
+            return "OVERVIEW", "core", False
         if "world" in self.modules and self.modules["world"].expires is None:
-            return "WORLD_EXPLORATION", "occipital"
+            return "WORLD_EXPLORATION", "occipital", True
         if self.runtime_state == "IMAGINING" and "simulation" in self.modules:
-            return "SIMULATION", "prefrontal"
-        return RUNTIME_CAMERA.get(self.runtime_state, ("OVERVIEW", "core"))
+            return "SIMULATION", "prefrontal", False
+        state, region = RUNTIME_CAMERA.get(self.runtime_state, ("OVERVIEW", "core"))
+        return state, region, self.runtime_state in FACING
 
     def step(self, dt: float) -> None:
         dt = max(0.0, min(0.1, dt))
@@ -625,12 +740,19 @@ class NeuralScene:
             self.depth = target
         self.depth_level = int(round(self.depth))
         # câmera
-        state, region = self._choose_camera()
-        self.camera.aim(state, region, depth=self.depth)
+        state, region, face = self._choose_camera()
+        spin = SPIN.get("BOOTING" if self.boot.active else self.runtime_state, 0.16)
+        self.camera.aim(state, region, depth=self.depth, spin=spin, face=face)
         if CAMERA_PRESETS.get(state, (1.0, 0.0))[1] == 0.0:
             shift, zoom = self._module_shift()
             self.camera.tshift = shift
             self.camera.tzoom *= zoom
+        if self.camera.focus > 0 and region != "core":   # a região focada vai para o centro da tela
+            X, Y, _Z = self.mesh.rotate(self.mesh.region_center(region, self.camera.facing_side())[None, :],
+                                        self.camera.angle)
+            self.camera.tx, self.camera.ty = float(X[0]) * STRETCH * self.camera.focus, float(Y[0]) * self.camera.focus
+        else:
+            self.camera.tx = self.camera.ty = 0.0
         self.camera.step(dt)
         # suspense: esperando resposta há mais de 1,5 s, ou autorização pendente
         waiting = self._waiting_since and now - self._waiting_since > 1.5 and \
@@ -659,6 +781,22 @@ class NeuralScene:
         region_decay = math.exp(-dt / 1.4)
         for name in self.region_activity:
             self.region_activity[name] *= region_decay
+        # subsistemas: atividade contínua dos estados reais e sinapses que crescem só durante o uso
+        continuous = {"THINKING": "OLLAMA", "PLANNING": "OBJETIVOS", "IMAGINING": "IMAGINAÇÃO",
+                      "SIMULATING": "IMAGINAÇÃO", "DREAMING": "IMAGINAÇÃO", "NETWORK": "REDE"}
+        if self.runtime_state in continuous:
+            self.touch_subsystem(continuous[self.runtime_state], 0.45)
+        sub_decay = math.exp(-dt / 2.2)
+        for sub in self.subsystems.values():
+            sub.activity *= sub_decay
+            target = 1.0 if sub.activity > 0.12 and sub.status not in ("fail", "off") else 0.0
+            before = sub.grow
+            rate = 1.6 if target > sub.grow else 0.5
+            sub.grow += max(-rate * dt, min(rate * dt, target - sub.grow))
+            if before < 0.97 <= sub.grow:
+                sub.arrived_at = now
+                self.ring_pulses.append((sub.name, now))
+        self.ring_pulses = [(n, t) for n, t in self.ring_pulses if now - t < 1.0]
         # partículas: ao chegar, ativam o nó de destino
         alive = []
         for particle in self.particles:
@@ -703,6 +841,12 @@ class NeuralScene:
         if sides == {"left", "right"}:
             return 0.0, 0.84
         return 0.0, 1.0
+
+    def genesis(self) -> float:
+        """0..1: quanto da malha já nasceu (inicialização guiada por componentes reais)."""
+        if not self.boot.active:
+            return 1.0
+        return _clamp((self.boot.shown - 2.5) / 7.5)
 
     def headline(self) -> str:
         if self.boot.active:

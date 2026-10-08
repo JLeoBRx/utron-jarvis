@@ -1,6 +1,6 @@
 """ULTRON NEURAL HUB — interface neural procedural (PySide6).
 
-* ``brain_model``/``cortex``: geometria e textura procedurais do cérebro (numpy);
+* ``brain_model``: malha neural 3D procedural do cérebro (numpy);
 * ``scene``: estado visual derivado só de eventos e do ULTRON_STATE reais (sem Qt);
 * ``brain_view``: desenho da cena; ``window``/``orb``: janelas; ``controller``: ligação com o Core.
 

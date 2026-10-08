@@ -292,12 +292,12 @@ sem alto-falante e sem Ollama real):
 
 | Área | Evidência |
 |---|---|
-| Suíte de testes | `python TEST_ULTRON.py`: 121 testes aprovados (core, event bus, memória, World Model, rede, planejador, executor, verificador, recuperação, voz, roteador de modelos, imaginação, HUD, plugins/saúde/proatividade) |
+| Suíte de testes | `python TEST_ULTRON.py`: 127 testes aprovados (core, event bus, memória, World Model, rede, planejador, executor, verificador, recuperação, voz, roteador de modelos, imaginação, HUD, plugins/saúde/proatividade) |
 | Fluxo "prepare meu projeto" | projeto Python real localizado, executado após autorização e verificado (saída e código de retorno); IDE ausente registrada como falha não crítica |
 | Neural Core | boot de 16 componentes em ~1,3 s; parada ordenada; pedidos por texto, controle de voz, cancelamento |
 | Modelos | cliente Ollama real contra servidor HTTP que imita a API: streaming, cancelamento no meio, modelo ausente, servidor parado, bloqueio de URL remota no LOCAL MODE |
 | Voz | Piper + DSP do ULTRON: altura 140→120 Hz, energia acima de 5 kHz ~26× menor; fala sintetizada reconhecida pelo Vosk através do pipeline real; ativação, continuação, filtro de eco, barge-in e pausa testados |
-| HUB neural | renderização offscreen com o Core real: boot por eventos, autorização pelo botão (arquivo movido e verificado), imaginação; ~60 quadros/s; pintura 2–8 ms (repouso/atividade), ~10 ms durante movimento de câmera |
+| HUB neural | malha neural 3D (nós e sinapses em perspectiva) com anel de subsistemas; renderização offscreen com o Core real: boot por eventos, autorização pelo botão (arquivo movido e verificado), imaginação; pintura ~7 ms (cérebro jovem) a ~11 ms (grafo com 800 nós) |
 | Diagnóstico | `python main.py --diagnose` informa corretamente Ollama ausente, modelos faltantes, GPU sem telemetria e plugins |
 
 O que **não** pôde ser verificado aqui e depende da máquina do usuário:

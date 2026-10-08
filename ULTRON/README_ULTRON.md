@@ -101,20 +101,30 @@ visto na tela, em arquivos ou páginas é tratado como dado, nunca como instruç
 A interface é um cérebro procedural — não um dashboard. Tudo que se move corresponde a
 algo real:
 
-- **Córtex**: relevo de giros e sulcos que **se aprofunda conforme o Neural Graph cresce**
-  (um ULTRON novo tem o cérebro liso; com o uso, ele se dobra).
-- **Nós e sinapses**: os nós e conexões do Neural Graph, sempre na mesma posição (memórias
-  no lobo temporal/hipocampo, ideias e conceitos no pré-frontal, skills no córtex motor e
-  cerebelo, dispositivos no parietal, mundos e aplicativos no occipital).
+- **Malha neural 3D**: um cérebro de nós e sinapses (hemisférios com fissura, lobos
+  temporais, cerebelo e tronco) que gira em perspectiva; nós à frente são maiores e mais
+  claros. A **densidade cresce com o Neural Graph** (um ULTRON novo tem uma rede esparsa,
+  já com a silhueta completa; com o uso, ela se adensa).
+- **Nós do grafo**: os nós reais do Neural Graph, sempre na mesma posição (memórias no
+  lobo temporal/hipocampo, ideias e conceitos no pré-frontal, skills no córtex motor e
+  cerebelo, dispositivos no parietal, mundos e aplicativos no occipital); o conhecimento
+  mais forte brilha. As sinapses do grafo aparecem quando um sinal real as percorre.
 - **Sinais e pulsos**: ativações do grafo, percepção (janela/tela → occipital, rede →
   parietal), execução (motor), voz (auditivo ao ouvir, Broca ao falar, no nível real do
-  microfone e da saída).
+  microfone e da saída); a região ativa acende seus nós e sinapses.
+- **Anel de subsistemas** (OLLAMA, MEMÓRIA, VISÃO, PERCEPÇÃO, VOZ, TELEMETRIA, REDE,
+  IMAGINAÇÃO, OBJETIVOS, CÓDIGO, WEB, AUTOMAÇÃO, WINDOWS, ARQUIVOS): o status vem do ciclo
+  de vida e da saúde reais (ouro = ok, âmbar = alerta/FALHA, apagado = OFF); a sinapse do
+  cérebro até o subsistema só cresce enquanto ele é usado de fato.
 - **Câmera neural**: OVERVIEW, FOCUS, THINKING, MEMORY_DIVE, IDEA_FOCUS, IMAGINATION,
-  SIMULATION, WORLD_EXPLORATION, NETWORK_FOCUS — escolhida pelo estado real.
+  SIMULATION, WORLD_EXPLORATION, NETWORK_FOCUS — escolhida pelo estado real. O giro acelera
+  ao pensar e para em erro; ao ouvir, falar ou agir, o cérebro vira para a frente a região
+  que está trabalhando (auditiva, Broca, motora).
 - **Profundidade cognitiva 0–9**: sobe com a complexidade da tarefa e revela estruturas
-  internas (hipocampo, tálamo, corpo caloso).
+  internas (tálamo, hipocampos).
 - **Inicialização em 12 fases** (VOID → ... → ONLINE): cada fase só avança quando o
-  componente correspondente realmente inicia; falhas aparecem como OFFLINE.
+  componente correspondente realmente inicia; a malha nasce do tronco para a coroa e os
+  subsistemas surgem no anel conforme sobem; falhas aparecem como OFFLINE.
 - **Módulos neurais** nascem de uma região do cérebro por um filamento só enquanto há algo
   real a mostrar: plano em execução, autorização pendente (com contagem regressiva),
   insight, imaginação (IDEA → CONCEPT → RELATIONSHIPS → SCENARIO → WORLD MODEL →
@@ -184,7 +194,7 @@ voz / texto ─► Neural Core ─► Intent → Decision → Goal → Plan → 
 | `ultron/network`, `ultron/privacy` | inteligência de rede local, política de privacidade |
 | `ultron/imagination` | conceitos, cenários, World Builder, Dream Mode, imagens |
 | `ultron/health`, `ultron/proactive`, `ultron/plugins` | saúde, insights, plugins |
-| `ultron/hud` | cérebro procedural, cena, câmera, módulos, orbe, bandeja |
+| `ultron/hud` | malha neural 3D, cena, câmera, anel de subsistemas, módulos, orbe, bandeja |
 | `ultron/personality` | identidade, falas, estilo, perfil de voz |
 
 Threads: interface (Qt) só desenha; inferência no worker `ai`; visão, voz, rede, memória,
@@ -253,6 +263,6 @@ segredos são descartados). O código do JARVIS continua no histórico do Git:
 
 ## Testes
 
-`python TEST_ULTRON.py` (121 testes; `--quick` pula voz real e renderização). Os testes usam
+`python TEST_ULTRON.py` (127 testes; `--quick` pula voz real e renderização). Os testes usam
 pastas temporárias e um servidor HTTP que imita o Ollama — não precisam de Ollama, microfone
 nem alto-falante.

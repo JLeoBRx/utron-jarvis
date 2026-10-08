@@ -31,11 +31,11 @@ AUTO_EXPAND = {EventType.WAKE_WORD, EventType.AUTHORIZATION_REQUIRED}
 class HudController(QtCore.QObject):
     _event = QtCore.Signal(str, object)
 
-    def __init__(self, core, *, scene: NeuralScene | None = None, cache_dir=None):
+    def __init__(self, core, *, scene: NeuralScene | None = None):
         super().__init__()
         self.core = core
         self.scene = scene or NeuralScene()
-        self.view = BrainView(self.scene, cache_dir=cache_dir)
+        self.view = BrainView(self.scene)
         self.window = HudWindow(self.view)
         self.orb = OrbWindow(self.scene)
         self.tray = self._make_tray()
@@ -243,7 +243,6 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     """Cria a interface, inicia o Core em segundo plano e roda o laço do Qt."""
     import threading
 
-    from ..config import paths
     from . import theme
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -251,7 +250,7 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(theme.STYLESHEET)
     app.setWindowIcon(app_icon())
-    controller = HudController(core, cache_dir=paths.data_dir())
+    controller = HudController(core)
     controller.show(minimized=minimized)
     if boot:
         threading.Thread(target=core.boot, name="ultron-boot", daemon=True).start()

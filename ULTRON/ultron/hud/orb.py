@@ -1,8 +1,9 @@
 """Orbe compacto: a forma recolhida do ULTRON (sempre visível, arrastável).
 
-O orbe mostra o mesmo estado real da cena: brilho do núcleo pelo estado de runtime,
-anel de profundidade cognitiva, nível do microfone ao escutar e âmbar quando há uma
-autorização pendente. Clique duplo expande o HUB; botão direito abre o menu.
+O orbe mostra o mesmo estado real da cena: o cérebro em miniatura (a mesma malha, no
+mesmo giro), brilho do núcleo pelo estado de runtime, anel de profundidade cognitiva,
+nível do microfone ao escutar e âmbar quando há uma autorização pendente. Clique duplo
+expande o HUB; botão direito abre o menu.
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import math
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import theme
+from .brain_view import mini_brain
 from .scene import NeuralScene
 
 STATE_LEVEL = {"IDLE": 0.5, "LISTENING": 0.7, "THINKING": 0.6, "PLANNING": 0.65, "EXECUTING": 0.8,
@@ -80,11 +82,12 @@ class OrbWindow(QtWidgets.QWidget):
         mic = float(scene.telemetry.get("mic_level", 0.0)) if scene.telemetry.get("listening") else 0.0
         intensity = min(1.0, level * (0.85 + 0.15 * breath) + 0.6 * mic + 0.4 * scene.release)
         grad = QtGui.QRadialGradient(c, s * 0.36)
-        grad.setColorAt(0.0, theme.with_alpha(theme.WARM_WHITE, intensity))
-        grad.setColorAt(0.25, theme.with_alpha(tone, 0.85 * intensity))
+        grad.setColorAt(0.0, theme.with_alpha(theme.WARM_WHITE, 0.55 * intensity))
+        grad.setColorAt(0.3, theme.with_alpha(tone, 0.35 * intensity))
         grad.setColorAt(1.0, theme.with_alpha(tone, 0.0))
         p.setBrush(grad)
         p.drawEllipse(c, s * 0.36, s * 0.36)
+        mini_brain(p, scene, c.x(), c.y() - s * 0.01, s * 0.235, 0.6 + 0.4 * intensity)
         # anel de profundidade cognitiva (0–9)
         rect = QtCore.QRectF(s * 0.1, s * 0.1, s * 0.8, s * 0.8)
         for i in range(10):
