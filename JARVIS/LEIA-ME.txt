@@ -1,0 +1,16 @@
+JARVIS — TELA DE SESSÃO
+
+1. Copie estes arquivos para a pasta atual do JARVIS.
+2. Garanta que .venv exista.
+3. Teste primeiro:
+   TESTAR_TELA_JARVIS.bat
+4. Na primeira execução, crie o PIN.
+5. Se funcionar, ative no login:
+   ATIVAR_TELA_JARVIS.bat
+
+Para desativar:
+   DESATIVAR_TELA_JARVIS.bat
+
+IMPORTANTE:
+Esta é uma tela de bloqueio visual da sessão do JARVIS depois que o Windows já fez o login.
+Ela não substitui a tela segura do Windows (Win+L/Ctrl+Alt+Del/Winlogon).

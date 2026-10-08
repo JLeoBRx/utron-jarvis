@@ -1,0 +1,51 @@
+{
+  "updated_at": 1791228430.8402162,
+  "focus": {
+    "title": "JARVIS – Explorador de Arquivos",
+    "process": "explorer.exe",
+    "pid": 8948
+  },
+  "application": {
+    "name": "explorer.exe",
+    "process": "explorer.exe",
+    "title": "JARVIS – Explorador de Arquivos",
+    "pid": 8948
+  },
+  "activity": "navegando",
+  "summary": "O usuário está navegando em um site chamado chatgpt.com.",
+  "error": {
+    "visible": false,
+    "text": ""
+  },
+  "ui": {
+    "available": false,
+    "engine": "none",
+    "elements": []
+  },
+  "ocr": {
+    "available": false,
+    "engine": "",
+    "text": ""
+  },
+  "screen": {
+    "changed": false,
+    "stable": true
+  },
+  "confidence": 0.5,
+  "source": "ollama-vision",
+  "recent_events": [
+    {
+      "at": 1791228415.763829,
+      "activity": "navegando",
+      "summary": "O usuário está navegando em um site chamado chatgpt.com.",
+      "error": "",
+      "confidence": 0.5
+    }
+  ],
+  "perception": {
+    "changed": false,
+    "changes": [],
+    "inferences": [],
+    "last_transition": 0.0
+  }
+}
