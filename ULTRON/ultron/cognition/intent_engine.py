@@ -81,9 +81,11 @@ def _cmd(raw_text: str, skill_name: str, /, **args: Any) -> Intent:
 
 class IntentEngine:
     def __init__(self, *, automations: Callable[[str], dict | None] | None = None,
-                 wake_words: Callable[[], tuple] | None = None):
+                 wake_words: Callable[[], tuple] | None = None,
+                 recent_topic: Callable[[], dict | None] | None = None):
         self._automations = automations
         self._wake_words = wake_words or (lambda: ("ultron",))
+        self._recent_topic = recent_topic or (lambda: None)     # assunto recente ("anote essa ideia", "disso")
 
     # ------------------------------------------------------------ API
     def classify(self, raw: str) -> Intent:
@@ -113,7 +115,8 @@ class IntentEngine:
 
     # ------------------------------------------------------------ regras
     def _rules(self, raw: str, t: str) -> Intent | None:
-        for rule in (self._time_rules, self._control_rules, self._power_rules, self._network_rules,
+        for rule in (self._secondbrain_rules, self._time_rules, self._control_rules, self._power_rules,
+                     self._network_rules,
                      self._system_rules, self._project_rules, self._imagination_rules, self._memory_rules,
                      self._vision_rules, self._file_rules, self._web_rules, self._window_rules, self._app_rules,
                      self._media_rules, self._input_rules):
@@ -155,6 +158,112 @@ class IntentEngine:
             return _intent("control", raw, args={"mute_voice": False})
         return None
 
+    # ------------------------------------------------------------ second brain
+    def _topic(self) -> dict | None:
+        """{"text", "record_id"}: a última fala livre do usuário ou o último registro tocado."""
+        try:
+            topic = self._recent_topic()
+        except Exception:
+            return None
+        if not topic or not topic.get("text"):
+            return None
+        return {"text": " ".join(str(topic["text"]).split())[:300], "record_id": topic.get("record_id")}
+
+    def _secondbrain_rules(self, raw, t):
+        r = raw.strip().rstrip(".!")
+        if re.search(r"\b(abr\w*|mostr\w*|exib\w*)\b.*\b(segundo cerebro|second brain|hub 2|hub dois)\b", t):
+            return _intent("control", raw, args={"open_view": "second_brain"})
+        if re.search(r"\b(abr\w*|mostr\w*)\b.*\b(central de )?notificacoes\b", t):
+            return _intent("control", raw, args={"open_view": "second_brain", "section": "notifications"})
+        # adiar lembrete: "adie o lembrete por 15 minutos", "soneca de 10 minutos"
+        if re.search(r"\b(adi[ea]\w*|posterg\w*|soneca|me lembre de novo|lembre de novo)\b", t) and \
+                re.search(r"\b(lembrete|aviso|alarme|isso|minutos?|horas?|min)\b", t):
+            amount = pt_number(t)
+            if re.search(r"\bmeia hora\b", t) and amount is None:
+                minutes = 30
+            elif re.search(r"\bhoras?\b", t):
+                minutes = (amount or 1) * 60
+            else:
+                minutes = amount or 10
+            return _cmd(raw, "secondbrain.snooze", minutes=max(1, min(1440, minutes)))
+        # perguntas respondidas só com dados salvos
+        if re.search(r"\b(minhas|quais (sao )?(as )?minhas|as)\s+prioridades\b|\bo que (eu )?tenho (para|pra) "
+                     r"(hoje|amanha)\b|\bminha agenda\b|\bagenda (de hoje|de amanha|da semana)\b|"
+                     r"\bo que tenho (hoje|amanha)\b|\bproximos (compromissos|lembretes)\b|\bmeus (compromissos|"
+                     r"lembretes|projetos)\b|\bquais (sao )?(os )?meus projetos\b|"
+                     r"\b(o que|quais tarefas|que tarefas)\b.*\b(preciso|tenho que|falta|faltam|devo)\b.*"
+                     r"\b(terminar|fazer|entregar|concluir|resolver)\b.*\bsemana\b|"
+                     r"\b(o que|que tarefas?|quais tarefas?|tenho algo|tem algo|ha algo|alguma coisa)\b.*"
+                     r"\b(atrasad\w*|vencid\w*|em atraso)\b|\bo que (eu )?atrasei\b|"
+                     r"\b(quais|que|minhas)\s+ideias\b|\b(quais|que)\s+(tarefas|registros|itens)?\s*dependem\b|"
+                     r"\b(o que|que)\s+(eu\s+)?(havia|tinha|ja)?\s*decid\w*\s+(sobre|para|quanto a)\b|"
+                     r"\bo que (eu )?(anotei|registrei|salvei|guardei)\b|"
+                     r"\b(procure|busque|pesquise)\b.*\b(nas (minhas )?notas|no segundo cerebro|no second brain|"
+                     r"nos (meus )?registros)\b|\bo que (preciso|tenho que) revisar\b", t):
+            return _cmd(raw, "secondbrain.query", question=r[:400])
+        # concluir
+        done = re.match(r"(?i)^(?:marque|marca|marcar)\s+(?:a\s+tarefa\s+|o\s+estudo\s+|o\s+prazo\s+|a\s+|o\s+)?"
+                        r"(.+?)\s+como\s+(?:feit[oa]|conclu[ií]d[oa]|pront[oa]|terminad[oa]|finalizad[oa])$", r) or \
+            re.match(r"(?i)^(?:conclua|concluir|finalize|finalizar|termine|complete|conclui|terminei|finalizei)\s+"
+                     r"(?:a\s+|o\s+)?(?:tarefa|estudo|prazo|rotina)\s+(.+)$", r)
+        if done:
+            return _cmd(raw, "secondbrain.complete", ref=done.group(1).strip()[:200])
+        delete = re.match(r"(?i)^(?:apague|apaga|exclua|exclui|remova|remove|delete)\s+(definitivamente\s+)?"
+                          r"(?:a|o)\s+(?:tarefa|nota|ideia|compromisso|lembrete|estudo|prazo|rotina|registro|anota[cç][aã]o)"
+                          r"\s+(.+?)(\s+definitivamente|\s+para sempre|\s+permanentemente)?$", r)
+        if delete:
+            permanent = bool(delete.group(1) or delete.group(3))
+            return _cmd(raw, "secondbrain.delete", ref=delete.group(2).strip()[:200], permanent=permanent)
+        restore = re.match(r"(?i)^(?:restaure|restaura|recupere|recupera)\s+(?:a|o)\s+(?:tarefa|nota|ideia|"
+                           r"compromisso|estudo|prazo|registro)\s+(.+?)(?:\s+da lixeira)?$", r) or \
+            re.match(r"(?i)^(?:restaure|restaura|recupere|recupera)\s+(.+?)\s+da lixeira$", r)
+        if restore:
+            return _cmd(raw, "secondbrain.restore", ref=restore.group(1).strip()[:200])
+        archive = re.match(r"(?i)^(?:arquive|arquiva|arquivar)\s+(?:a|o)\s+(?:tarefa|nota|ideia|projeto|compromisso|"
+                           r"estudo|prazo|registro)\s+(.+)$", r)
+        if archive:
+            return _cmd(raw, "secondbrain.archive", ref=archive.group(1).strip()[:200])
+        relate = re.match(r"(?i)^(?:a\s+)?tarefa\s+(.+?)\s+depende\s+d[aeo]\s+(?:tarefa\s+)?(.+)$", r)
+        if relate:
+            return _cmd(raw, "secondbrain.relate", source=relate.group(1).strip()[:200],
+                        target=relate.group(2).strip()[:200], type="depends_on")
+        # registrar
+        reminder = re.match(r"^(?:por favor\s+)?(?:me lembr[ea]|lembr[ea][- ]me|me avis[ea]|avis[ea][- ]me|"
+                            r"crie (?:um )?lembrete|novo lembrete|lembrete)\b", t)
+        if reminder:
+            args: dict = {"text": r[:600], "remind": True}
+            if re.search(r"\b(disso|disto|daquilo)\b", t) and len(re.sub(r"\b(disso|disto|daquilo)\b", "", t).split()) <= 8:
+                topic = self._topic()
+                if topic and topic["record_id"]:
+                    args["record"] = topic["record_id"]
+                elif topic:
+                    args["title"] = topic["text"][:200]
+            return _cmd(raw, "secondbrain.capture", **args)
+        kind_match = re.match(r"^(?:por favor\s+)?(?:anote|anota|anotar|registre|registra|registrar|salve|salva|guarde|guarda|"
+                              r"crie|cria|criar|adicione|adiciona|adicionar|nova|novo|tive uma|tenho uma)\s+"
+                              r"(?:(?:a|o|uma|um|essa|esta|esse|este|minha|meu|nova|novo|mais uma)\s+)*"
+                              r"(ideia|nota|tarefa|estudo|prazo|rotina|contato|decisao)\b", t)
+        if kind_match:
+            kind = {"ideia": "idea", "nota": "note", "tarefa": "task", "estudo": "study", "prazo": "deadline",
+                    "rotina": "routine", "contato": "person", "decisao": "note"}[kind_match.group(1)]
+            rest = t[kind_match.end():].strip(" :,.")
+            args = {"text": r[:600], "kind": kind}
+            if not rest or re.fullmatch(r"(?:que (?:eu )?(?:falei|disse|tive))|(?:dela|disso|disto)", rest):
+                topic = self._topic()
+                if topic and not topic["record_id"]:
+                    args = {"text": topic["text"][:600], "kind": kind}
+            return _cmd(raw, "secondbrain.capture", **args)
+        event = re.match(r"^(?:por favor\s+)?(?:marque|marca|marcar|agende|agenda|agendar)\s+(?:uma?\s+)?"
+                         r"(reuniao|compromisso|consulta|evento|encontro|call|aula|entrevista|visita)?\b", t)
+        if event and not re.search(r"\bcomo (feit|conclu|pront)", t):
+            return _cmd(raw, "secondbrain.capture", text=r[:600], kind="event")
+        jot = re.match(r"^(?:anote|anota|registre|registra)\s+(?:que\s+)?(.+)$", t)
+        if jot and re.search(r"\b(hoje|amanha|depois de amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo|"
+                             r"\d{1,2}/\d{1,2}|\d{1,2}h|as \d{1,2}|dia \d{1,2}|semana que vem|proxima semana|"
+                             r"ate (o fim|sexta|segunda|amanha))\b", jot.group(1)):
+            return _cmd(raw, "secondbrain.capture", text=r[:600])
+        return None
+
     def _power_rules(self, raw, t):
         if re.search(r"cancel\w* (o )?(desligamento|reinicio)", t):
             return _cmd(raw, "system.power", action="cancel")
@@ -193,7 +302,17 @@ class IntentEngine:
         return None
 
     def _network_rules(self, raw, t):
-        if re.search(r"\b(escane\w*|varr\w*|scan\w*|mape\w*|descobr\w*|procur\w*)\b.*\b(rede|dispositivos)\b|"
+        if re.search(r"\b(export\w*|gere|gerar|salve|salvar)\b.*\b(relatorio|inventario|lista)\b.*\b(rede|dispositivos)\b", t):
+            fmt = "csv" if "csv" in t else ("json" if "json" in t else "md")
+            return _cmd(raw, "network.export", format=fmt)
+        if re.search(r"\b(list\w*|quais|mostr\w*|exib\w*|me (diga|fale)|relacione)\b.*\bdispositivos\b.*\brede\b|"
+                     r"quem (esta|ta) (na|conectado (a|na)) (minha )?rede|dispositivos (conectados|presentes) (a|na) "
+                     r"(minha )?rede|inventario da rede", t):
+            return _cmd(raw, "network.devices", status="present")
+        if re.search(r"\b(abr\w*|acess\w*)\b.*\b(pagina|painel|interface)\b.*\b(roteador|modem|gateway)\b|"
+                     r"\b(abr\w*|acess\w*) (o )?(roteador|modem)\b", t):
+            return _cmd(raw, "network.open_admin")
+        if re.search(r"\b(escane\w*|varr\w*|scan\w*|mape\w*|descobr\w*|procur\w*|atualiz\w*)\b.*\b(rede|dispositivos)\b|"
                      r"quem (esta|ta) (na|conectado)|dispositivos\b.*\brede\b", t):
             return _cmd(raw, "network.scan")
         if re.search(r"\b(diagnost\w*|test\w*|verifi\w*)\b.*\b(rede|internet|conexao|conectividade)\b|"

@@ -20,7 +20,8 @@ log = logging.getLogger("ultron.store")
 
 SECRET_RE = re.compile(
     r"(senha|password|passwd|token|api[_ -]?key|secret|credencia|private key|chave privada|"
-    r"seed phrase|cvv|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\b(?:\d[ -]?){13,19}\b)",
+    r"seed phrase|cvv|\bpin\b|c[oó]digo de (?:seguran[cç]a|verifica[cç][aã]o|acesso)|\b2fa\b|\botp\b|"
+    r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\b(?:\d[ -]?){13,19}\b)",
     re.IGNORECASE,
 )
 
@@ -145,6 +146,94 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
             provider TEXT NOT NULL,
             created_at REAL NOT NULL)""",
         """CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)""",
+    ]),
+    # v2 — SECOND BRAIN: registros pessoais pesquisáveis, relações, histórico, lembretes e notificações
+    (2, [
+        """CREATE TABLE IF NOT EXISTS sb_records (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT NOT NULL UNIQUE,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'open',
+            priority INTEGER NOT NULL DEFAULT 2,
+            due_local TEXT NOT NULL DEFAULT '',
+            due_at REAL,
+            all_day INTEGER NOT NULL DEFAULT 0,
+            end_local TEXT NOT NULL DEFAULT '',
+            tz TEXT NOT NULL DEFAULT '',
+            recurrence TEXT NOT NULL DEFAULT '',
+            project_id TEXT,
+            tags TEXT NOT NULL DEFAULT '[]',
+            origin TEXT NOT NULL DEFAULT 'user',
+            origin_detail TEXT NOT NULL DEFAULT '',
+            confirmed INTEGER NOT NULL DEFAULT 1,
+            confidence REAL NOT NULL DEFAULT 1.0,
+            data TEXT NOT NULL DEFAULT '{}',
+            search_text TEXT NOT NULL DEFAULT '',
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL,
+            completed_at REAL,
+            archived_at REAL,
+            deleted_at REAL)""",
+        "CREATE INDEX IF NOT EXISTS idx_sb_kind_status ON sb_records(kind, status)",
+        "CREATE INDEX IF NOT EXISTS idx_sb_due ON sb_records(due_at)",
+        "CREATE INDEX IF NOT EXISTS idx_sb_project ON sb_records(project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sb_deleted ON sb_records(deleted_at)",
+        "CREATE INDEX IF NOT EXISTS idx_sb_updated ON sb_records(updated_at)",
+        """CREATE TABLE IF NOT EXISTS sb_relations (
+            src TEXT NOT NULL, dst TEXT NOT NULL, type TEXT NOT NULL, created_at REAL NOT NULL,
+            PRIMARY KEY (src, dst, type))""",
+        "CREATE INDEX IF NOT EXISTS idx_sb_rel_dst ON sb_relations(dst)",
+        """CREATE TABLE IF NOT EXISTS sb_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_id TEXT NOT NULL, at REAL NOT NULL, action TEXT NOT NULL,
+            changes TEXT NOT NULL DEFAULT '{}', origin TEXT NOT NULL DEFAULT '')""",
+        "CREATE INDEX IF NOT EXISTS idx_sb_hist_record ON sb_history(record_id)",
+        """CREATE TABLE IF NOT EXISTS sb_reminders (
+            id TEXT PRIMARY KEY,
+            record_id TEXT NOT NULL,
+            at_local TEXT NOT NULL,
+            tz TEXT NOT NULL DEFAULT '',
+            next_at REAL NOT NULL,
+            leads TEXT NOT NULL DEFAULT '[]',
+            recurrence TEXT NOT NULL DEFAULT '',
+            anchor_day INTEGER,
+            status TEXT NOT NULL DEFAULT 'scheduled',
+            snoozed_until REAL,
+            repeats INTEGER NOT NULL DEFAULT 0,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL,
+            last_fired_at REAL,
+            pinned INTEGER NOT NULL DEFAULT 0)""",
+        "CREATE INDEX IF NOT EXISTS idx_sb_rem_next ON sb_reminders(status, next_at)",
+        "CREATE INDEX IF NOT EXISTS idx_sb_rem_record ON sb_reminders(record_id)",
+        """CREATE TABLE IF NOT EXISTS sb_fired (
+            reminder_id TEXT NOT NULL, occurrence TEXT NOT NULL, kind TEXT NOT NULL, fired_at REAL NOT NULL,
+            PRIMARY KEY (reminder_id, occurrence, kind))""",
+        """CREATE TABLE IF NOT EXISTS sb_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            at REAL NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
+            record_id TEXT, reminder_id TEXT, state TEXT NOT NULL DEFAULT 'new', silent INTEGER NOT NULL DEFAULT 0)""",
+        "CREATE INDEX IF NOT EXISTS idx_sb_notif_at ON sb_notifications(at)",
+    ]),
+    # v3 — NETWORK INTELLIGENCE: inventário com confiança, métodos, IPv6, notas e dispositivos confiáveis.
+    # "offline" passa a ser "absent": não ser visto numa varredura não prova que o aparelho saiu da rede.
+    (3, [
+        "ALTER TABLE network_devices ADD COLUMN alias TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE network_devices ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE network_devices ADD COLUMN trusted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE network_devices ADD COLUMN ipv6 TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE network_devices ADD COLUMN interface TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE network_devices ADD COLUMN segment TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE network_devices ADD COLUMN methods TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE network_devices ADD COLUMN confidence REAL NOT NULL DEFAULT 0.0",
+        "ALTER TABLE network_devices ADD COLUMN missed_scans INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE network_devices ADD COLUMN vendor_source TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE network_devices ADD COLUMN extra TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE network_devices ADD COLUMN last_check TEXT NOT NULL DEFAULT '{}'",
+        "UPDATE network_devices SET status='absent' WHERE status='offline'",
+        "CREATE INDEX IF NOT EXISTS idx_net_status ON network_devices(status)",
     ]),
 ]
 

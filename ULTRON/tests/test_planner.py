@@ -19,7 +19,8 @@ class IntentTest(unittest.TestCase):
     def test_routing_of_portuguese_commands(self):
         cases = {
             "Ultron, abra o bloco de notas": ("command", "app.open"),
-            "quais dispositivos estão na rede": ("command", "network.scan"),
+            "quais dispositivos estão na rede": ("command", "network.devices"),     # inventário (varre se vazio/antigo)
+            "escaneie a rede": ("command", "network.scan"),
             "diagnostique a rede": ("command", "network.diagnose"),
             "aumente o volume": ("command", "audio.volume"),
             "pode parar": ("cancel", None),

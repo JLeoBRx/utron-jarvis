@@ -103,11 +103,12 @@ class Orchestrator:
     # ------------------------------------------------------------ entrada
     def handle(self, command: Command, cancel) -> Response:
         text = command.text
-        self.state.set_runtime_state("THINKING", "processando pedido", source="orchestrator")
+        self.state.set_runtime_state("PERCEIVING", "interpretando pedido", source="orchestrator")
         self.state.set_cognitive_phase("ANALYZING", source="orchestrator")
         self.memory.working.add("input", text, salience=0.6, source=command.source)
         concept_ids = self.link_concepts(text)
         intent = self.intents.classify(text)
+        self.state.set_runtime_state("DECIDING", "decidindo o caminho", source="orchestrator")
         decision = self.decisions.decide(intent)
         log.info("intenção %s (%s) → %s", intent.kind, intent.skill or intent.template or "-", decision.route)
         try:
@@ -170,7 +171,9 @@ class Orchestrator:
     def _open_request(self, intent: Intent, cancel, *, concept_ids: list[str]) -> Response:
         text = intent.text
         t = norm(text)
+        self.state.set_runtime_state("CONTEXT", "recuperando contexto", source="orchestrator")
         ctx = self.context.build(text)
+        self.state.set_runtime_state("THINKING", "elaborando resposta", source="orchestrator")
         if QUESTION_RE.search(t) and not ACTION_HINT_RE.search(t):
             answer = self.reasoning.respond(text, ctx, cancel=cancel)
             return Response(answer, "answer")
@@ -183,8 +186,11 @@ class Orchestrator:
         goal = self.goals.create(description, confidence=intent.confidence, source=source)
         self.recovery.reset_goal(goal.id)
         self._safe_transition(goal.id, "ANALYZING")
+        if not intent.skill:
+            self.state.set_runtime_state("CONTEXT", "recuperando contexto", source="orchestrator")
         ctx = self.context.build(description) if not intent.skill else None
         self._safe_transition(goal.id, "PLANNING")
+        self.state.set_runtime_state("PLANNING", description[:80], source="orchestrator")
         plan = self.planner.create(goal.id, description, intent, ctx=ctx, cancel=cancel)
         self.goals.update(goal.id, tasks=[{"id": s.id, "description": s.description, "skill": s.skill}
                                           for s in plan.steps])
@@ -203,6 +209,7 @@ class Orchestrator:
                 goal = self.goals.create(intent.text, confidence=0.6, source="user")
                 self.recovery.reset_goal(goal.id)
                 self._safe_transition(goal.id, "PLANNING")
+                self.state.set_runtime_state("PLANNING", intent.text[:80], source="orchestrator")
                 plan = Plan(goal.id, intent.text, strategy="agentic")
                 self.planner.publish(plan)
                 self._safe_transition(goal.id, "EXECUTING")
@@ -426,6 +433,7 @@ class Orchestrator:
                   agent_answer: str = "") -> Response:
         steps = [s for s in plan.steps if s.skill or s.kind == "verify_goal"]
         last_ok = next((s for s in reversed(steps) if s.status in ("DONE", "UNCONFIRMED") and s.skill), None)
+        extra: dict[str, Any] = {}
         if outcome["success"]:
             if agent_answer:
                 text = agent_answer
@@ -444,6 +452,11 @@ class Orchestrator:
                 text += f" Etapa não crítica falhou — {failed_step.description}: {failed_step.result.get('error', '')[:120]}."
             self._safe_complete(goal_id, text, outcome["confidence"])
             kind = "result"
+            clarify = (last_ok.result.get("data") or {}) if last_ok is not None else {}
+            if clarify.get("clarify"):                  # a skill pediu esclarecimento: nada foi gravado
+                kind = "question"
+                extra = {"clarify": {"skill": last_ok.skill, "pending": clarify.get("pending") or {},
+                                     "candidates": clarify.get("candidates") or []}}
         elif outcome["cancelled"]:
             blocked = next((s for s in plan.steps if s.status == "CANCELLED" and s.result), None)
             if "autoriz" in outcome["stop_reason"]:
@@ -471,7 +484,8 @@ class Orchestrator:
             kind = "error"
         self._learn(goal_id, plan, outcome, concept_ids)
         return Response(text, kind, goal_id=goal_id, success=outcome["success"], verified=outcome["verified"],
-                        data={"plan": plan.id, "strategy": plan.strategy, "confidence": outcome["confidence"]})
+                        data={"plan": plan.id, "strategy": plan.strategy, "confidence": outcome["confidence"],
+                              **extra})
 
     def _learn(self, goal_id: str, plan: Plan, outcome: dict[str, Any], concept_ids: list[str]) -> None:
         actions = [{"skill": s.skill, "args": _safe(s.args), "status": s.status, "description": s.description}

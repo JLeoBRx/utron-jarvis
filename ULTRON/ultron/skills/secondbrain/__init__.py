@@ -1,0 +1,336 @@
+"""Skills do SECOND BRAIN: o mesmo caminho para voz, texto e o HUB 2.
+
+Toda escrita passa pelo Execution Engine (autonomia central, autorização e auditoria) e cada
+skill verifica o resultado lendo de volta do banco — nunca confia só no que executou.
+Operações rotineiras e reversíveis (registrar, editar, concluir, adiar, mandar para a lixeira)
+são automáticas; a exclusão DEFINITIVA é irreversível e exige autorização específica.
+"""
+from __future__ import annotations
+
+from ...secondbrain import timeutil
+from ...secondbrain.capture import confirmation_text
+from ...secondbrain.models import KINDS, RELATIONS, STATUSES
+from ...secondbrain.queries import answer
+from ...secondbrain.service import NeedsClarification, SecondBrainError, describe_record
+from ..base import Risk, Skill, SkillResult, VerificationResult, check, schema, string
+
+CATEGORY = "second_brain"
+
+
+def _service(ctx):
+    service = (ctx.extras or {}).get("second_brain")
+    if service is None:
+        raise SecondBrainError("Second Brain indisponível nesta execução")
+    return service
+
+
+def _fail(exc: Exception) -> SkillResult:
+    if isinstance(exc, NeedsClarification):
+        return SkillResult(True, exc.question, ["nada foi alterado: esclarecimento necessário"],
+                           {"clarify": True, "candidates": exc.candidates})
+    return SkillResult(False, error=str(exc), error_kind="INVALID_ARGUMENT" if isinstance(exc, SecondBrainError)
+                       else "UNKNOWN_ERROR")
+
+
+class _SBSkill(Skill):
+    category = CATEGORY
+    risk = Risk.LOW
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        if result.data.get("clarify"):
+            return VerificationResult("VERIFIED", 0.9, [check("nothing_recorded", True,
+                                                              "pergunta de esclarecimento; nada gravado")])
+        record_id = result.data.get("id")
+        if not record_id:
+            return VerificationResult("VERIFIED", 0.9, [check("read_only", True, "consulta ao banco local")])
+        service = _service(ctx)
+        return VerificationResult.from_checks(self.checks(service, service.get(record_id), args, result))
+
+    def checks(self, service, record, args, result) -> list:
+        return [check("persisted", record is not None, "registro lido de volta do banco")]
+
+
+class Capture(_SBSkill):
+    name = "secondbrain.capture"
+    description = ("Registrar no Second Brain uma tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina "
+                   "ou prazo, com data/hora em português e lembrete opcional.")
+    inputs = schema({"text": string(600), "kind": string(20, enum=sorted(KINDS)), "title": string(200),
+                     "when": string(120), "priority": {"type": "integer", "minimum": 1, "maximum": 4},
+                     "project": string(80), "remind": {"type": "boolean"},
+                     "leads": {"type": "array", "items": {"type": "integer"}}, "record": string(40)}, ("text",))
+
+    def describe_action(self, args):
+        return f"registrar no Second Brain: {args.get('title') or args.get('text', '')[:80]}"
+
+    def execute(self, ctx, text: str, kind: str | None = None, title: str | None = None, when: str | None = None,
+                priority: int | None = None, project: str | None = None, remind: bool | None = None,
+                leads: list | None = None, record: str | None = None) -> SkillResult:
+        capture = (ctx.extras or {}).get("capture")
+        if capture is None:
+            return SkillResult(False, error="Second Brain indisponível nesta execução", error_kind="UNSUPPORTED")
+        try:
+            result = capture.explicit(text, kind=kind, title=title, when=when, priority=priority, project=project,
+                                      origin=(ctx.extras or {}).get("origin", "user"), remind=remind,
+                                      leads=[int(x) for x in leads] if leads else None, record_id=record)
+        except Exception as exc:
+            return _fail(exc)
+        if result.question:
+            return SkillResult(True, result.question, ["nada foi registrado: esclarecimento necessário"],
+                               {"clarify": True, "pending": result.pending})
+        record = result.records[0]
+        reminders = _service(ctx).store.reminders_for(record.id)
+        return SkillResult(True, confirmation_text(result, now=_service(ctx).now_wall()),
+                           [f"{record.label.lower()} {record.id}"] + [f"lembrete {r.at_local}" for r in reminders],
+                           {"id": record.id, "record": record.to_dict(),
+                            "reminders": [r.to_dict() for r in reminders]})
+
+    def checks(self, service, record, args, result):
+        checks = [check("persisted", record is not None and not record.deleted_at, "registro lido de volta do banco")]
+        expected = {r["id"] for r in result.data.get("reminders") or []}
+        if record is not None and expected:
+            stored = {r.id for r in service.store.reminders_for(record.id)}
+            checks.append(check("reminder_scheduled", expected <= stored, "lembrete agendado no banco"))
+        return checks
+
+
+class Query(_SBSkill):
+    name = "secondbrain.query"
+    description = ("Responder perguntas sobre os registros salvos: prioridades de hoje, o que falta na semana, "
+                   "atrasados, ideias de um projeto, dependências, decisões, próximos compromissos, busca.")
+    inputs = schema({"question": string(400)}, ("question",))
+    risk = Risk.NONE
+
+    def execute(self, ctx, question: str) -> SkillResult:
+        try:
+            result = answer(_service(ctx), question)
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, result.text, [f"{len(result.records)} registro(s) consultado(s)"],
+                           {"answer": result.to_dict()})
+
+
+class _Target(_SBSkill):
+    """Skills que agem sobre um registro existente (por id ou pelo título)."""
+
+    open_only = True
+
+    def target(self, ctx, ref: str, kinds=None):
+        return _service(ctx).resolve(ref, kinds=kinds, open_only=self.open_only)
+
+
+class Complete(_Target):
+    name = "secondbrain.complete"
+    description = "Marcar uma tarefa, estudo, prazo ou rotina como concluído (recorrentes avançam para a próxima)."
+    inputs = schema({"ref": string(200)}, ("ref",))
+
+    def execute(self, ctx, ref: str) -> SkillResult:
+        try:
+            record = self.target(ctx, ref)
+            before = record.due_local
+            record = _service(ctx).complete(record.id, origin=(ctx.extras or {}).get("origin", "user"))
+        except Exception as exc:
+            return _fail(exc)
+        if record.status == "done":
+            text = f"Concluído: {record.title}."
+        else:
+            text = f"Ocorrência concluída: {record.title}. Próxima: {describe_record(record, now=_service(ctx).now_wall())}."
+        return SkillResult(True, text, [record.id], {"id": record.id, "before": before, "status": record.status,
+                                                    "due": record.due_local})
+
+    def checks(self, service, record, args, result):
+        if record is None:
+            return [check("persisted", False, "registro não encontrado")]
+        if result.data.get("status") == "done":
+            return [check("status_done", record.status == "done", f"estado no banco: {record.status}")]
+        return [check("advanced", record.due_local != result.data.get("before"), "próxima ocorrência gravada")]
+
+
+class Update(_Target):
+    name = "secondbrain.update"
+    description = "Editar um registro: título, descrição, data, prioridade, estado, categoria ou projeto."
+    inputs = schema({"ref": string(200), "title": string(200), "body": string(2000), "when": string(120),
+                     "priority": {"type": "integer", "minimum": 1, "maximum": 4}, "status": string(20, enum=list(STATUSES)),
+                     "kind": string(20, enum=sorted(KINDS)), "project": string(80), "confirm": {"type": "boolean"}},
+                    ("ref",))
+    open_only = False
+
+    def execute(self, ctx, ref: str, **fields) -> SkillResult:
+        changes = {}
+        for key in ("title", "body", "priority", "status", "kind"):
+            if fields.get(key) not in (None, ""):
+                changes[key] = fields[key]
+        if fields.get("project"):
+            changes["project_id"] = fields["project"]
+        if fields.get("confirm"):
+            changes["confirmed"] = True
+        try:
+            record = self.target(ctx, ref)
+            kwargs = {"when": fields["when"]} if fields.get("when") else {}
+            record = _service(ctx).update(record.id, origin=(ctx.extras or {}).get("origin", "user"), **kwargs, **changes)
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, f"Atualizado: {describe_record(record, now=_service(ctx).now_wall())}.", [record.id],
+                           {"id": record.id, "expected": {k: v for k, v in changes.items() if k in ("title", "status",
+                                                                                                   "priority", "kind")}})
+
+    def checks(self, service, record, args, result):
+        if record is None:
+            return [check("persisted", False, "registro não encontrado")]
+        expected = result.data.get("expected") or {}
+        checks = [check(f"field_{k}", getattr(record, k) == (v if k != "title" else " ".join(str(v).split())),
+                        f"{k} no banco") for k, v in expected.items()]
+        return checks or [check("persisted", True, "registro lido de volta do banco")]
+
+
+class Snooze(_SBSkill):
+    name = "secondbrain.snooze"
+    description = "Adiar um lembrete por alguns minutos (o último avisado, ou o de um registro indicado)."
+    inputs = schema({"minutes": {"type": "integer", "minimum": 1, "maximum": 1440}, "ref": string(200)}, ("minutes",))
+
+    def execute(self, ctx, minutes: int, ref: str | None = None) -> SkillResult:
+        service = _service(ctx)
+        reminders = service.reminders
+        if reminders is None:
+            return SkillResult(False, error="agendador de lembretes indisponível", error_kind="UNSUPPORTED")
+        try:
+            if ref:
+                record = service.resolve(ref)
+                candidates = service.store.reminders_for(record.id)
+                if not candidates:
+                    return SkillResult(False, error=f"\"{record.title}\" não tem lembrete agendado",
+                                       error_kind="NOT_FOUND")
+                target = candidates[0]
+            else:
+                target = reminders.latest_fired() or next(iter(service.store.upcoming_reminders(
+                    after=service.now(), limit=1)), None)
+                if target is None:
+                    return SkillResult(False, error="não há lembrete recente para adiar", error_kind="NOT_FOUND")
+            rem = reminders.snooze(target.id, minutes)
+        except Exception as exc:
+            return _fail(exc)
+        record = service.get(rem.record_id)
+        when = timeutil.describe(timeutil.from_epoch(rem.next_at, rem.tz), now=service.now_wall())
+        return SkillResult(True, f"Lembrete adiado: {record.title if record else ''} — {when}.", [rem.id],
+                           {"reminder_id": rem.id, "until": rem.next_at})
+
+    def verify(self, ctx, args, result):
+        if not result.success or result.data.get("clarify"):
+            return super().verify(ctx, args, result)
+        rem = _service(ctx).store.reminder(result.data["reminder_id"])
+        ok = rem is not None and rem.status == "scheduled" and abs(rem.next_at - result.data["until"]) < 1
+        return VerificationResult.from_checks([check("rescheduled", ok, "novo horário gravado no banco")])
+
+
+class Delete(_Target):
+    name = "secondbrain.delete"
+    description = "Mandar um registro para a lixeira (recuperável) ou excluí-lo definitivamente (irreversível)."
+    inputs = schema({"ref": string(200), "permanent": {"type": "boolean"}}, ("ref",))
+    open_only = False
+    risk = Risk.LOW
+
+    def risk_for(self, args):
+        return Risk.CRITICAL if args.get("permanent") else Risk.LOW
+
+    reversible = True                     # a lixeira é reversível; a definitiva é CRÍTICA e sempre pede autorização
+    sensitive = ""
+
+    def sensitive_for(self, args):
+        return "permanent_delete" if args.get("permanent") else ""
+
+    def describe_action(self, args):
+        if args.get("permanent"):
+            return f"EXCLUIR DEFINITIVAMENTE do Second Brain: {args.get('ref')} (sem recuperação)"
+        return f"mandar para a lixeira: {args.get('ref')}"
+
+    def execute(self, ctx, ref: str, permanent: bool = False) -> SkillResult:
+        service = _service(ctx)
+        try:
+            record = service.store.get(ref) if ref.startswith("r_") else None
+            if record is None:
+                record = self.target(ctx, ref)
+            service.delete(record.id, permanent=permanent, origin=(ctx.extras or {}).get("origin", "user"))
+        except Exception as exc:
+            return _fail(exc)
+        text = (f"Excluído definitivamente: {record.title}." if permanent else
+                f"Enviado para a lixeira: {record.title}. Pode ser restaurado.")
+        return SkillResult(True, text, [record.id], {"id": record.id, "permanent": permanent})
+
+    def verify(self, ctx, args, result):
+        if not result.success or result.data.get("clarify"):
+            return super().verify(ctx, args, result)
+        record = _service(ctx).get(result.data["id"])
+        if result.data["permanent"]:
+            return VerificationResult.from_checks([check("purged", record is None, "registro ausente do banco")])
+        return VerificationResult.from_checks([check("in_trash", record is not None and bool(record.deleted_at),
+                                                     "registro marcado como excluído (recuperável)")])
+
+
+class Restore(_SBSkill):
+    name = "secondbrain.restore"
+    description = "Restaurar um registro da lixeira."
+    inputs = schema({"ref": string(200)}, ("ref",))
+
+    def execute(self, ctx, ref: str) -> SkillResult:
+        service = _service(ctx)
+        record = service.store.get(ref) if ref.startswith("r_") else None
+        if record is None:
+            matches = [r for r in service.trash() if ref.casefold() in r.title.casefold()]
+            if not matches:
+                return SkillResult(False, error=f"nada na lixeira sobre \"{ref}\"", error_kind="NOT_FOUND")
+            record = matches[0]
+        try:
+            record = service.restore(record.id)
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, f"Restaurado: {record.title}.", [record.id], {"id": record.id})
+
+    def checks(self, service, record, args, result):
+        return [check("restored", record is not None and not record.deleted_at, "registro ativo no banco")]
+
+
+class Archive(_Target):
+    name = "secondbrain.archive"
+    description = "Arquivar (ou desarquivar) um registro: sai das listas sem ser excluído."
+    inputs = schema({"ref": string(200), "archived": {"type": "boolean"}}, ("ref",))
+    open_only = False
+
+    def execute(self, ctx, ref: str, archived: bool = True) -> SkillResult:
+        try:
+            record = _service(ctx).archive(self.target(ctx, ref).id, archived=archived,
+                                           origin=(ctx.extras or {}).get("origin", "user"))
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, ("Arquivado: " if archived else "Desarquivado: ") + record.title + ".", [record.id],
+                           {"id": record.id, "archived": archived})
+
+    def checks(self, service, record, args, result):
+        return [check("archived", record is not None and bool(record.archived_at) == result.data["archived"],
+                      "estado de arquivamento no banco")]
+
+
+class Relate(_SBSkill):
+    name = "secondbrain.relate"
+    description = "Relacionar dois registros (depende de, relacionado a, parte de, sobre)."
+    inputs = schema({"source": string(200), "target": string(200), "type": string(20, enum=sorted(RELATIONS))},
+                    ("source", "target"))
+
+    def execute(self, ctx, source: str, target: str, type: str = "related") -> SkillResult:
+        service = _service(ctx)
+        try:
+            a, b = service.resolve(source), service.resolve(target)
+            service.relate(a.id, b.id, type)
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, f"\"{a.title}\" {RELATIONS[type]} \"{b.title}\".", [a.id, b.id],
+                           {"id": a.id, "target": b.id, "type": type})
+
+    def checks(self, service, record, args, result):
+        stored = record is not None and any(
+            r.get("type") == result.data["type"] and result.data["target"] in (r.get("src"), r.get("dst"))
+            for r in service.store.relations(record.id))
+        return [check("related", stored, "relação gravada no banco")]
+
+
+SKILLS = (Capture, Query, Complete, Update, Snooze, Delete, Restore, Archive, Relate)

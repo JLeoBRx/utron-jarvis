@@ -98,6 +98,7 @@ class EventType(str, Enum):
     NOTIFICATION = "NOTIFICATION"
     # inventário da rede local
     NETWORK_INVENTORY_UPDATED = "NETWORK_INVENTORY_UPDATED"
+    UI_REQUEST = "UI_REQUEST"                     # pedido de abrir uma tela (ex.: HUB 2) vindo de voz/texto
     DEVICE_UPDATED = "DEVICE_UPDATED"
     # sistema
     HEALTH_UPDATED = "HEALTH_UPDATED"

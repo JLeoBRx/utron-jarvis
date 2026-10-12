@@ -136,7 +136,8 @@ class ExecutionEngine:
             return self._finish(ExecutionRecord(action, "skipped", SkillResult(
                 True, skip_reason, [skip_reason], {"skipped": True}), started=started))
         risk = skill.risk_for(args)
-        decision = self.autonomy.decide(risk, reversible=skill.reversible, origin=action.origin)
+        sensitive = skill.sensitive_for(args)
+        decision = self.autonomy.decide(risk, reversible=skill.reversible, origin=action.origin, sensitive=sensitive)
         record = ExecutionRecord(action, "pending", SkillResult(False), risk.value, started=started)
         if decision.action == "refuse":
             record.status, record.result = "refused", SkillResult(False, error=decision.reason, error_kind="REFUSED")
@@ -145,7 +146,7 @@ class ExecutionEngine:
             specific = type(skill).describe_action is not Skill.describe_action
             description = skill.describe_action(args) if specific or not action.description else action.description
             req = self.authorizations.request(description, skill=skill.name, risk=risk.value,
-                                              args={k: str(v)[:80] for k, v in args.items()})
+                                              args={k: str(v)[:80] for k, v in args.items()}, category=sensitive)
             if req.status == "pending":                        # pré-aprovado (sugestão aceita) não pergunta de novo
                 if self._state is not None:
                     self._state.set_runtime_state("AWAITING_AUTHORIZATION", description, source="execution")

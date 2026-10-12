@@ -115,6 +115,7 @@ class Skill:
     requirements: dict = {}          # {"platform": "win32", "modules": ["pyautogui"], "executables": ["code"]}
     risk: Risk = Risk.LOW
     reversible: bool = True
+    sensitive: str = ""              # categoria que SEMPRE exige autorização específica (agent.autonomy.SENSITIVE)
     timeout: float = 30.0
     expose_to_llm: bool = True        # pode ser escolhida pelo modelo em passos agênticos
 
@@ -184,6 +185,10 @@ class Skill:
         """Risco efetivo (algumas skills elevam o risco conforme os argumentos)."""
         return self.risk
 
+    def sensitive_for(self, args: dict) -> str:
+        """Categoria sensível desta chamada ('' = nenhuma): exclusão definitiva, rede, credenciais..."""
+        return self.sensitive
+
     def precheck(self, ctx: "SkillContext", args: dict) -> str | None:
         """Devolve um motivo quando a ação é desnecessária (nada a fazer). Evita pedir autorização à toa."""
         return None
@@ -209,7 +214,8 @@ class Skill:
         ok, reason = self.available()
         return {"name": self.name, "description": self.description, "category": self.category,
                 "inputs": self.inputs, "outputs": self.outputs, "requirements": self.requirements,
-                "risk": self.risk.value, "reversible": self.reversible, "available": ok, "reason": reason}
+                "risk": self.risk.value, "reversible": self.reversible, "sensitive": self.sensitive,
+                "available": ok, "reason": reason}
 
 
 def check(name: str, passed: bool | None, detail: str = "") -> dict:

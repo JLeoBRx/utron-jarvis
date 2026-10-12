@@ -8,7 +8,9 @@ Responsabilidades:
   respostas (``RESPONSE_READY`` + fala);
 * rotear respostas de autorização ("sim"/"não"), sugestões proativas e cancelamento;
 * agendar a manutenção: saúde, consolidação da memória, decaimento do grafo, varredura da
-  rede local, privacidade e Dream Mode (só em repouso).
+  rede local, privacidade e Dream Mode (só em repouso);
+* ligar o SECOND BRAIN (registros, lembretes, captura automática e esclarecimentos) ao mesmo
+  caminho de execução usado por voz, texto e HUB 2 (``run_skill``).
 
 Toda inferência roda no worker ``ai``; a interface nunca espera por nada daqui.
 """
@@ -21,7 +23,7 @@ from typing import Any, Callable
 
 from .. import __version__
 from ..agent.autonomy import AuthorizationManager, AutonomyPolicy, classify_reply
-from ..agent.execution import ExecutionEngine
+from ..agent.execution import Action, ExecutionEngine
 from ..agent.recovery import RecoveryEngine
 from ..agent.verification import VerificationEngine
 from ..audio.neural_audio import NeuralAudio
@@ -46,6 +48,7 @@ from ..plugins.base import PluginContext
 from ..plugins.manager import PluginManager
 from ..privacy.privacy_mode import PrivacyPolicy
 from ..proactive.intelligence import ProactiveIntelligence
+from ..secondbrain import Capture, CaptureResult, ReminderScheduler, SecondBrainService, confirmation_text
 from ..skills.base import SkillContext
 from ..skills.registry import SkillRegistry, load_builtin
 from ..voice.audio import AudioOutput
@@ -63,6 +66,9 @@ from .state import StateStore
 log = logging.getLogger("ultron.core")
 
 SUGGESTION_TTL = 90.0
+PENDING_TTL = 120.0              # esclarecimento do Second Brain ("às 3 da manhã ou às 15?") aguardando resposta
+TOPIC_TTL = 15 * 60.0            # "anote essa ideia" / "lembre-me disso" olham até 15 min para trás
+REMINDING_SECONDS = 8.0
 IDLE_STATES = ("IDLE", "LISTENING", "SPEAKING")
 
 
@@ -103,6 +109,9 @@ class NeuralCore:
         self._lock = threading.RLock()
         self._token: CancellationToken | None = None
         self._dream_token: CancellationToken | None = None
+        self._pending_capture: dict | None = None
+        self._topic: tuple[str, float] | None = None
+        self._reminding_until = 0.0
         self._suggestion: dict | None = None
         self._last_interaction = time.time()
         self._memory_check = (0.0, {"status": "UNKNOWN", "detail": ""})
@@ -127,6 +136,12 @@ class NeuralCore:
         self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy)
         self.network = NetworkIntelligence(db=self.memory.db, settings_getter=s, bus=self.bus, state=self.state,
                                            world=self.world, graph=self.memory.graph, privacy=self.privacy)
+        # SECOND BRAIN — memória pessoal, lembretes e captura (HUB 2, voz e texto usam esta mesma camada)
+        self.second_brain = SecondBrainService(self.memory.db, bus=self.bus, state=self.state, settings_getter=s,
+                                               graph=self.memory.graph)
+        self.reminders = ReminderScheduler(self.second_brain, bus=self.bus, state=self.state, settings_getter=s,
+                                           announce=self._announce_reminder)
+        self.capture = Capture(self.second_brain, settings_getter=s)
         self.registry = load_builtin(SkillRegistry())
         self.authorizations = AuthorizationManager(bus=self.bus, state=self.state,
                                                    timeout_getter=lambda: s().authorization_timeout)
@@ -137,7 +152,7 @@ class NeuralCore:
         self.audio_out = audio_output or AudioOutput()
         self.speaker = Speaker(self.audio_out, bus=self.bus, state=self.state, settings_getter=s)
         self.intents = IntentEngine(automations=self.memory.procedural.automation_for,
-                                    wake_words=lambda: tuple(s().wake_words))
+                                    wake_words=lambda: tuple(s().wake_words), recent_topic=self._recent_topic)
         self.voice = VoicePipeline(bus=self.bus, state=self.state, settings_getter=s, speaker=self.speaker,
                                    on_command=self._on_voice_command, command_check=self._looks_like_command)
         self.neural_audio = NeuralAudio(self.audio_out, bus=self.bus, state=self.state, settings_getter=s)
@@ -182,6 +197,8 @@ class NeuralCore:
         L.register(self.world, depends_on=("memory",))
         L.register(Service("models", start=self._start_models, health=self._models_health), depends_on=("privacy",))
         L.register(self.goals, depends_on=("memory",))
+        L.register(self.second_brain, depends_on=("memory",))
+        L.register(self.reminders, depends_on=("second_brain",))
         L.register(self.network, depends_on=("memory", "world_model", "privacy"))
         L.register(Service("skills", health=lambda: {"status": "OK", "detail": f"{len(self.registry.available())}"
                                                                             f"/{len(self.registry)} disponíveis"}))
@@ -360,6 +377,18 @@ class NeuralCore:
             if reply is not None:
                 self.accept_suggestion(reply == "yes", by=source)
                 return True
+        pending, self._pending_capture = self._pending_capture, None
+        if pending is not None and time.time() <= pending["expires"]:
+            if classify_reply(text) == "no":
+                self._emit_response(Response("Certo. Nada foi registrado.", "info"), source)
+                return True
+            if intent.kind == "unknown":                 # resposta ao esclarecimento ("às 15", "da tarde"...)
+                self.runtime.submit("ai", self._answer_pending, pending, text, source, name="esclarecimento")
+                return True
+        if intent.kind == "unknown":
+            self._topic = (text, time.time())
+            if getattr(self.settings(), "auto_capture", True):
+                self.runtime.submit("memory", self._auto_capture, text, source, name="captura")
         busy = self._token is not None
         if busy:
             self._emit_response(Response(dialogue.say("busy"), "info"), source, partial=True)
@@ -400,6 +429,9 @@ class NeuralCore:
         if token.cancelled and response.kind not in ("info", "error"):
             response = Response(dialogue.say("cancelled"), "info", success=False)
         self._finish_state()
+        clarify = (response.data or {}).get("clarify") or {}
+        if clarify.get("skill") == "secondbrain.capture" and clarify.get("pending"):
+            self._pending_capture = {"pending": clarify["pending"], "expires": time.time() + PENDING_TTL}
         self._emit_response(response, source)
         self.metrics.record("request", time.perf_counter() - started)
 
@@ -450,6 +482,12 @@ class NeuralCore:
             self.settings_manager.update(privacy_mode=str(args["privacy_mode"]))
             self.privacy.refresh()
             return Response("LOCAL MODE ativo. Conexões externas automáticas bloqueadas.", "info")
+        if "open_view" in args:
+            if self.hud_health is None:
+                return Response("Interface gráfica indisponível nesta execução.", "error", success=False)
+            self.bus.publish(EventType.UI_REQUEST, {"view": args["open_view"], "section": args.get("section", "")},
+                             source="core")
+            return Response("Abrindo o Second Brain.", "info")
         return Response("Ajuste não reconhecido.", "error")
 
     def _imagine(self, intent: Intent, cancel) -> Response:
@@ -501,6 +539,118 @@ class NeuralCore:
     def _expire_suggestion(self) -> None:
         if self._suggestion is not None and time.time() > self._suggestion["expires"]:
             self._suggestion = None
+        pending = self._pending_capture
+        if pending is not None and time.time() > pending["expires"]:
+            self._pending_capture = None
+        if self.state.runtime_state == "REMINDING" and time.monotonic() > self._reminding_until \
+                and not self.speaker.speaking:
+            self.state.set_runtime_state("IDLE", "", source="reminders")
+
+    # ================================================================ second brain
+    def _recent_topic(self) -> dict | None:
+        """Assunto de "anote essa ideia"/"lembre-me disso": a última fala livre do usuário ou o último
+        registro criado/editado no Second Brain — o mais recente dos dois, até 15 minutos atrás."""
+        now = time.time()
+        topic = self._topic if self._topic and now - self._topic[1] <= TOPIC_TTL else None
+        record = None
+        try:
+            rows = self.second_brain.store.select(["deleted_at IS NULL", "updated_at >= ?"], [now - TOPIC_TTL],
+                                                  limit=1)
+            record = rows[0] if rows else None
+        except Exception:
+            record = None
+        if record is not None and (topic is None or record.updated_at >= topic[1]):
+            return {"text": record.title, "record_id": record.id}
+        return {"text": topic[0], "record_id": None} if topic else None
+
+    def _auto_capture(self, text: str, source: str) -> None:
+        """Captura automática (evidência clara de compromisso): registro INFERIDO, revisável e reversível."""
+        if self._pending_capture is not None:
+            return
+        try:
+            result = self.capture.auto(text, origin="auto")
+        except Exception as exc:
+            log.info("captura automática ignorada: %s", exc)
+            return
+        if result.question and result.pending:
+            self._pending_capture = {"pending": result.pending, "expires": time.time() + PENDING_TTL}
+            self._emit_response(Response(result.question, "question", data={"clarify": {
+                "skill": "secondbrain.capture", "pending": result.pending}}), "second_brain", partial=True)
+            return
+        if result.records and result.inferred:
+            record = result.records[0]
+            try:
+                self.memory.db.audit("second_brain", "auto_capture", f"{record.kind}: {record.title}"[:300], None)
+            except Exception:
+                pass
+            text = confirmation_text(result, now=self.second_brain.now_wall())
+            self._emit_response(Response(text, "info", data={"record": record.to_dict(), "inferred": True}),
+                                "second_brain", partial=True, speak=False)
+
+    def _answer_pending(self, pending: dict, text: str, source: str) -> None:
+        try:
+            answer = self.capture.answer(pending["pending"], text)
+        except Exception as exc:
+            self._emit_response(Response(f"Nada foi registrado: {exc}", "error", success=False), source)
+            return
+        if isinstance(answer, CaptureResult):
+            self._pending_capture = {"pending": answer.pending, "expires": time.time() + PENDING_TTL}
+            self._emit_response(Response(answer.question, "question"), source)
+            return
+        outcome = self.run_skill("secondbrain.capture", answer, origin="user")
+        if outcome["success"] and outcome["data"].get("clarify"):
+            self._pending_capture = {"pending": outcome["data"].get("pending") or {},
+                                     "expires": time.time() + PENDING_TTL}
+            self._emit_response(Response(outcome["text"], "question"), source)
+            return
+        self._emit_response(self._outcome_response(outcome), source)
+
+    def _outcome_response(self, outcome: dict) -> Response:
+        """Resposta honesta para uma execução direta: sucesso só com verificação."""
+        if outcome["success"] and outcome["verified"]:
+            return Response(outcome["text"] or dialogue.say("done"), "result", success=True, verified=True)
+        if outcome["success"]:
+            return Response(f"{outcome['text']} Sem confirmação independente.".strip(), "result", success=True,
+                            verified=False)
+        reason = outcome["error"] or outcome["status"]
+        return Response(f"{dialogue.say('failed')} {reason[:1].upper() + reason[1:]}", "error", success=False)
+
+    def run_skill(self, skill: str, args: dict | None = None, *, origin: str = "user", cancel=None) -> dict:
+        """Executa UMA skill pelo caminho central (autonomia, autorização específica, auditoria e
+        verificação). Usado pelo HUB 2 e pelas respostas de esclarecimento — nunca na thread da interface."""
+        action = Action(skill, dict(args or {}), origin=origin)
+        record = self.executor.execute(action, cancel=cancel, on_authorization=lambda d: self._progress(
+            dialogue.say("auth_request", action=d)))
+        verification = self.verifier.verify(record, self.executor.context(cancel))
+        if self._token is None:
+            self._finish_state()
+        return {"status": record.status, "success": record.executed, "verified": verification.verified,
+                "text": record.result.result, "error": record.result.error, "error_kind": record.result.error_kind,
+                "data": record.result.data, "verification": verification.to_dict(),
+                "authorization": record.authorization}
+
+    def _announce_reminder(self, payload: dict) -> None:
+        """O agendador disparou um lembrete (fora do modo silencioso): estado REMINDING e fala curta."""
+        if not self.booted:
+            return
+        notice = str(payload.get("notice") or payload.get("title") or "Lembrete.")
+        if self.state.runtime_state in ("IDLE", "DREAMING", "REMINDING"):
+            if self._dream_token is not None:
+                self._dream_token.cancel("lembrete")
+            self._reminding_until = time.monotonic() + REMINDING_SECONDS
+            self.state.set_runtime_state("REMINDING", notice[:80], source="reminders")
+        self._emit_response(Response(notice + (f" — {payload['when_text']}." if payload.get("when_text") else "."),
+                                     "reminder", data={"reminder": payload}), "reminders", partial=True,
+                            speak=self._token is None)
+
+    def _second_brain_health(self) -> dict:
+        rank = {"OK": 0, "UNKNOWN": 1, "UNAVAILABLE": 1, "WARN": 2, "FAIL": 3}
+        try:
+            service, reminders = self.second_brain.health(), self.reminders.health()
+        except Exception as exc:
+            return {"status": "FAIL", "detail": f"{type(exc).__name__}: {exc}"[:200]}
+        worst = max((service, reminders), key=lambda r: rank.get(r["status"], 1))
+        return {"status": worst["status"], "detail": f"{service['detail']}; lembretes: {reminders['detail']}"}
 
     def _on_wake(self, event) -> None:
         if event.get("command"):
@@ -565,7 +715,8 @@ class NeuralCore:
                             router=self.router, settings=self.settings(), privacy=self.privacy,
                             imagination=self.imagination, voice=self.voice, cancel=cancel,
                             emit=lambda kind, **payload: self.bus.publish(kind, payload, source="skill"),
-                            extras={"registry": self.registry, "goals": self.goals, "core": self})
+                            extras={"registry": self.registry, "goals": self.goals, "core": self,
+                                    "second_brain": self.second_brain, "capture": self.capture})
 
     def _plugin_context(self, plugin) -> PluginContext:
         from ..config import paths
@@ -582,6 +733,7 @@ class NeuralCore:
         h.register("VISION", self._vision_health)
         h.register("NETWORK", self.network.health)
         h.register("MEMORY", self._memory_health)
+        h.register("SECOND_BRAIN", self._second_brain_health)
         h.register("HUD", lambda: self.hud_health() if self.hud_health else
                    {"status": "UNAVAILABLE", "detail": "modo sem interface gráfica"})
 

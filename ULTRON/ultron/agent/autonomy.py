@@ -26,6 +26,19 @@ from ..skills.base import Risk
 
 ORIGINS = ("user", "plan", "agent", "recovery", "proactive", "automation")
 
+# Categorias que exigem autorização ESPECÍFICA (ação + recurso + escopo), qualquer que seja o nível de
+# autonomia ou a origem do pedido. A aprovação vale uma única vez para exatamente aquela chamada.
+SENSITIVE = {
+    "permanent_delete": "exclusão permanente de dados",
+    "system_config": "alteração crítica de configuração do sistema",
+    "admin_command": "comando administrativo",
+    "security": "alteração de firewall ou de proteções do sistema",
+    "network_admin": "administração de dispositivo de rede",
+    "data_egress": "envio de dados para fora do computador",
+    "credentials": "acesso a credenciais ou informação sensível",
+    "third_party": "ação irreversível ou que afeta terceiros",
+}
+
 
 @dataclass
 class AutonomyDecision:
@@ -45,9 +58,12 @@ class AutonomyPolicy:
     def level(self) -> str:
         return getattr(self._settings(), "autonomy_level", "balanced")
 
-    def decide(self, risk: Risk, *, reversible: bool, origin: str) -> AutonomyDecision:
+    def decide(self, risk: Risk, *, reversible: bool, origin: str, sensitive: str = "") -> AutonomyDecision:
         level = self.level
         r = risk.level
+        if sensitive:
+            label = SENSITIVE.get(sensitive, sensitive)
+            return AutonomyDecision("authorize", f"exige autorização específica: {label}", risk.value)
         if origin == "proactive" and r > Risk.LOW.level:
             return AutonomyDecision("authorize", "ação iniciada proativamente exige autorização", risk.value)
         if r >= Risk.HIGH.level:
@@ -102,6 +118,7 @@ class AuthorizationRequest:
     skill: str
     risk: str
     args: dict = field(default_factory=dict)
+    category: str = ""                 # categoria sensível (SENSITIVE) — escopo exibido ao usuário
     id: int = field(default_factory=lambda: next(_ids))
     created: float = field(default_factory=time.time)
     expires: float = 0.0
@@ -111,7 +128,8 @@ class AuthorizationRequest:
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "description": self.description, "skill": self.skill, "risk": self.risk,
-                "created": self.created, "expires": self.expires, "status": self.status,
+                "category": self.category, "category_label": SENSITIVE.get(self.category, ""),
+                "args": dict(self.args), "created": self.created, "expires": self.expires, "status": self.status,
                 "resolved_by": self.resolved_by,
                 "seconds_left": max(0.0, round(self.expires - time.time(), 1)) if self.status == "pending" else 0.0}
 
@@ -138,8 +156,8 @@ class AuthorizationManager:
             self._preapproved = (self._key(skill, args), time.time() + ttl, by)
 
     def request(self, description: str, *, skill: str, risk: str, args: dict | None = None,
-                timeout: float | None = None) -> AuthorizationRequest:
-        req = AuthorizationRequest(description, skill, risk, dict(args or {}))
+                timeout: float | None = None, category: str = "") -> AuthorizationRequest:
+        req = AuthorizationRequest(description, skill, risk, dict(args or {}), category)
         req.expires = time.time() + float(timeout if timeout is not None else self._timeout())
         with self._lock:
             pre, self._preapproved = self._preapproved, None
