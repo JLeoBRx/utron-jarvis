@@ -145,10 +145,10 @@ class SceneTest(unittest.TestCase):
             run(scene, clock, 4)
             self.assertGreater(region_depth(scene, region), 0.3, f"{runtime}: {region} à frente")
         scene.on_state({"runtime_state": "ERROR"})
-        run(scene, clock, 0.5)
+        run(scene, clock, 6)                       # desacelera suavemente (sem tranco) até parar
         angle = scene.camera.angle
         run(scene, clock, 1)
-        self.assertAlmostEqual(scene.camera.angle, angle, places=6, msg="em erro, o giro para")
+        self.assertAlmostEqual(scene.camera.angle, angle, places=3, msg="em erro, o giro para")
 
     def test_memory_and_concept_events_move_the_camera(self):
         scene, clock = make_scene()

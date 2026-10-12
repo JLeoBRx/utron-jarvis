@@ -82,6 +82,7 @@ class OllamaClient:
         self._local_only = local_only or (lambda: True)
         self.last_latency_ms: float | None = None
         self.last_error: str = ""
+        self.metrics = None                   # PerformanceMonitor (opcional): latência e inferência reais
 
     # ------------------------------------------------------------ transporte
     def _guard(self) -> None:
@@ -224,6 +225,7 @@ class OllamaClient:
         parts: list[str] = []
         tool_calls: list = []
         eval_count = 0
+        timings: dict = {}
         for chunk in self.chat_stream(model, messages, tools=tools, fmt=fmt, options=options,
                                       timeout=timeout, cancel=cancel):
             message = chunk.get("message") or {}
@@ -236,9 +238,26 @@ class OllamaClient:
                 tool_calls.extend(message["tool_calls"])
             if chunk.get("done"):
                 eval_count = int(chunk.get("eval_count") or 0)
+                timings = {k: chunk.get(k) for k in ("total_duration", "load_duration", "prompt_eval_duration",
+                                                     "eval_duration") if isinstance(chunk.get(k), (int, float))}
         seconds = time.perf_counter() - started
         self.last_latency_ms = seconds * 1000.0
+        self._record(seconds, timings)
         return ChatResult("".join(parts).strip(), tool_calls, model, seconds, eval_count)
+
+    def _record(self, seconds: float, timings: dict) -> None:
+        """Latência total da chamada e, quando o Ollama informa, o tempo de inferência separado
+        (avaliação do prompt + geração), a carga do modelo e o restante (rede, fila, serialização)."""
+        if self.metrics is None:
+            return
+        self.metrics.record("model.request", seconds)
+        if "eval_duration" in timings or "prompt_eval_duration" in timings:
+            inference = (timings.get("prompt_eval_duration", 0) + timings.get("eval_duration", 0)) / 1e9
+            self.metrics.record("model.inference", inference)
+        if timings.get("load_duration"):
+            self.metrics.record("model.load", timings["load_duration"] / 1e9)
+        if timings.get("total_duration"):
+            self.metrics.record("model.overhead", max(0.0, seconds - timings["total_duration"] / 1e9))
 
     # ------------------------------------------------------------ servidor
     @staticmethod

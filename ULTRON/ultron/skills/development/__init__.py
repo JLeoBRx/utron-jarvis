@@ -255,6 +255,11 @@ class CheckDependencies(_DevSkill):
         listing = system.run([python, "-m", "pip", "list", "--format=json", "--disable-pip-version-check"],
                              timeout=60, encoding="utf-8")
         if not listing.ok:
+            if not declared:                    # nada a conferir: o pip não é necessário
+                return SkillResult(True, "Nenhuma dependência declarada; nada a instalar.",
+                                   [f"ambiente: {'venv' if in_venv else 'Python do sistema'} (sem pip)"],
+                                   {"declared": [], "missing": [], "conflicts": [], "venv": in_venv,
+                                    "installed_count": 0, "pip": False})
             return SkillResult(False, error="pip indisponível no ambiente do projeto", error_kind="DEPENDENCY_ERROR")
         try:
             installed = {canonical(p["name"]): p["version"] for p in json.loads(listing.stdout or "[]")}
@@ -272,6 +277,9 @@ class CheckDependencies(_DevSkill):
     def verify(self, ctx, args, result):
         if not result.success:
             return super().verify(ctx, args, result)
+        if result.data.get("pip") is False:
+            return VerificationResult("VERIFIED", 0.85, [check("requirements", True,
+                                                               "nenhuma dependência declarada (pip não consultado)")])
         return VerificationResult("VERIFIED", 0.9, [check("pip_list", True, "lista obtida do pip do projeto")])
 
 

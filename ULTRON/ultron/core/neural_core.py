@@ -55,6 +55,7 @@ from ..world.world_model import WorldModel
 from .event_bus import EventBus
 from .events import EventType
 from .lifecycle import LifecycleManager
+from .metrics import PerformanceMonitor
 from .orchestrator import Orchestrator, Response
 from .runtime import CancellationToken, CancelledError, WorkerPool
 from .state import StateStore
@@ -112,8 +113,9 @@ class NeuralCore:
         s = self.settings
         self.bus = EventBus()
         self.state = StateStore(self.bus)
-        self.runtime = WorkerPool(WorkerPool.NAMES + ("health",))
+        self.runtime = WorkerPool(WorkerPool.NAMES + ("health", "actions"))
         self.lifecycle = LifecycleManager(self.bus)
+        self.metrics = PerformanceMonitor(bus=self.bus, runtime=self.runtime)
         self.state.update(_source="core", identity={**identity.describe(), "version": __version__})
 
         self.privacy = PrivacyPolicy(s, bus=self.bus, state=self.state)
@@ -121,6 +123,7 @@ class NeuralCore:
         self.world = WorldModel(bus=self.bus, state=self.state)
         self.client = ollama_client or OllamaClient(s().ollama_url, timeout=s().llm_timeout,
                                                     local_only=lambda: self.privacy.local_mode)
+        self.client.metrics = self.metrics
         self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy)
         self.network = NetworkIntelligence(db=self.memory.db, settings_getter=s, bus=self.bus, state=self.state,
                                            world=self.world, graph=self.memory.graph, privacy=self.privacy)
@@ -143,6 +146,7 @@ class NeuralCore:
                                            world=self.world, memory=self.memory, router=self.router,
                                            network=self.network, hud_probe=self.hud_probe,
                                            mic_probe=self.voice.mic_probe)
+        self.perception.metrics = self.metrics
         # agente e cognição
         self.executor = ExecutionEngine(self.registry, autonomy=self.autonomy, authorizations=self.authorizations,
                                         context_factory=self._skill_context, bus=self.bus, state=self.state,
@@ -172,6 +176,7 @@ class NeuralCore:
 
     def _register_components(self) -> None:
         L = self.lifecycle
+        L.register(self.metrics)
         L.register(self.privacy)
         L.register(self.memory)
         L.register(self.world, depends_on=("memory",))
@@ -244,6 +249,7 @@ class NeuralCore:
         s = self.settings()
         sched = self.runtime.scheduler
         sched.every("health", 15.0, self.health.check_all, worker="health", initial_delay=8.0)
+        sched.every("metrics", 5.0, self.metrics.sample_process, worker="health", initial_delay=1.0)
         sched.every("models", 60.0, self._refresh_models, worker="network", initial_delay=30.0)
         sched.every("privacy", 60.0, self.privacy.refresh, worker="network", initial_delay=20.0)
         sched.every("consolidation", s.consolidation_interval, self.memory.consolidate, worker="memory",
@@ -376,6 +382,7 @@ class NeuralCore:
         return cancelled
 
     def _process(self, text: str, source: str) -> None:
+        started = time.perf_counter()
         token = CancellationToken()
         with self._lock:
             self._token = token
@@ -394,6 +401,7 @@ class NeuralCore:
             response = Response(dialogue.say("cancelled"), "info", success=False)
         self._finish_state()
         self._emit_response(response, source)
+        self.metrics.record("request", time.perf_counter() - started)
 
     def _finish_state(self) -> None:
         try:

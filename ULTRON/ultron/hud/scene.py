@@ -22,6 +22,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from . import quality
 from .brain_model import REGIONS, STRETCH, BrainMesh, development_for
 
 CAMERA_STATES = ("OVERVIEW", "FOCUS", "THINKING", "MEMORY_DIVE", "IDEA_FOCUS", "IMAGINATION", "SIMULATION",
@@ -35,7 +36,8 @@ RUNTIME_CAMERA = {
     "IMAGINING": ("IMAGINATION", "prefrontal"), "SIMULATING": ("SIMULATION", "prefrontal"),
     "DREAMING": ("OVERVIEW", "core"), "NETWORK": ("NETWORK_FOCUS", "parietal"),
     "AWAITING_AUTHORIZATION": ("FOCUS", "prefrontal"), "ERROR": ("OVERVIEW", "core"),
-    "SHUTDOWN": ("OVERVIEW", "core"),
+    "SHUTDOWN": ("OVERVIEW", "core"), "PERCEIVING": ("FOCUS", "occipital"), "CONTEXT": ("THINKING", "hippocampus"),
+    "DECIDING": ("THINKING", "prefrontal"), "REMINDING": ("FOCUS", "hippocampus"),
 }
 # câmera → (zoom, deslocamento horizontal da tela para abrir espaço aos módulos)
 CAMERA_PRESETS = {
@@ -43,9 +45,10 @@ CAMERA_PRESETS = {
     "IDEA_FOCUS": (1.45, 0.0), "IMAGINATION": (0.86, -0.16), "SIMULATION": (0.84, -0.18),
     "WORLD_EXPLORATION": (0.80, -0.20), "NETWORK_FOCUS": (0.92, -0.14),
 }
-RUNTIME_DEPTH = {"IDLE": 0, "LISTENING": 1, "SPEAKING": 1, "THINKING": 2, "PLANNING": 3, "NETWORK": 3,
-                 "EXECUTING": 4, "AWAITING_AUTHORIZATION": 4, "VERIFYING": 5, "RECOVERY": 6, "IMAGINING": 6,
-                 "SIMULATING": 7, "DREAMING": 8, "ERROR": 2, "BOOTING": 0, "SHUTDOWN": 0}
+RUNTIME_DEPTH = {"IDLE": 0, "LISTENING": 1, "SPEAKING": 1, "REMINDING": 1, "PERCEIVING": 1, "CONTEXT": 2,
+                 "DECIDING": 2, "THINKING": 2, "PLANNING": 3, "NETWORK": 3, "EXECUTING": 4,
+                 "AWAITING_AUTHORIZATION": 4, "VERIFYING": 5, "RECOVERY": 6, "IMAGINING": 6, "SIMULATING": 7,
+                 "DREAMING": 8, "ERROR": 2, "BOOTING": 0, "SHUTDOWN": 0}
 WORLD_DEPTH = {"WORLD": 6, "CONTINENT": 6, "COUNTRY": 7, "CITY": 7, "DISTRICT": 8, "BUILDING": 8, "ROOM": 9,
                "OBJECT": 9}
 
@@ -70,15 +73,20 @@ EVENT_REGION = {
     "WAKE_WORD": "auditory", "VOICE_RECEIVED": "auditory", "VOICE_STARTED": "broca", "USER_INPUT": "auditory",
     "CONCEPT_CREATED": "prefrontal", "IMAGINATION_STARTED": "prefrontal", "SCENARIO_BRANCHED": "prefrontal",
     "WORLD_CREATED": "occipital", "WORLD_EXPANDED": "occipital", "INSIGHT": "frontal", "MODEL_SELECTED": "core",
+    "RECORD_CREATED": "hippocampus", "RECORD_UPDATED": "hippocampus", "REMINDER_DUE": "hippocampus",
+    "NETWORK_INVENTORY_UPDATED": "parietal",
 }
 LEFT_REGIONS = {"prefrontal", "frontal", "broca", "motor"}
 MODULE_SHIFT = 0.13
 
 # giro livre (rad/s) por estado; estados de foco viram a região para o observador
-SPIN = {"IDLE": 0.16, "DREAMING": 0.06, "THINKING": 0.42, "PLANNING": 0.32, "RECOVERY": 0.36,
-        "IMAGINING": 0.22, "SIMULATING": 0.18, "BOOTING": 0.5, "ERROR": 0.0, "SHUTDOWN": 0.0}
+SPIN = {"IDLE": 0.12, "DREAMING": 0.06, "THINKING": 0.30, "PLANNING": 0.26, "RECOVERY": 0.28,
+        "IMAGINING": 0.20, "SIMULATING": 0.16, "BOOTING": 0.45, "ERROR": 0.0, "SHUTDOWN": 0.0,
+        "CONTEXT": 0.24, "DECIDING": 0.30}
 FACING = {"LISTENING": "auditory", "SPEAKING": "broca", "EXECUTING": "motor", "VERIFYING": "motor",
-          "NETWORK": "parietal", "AWAITING_AUTHORIZATION": "prefrontal"}
+          "NETWORK": "parietal", "AWAITING_AUTHORIZATION": "prefrontal", "PERCEIVING": "occipital",
+          "REMINDING": "hippocampus"}
+CAMERA_DWELL = 0.25              # s: um estado precisa durar isso para mover a câmera (sem tremor)
 
 # anel de subsistemas: (nome, ângulo na tela em graus — 0 = direita, horário —, região de origem
 # da sinapse, componentes do ciclo de vida que o sustentam). Topo e base ficam livres (título).
@@ -90,6 +98,7 @@ SUBSYSTEM_DEFS = (
     ("OBJETIVOS", -41, "frontal", ("goals",)), ("CÓDIGO", -21, "frontal", ("agent", "skills")),
     ("WEB", 0, "temporal", ("agent", "skills")), ("AUTOMAÇÃO", 21, "motor", ("agent", "skills")),
     ("WINDOWS", 41, "motor", ("agent", "skills")), ("ARQUIVOS", 62, "temporal", ("agent", "skills")),
+    ("AGENDA", -90, "hippocampus", ("second_brain", "reminders")),
 )
 EVENT_SUBSYSTEM = {
     "COGNITIVE_PHASE": ("OLLAMA", 0.35), "MODEL_SELECTED": ("OLLAMA", 0.6), "MODEL_CHANGED": ("OLLAMA", 0.6),
@@ -104,13 +113,15 @@ EVENT_SUBSYSTEM = {
     "WORLD_CREATED": ("IMAGINAÇÃO", 1.0), "WORLD_EXPANDED": ("IMAGINAÇÃO", 0.8), "DREAM_STARTED": ("IMAGINAÇÃO", 0.5),
     "DREAM_FINISHED": ("IMAGINAÇÃO", 0.9), "IMAGE_GENERATED": ("IMAGINAÇÃO", 1.0), "GOAL_CREATED": ("OBJETIVOS", 0.9),
     "PLAN_CREATED": ("OBJETIVOS", 0.9), "PLAN_UPDATED": ("OBJETIVOS", 0.6), "GOAL_COMPLETED": ("OBJETIVOS", 0.8),
-    "GOAL_FAILED": ("OBJETIVOS", 0.8),
+    "GOAL_FAILED": ("OBJETIVOS", 0.8), "RECORD_CREATED": ("AGENDA", 0.9), "RECORD_UPDATED": ("AGENDA", 0.6),
+    "RECORD_DELETED": ("AGENDA", 0.5), "REMINDER_DUE": ("AGENDA", 1.0), "NETWORK_INVENTORY_UPDATED": ("REDE", 0.7),
 }
 CATEGORY_SUBSYSTEM = {"development": "CÓDIGO", "browser": "WEB", "automation": "AUTOMAÇÃO", "applications": "WINDOWS",
                       "windows": "WINDOWS", "system": "WINDOWS", "audio": "WINDOWS", "devices": "WINDOWS",
                       "filesystem": "ARQUIVOS", "network": "REDE", "vision": "VISÃO", "memory": "MEMÓRIA",
                       "imagination": "IMAGINAÇÃO", "diagnostics": "TELEMETRIA"}
-HEALTH_SUBSYSTEM = {"OLLAMA": "OLLAMA", "VOICE": "VOZ", "VISION": "VISÃO", "NETWORK": "REDE", "MEMORY": "MEMÓRIA"}
+HEALTH_SUBSYSTEM = {"OLLAMA": "OLLAMA", "VOICE": "VOZ", "VISION": "VISÃO", "NETWORK": "REDE", "MEMORY": "MEMÓRIA",
+                    "SECOND_BRAIN": "AGENDA"}
 STATUS_FROM_HEALTH = {"OK": "ok", "WARN": "warn", "FAIL": "fail", "UNAVAILABLE": "off", "UNKNOWN": "unknown"}
 NODE_TYPE_COLOR = {"MEMORY": "amber", "IDEA": "white", "CONCEPT": "white", "SKILL": "gold", "PROJECT": "gold",
                    "WORLD": "white", "SCENARIO": "white", "DEVICE": "amber", "APPLICATION": "gold"}
@@ -210,6 +221,7 @@ class Camera:
     tshift: float = 0.0
     angle: float = 0.6                      # giro em torno do eixo vertical (rad)
     spin: float = 0.16                      # giro livre (rad/s) quando não há região em foco
+    target_spin: float = 0.16               # a velocidade muda suavemente (sem trancos entre estados)
     target_angle: float | None = None
     focus: float = 0.0
     tau: float = 0.65                       # constante de tempo da suavização
@@ -222,16 +234,20 @@ class Camera:
         self.state, self.region = state, region
         self.tzoom = zoom * (1.0 + 0.012 * depth)
         self.tshift = shift
-        self.spin = spin
+        self.target_spin = spin
         self.target_angle = BrainMesh.facing_angle(region) if face else None
 
     def step(self, dt: float) -> None:
         k = 1.0 - math.exp(-dt / self.tau)
+        self.spin += (self.target_spin - self.spin) * (1.0 - math.exp(-dt / 0.6))
         if self.target_angle is None:
             self.angle = (self.angle + self.spin * dt) % (2 * math.pi)
         else:                                             # menor arco até a região em foco
             delta = (self.target_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
-            self.angle = (self.angle + delta * (1.0 - math.exp(-dt / 0.8))) % (2 * math.pi)
+            if abs(delta) < 0.0015:                       # encaixa: a câmera para de fato (cache da malha)
+                self.angle = self.target_angle % (2 * math.pi)
+            else:
+                self.angle = (self.angle + delta * (1.0 - math.exp(-dt / 0.8))) % (2 * math.pi)
         for name in ("x", "y", "zoom", "shift"):
             current, target = getattr(self, name), getattr(self, "t" + name)
             value = current + (target - current) * k
@@ -240,6 +256,15 @@ class Camera:
     def facing_side(self) -> float:
         """Hemisfério voltado para o observador (+1 direito, −1 esquerdo)."""
         return 1.0 if math.cos(self.angle) >= 0 else -1.0
+
+    def moving(self) -> bool:
+        """Há movimento além do giro livre? (zoom, enquadramento ou virada para uma região)."""
+        if self.target_angle is not None:
+            delta = (self.target_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
+            if abs(delta) > 0.002:
+                return True
+        return (abs(self.zoom - self.tzoom) > 0.002 or abs(self.x - self.tx) > 0.002 or abs(self.y - self.ty) > 0.002
+                or abs(self.shift - self.tshift) > 0.002 or abs(self.spin - self.target_spin) > 0.01)
 
 
 class BootSequence:
@@ -304,13 +329,23 @@ class BootSequence:
 
 # ---------------------------------------------------------------- cena
 class NeuralScene:
-    MAX_PARTICLES = 260
-    MAX_PULSES = 40
     MAX_MODULES = 3
 
-    def __init__(self, mesh: BrainMesh | None = None, *, clock: Callable[[], float] = time.monotonic):
+    def __init__(self, mesh: BrainMesh | None = None, *, clock: Callable[[], float] = time.monotonic,
+                 profile: quality.RenderProfile | None = None):
         self.mesh = mesh or BrainMesh()
         self.clock = clock
+        self.profile = profile or quality.get(None)
+        # só o que está aceso decai (sem varrer o grafo inteiro); ordem = ativação mais recente por último
+        self._hot_nodes: dict[str, None] = {}
+        self._hot_edges: dict[tuple[str, str], None] = {}
+        self._newborn: deque = deque(maxlen=256)    # (id, nascimento): brilho de nascimento por 1 s
+        self.typing_until = 0.0                     # revelação da resposta em andamento (texto)
+        self._suspense_target = 0.0
+        self._dim_target = 0.0
+        self._camera_candidate: tuple | None = None
+        self._camera_since = 0.0
+        self._camera_choice: tuple | None = None
         self.subsystems: dict[str, Subsystem] = {name: Subsystem(name, angle, region, comps)
                                                  for name, angle, region, comps in SUBSYSTEM_DEFS}
         self.ring_pulses: list[tuple[str, float]] = []
@@ -397,7 +432,7 @@ class NeuralScene:
         if region not in REGIONS:
             return
         self.region_activity[region] = _clamp(self.region_activity[region] + amount)
-        if pulse and len(self.pulses) < self.MAX_PULSES:
+        if pulse and len(self.pulses) < self.profile.max_pulses:
             x, y, z = self.region_point(region)
             radius = REGIONS[region][3]
             self.pulses.append(Pulse(x, y, z, self.clock(), 1.1 + 0.6 * amount, radius * (0.8 + amount), tone, amount))
@@ -413,20 +448,40 @@ class NeuralScene:
             if node is None:
                 continue
             node.activation = 1.0
+            self._heat_node(node_id)
             if not spread:
                 continue
             for other in list(self._adjacency.get(node_id, ()))[:6]:
                 self._emit_particle(node_id, other, tone=tone)
 
+    def _heat_node(self, node_id: str) -> None:
+        self._hot_nodes.pop(node_id, None)
+        self._hot_nodes[node_id] = None
+        while len(self._hot_nodes) > 3 * self.profile.max_particles:      # o mais antigo já é o mais fraco
+            old = self.nodes.get(next(iter(self._hot_nodes)))
+            if old is not None:
+                old.activation = 0.0
+            self._hot_nodes.pop(next(iter(self._hot_nodes)))
+
+    def _heat_edge(self, key: tuple[str, str]) -> None:
+        self._hot_edges.pop(key, None)
+        self._hot_edges[key] = None
+        while len(self._hot_edges) > 4 * self.profile.active_edges:
+            old = self.edges.get(next(iter(self._hot_edges)))
+            if old is not None:
+                old.activation = 0.0
+            self._hot_edges.pop(next(iter(self._hot_edges)))
+
     def _emit_particle(self, a: str, b: str, *, tone: str = "gold") -> None:
-        if len(self.particles) >= self.MAX_PARTICLES:
-            return
         key = (a, b) if a < b else (b, a)
         edge = self.edges.get(key)
         na, nb = self.nodes.get(a), self.nodes.get(b)
         if edge is None or na is None or nb is None:
             return
-        edge.activation = 1.0
+        edge.activation = 1.0                       # a sinapse acende mesmo sem partícula (limite do perfil)
+        self._heat_edge(key)
+        if len(self.particles) >= self.profile.max_particles:
+            return
         mx, my, mz = (na.x + nb.x) / 2, (na.y + nb.y) / 2, (na.z + nb.z) / 2
         self.particles.append(Particle((na.x, na.y, na.z, mx * 0.8, my * 0.8, mz * 0.8, nb.x, nb.y, nb.z), 0.0,
                                        0.55 + 0.5 * edge.weight, 1.0 + edge.weight, tone))
@@ -438,7 +493,7 @@ class NeuralScene:
         x0, y0, z0 = self.region_point(src)
         x1, y1, z1 = self.region_point(dst)
         for i in range(count):
-            if len(self.particles) >= self.MAX_PARTICLES:
+            if len(self.particles) >= self.profile.max_particles:
                 return
             off = (i - (count - 1) / 2) * 0.12
             control = ((x0 + x1) * 0.25, (y0 + y1) * 0.25 + off, (z0 + z1) * 0.25 - off)
@@ -477,12 +532,17 @@ class NeuralScene:
         elif kind == "SYSTEM_READY":
             self.boot.ready()
         elif kind == "GRAPH_NODE_ADDED":
+            known = str(p.get("id", "")) in self.nodes
             node = self._add_node(str(p.get("id", "")), str(p.get("type", "CONCEPT")), str(p.get("label", "")),
                                   float(p.get("strength", 0.3)))
             if node is not None:
                 node.activation = 1.0
-                self.total_nodes += 1
-                self.pulses.append(Pulse(node.x, node.y, node.z, now, 1.4, 0.07, "white", 0.8))
+                self._heat_node(node.id)
+                if not known:
+                    self.total_nodes += 1
+                    self._newborn.append((node.id, now))
+                if len(self.pulses) < self.profile.max_pulses:
+                    self.pulses.append(Pulse(node.x, node.y, node.z, now, 1.4, 0.07, "white", 0.8))
                 parent = p.get("parent")
                 if parent:
                     self._add_edge(str(parent), node.id, "DERIVED", 0.3)
@@ -532,6 +592,7 @@ class NeuralScene:
             text = str(p.get("text", ""))
             if text:
                 self.transcript.append({"role": "ultron", "text": text, "at": now, "kind": p.get("kind", "")})
+                self.typing_until = max(self.typing_until, now + len(text) / 70.0 + 0.2)
             if not p.get("partial"):
                 self.release = 1.0
                 self._waiting_since = 0.0
@@ -545,6 +606,25 @@ class NeuralScene:
             self.stimulate("motor", 0.7, tone="white")
         elif kind in ("VERIFICATION_FAILED", "ERROR_DETECTED", "RECOVERY_STARTED"):
             self.stimulate(region or "frontal", 0.8, tone="amber")
+        elif kind == "REMINDER_DUE":
+            when = str(p.get("when_text") or "")
+            lines = [str(p.get("title", ""))[:90]] + ([when] if when else [])
+            if p.get("lead"):
+                lines.append(f"aviso antecipado · {p.get('lead')}")
+            self._module("reminder", "LEMBRETE", "hippocampus", lines, ttl=18.0, priority=5)
+            self.stimulate("hippocampus", 0.9, tone="amber")
+        elif kind in ("RECORD_CREATED", "RECORD_UPDATED", "RECORD_DELETED"):
+            verb = {"RECORD_CREATED": "registrado", "RECORD_UPDATED": "atualizado",
+                    "RECORD_DELETED": "excluído" if p.get("permanent") else "enviado à lixeira"}[kind]
+            record = p.get("record") or {}
+            title = str(record.get("title") or p.get("title") or "")[:70]
+            label = {"task": "Tarefa", "event": "Compromisso", "study": "Estudo", "project": "Projeto",
+                     "idea": "Ideia", "note": "Nota", "person": "Pessoa", "routine": "Rotina",
+                     "deadline": "Prazo"}.get(str(record.get("kind") or p.get("kind") or ""), "Registro")
+            if p.get("change") == "completed":
+                verb = "concluída" if label in ("Tarefa", "Ideia", "Nota", "Rotina") else "concluído"
+            self._module("secondbrain", "SECOND BRAIN", "hippocampus", [f"{label} {verb}", title],
+                         ttl=6.0, priority=45)
         elif kind == "HEALTH_UPDATED":
             problems = p.get("problems") or {}
             if p.get("changed") and problems:
@@ -728,6 +808,23 @@ class NeuralScene:
         state, region = RUNTIME_CAMERA.get(self.runtime_state, ("OVERVIEW", "core"))
         return state, region, self.runtime_state in FACING
 
+    def _stable_camera(self) -> tuple[str, str, bool]:
+        """Histerese: um estado breve (ex.: VERIFYING de 50 ms entre duas execuções) não sacode a
+        câmera. Focos transitórios de eventos reais e a inicialização valem na hora."""
+        choice = self._choose_camera()
+        now = self.clock()
+        immediate = self.boot.active or (self._camera_override is not None and now < self._camera_override[2])
+        if immediate or self._camera_choice is None:
+            self._camera_choice, self._camera_candidate = choice, None
+        elif choice != self._camera_choice:
+            if choice != self._camera_candidate:
+                self._camera_candidate, self._camera_since = choice, now
+            elif now - self._camera_since >= CAMERA_DWELL:
+                self._camera_choice, self._camera_candidate = choice, None
+        else:
+            self._camera_candidate = None
+        return self._camera_choice
+
     def step(self, dt: float) -> None:
         dt = max(0.0, min(0.1, dt))
         self._time += dt
@@ -740,8 +837,8 @@ class NeuralScene:
             self.depth = target
         self.depth_level = int(round(self.depth))
         # câmera
-        state, region, face = self._choose_camera()
-        spin = SPIN.get("BOOTING" if self.boot.active else self.runtime_state, 0.16)
+        state, region, face = self._stable_camera()
+        spin = SPIN.get("BOOTING" if self.boot.active else self.runtime_state, SPIN["IDLE"])
         self.camera.aim(state, region, depth=self.depth, spin=spin, face=face)
         if CAMERA_PRESETS.get(state, (1.0, 0.0))[1] == 0.0:
             shift, zoom = self._module_shift()
@@ -758,37 +855,56 @@ class NeuralScene:
         waiting = self._waiting_since and now - self._waiting_since > 1.5 and \
             self.runtime_state in ("THINKING", "PLANNING")          # nada visível acontecendo ainda
         target_suspense = 1.0 if self.runtime_state == "AWAITING_AUTHORIZATION" else 0.7 if waiting else 0.0
+        self._suspense_target = target_suspense
         self.suspense += (target_suspense - self.suspense) * (1 - math.exp(-dt / 0.8))
         if abs(target_suspense - self.suspense) < 0.005:
             self.suspense = target_suspense
         self.release = max(0.0, self.release - dt / 0.9)
         dim_target = 0.45 if self.runtime_state == "DREAMING" else 0.25 * self.suspense
+        self._dim_target = dim_target
         self.dim += (dim_target - self.dim) * (1 - math.exp(-dt / 1.2))
         if abs(dim_target - self.dim) < 0.005:
             self.dim = dim_target
         # respiração (repouso): lenta, só como sinal de "vivo e em repouso"
         rate = 0.12 if self.runtime_state in ("IDLE", "DREAMING") else 0.35
         self.breath = (self.breath + dt * rate) % 1.0
-        # decaimentos
+        # decaimentos: só o que está aceso (atualização incremental; o grafo inteiro não é varrido)
         node_decay = math.exp(-dt / 1.6)
-        for node in self.nodes.values():
-            if node.activation > 0.001:
-                node.activation *= node_decay
+        for node_id in list(self._hot_nodes):
+            node = self.nodes.get(node_id)
+            if node is None:
+                self._hot_nodes.pop(node_id, None)
+                continue
+            node.activation *= node_decay
+            if node.activation < 0.02:                  # abaixo do visível: sai do conjunto aceso
+                node.activation = 0.0
+                self._hot_nodes.pop(node_id, None)
         edge_decay = math.exp(-dt / 1.2)
-        for edge in self.edges.values():
-            if edge.activation > 0.001:
-                edge.activation *= edge_decay
+        for key in list(self._hot_edges):
+            edge = self.edges.get(key)
+            if edge is None:
+                self._hot_edges.pop(key, None)
+                continue
+            edge.activation *= edge_decay
+            if edge.activation < 0.03:
+                edge.activation = 0.0
+                self._hot_edges.pop(key, None)
+        while self._newborn and now - self._newborn[0][1] > 1.0:
+            self._newborn.popleft()
         region_decay = math.exp(-dt / 1.4)
         for name in self.region_activity:
-            self.region_activity[name] *= region_decay
+            value = self.region_activity[name] * region_decay
+            self.region_activity[name] = value if value > 0.001 else 0.0
         # subsistemas: atividade contínua dos estados reais e sinapses que crescem só durante o uso
         continuous = {"THINKING": "OLLAMA", "PLANNING": "OBJETIVOS", "IMAGINING": "IMAGINAÇÃO",
-                      "SIMULATING": "IMAGINAÇÃO", "DREAMING": "IMAGINAÇÃO", "NETWORK": "REDE"}
+                      "SIMULATING": "IMAGINAÇÃO", "DREAMING": "IMAGINAÇÃO", "NETWORK": "REDE",
+                      "PERCEIVING": "PERCEPÇÃO", "CONTEXT": "MEMÓRIA", "DECIDING": "OBJETIVOS",
+                      "REMINDING": "AGENDA"}
         if self.runtime_state in continuous:
             self.touch_subsystem(continuous[self.runtime_state], 0.45)
         sub_decay = math.exp(-dt / 2.2)
         for sub in self.subsystems.values():
-            sub.activity *= sub_decay
+            sub.activity = sub.activity * sub_decay if sub.activity > 0.002 else 0.0
             target = 1.0 if sub.activity > 0.12 and sub.status not in ("fail", "off") else 0.0
             before = sub.grow
             rate = 1.6 if target > sub.grow else 0.5
@@ -817,6 +933,45 @@ class NeuralScene:
             self.overlay_label = ""
 
     # ================================================================ leitura para a view
+    def hot_edges(self, limit: int, *, threshold: float = 0.05) -> list[SceneEdge]:
+        """Sinapses do grafo percorridas por um sinal agora: as ``limit`` ativadas mais recentemente
+        (todas decaem no mesmo ritmo, então são também as mais intensas — sem ordenar a cada quadro)."""
+        keys = list(self._hot_edges)[-limit:] if limit > 0 else []
+        return [e for e in (self.edges.get(k) for k in keys) if e is not None and e.activation >= threshold]
+
+    def glowing_nodes(self, limit: int = 1000) -> list[tuple[SceneNode, float]]:
+        """(nó, idade em s): nós ativados agora (os mais intensos, até ``limit``) ou nascidos há
+        menos de 1 s."""
+        now = self.clock()
+        out: dict[str, tuple[SceneNode, float]] = {}
+        for node_id, born in self._newborn:
+            node = self.nodes.get(node_id)
+            if node is not None:
+                out[node_id] = (node, now - born)
+        room = max(0, limit - len(out))
+        recent = list(self._hot_nodes)[-room:] if room else []
+        hot = [n for n in (self.nodes.get(i) for i in recent)
+               if n is not None and n.activation >= 0.08 and n.id not in out]
+        for node in hot:
+            out[node.id] = (node, now - node.born)
+        return list(out.values())
+
+    def in_motion(self) -> bool:
+        """Há movimento real na tela (algo se deslocando ou surgindo)? Decide o ritmo de quadros:
+        no teto do perfil durante o movimento; esmaecimentos lentos (brilho de nós, regiões e
+        subsistemas apagando), o giro livre e a respiração ficam na cadência econômica."""
+        if self.boot.active or self.particles or self.pulses or self.release > 0.0:
+            return True
+        if self._newborn or self.ring_pulses or self.camera.moving():
+            return True
+        if abs(self.suspense - self._suspense_target) > 0.01 or abs(self.dim - self._dim_target) > 0.01:
+            return True
+        if any(0.0 < s.grow < 1.0 or (s.grow > 0.5 and s.activity > 0.12) for s in self.subsystems.values()):
+            return True                                   # sinapse crescendo ou sinal percorrendo
+        if any(0.02 < m.alpha < 0.98 for m in self.modules.values()):
+            return True
+        return self.clock() < self.typing_until
+
     def visible_modules(self) -> list[Module]:
         if self.boot.active:
             return []                                    # a sequência de inicialização não é interrompida

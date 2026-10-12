@@ -40,6 +40,7 @@ class PerceptionEngine:
         self.state = state
         self.world = world
         self.memory = memory
+        self.metrics = None                              # PerformanceMonitor (opcional)
         self._lock = threading.Lock()
         self.foreground: dict = {}
         self._last_fused_key = None
@@ -105,7 +106,10 @@ class PerceptionEngine:
 
     # ------------------------------------------------------------ execução de sensores
     def run_sensor(self, sensor: Sensor) -> Percept | None:
+        started = time.perf_counter()
         percept = sensor.poll()
+        if self.metrics is not None:                     # latência real de cada sensor
+            self.metrics.record(f"perception.{sensor.name}", time.perf_counter() - started)
         if percept is not None:
             try:
                 self._handle(sensor, percept)

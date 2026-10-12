@@ -16,10 +16,24 @@ from .events import EventType
 # Estados de runtime (o que o ULTRON está fazendo agora). A HUD traduz cada um em
 # um comportamento visual; nenhum outro módulo inventa estados próprios.
 RUNTIME_STATES = (
-    "BOOTING", "IDLE", "LISTENING", "THINKING", "PLANNING", "EXECUTING", "VERIFYING",
-    "RECOVERY", "SPEAKING", "IMAGINING", "SIMULATING", "DREAMING", "NETWORK",
+    "BOOTING", "IDLE", "PERCEIVING", "CONTEXT", "DECIDING", "LISTENING", "THINKING", "PLANNING", "EXECUTING",
+    "VERIFYING", "RECOVERY", "SPEAKING", "REMINDING", "IMAGINING", "SIMULATING", "DREAMING", "NETWORK",
     "AWAITING_AUTHORIZATION", "ERROR", "SHUTDOWN",
 )
+
+# Contrato de atividade compartilhado pelos dois hubs (NEURAL CORE e SECOND BRAIN). Não é um
+# segundo estado: é a leitura reduzida do ``runtime_state`` deste mesmo ULTRON_STATE.
+ACTIVITY_STATES = ("PERCEIVING", "CONTEXT", "DECIDING", "PLANNING", "EXECUTING", "VERIFYING", "RECOVERY",
+                   "LISTENING", "SPEAKING", "REMINDING", "IMAGINING", "IDLE", "ERROR")
+_ACTIVITY_OF = {"BOOTING": "IDLE", "SHUTDOWN": "IDLE", "THINKING": "DECIDING",
+                "AWAITING_AUTHORIZATION": "DECIDING", "SIMULATING": "IMAGINING", "DREAMING": "IMAGINING",
+                "NETWORK": "PERCEIVING"}
+
+
+def activity_of(runtime_state: str) -> str:
+    """Estado do contrato correspondente a um estado de runtime."""
+    activity = _ACTIVITY_OF.get(runtime_state, runtime_state)
+    return activity if activity in ACTIVITY_STATES else "IDLE"
 
 # Fases cognitivas exibidas durante processamento (nunca o raciocínio em si).
 COGNITIVE_PHASES = ("", "ANALYZING", "CONNECTING", "EVALUATING", "PLANNING", "SELECTING",
@@ -30,6 +44,7 @@ COGNITIVE_PHASES = ("", "ANALYZING", "CONNECTING", "EVALUATING", "PLANNING", "SE
 class UltronState:
     identity: dict = field(default_factory=dict)
     runtime_state: str = "BOOTING"
+    activity: str = "IDLE"                     # contrato de atividade (derivado de runtime_state)
     runtime_reason: str = ""
     cognitive_phase: str = ""
     current_goal: dict | None = None
@@ -60,6 +75,7 @@ class UltronState:
     privacy: dict = field(default_factory=dict)
     models: dict = field(default_factory=dict)
     pending_authorization: dict | None = None
+    second_brain: dict = field(default_factory=dict)      # resumo: abertos, atrasados, próximos lembretes
     boot: dict = field(default_factory=dict)
     updated_at: float = field(default_factory=time.time)
     version: int = 0
@@ -83,7 +99,12 @@ class StateStore:
 
     def as_dict(self) -> dict[str, Any]:
         with self._lock:
-            return copy.deepcopy(asdict(self._state))
+            return asdict(self._state)                  # asdict já devolve cópias profundas
+
+    def subset(self, names) -> dict[str, Any]:
+        """Cópias só dos campos pedidos (leitura incremental de quem acompanha ``STATE_CHANGED``)."""
+        with self._lock:
+            return {name: copy.deepcopy(getattr(self._state, name)) for name in names if name in _FIELDS}
 
     def get(self, name: str, default: Any = None) -> Any:
         with self._lock:
@@ -118,7 +139,8 @@ class StateStore:
     def set_runtime_state(self, state: str, reason: str = "", *, source: str = "") -> bool:
         if state not in RUNTIME_STATES:
             raise ValueError(f"estado de runtime desconhecido: {state}")
-        changed = self.update(_source=source, runtime_state=state, runtime_reason=reason)
+        changed = self.update(_source=source, runtime_state=state, runtime_reason=reason,
+                              activity=activity_of(state))
         return "runtime_state" in changed
 
     def set_cognitive_phase(self, phase: str, *, source: str = "") -> None:

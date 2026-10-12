@@ -38,6 +38,7 @@ class InputBar(QtWidgets.QWidget):
     mic_toggled = QtCore.Signal(bool)
     voice_toggled = QtCore.Signal(bool)
     collapse = QtCore.Signal()
+    second_brain = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -60,9 +61,12 @@ class InputBar(QtWidgets.QWidget):
         self.voice.toggled.connect(self.voice_toggled)
         self.orb = self._button("ORBE", "Recolher para o orbe compacto (Esc)")
         self.orb.clicked.connect(self.collapse)
+        self.brain = self._button("2º CÉREBRO", "Abrir o Second Brain: tarefas, agenda, lembretes, rede (F2)")
+        self.brain.clicked.connect(self.second_brain)
         layout.addWidget(self.line, 1)
         layout.addWidget(self.mic)
         layout.addWidget(self.voice)
+        layout.addWidget(self.brain)
         layout.addWidget(self.orb)
 
     @staticmethod
@@ -143,6 +147,7 @@ class DecisionBar(QtWidgets.QWidget):
 
 class HudWindow(QtWidgets.QWidget):
     collapse_requested = QtCore.Signal()
+    second_brain_requested = QtCore.Signal()
     closing = QtCore.Signal()
 
     def __init__(self, view: BrainView):
@@ -160,12 +165,13 @@ class HudWindow(QtWidgets.QWidget):
         QtGui.QShortcut(QtGui.QKeySequence("F11"), self, activated=self.toggle_fullscreen)
         QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.collapse_requested)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+M"), self, activated=self.input.mic.toggle)
+        QtGui.QShortcut(QtGui.QKeySequence("F2"), self, activated=self.second_brain_requested)
         self.hide_to_tray = True
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)
         w, h = self.width(), self.height()
         self.view.setGeometry(0, 0, w, h)
-        bar_w = min(820, w - 48)
+        bar_w = min(900, w - 48)
         x = (w - bar_w) // 2
         self.input.setGeometry(x, h - 62, bar_w, 40)
         self._layout_bars()
@@ -173,7 +179,7 @@ class HudWindow(QtWidgets.QWidget):
 
     def _layout_bars(self) -> None:
         w, h = self.width(), self.height()
-        bar_w = min(820, w - 48)
+        bar_w = min(900, w - 48)
         x = (w - bar_w) // 2
         y = h - 62 - 8
         for bar in (self.authorization, self.suggestion):

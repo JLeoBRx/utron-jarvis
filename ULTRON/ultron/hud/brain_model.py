@@ -156,8 +156,13 @@ class BrainMesh:
         grown = int((len(self.points) - MIN_VISIBLE) * development / GROWTH_STEP) * GROWTH_STEP
         return MIN_VISIBLE + grown
 
-    def visible_indices(self, development: float) -> np.ndarray:
-        return np.sort(self.growth_order[: self.visible_count(development)])
+    def visible_indices(self, development: float, cap: int | None = None) -> np.ndarray:
+        """Pontos visíveis; ``cap`` limita o desenho (perfil de desempenho) mantendo a cobertura
+        uniforme, pois a ordem de crescimento é a do ponto mais distante."""
+        count = self.visible_count(development)
+        if cap is not None:
+            count = max(min(MIN_VISIBLE, len(self.points)), min(count, int(cap)))
+        return np.sort(self.growth_order[:count])
 
     def edges(self, indices: np.ndarray, *, k: int = 3) -> np.ndarray:
         """Sinapses da malha: cada ponto ligado aos ``k`` vizinhos mais próximos (pares únicos)."""

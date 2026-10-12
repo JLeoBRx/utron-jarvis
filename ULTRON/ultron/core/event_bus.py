@@ -175,6 +175,9 @@ class EventBus:
     def running(self) -> bool:
         return self._running.is_set()
 
+    def queue_size(self) -> int:
+        return self._queue.qsize()
+
     def wait_idle(self, timeout: float = 2.0) -> bool:
         """Aguarda a fila esvaziar (usado em testes e no desligamento)."""
         deadline = time.monotonic() + timeout

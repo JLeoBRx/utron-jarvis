@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
@@ -23,8 +24,10 @@ from typing import Any
 from . import paths
 
 log = logging.getLogger("ultron.config")
+_QUIET_RE = re.compile(r"([01]?\d|2[0-3]):[0-5]\d-([01]?\d|2[0-3]):[0-5]\d")
 
 AUTONOMY_LEVELS = ("restricted", "balanced", "autonomous")
+PERFORMANCE_PROFILES = ("performance", "balanced", "cinematic")
 PRIVACY_MODES = ("local", "standard")
 THEMES = ("ultron-gold",)
 STT_ENGINES = ("auto", "vosk-large", "vosk-small")
@@ -88,8 +91,20 @@ class Settings:
     image_provider: str = "auto"
     dream_mode: bool = True
     dream_idle_minutes: float = 15.0
+    # ------------------------------------------------------------ second brain e lembretes
+    second_brain: bool = True
+    auto_capture: bool = True            # registra sozinho tarefas/lembretes com intenção clara (reversível)
+    reminders: bool = True
+    reminder_default_leads: tuple = ("10",)   # minutos de antecedência padrão p/ compromissos (ex.: 10, 60, 1440)
+    reminder_repeat_minutes: float = 10.0     # um lembrete ignorado é repetido após este intervalo...
+    reminder_max_repeats: int = 2             # ...no máximo esta quantidade de vezes (nunca indefinidamente)
+    overdue_alerts: bool = True               # aviso diário de tarefas atrasadas
+    notifications_muted: bool = False
+    quiet_hours: str = ""                     # "22:00-07:00": sem som, voz ou pop-up (fica na central)
+    timezone: str = ""                        # vazio = fuso do sistema; ou IANA (ex.: America/Sao_Paulo)
     # ------------------------------------------------------------ interface e som
     theme: str = "ultron-gold"
+    performance_profile: str = "balanced"     # performance | balanced | cinematic (custo visual)
     hud_fps: int = 60
     hud_start_minimized: bool = False
     hud_auto_expand: bool = True
@@ -116,10 +131,11 @@ class Settings:
         "discovery_interval": (60.0, 86400.0), "discovery_max_hosts": (1, 1024),
         "authorization_timeout": (5.0, 300.0), "dream_idle_minutes": (1.0, 1440.0),
         "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
+        "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,
-        "theme": THEMES, "stt_engine": STT_ENGINES,
+        "theme": THEMES, "stt_engine": STT_ENGINES, "performance_profile": PERFORMANCE_PROFILES,
     }
 
     # ------------------------------------------------------------ utilidades
@@ -178,6 +194,14 @@ class Settings:
             raise ValueError("nome de modelo vazio")
         if key == "ollama_url" and not str(value).startswith(("http://", "https://")):
             raise ValueError("URL do Ollama deve começar com http:// ou https://")
+        if key == "quiet_hours" and value and not _QUIET_RE.fullmatch(str(value)):
+            raise ValueError("horário de silêncio no formato HH:MM-HH:MM")
+        if key == "reminder_default_leads":
+            value = tuple(str(int(float(x))) for x in value if 0 < float(x) <= 43200)
+        if key == "timezone" and value:
+            from ..secondbrain import timeutil
+            if timeutil.zone(str(value)) is None:
+                raise ValueError(f"fuso horário desconhecido: {value}")
         return value
 
 

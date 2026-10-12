@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections import deque
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -39,7 +40,8 @@ EDGE_ALPHA = (0.06, 0.10, 0.16, 0.25, 0.36)    # sinapses da malha, do fundo par
 POINT_RADIUS = (0.75, 1.0, 1.25, 1.55, 1.9)
 NODE_RADIUS = (1.0, 1.3, 1.65)                 # nós do grafo, do fundo para a frente
 MAX_STRONG_NODES = 48              # nós do grafo com brilho permanente (os mais fortes)
-CURVE_STEPS = 6                    # segmentos por sinapse ativada do grafo
+LEVELS = 10                        # níveis de intensidade das sinapses ativadas (desvanecimento suave)
+ANGLE_STEP = 0.0005                # rad: resolução angular da camada da malha em cache
 NODE_TONES = ("gold", "amber", "white")
 GOLD_RGB, AMBER_RGB, WHITE_RGB = (theme.GOLD.getRgb()[:3], theme.AMBER.getRgb()[:3], theme.WARM_WHITE.getRgb()[:3])
 # fase da inicialização → região que acende quando a fase é alcançada
@@ -115,9 +117,19 @@ class BrainView(QtWidgets.QWidget):
         self._base_key: tuple | None = None
         self.base_renders = 0
         self._texts: dict[tuple, QtGui.QStaticText] = {}
+        self._panels: dict[str, tuple] = {}
         self._images: dict[str, QtGui.QPixmap | None] = {}
         self._graph: dict = {}
         self._graph_version = -1
+        self._mesh_layer: QtGui.QPixmap | None = None    # malha + nós em repouso (recortada ao cérebro)
+        self._mesh_origin = QPointF(0, 0)
+        self._hard_key: tuple | None = None
+        self._soft_key: tuple | None = None
+        self._geometry_at = -1e9
+        self._render_angle = 0.0                          # ângulo da camada atual (tudo preso a ela o usa)
+        self.mesh_renders = 0
+        self.frame_times: deque = deque(maxlen=600)       # duração de cada pintura (métricas)
+        self.paint_count = 0
         self._point_colors = [_mix(theme.GOLD_DIM, _mix(theme.GOLD, theme.WARM_WHITE, 0.35), k / 4).getRgb()[:3]
                               for k in range(5)]
         self.stats: dict[str, int] = {}             # o que o último quadro desenhou (diagnóstico e testes)
@@ -199,18 +211,21 @@ class BrainView(QtWidgets.QWidget):
         self._draw_modules(p, fr)
         self._draw_overlay_text(p, fr)
         p.end()
-        self._frame_times.append(time.perf_counter() - started)
+        elapsed = time.perf_counter() - started
+        self.frame_times.append(elapsed)
+        self.paint_count += 1
+        self._frame_times.append(elapsed)
         if len(self._frame_times) >= 30:
             self.fps = 1.0 / max(1e-6, sum(self._frame_times) / len(self._frame_times))
             self._frame_times.clear()
 
     def _sprite(self, p: QtGui.QPainter, kind: str, tone: str, x: float, y: float, r: float,
-                opacity: float) -> None:
+                opacity: float, *, clip: bool = True) -> None:
         """Brilho pré-renderizado, desenhado sem escala em espaço de dispositivo."""
         if opacity <= 0.004 or r <= 0.5:
             return
         radius = theme.quantize_radius(r)
-        if x + radius < 0 or y + radius < 0 or x - radius > self.width() or y - radius > self.height():
+        if clip and (x + radius < 0 or y + radius < 0 or x - radius > self.width() or y - radius > self.height()):
             return
         p.setOpacity(min(1.0, opacity))
         p.drawPixmap(QPointF(x - radius, y - radius), theme.sprite_px(kind, tone, radius, self._dpr))
@@ -231,6 +246,28 @@ class BrainView(QtWidgets.QWidget):
         for x, y, a, b in zip((ix - half).astype(np.int32).tolist(), (iy - half).astype(np.int32).tolist(),
                               qx.tolist(), qy.tolist()):
             draw(x, y, sprites[a][b])
+        p.setOpacity(1.0)
+
+    def _glows(self, p: QtGui.QPainter, xs, ys, tones, radii, opacities) -> None:
+        """Brilhos em lote: agrupados por (tom, raio, opacidade em 8 níveis) — uma troca de estado por
+        grupo e desenho em coordenadas inteiras (sinais em movimento dispensam subpixel)."""
+        if not len(xs):
+            return
+        groups: dict[tuple, list] = {}
+        w, h = self.width(), self.height()
+        for x, y, tone, r, o in zip(xs, ys, tones, radii, opacities):
+            if o <= 0.01 or r <= 0.5:
+                continue
+            radius = theme.quantize_radius(r)
+            if x + radius < 0 or y + radius < 0 or x - radius > w or y - radius > h:
+                continue
+            groups.setdefault((tone, radius, min(7, int(o * 8))), []).append((int(x) - radius, int(y) - radius))
+        draw = p.drawPixmap
+        for (tone, radius, level), points in groups.items():
+            pix = theme.sprite_px("glow", tone, radius, self._dpr)
+            p.setOpacity((level + 0.5) / 8)
+            for x, y in points:
+                draw(x, y, pix)
         p.setOpacity(1.0)
 
     def _core_reveal(self) -> float:
@@ -311,29 +348,94 @@ class BrainView(QtWidgets.QWidget):
 
     def _draw_brain(self, p: QtGui.QPainter, fr: Frame) -> None:
         scene, mesh, cam = self.scene, self.scene.mesh, self.scene.camera
+        profile = scene.profile
         now = scene.clock()
         core_reveal = self._core_reveal()
         genesis = scene.genesis()
         inner = _clamp((scene.depth - 3.0) / 5.0)       # profundidade cognitiva revela estruturas internas
         shell = (1.0 - 0.35 * inner) * (1.0 - 0.3 * scene.dim)
-        sx, sy, Z, _f = mesh.project(mesh.points, cam.angle, fr.cx, fr.cy, fr.R)
+        indices = mesh.visible_indices(scene.development, profile.mesh_points)
+        # Cadência da geometria: girando livre, a malha é redesenhada no máximo ``geometry_fps``
+        # vezes por segundo; tudo que se prende a ela (nós, sinais, regiões, âncoras) usa o mesmo
+        # ângulo da camada — alinhado — enquanto sinais e painéis seguem no ritmo pleno.
+        # Mudança estrutural (enquadramento, zoom, tamanho, perfil) → redesenho imediato; mudança suave
+        # (giro, nós novos no grafo, profundidade, nascimento) → no máximo ``geometry_fps`` por segundo.
+        hard_key = (fr.w, fr.h, round(self._dpr, 2), round(fr.cx, 1), round(fr.cy, 1), round(fr.R, 1), profile.name)
+        soft_key = (len(indices), round(genesis, 3), round(inner, 2), round(shell, 2), scene.graph_version)
+        quantized = round(cam.angle / ANGLE_STEP) * ANGLE_STEP
+        clock = scene.clock()
+        reuse = (self._mesh_layer is not None and hard_key == self._hard_key
+                 and ((soft_key == self._soft_key and quantized == self._render_angle)
+                      or clock - self._geometry_at < 1.0 / max(1, profile.geometry_fps)))
+        angle = self._render_angle if reuse else quantized
+        self._render_angle = angle
+        sx, sy, Z, _f = mesh.project(mesh.points, angle, fr.cx, fr.cy, fr.R)
         depth = np.clip((Z + 1.05) / 2.1, 0.0, 1.0)
-        level = np.minimum(4, (depth * 5).astype(np.int32))
-        indices = mesh.visible_indices(scene.development)
         visible = np.zeros(len(mesh.points), dtype=bool)
         visible[indices] = True
         if genesis < 1.0:
             visible &= mesh.genesis_rank <= genesis
         if inner < 0.02:
             visible &= ~mesh.inner_mask
-        # sinapses da malha, agrupadas por profundidade
         edges = mesh.edges(indices)
         a, b = edges[:, 0], edges[:, 1]
         keep = visible[a] & visible[b]
         a, b = a[keep], b[keep]
+        graph = self._ensure_graph()
+        reveal = _clamp((genesis - 0.4) / 0.6)
+        gsx = gsy = gdepth = gf = None
+        if graph["nodes"] and reveal > 0:
+            gsx, gsy, gZ, gf = mesh.project(graph["pos"], angle, fr.cx, fr.cy, fr.R)
+            gdepth = np.clip((gZ + 1.05) / 2.1, 0.0, 1.0)
+        # camada estável (malha + nós em repouso), refeita só quando a geometria vista muda
+        if not reuse:
+            mesh_args = (sx, sy, depth, visible, a, b, genesis, inner, shell, graph, gsx, gsy, gdepth, gf, reveal)
+            self._render_mesh_layer(fr, mesh_args)
+            self._hard_key, self._soft_key, self._geometry_at = hard_key, soft_key, clock
+            self.mesh_renders += 1
+        p.drawPixmap(self._mesh_origin, self._mesh_layer)
+        self.stats.update(points=int(visible.sum()), edges=int(len(a)),
+                          graph_nodes=len(graph["nodes"]) if reveal > 0 else 0)
+        self._draw_graph_activity(p, fr, graph, gsx, gsy, gf, reveal, now)
+        self._draw_regions(p, fr, sx, sy, depth, visible, a, b)
+        self._draw_core(p, fr, core_reveal, now)
+        self._draw_signals(p, fr, now)
+
+    def _render_mesh_layer(self, fr: Frame, mesh_args: tuple) -> None:
+        """Desenha a malha e os nós em repouso numa camada recortada ao tamanho do cérebro."""
+        sx, sy, visible, gsx, gsy = mesh_args[0], mesh_args[1], mesh_args[3], mesh_args[10], mesh_args[11]
+        xs, ys = sx[visible], sy[visible]
+        if gsx is not None:
+            xs, ys = np.concatenate([xs, gsx]), np.concatenate([ys, gsy])
+        if len(xs):
+            x0 = int(max(0.0, float(xs.min()) - 10)); y0 = int(max(0.0, float(ys.min()) - 10))
+            x1 = int(min(fr.w, float(xs.max()) + 11)); y1 = int(min(fr.h, float(ys.max()) + 11))
+        else:
+            x0 = y0 = 0
+            x1 = y1 = 1
+        width, height = max(1, x1 - x0), max(1, y1 - y0)
+        pix = self._mesh_layer
+        if pix is None or pix.width() < width * self._dpr or pix.height() < height * self._dpr \
+                or abs(pix.devicePixelRatio() - self._dpr) > 1e-3 \
+                or pix.width() > 1.6 * width * self._dpr + 64 or pix.height() > 1.6 * height * self._dpr + 64:
+            pix = QtGui.QPixmap(max(1, int((width + 32) * self._dpr)), max(1, int((height + 32) * self._dpr)))
+            pix.setDevicePixelRatio(self._dpr)
+        pix.fill(QtCore.Qt.transparent)
+        p = QtGui.QPainter(pix)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        p.translate(-x0, -y0)
+        self._paint_mesh(p, *mesh_args)
+        p.end()
+        self._mesh_layer, self._mesh_origin = pix, QPointF(x0, y0)
+
+    def _paint_mesh(self, p: QtGui.QPainter, sx, sy, depth, visible, a, b, genesis: float, inner: float,
+                    shell: float, graph: dict, gsx, gsy, gdepth, gf, reveal: float) -> None:
+        mesh, profile = self.scene.mesh, self.scene.profile
+        level = np.minimum(4, (depth * 5).astype(np.int32))
         deep = mesh.inner_mask[a] | mesh.inner_mask[b]
         edge_level = np.minimum(level[a], level[b])
-        for k in range(5):
+        first = 5 - max(1, min(5, profile.depth_levels))      # camadas do fundo omitidas pelo perfil
+        for k in range(first, 5):
             sel = (edge_level == k) & ~deep
             if sel.any():
                 p.setPen(_pen(theme.GOLD, EDGE_ALPHA[k] * shell))
@@ -341,93 +443,93 @@ class BrainView(QtWidgets.QWidget):
         if deep.any():
             p.setPen(_pen(theme.WARM_WHITE, 0.30 * inner))
             p.drawLines(_lines(sx[a[deep]], sy[a[deep]], sx[b[deep]], sy[b[deep]]))
-        # nós da malha: maiores e mais claros à frente
-        shell_points = visible & ~mesh.inner_mask
-        for k in range(5):
+        shell_points = visible & ~mesh.inner_mask                # nós da malha: maiores e mais claros à frente
+        for k in range(max(0, first - 1), 5):
             sel = shell_points & (level == k)
             self._dots(p, sx[sel], sy[sel], self._point_colors[k], POINT_RADIUS[k],
                        (0.30 + 0.70 * (k / 4) ** 1.2) * shell)
         deep_points = visible & mesh.inner_mask
         self._dots(p, sx[deep_points], sy[deep_points], WHITE_RGB, 1.3, 0.75 * inner)
-        self.stats.update(points=int(visible.sum()), edges=int(len(a)))
         p.setCompositionMode(PLUS)
-        front = np.nonzero(shell_points & (depth > 0.90))[0]
-        for i in front:                                   # cintilação dos nós mais próximos
-            self._sprite(p, "glow", "gold", sx[i], sy[i], 4.0, 0.16 * shell)
-        if genesis < 1.0:                                 # nós nascendo (inicialização)
+        if profile.front_glow:                                   # cintilação dos nós mais próximos
+            for i in np.nonzero(shell_points & (depth > 0.90))[0]:
+                self._sprite(p, "glow", "gold", sx[i], sy[i], 4.0, 0.16 * shell, clip=False)
+        if genesis < 1.0:                                        # nós nascendo (inicialização)
             for i in np.nonzero(visible & (mesh.genesis_rank > genesis - 0.05))[0]:
-                self._sprite(p, "glow", "white", sx[i], sy[i], 5.0, 0.85)
+                self._sprite(p, "glow", "white", sx[i], sy[i], 5.0, 0.85, clip=False)
         p.setOpacity(1.0)
         p.setCompositionMode(OVER)
-        self._draw_graph(p, fr, genesis)
-        self._draw_regions(p, fr, sx, sy, depth, visible, a, b)
-        self._draw_core(p, fr, core_reveal, now)
-        self._draw_signals(p, fr, now)
+        if gsx is not None:                                      # nós reais do Neural Graph
+            tone = graph["tone"]
+            glevel = np.minimum(2, (gdepth * 3).astype(np.int32))
+            for t, rgb in enumerate((GOLD_RGB, AMBER_RGB, WHITE_RGB)):
+                for k, alpha in enumerate((0.35, 0.6, 0.9)):
+                    sel = (tone == t) & (glevel == k)
+                    self._dots(p, gsx[sel], gsy[sel], rgb, NODE_RADIUS[k], alpha * reveal)
+            if profile.strong_glow:
+                p.setCompositionMode(PLUS)
+                strength = graph["strength"]
+                for i in graph["strong"][: profile.strong_glow]:   # conhecimento consolidado brilha
+                    if gdepth[i] > 0.45:
+                        self._sprite(p, "glow", NODE_TONES[tone[i]], gsx[i], gsy[i], (3.5 + 3 * strength[i]) * gf[i],
+                                     (0.10 + 0.25 * strength[i]) * gdepth[i] * reveal, clip=False)
+                p.setOpacity(1.0)
+                p.setCompositionMode(OVER)
 
-    def _draw_graph(self, p: QtGui.QPainter, fr: Frame, genesis: float) -> None:
-        """Nós e sinapses reais do Neural Graph, nas posições fixas das regiões do seu tipo."""
-        scene, mesh = self.scene, self.scene.mesh
-        graph = self._ensure_graph()
-        nodes = graph["nodes"]
-        reveal = _clamp((genesis - 0.4) / 0.6)
-        self.stats.update(graph_nodes=len(nodes) if reveal > 0 else 0, graph_edges=0)
-        if not nodes or reveal <= 0:
+    def _draw_graph_activity(self, p: QtGui.QPainter, fr: Frame, graph: dict, sx, sy, f, reveal: float,
+                             now: float) -> None:
+        """Sinapses do grafo percorridas por um sinal real e nós ativados ou recém-nascidos."""
+        scene, mesh, profile = self.scene, self.scene.mesh, self.scene.profile
+        self.stats["graph_edges"] = 0
+        if sx is None or reveal <= 0:
             return
-        now = scene.clock()
-        sx, sy, Z, f = mesh.project(graph["pos"], scene.camera.angle, fr.cx, fr.cy, fr.R)
-        depth = np.clip((Z + 1.05) / 2.1, 0.0, 1.0)
-        level = np.minimum(2, (depth * 3).astype(np.int32))
-        # sinapses do grafo aparecem quando um sinal real as percorre (recordação, nova relação...),
-        # na mesma curva das partículas da cena
         index = graph["index"]
-        active = [(index[e.a], index[e.b], min(5, int(e.activation * 6))) for e in scene.edges.values()
-                  if e.activation >= 0.03 and e.a in index and e.b in index]
-        self.stats["graph_edges"] = len(active)
-        if active:
-            ij = np.array(active, dtype=np.int64)
+        hot = [(index[e.a], index[e.b], min(LEVELS - 1, int(e.activation * LEVELS)))
+               for e in scene.hot_edges(profile.active_edges) if e.a in index and e.b in index]
+        self.stats["graph_edges"] = len(hot)
+        if hot:                                                  # na mesma curva das partículas da cena
+            ij = np.array(hot, dtype=np.int64)
             p0, p1 = graph["pos"][ij[:, 0]], graph["pos"][ij[:, 1]]
             ctrl = (p0 + p1) * 0.4
-            t = np.linspace(0.0, 1.0, CURVE_STEPS + 1)[None, :, None]
+            t = np.linspace(0.0, 1.0, max(1, profile.curve_steps) + 1)[None, :, None]
             curve = (1 - t) ** 2 * p0[:, None] + 2 * (1 - t) * t * ctrl[:, None] + t ** 2 * p1[:, None]
-            cx, cy, _cz, _cf = mesh.project(curve.reshape(-1, 3), scene.camera.angle, fr.cx, fr.cy, fr.R)
-            cx, cy = cx.reshape(len(active), -1), cy.reshape(len(active), -1)
+            cx, cy, _cz, _cf = mesh.project(curve.reshape(-1, 3), self._render_angle, fr.cx, fr.cy, fr.R)
+            cx, cy = cx.reshape(len(hot), -1), cy.reshape(len(hot), -1)
             for lvl in np.unique(ij[:, 2]):
                 rows = ij[:, 2] == lvl
-                x0, y0 = cx[rows, :-1].ravel(), cy[rows, :-1].ravel()
-                x1, y1 = cx[rows, 1:].ravel(), cy[rows, 1:].ravel()
-                p.setPen(_pen(theme.GOLD, 0.5 * (lvl + 0.5) / 6 * reveal))
-                p.drawLines(_lines(x0, y0, x1, y1))
-        tone = graph["tone"]
-        for t, rgb in enumerate((GOLD_RGB, AMBER_RGB, WHITE_RGB)):
-            for k, alpha in enumerate((0.35, 0.6, 0.9)):
-                sel = (tone == t) & (level == k)
-                self._dots(p, sx[sel], sy[sel], rgb, NODE_RADIUS[k], alpha * reveal)
-        p.setCompositionMode(PLUS)
-        strength = graph["strength"]
-        for i in graph["strong"]:                         # conhecimento consolidado brilha
-            if depth[i] > 0.45:
-                self._sprite(p, "glow", NODE_TONES[tone[i]], sx[i], sy[i], (3.5 + 3 * strength[i]) * f[i],
-                             (0.10 + 0.25 * strength[i]) * depth[i] * reveal)
-        for i, node in enumerate(nodes):                  # ativados ou recém-nascidos
-            birth = now - node.born
-            if node.activation < 0.02 and birth > 1.0:
-                continue
-            extra = 0.85 * node.activation + (1.0 - _clamp(birth / 0.8)) * 0.9
-            self._sprite(p, "glow", NODE_TONES[tone[i]], sx[i], sy[i], (5.0 + 7.0 * node.activation) * f[i],
-                         extra * reveal)
-        p.setOpacity(1.0)
-        p.setCompositionMode(OVER)
+                faint = lvl < 3                          # opacidade < 20%: serrilhado imperceptível, 3× mais barato
+                if faint:
+                    p.setRenderHint(QtGui.QPainter.Antialiasing, False)
+                p.setPen(_pen(theme.GOLD, 0.55 * (lvl + 0.5) / LEVELS * reveal))
+                p.drawLines(_lines(cx[rows, :-1].ravel(), cy[rows, :-1].ravel(),
+                                   cx[rows, 1:].ravel(), cy[rows, 1:].ravel()))
+                if faint:
+                    p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        glowing = scene.glowing_nodes(profile.max_particles)
+        if glowing:
+            tone = graph["tone"]
+            xs, ys, tones, radii, alphas = [], [], [], [], []
+            for node, age in glowing:
+                i = index.get(node.id)
+                if i is None:
+                    continue
+                xs.append(sx[i]); ys.append(sy[i]); tones.append(NODE_TONES[tone[i]])
+                radii.append((5.0 + 7.0 * node.activation) * f[i])
+                alphas.append((0.85 * node.activation + (1.0 - _clamp(age / 0.8)) * 0.9) * reveal)
+            p.setCompositionMode(PLUS)
+            self._glows(p, xs, ys, tones, radii, alphas)
+            p.setCompositionMode(OVER)
 
     def _region_screen(self, fr: Frame, name: str, near: tuple[float, float] | None = None
                        ) -> tuple[float, float, float]:
         """Centro projetado da região (x, y, profundidade 0..1). Regiões laterais existem nos
         dois hemisférios: vale o do lado voltado para o observador ou, com ``near``, o mais
         próximo desse ponto da tela (a sinapse não atravessa o cérebro sem necessidade)."""
-        mesh, cam = self.scene.mesh, self.scene.camera
+        mesh = self.scene.mesh
         lateral = REGIONS.get(name, REGIONS["core"])[2] != 0 and name not in LEFT_ONLY
         sides = (1.0, -1.0) if lateral else (1.0,)
         points = np.array([mesh.region_center(name, side) for side in sides])
-        sx, sy, Z, _f = mesh.project(points, cam.angle, fr.cx, fr.cy, fr.R)
+        sx, sy, Z, _f = mesh.project(points, self._render_angle, fr.cx, fr.cy, fr.R)
         if len(sides) == 1:
             k = 0
         elif near is None:
@@ -458,7 +560,7 @@ class BrainView(QtWidgets.QWidget):
             inside = np.zeros(len(visible), dtype=bool)
             inside[members] = True
             sel = inside[a] & inside[b]
-            if sel.any():
+            if scene.profile.region_lines and sel.any():
                 p.setPen(_pen(theme.GOLD, min(1.0, 0.12 + 0.5 * amount)))
                 p.drawLines(_lines(sx[a[sel]], sy[a[sel]], sx[b[sel]], sy[b[sel]]))
             front = members[depth[members] > 0.5]
@@ -484,17 +586,16 @@ class BrainView(QtWidgets.QWidget):
         scene, mesh = self.scene, self.scene.mesh
         active = [pt for pt in scene.particles if pt.t >= 0]
         if active:
-            sx, sy, _Z, f = mesh.project(np.array([pt.position() for pt in active]), scene.camera.angle,
+            sx, sy, _Z, f = mesh.project(np.array([pt.position() for pt in active]), self._render_angle,
                                          fr.cx, fr.cy, fr.R)
             p.setCompositionMode(PLUS)
-            for i, particle in enumerate(active):
-                fade = math.sin(math.pi * min(1.0, particle.t))
-                self._sprite(p, "glow", particle.tone, sx[i], sy[i], 3.2 * particle.size * f[i], 0.9 * fade)
-            p.setOpacity(1.0)
+            self._glows(p, sx.tolist(), sy.tolist(), [pt.tone for pt in active],
+                        [3.2 * pt.size * fi for pt, fi in zip(active, f.tolist())],
+                        [0.9 * math.sin(math.pi * min(1.0, pt.t)) for pt in active])
             p.setCompositionMode(OVER)
         pulses = [pulse for pulse in scene.pulses if 0 <= now - pulse.born <= pulse.duration]
         if pulses:
-            sx, sy, _Z, f = mesh.project(np.array([(q.x, q.y, q.z) for q in pulses]), scene.camera.angle,
+            sx, sy, _Z, f = mesh.project(np.array([(q.x, q.y, q.z) for q in pulses]), self._render_angle,
                                          fr.cx, fr.cy, fr.R)
             p.setBrush(QtCore.Qt.NoBrush)
             for i, pulse in enumerate(pulses):
@@ -672,8 +773,28 @@ class BrainView(QtWidgets.QWidget):
             self._sprite(p, "glow", "gold", anchor.x(), anchor.y(), 9, 0.7 * alpha)
             p.setCompositionMode(OVER)
             p.setOpacity(alpha * min(1.0, growth * 1.5))
-            self._draw_panel(p, module, rect)
+            p.drawPixmap(rect.topLeft(), self._panel_pixmap(module, rect))
+            if module.key == "authorization":
+                self._draw_countdown(p, module, rect)
             p.setOpacity(1.0)
+
+    def _panel_pixmap(self, module, rect: QRectF) -> QtGui.QPixmap:
+        """Painel pré-renderizado: refeito só quando o conteúdo muda (texto não é refeito por quadro)."""
+        key = (module.title, repr(module.lines), int(rect.width()), int(rect.height()), round(self._dpr, 2))
+        cached = self._panels.get(module.key)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        pix = QtGui.QPixmap(max(1, int(rect.width() * self._dpr)) + 1, max(1, int(rect.height() * self._dpr)) + 1)
+        pix.setDevicePixelRatio(self._dpr)
+        pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        self._draw_panel(painter, module, QRectF(0, 0, rect.width(), rect.height()))
+        painter.end()
+        if len(self._panels) > 12:
+            self._panels.clear()
+        self._panels[module.key] = (key, pix)
+        return pix
 
     def _draw_panel(self, p: QtGui.QPainter, module, rect: QRectF) -> None:
         p.fillRect(rect, QtGui.QColor(10, 9, 8, 205))
@@ -688,8 +809,6 @@ class BrainView(QtWidgets.QWidget):
         p.setPen(theme.GOLD)
         p.drawText(QRectF(rect.left() + 12, rect.top() + 8, rect.width() - 24, 18), QtCore.Qt.AlignLeft,
                    module.title)
-        if module.key == "authorization":
-            self._draw_countdown(p, module, rect)
         y = rect.top() + 32
         for line in module.lines:
             y = self._draw_line(p, line, rect, y)

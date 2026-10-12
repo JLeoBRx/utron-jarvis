@@ -12,6 +12,7 @@ PROFILES: dict[str, dict[str, Any]] = {
     "default": {},
     # Máquinas modestas: menos percepção e menos quadros por segundo.
     "performance": {
+        "performance_profile": "performance",
         "hud_fps": 30,
         "vision_interval": 60.0,
         "process_interval": 10.0,
@@ -31,6 +32,10 @@ PROFILES: dict[str, dict[str, Any]] = {
     "silent": {
         "voice_enabled": False,
         "sound_effects": False,
+    },
+    # Máximo de efeitos visuais (máquinas com folga de CPU/GPU); o núcleo não é afetado.
+    "cinematic": {
+        "performance_profile": "cinematic",
     },
     # Desenvolvimento: mais autonomia para tarefas reversíveis e logs detalhados.
     "developer": {
