@@ -5,9 +5,15 @@ Escopo e limites (não negociáveis):
 * somente a sub-rede IPv4 **privada** da interface principal do próprio computador;
 * no máximo ``max_hosts`` endereços (padrão 256; sub-redes maiores são reduzidas ao /24
   do próprio IP);
-* métodos passivos ou de rotina de administração: tabela ARP/vizinhos do sistema, ``ping``
-  de um único pacote e DNS reverso;
+* métodos passivos ou de rotina de administração: tabela ARP/vizinhos do sistema (IPv4 e
+  IPv6), ``ping`` de um único pacote e DNS reverso; anúncios SSDP/UPnP apenas se o usuário
+  ligar essa opção (``network_ssdp``);
+* endereços IPv6 só são associados a aparelhos JÁ vistos no segmento IPv4 autorizado (pelo MAC);
 * sem varredura de portas, sem exploração, sem interceptação.
+
+O inventário resultante é necessariamente INCOMPLETO: aparelhos que bloqueiam ping e não
+conversaram com este computador recentemente não aparecem na tabela de vizinhos. O resultado
+traz ``limitations`` explicando o que não pôde ser observado.
 """
 from __future__ import annotations
 
@@ -34,6 +40,8 @@ class Host:
     alive: bool = False
     latency_ms: float | None = None
     methods: tuple = ()
+    ipv6: tuple = ()
+    extra: dict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -87,6 +95,57 @@ def parse_ip_neigh(text: str) -> dict[str, str]:
         if match and match.group(3) not in ("FAILED", "INCOMPLETE"):
             table[match.group(1)] = normalize_mac(match.group(2))
     return table
+
+
+_V6_BAD_STATES = ("FAILED", "INCOMPLETE", "UNREACHABLE", "INACESS", "INCOMPLET", "INALCAN")
+
+
+def _v6_ok(address: str, mac: str) -> bool:
+    try:
+        ip = ipaddress.IPv6Address(address.split("%")[0])
+    except ValueError:
+        return False
+    return not (ip.is_multicast or ip.is_unspecified or ip.is_loopback) and bool(mac) \
+        and not mac.startswith("33:33") and mac != "00:00:00:00:00:00"
+
+
+def parse_ip6_neigh(text: str) -> dict[str, list[str]]:
+    """``ip -6 neigh`` → {MAC: [endereços IPv6]}."""
+    table: dict[str, list[str]] = {}
+    for line in text.splitlines():
+        match = re.match(r"([0-9a-fA-F:]+)\s+.*lladdr\s+([0-9a-fA-F:]{17})\s+.*?(\w+)\s*$", line.strip())
+        if not match or match.group(3).upper() in _V6_BAD_STATES:
+            continue
+        mac = normalize_mac(match.group(2))
+        if _v6_ok(match.group(1), mac):
+            table.setdefault(mac, []).append(match.group(1).lower())
+    return table
+
+
+def parse_netsh_ipv6_neighbors(text: str) -> dict[str, list[str]]:
+    """``netsh interface ipv6 show neighbors`` (qualquer idioma) → {MAC: [endereços IPv6]}."""
+    table: dict[str, list[str]] = {}
+    for match in re.finditer(r"^\s*([0-9a-fA-F:]+(?:%\d+)?)\s+([0-9a-fA-F]{2}(?:-[0-9a-fA-F]{2}){5})\s+(.+?)\s*$",
+                             text, re.M):
+        state = match.group(3).upper()
+        if any(bad in state for bad in _V6_BAD_STATES):
+            continue
+        address, mac = match.group(1).split("%")[0].lower(), normalize_mac(match.group(2))
+        if _v6_ok(address, mac):
+            table.setdefault(mac, []).append(address)
+    return table
+
+
+def neighbor_table_v6() -> dict[str, list[str]]:
+    """Vizinhos IPv6 que o próprio sistema já conhece (leitura passiva do cache NDP)."""
+    if IS_WINDOWS:
+        result = system.run(["netsh", "interface", "ipv6", "show", "neighbors"], timeout=8)
+        return parse_netsh_ipv6_neighbors(result.stdout) if result.ok else {}
+    if system.which("ip"):
+        result = system.run(["ip", "-6", "neigh"], timeout=5, encoding="utf-8")
+        if result.ok:
+            return parse_ip6_neigh(result.stdout)
+    return {}
 
 
 def neighbor_table() -> dict[str, str]:
@@ -145,14 +204,18 @@ def reverse_dns(ip: str) -> str:
 # ------------------------------------------------------------------ varredura
 def discover(primary: dict[str, Any] | None, *, max_hosts: int = 256, workers: int = 32,
              timeout_ms: int = 700, resolve_names: bool = True, deadline_s: float = 90.0,
-             cancel=None, progress: Callable[[int, int], None] | None = None) -> dict[str, Any]:
+             cancel=None, progress: Callable[[int, int], None] | None = None, passive: bool = False,
+             ssdp: bool = False) -> dict[str, Any]:
+    """Varredura do segmento autorizado. ``passive=True`` só lê as tabelas de vizinhos do sistema
+    (instantâneo, sem enviar pacotes) — serve para atualizar presença, nunca para declarar ausência."""
     network = authorized_scope(primary, max_hosts=max_hosts)
     hosts = [str(h) for h in network.hosts()][:max_hosts]
     started = time.monotonic()
     found: dict[str, Host] = {}
-    ping_available = True
+    ping_available = not passive
+    limitations: list[str] = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 64)), thread_name_prefix="ultron-ping") as pool:
-        futures = {pool.submit(ping, ip, timeout_ms=timeout_ms): ip for ip in hosts}
+        futures = {} if passive else {pool.submit(ping, ip, timeout_ms=timeout_ms): ip for ip in hosts}
         done = 0
         try:
             for future in as_completed(futures, timeout=deadline_s):
@@ -176,7 +239,8 @@ def discover(primary: dict[str, Any] | None, *, max_hosts: int = 256, workers: i
         finally:
             for future in futures:
                 future.cancel()
-    for ip, mac in neighbor_table().items():
+    neighbors = neighbor_table()
+    for ip, mac in neighbors.items():
         try:
             if ipaddress.ip_address(ip) not in network:
                 continue
@@ -186,13 +250,34 @@ def discover(primary: dict[str, Any] | None, *, max_hosts: int = 256, workers: i
         host.mac = mac
         host.methods = tuple(sorted(set(host.methods) | {"arp"}))
         found[ip] = host
+    try:
+        v6 = neighbor_table_v6()
+    except Exception:
+        v6 = {}
+    for host in found.values():                    # IPv6 só para aparelhos do segmento IPv4 autorizado
+        if host.mac and v6.get(host.mac):
+            host.ipv6 = tuple(sorted(set(v6[host.mac])))[:8]
+            host.methods = tuple(sorted(set(host.methods) | {"ndp"}))
     own_ip = primary.get("ipv4") if primary else None
     if own_ip and own_ip in map(str, network.hosts()):
         own = found.get(own_ip) or Host(own_ip, alive=True)
         own.mac = own.mac or (primary.get("mac") or "")
         own.alive = True
         own.methods = tuple(sorted(set(own.methods) | {"self"}))
+        own.ipv6 = own.ipv6 or tuple(a for a in (primary.get("ipv6") or [])[:4])
         found[own_ip] = own
+    if ssdp and not passive and not (cancel is not None and getattr(cancel, "cancelled", False)):
+        from . import ssdp as ssdp_module
+        try:
+            announced = ssdp_module.search(network)
+        except OSError as exc:
+            announced = {}
+            limitations.append(f"SSDP indisponível: {exc}")
+        for ip, info in announced.items():
+            host = found.get(ip) or Host(ip)
+            host.extra = {**(host.extra or {}), **info}
+            host.methods = tuple(sorted(set(host.methods) | {"ssdp"}))
+            found[ip] = host
     if resolve_names and found:
         with ThreadPoolExecutor(max_workers=16, thread_name_prefix="ultron-rdns") as pool:
             futures = {pool.submit(reverse_dns, ip): ip for ip in found}
@@ -204,7 +289,20 @@ def discover(primary: dict[str, Any] | None, *, max_hosts: int = 256, workers: i
                         pass
             except TimeoutError:
                 pass
-    return {"network": str(network), "scanned": len(hosts), "ping_available": ping_available,
+    for host in found.values():
+        if host.hostname and "rdns" not in host.methods:
+            host.methods = tuple(sorted(set(host.methods) | {"rdns"}))
+    if passive:
+        limitations.append("leitura passiva: só aparelhos que conversaram recentemente com este computador")
+    elif not ping_available:
+        limitations.append("ping indisponível: presença baseada apenas na tabela de vizinhos")
+    if not neighbors:
+        limitations.append("tabela ARP/vizinhos vazia ou ilegível: MAC e fabricante podem faltar")
+    limitations.append("aparelhos que bloqueiam ping e estão ociosos podem não aparecer")
+    if not v6:
+        limitations.append("nenhum vizinho IPv6 conhecido pelo sistema")
+    return {"network": str(network), "interface": (primary or {}).get("name", ""), "scanned": 0 if passive else len(hosts),
+            "ping_available": ping_available, "passive": passive, "methods_ok": ping_available or bool(neighbors),
             "hosts": sorted((h.to_dict() for h in found.values()),
                             key=lambda h: tuple(int(x) for x in h["ip"].split("."))),
-            "seconds": round(time.monotonic() - started, 2), "timestamp": time.time()}
+            "limitations": limitations, "seconds": round(time.monotonic() - started, 2), "timestamp": time.time()}

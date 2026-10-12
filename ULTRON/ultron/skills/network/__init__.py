@@ -1,11 +1,22 @@
-"""Skills de rede: estado, dispositivos, varredura autorizada, diagnóstico e ping."""
+"""Skills de rede: estado, inventário, varredura autorizada, diagnóstico, ping, apelidos/notas,
+verificação de conectividade de um aparelho, relatório e página oficial do roteador.
+
+Tudo restrito à sub-rede privada deste computador. Abrir a administração do roteador é
+"administração de dispositivo de rede" e sempre exige autorização específica.
+"""
 from __future__ import annotations
 
 import ipaddress
 import socket
+import time
+import webbrowser
+from pathlib import Path
 
 from ...network import discovery, oui
+from ...network.inventory import InventoryError
 from ..base import Risk, Skill, SkillContext, SkillResult, VerificationResult, check, schema, string
+
+STALE_SCAN = 15 * 60          # inventário mais velho que isso ganha leitura passiva antes de listar
 
 
 class _NetSkill(Skill):
@@ -36,22 +47,157 @@ class NetworkStatus(_NetSkill):
 
 class NetworkDevices(_NetSkill):
     name = "network.devices"
-    description = "Listar dispositivos conhecidos da rede local (IP, MAC, nome, fabricante, estado)."
-    inputs = schema({"status": string(8, enum=["online", "offline", "all"])})
-    risk = Risk.NONE
+    description = ("Listar os dispositivos da rede local (nome, IP, MAC, fabricante, estado observado: presente, "
+                   "ausente ou desconhecido). Atualiza o inventário por leitura passiva quando está antigo.")
+    inputs = schema({"status": string(10, enum=["online", "present", "absent", "offline", "unknown", "all",
+                                                "trusted", "untrusted"]),
+                     "text": string(80)})
+    risk = Risk.LOW
 
-    def execute(self, ctx, status: str = "online") -> SkillResult:
-        devices = self._net(ctx).inventory.devices(status=None if status == "all" else status)
+    def execute(self, ctx, status: str = "present", text: str = "") -> SkillResult:
+        net = self._net(ctx)
+        status = {"present": "online", "offline": "absent"}.get(status, status)
+        notes, evidence = [], ["fonte: inventário local"]
+        discovery_on = bool(getattr(ctx.settings, "network_discovery", True)) if ctx.settings is not None else True
+        last = max(float(net.last_scan.get("timestamp") or 0), float(net.last_passive or 0))
+        if discovery_on and time.time() - last > STALE_SCAN:
+            refreshed = net.passive_refresh()                   # sem tráfego novo: lê a tabela de vizinhos
+            if refreshed.get("error"):
+                notes.append(f"Leitura da rede indisponível: {refreshed['error']}.")
+            elif not refreshed.get("skipped"):
+                evidence.append("leitura passiva da tabela de vizinhos agora")
+            if net.inventory.count(status=None) == 0 and not refreshed.get("error"):
+                scanned = net.scan(cancel=ctx.cancel)
+                if scanned.get("error"):
+                    notes.append(f"Varredura indisponível: {scanned['error']}.")
+                elif not scanned.get("skipped"):
+                    evidence.append(f"varredura de {scanned.get('network')}")
+        elif not discovery_on:
+            notes.append("Descoberta automática desativada; mostrando o inventário salvo.")
+        trusted = {"trusted": True, "untrusted": False}.get(status)
+        devices = net.inventory.devices(status=None if status in ("all", "trusted", "untrusted") else status,
+                                        trusted=trusted, text=text)
         if not devices:
-            return SkillResult(True, "Nenhum dispositivo registrado. Execute uma varredura da rede local.", [],
-                               {"devices": []})
-        lines = [f"{d.ip} {d.hostname or d.kind}{f' — {d.vendor}' if d.vendor else ''}{f' [{d.mac}]' if d.mac else ''}"
-                 for d in devices[:30]]
-        return SkillResult(True, f"{len(devices)} dispositivo(s): " + "; ".join(lines), ["fonte: inventário local"],
-                           {"devices": [d.to_dict() for d in devices]})
+            empty = "Nenhum dispositivo no inventário." if net.inventory.count(status=None) == 0 else \
+                "Nenhum dispositivo nesse filtro."
+            return SkillResult(True, " ".join([empty] + notes), evidence, {"devices": [], "notes": notes})
+        body = net.inventory_text(status if status in ("online", "absent", "unknown") else "all")
+        if status in ("trusted", "untrusted") or text:
+            body = f"{len(devices)} dispositivo(s): " + "; ".join(f"{d.name} ({d.ip}, {d.state_label})"
+                                                                   for d in devices[:12]) + "."
+        limits = " Inventário pode estar incompleto: aparelhos que bloqueiam ping e estão ociosos podem não aparecer."
+        return SkillResult(True, body + limits + (" " + " ".join(notes) if notes else ""), evidence,
+                           {"devices": [d.to_dict() for d in devices], "counts": net.inventory.counts(),
+                            "notes": notes})
 
     def verify(self, ctx, args, result):
-        return VerificationResult("VERIFIED", 0.9, [check("read", True, "inventário persistente")])
+        if not result.success:
+            return super().verify(ctx, args, result)
+        return VerificationResult("VERIFIED", 0.9, [check("read", True, "inventário persistente lido")])
+
+
+class DeviceUpdate(_NetSkill):
+    name = "network.device_update"
+    description = "Dar apelido, escrever notas ou marcar um dispositivo da rede como conhecido/confiável."
+    inputs = schema({"ref": string(80), "alias": {"type": "string", "maxLength": 60, "minLength": 0},
+                     "notes": {"type": "string", "maxLength": 1000, "minLength": 0}, "trusted": {"type": "boolean"}},
+                    ("ref",))
+    risk = Risk.LOW
+
+    def execute(self, ctx, ref: str, alias: str | None = None, notes: str | None = None,
+                trusted: bool | None = None) -> SkillResult:
+        try:
+            device = self._net(ctx).update_device(ref, alias=alias, notes=notes, trusted=trusted)
+        except InventoryError as exc:
+            return SkillResult(False, error=str(exc), error_kind="NOT_FOUND" if "nenhum" in str(exc) else
+                               "INVALID_ARGUMENT")
+        changes = [k for k, v in (("apelido", alias), ("notas", notes), ("confiável", trusted)) if v is not None]
+        return SkillResult(True, f"Dispositivo {device['name']} ({device['ip']}) atualizado: {', '.join(changes) or 'nada'}.",
+                           [device["key"]], {"key": device["key"], "alias": alias, "notes": notes, "trusted": trusted})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        device = ctx.network.inventory.get(result.data["key"])
+        checks = [check("exists", device is not None, "dispositivo no inventário")]
+        if device is not None:
+            for field in ("alias", "trusted"):
+                if result.data.get(field) is not None:
+                    expected = result.data[field] if field != "alias" else " ".join(result.data[field].split())[:60]
+                    checks.append(check(field, getattr(device, field) == expected, f"{field} gravado"))
+        return VerificationResult.from_checks(checks)
+
+
+class CheckDevice(_NetSkill):
+    name = "network.check_device"
+    description = ("Verificar a conectividade de UM dispositivo do inventário (ping e tabela de vizinhos). "
+                   "Sem resposta não prova que saiu da rede.")
+    inputs = schema({"ref": string(80)}, ("ref",))
+    risk = Risk.LOW
+    timeout = 20.0
+
+    def execute(self, ctx, ref: str) -> SkillResult:
+        try:
+            result = self._net(ctx).check_device(ref)
+        except InventoryError as exc:
+            return SkillResult(False, error=str(exc), error_kind="PERMISSION_ERROR" if "fora" in str(exc) else "NOT_FOUND")
+        device = result["device"]
+        return SkillResult(True, f"{device['name']} ({device['ip']}): {result['verdict']}.", [result["verdict"]],
+                           {"key": device["key"], "at": result["at"], "alive": result["alive"],
+                            "neighbor": result["neighbor"]})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        device = ctx.network.inventory.get(result.data["key"])
+        recorded = device is not None and abs(float(device.last_check.get("at", 0)) - result.data["at"]) < 1
+        return VerificationResult.from_checks([check("check_recorded", recorded, "resultado registrado no inventário")])
+
+
+class ExportInventory(_NetSkill):
+    name = "network.export"
+    description = "Gerar um relatório local do inventário da rede (Markdown, CSV ou JSON)."
+    inputs = schema({"format": string(4, enum=["md", "csv", "json"])})
+    risk = Risk.LOW
+
+    def execute(self, ctx, format: str = "md") -> SkillResult:
+        path = self._net(ctx).export(format)
+        return SkillResult(True, f"Relatório salvo em {path}.", [str(path)], {"path": str(path)})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        path = Path(result.data["path"])
+        return VerificationResult.from_checks([check("file_written", path.is_file() and path.stat().st_size > 0,
+                                                     f"{path.name} existe")])
+
+
+class OpenRouterAdmin(_NetSkill):
+    name = "network.open_admin"
+    description = ("Abrir no navegador a página oficial de administração do roteador (gateway da rede local). "
+                   "Não faz login nem altera nada; exige autorização.")
+    inputs = schema({})
+    risk = Risk.LOW
+    sensitive = "network_admin"
+
+    def describe_action(self, args):
+        return "abrir a página de administração do roteador no navegador"
+
+    def execute(self, ctx, **_) -> SkillResult:
+        try:
+            url = self._net(ctx).admin_url()
+        except InventoryError as exc:
+            return SkillResult(False, error=str(exc), error_kind="NOT_FOUND")
+        if not webbrowser.open(url, new=2):
+            return SkillResult(False, error="o sistema não abriu o navegador", error_kind="APPLICATION_ERROR")
+        return SkillResult(True, f"Abrindo {url} no navegador. O login e qualquer alteração ficam com você, na "
+                                 "interface oficial do fabricante.", [url], {"url": url})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        return VerificationResult("UNCONFIRMED", 0.5, [check("browser_requested", True, result.data["url"])],
+                                  [result.data["url"]], "o navegador foi acionado; a página não é observável daqui")
 
 
 class NetworkScan(_NetSkill):
@@ -67,10 +213,11 @@ class NetworkScan(_NetSkill):
             return SkillResult(False, error=result["error"], error_kind="NETWORK_ERROR")
         if result.get("skipped"):
             return SkillResult(False, error=result["skipped"], error_kind="BUSY")
-        summary = (f"Varredura de {result['network']}: {result['online']} dispositivo(s) ativo(s), "
-                   f"{result['new']} novo(s), em {result['seconds']} s.")
+        summary = (f"Varredura de {result['network']}: {result['online']} dispositivo(s) presente(s), "
+                   f"{result['new']} novo(s), {result.get('unknown', 0)} sem resposta agora, "
+                   f"{result.get('absent', 0)} ausente(s), em {result['seconds']} s.")
         if not result.get("ping_available"):
-            summary += " Ping indisponível; usei apenas a tabela ARP."
+            summary += " Ping indisponível; usei apenas a tabela de vizinhos."
         return SkillResult(True, summary, [f"{result['scanned']} endereços examinados"], result)
 
     def verify(self, ctx, args, result):
@@ -160,4 +307,5 @@ class UpdateVendorDatabase(_NetSkill):
         return VerificationResult.from_checks([check("vendor_source", oui.source() == "ieee", f"fonte: {oui.source()}")])
 
 
-SKILLS = (NetworkStatus, NetworkDevices, NetworkScan, NetworkDiagnose, Ping, UpdateVendorDatabase)
+SKILLS = (NetworkStatus, NetworkDevices, NetworkScan, NetworkDiagnose, Ping, UpdateVendorDatabase, DeviceUpdate,
+          CheckDevice, ExportInventory, OpenRouterAdmin)

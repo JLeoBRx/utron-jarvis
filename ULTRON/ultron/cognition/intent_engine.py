@@ -253,7 +253,8 @@ class IntentEngine:
                 if topic and not topic["record_id"]:
                     args = {"text": topic["text"][:600], "kind": kind}
             return _cmd(raw, "secondbrain.capture", **args)
-        event = re.match(r"^(?:por favor\s+)?(?:marque|marca|marcar|agende|agenda|agendar)\s+(?:uma?\s+)?"
+        event = re.match(r"^(?:por favor\s+)?(?:marque|marca|marcar|agende|agenda|agendar)\s+"
+                         r"(?!(?:o\s+|a\s+)?(?:dispositivo|aparelho|roteador)\b)(?:uma?\s+)?"
                          r"(reuniao|compromisso|consulta|evento|encontro|call|aula|entrevista|visita)?\b", t)
         if event and not re.search(r"\bcomo (feit|conclu|pront)", t):
             return _cmd(raw, "secondbrain.capture", text=r[:600], kind="event")
@@ -302,6 +303,25 @@ class IntentEngine:
         return None
 
     def _network_rules(self, raw, t):
+        r = raw.strip().rstrip(".!?")
+        rename = re.match(r"(?i)^(?:renomeie|renomear|chame|apelide)\s+(?:o\s+)?(?:dispositivo|aparelho)\s+(.+?)\s+"
+                          r"(?:de|como|para)\s+(.+)$", r)
+        if rename:
+            return _cmd(raw, "network.device_update", ref=rename.group(1).strip()[:80], alias=rename.group(2).strip()[:60])
+        trust = re.match(r"(?i)^marque\s+(?:o\s+)?(?:dispositivo|aparelho)\s+(.+?)\s+como\s+(.+)$", r)
+        if trust:
+            value = norm(trust.group(2))
+            if re.search(r"\b(nao confiavel|desconhecido|nao conhecido)\b", value):
+                return _cmd(raw, "network.device_update", ref=trust.group(1).strip()[:80], trusted=False)
+            if re.search(r"\b(confiavel|conhecido|meu)\b", value):
+                return _cmd(raw, "network.device_update", ref=trust.group(1).strip()[:80], trusted=True)
+        check_dev = re.match(r"(?i)^(?:verifique|verificar|cheque|checar|teste|testar)\s+(?:a\s+conex[aã]o\s+d[oa]\s+|o\s+)?"
+                             r"(?:dispositivo|aparelho)\s+(.+)$", r) or \
+            re.match(r"(?i)^o\s+(?:dispositivo|aparelho)\s+(.+?)\s+(?:est[aá]|ta)\s+(?:online|conectad[oa]|na rede)$", r)
+        if check_dev:
+            return _cmd(raw, "network.check_device", ref=check_dev.group(1).strip()[:80])
+        if re.search(r"\bdispositivos\b.*\b(desconhecidos|nao confiaveis|estranhos)\b", t):
+            return _cmd(raw, "network.devices", status="untrusted")
         if re.search(r"\b(export\w*|gere|gerar|salve|salvar)\b.*\b(relatorio|inventario|lista)\b.*\b(rede|dispositivos)\b", t):
             fmt = "csv" if "csv" in t else ("json" if "json" in t else "md")
             return _cmd(raw, "network.export", format=fmt)

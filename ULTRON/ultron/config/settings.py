@@ -79,6 +79,7 @@ class Settings:
     # ------------------------------------------------------------ rede
     network_interval: float = 30.0
     network_discovery: bool = True
+    network_ssdp: bool = False             # anúncios SSDP/UPnP (opcional): nomes de TVs, impressoras, roteadores
     discovery_interval: float = 600.0
     discovery_max_hosts: int = 256
     # ------------------------------------------------------------ privacidade e autonomia

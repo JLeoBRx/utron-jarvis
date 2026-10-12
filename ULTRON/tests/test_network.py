@@ -49,6 +49,36 @@ class ParsingTest(unittest.TestCase):
         neigh = discovery.parse_ip_neigh(IP_NEIGH)
         self.assertEqual(set(neigh), {"192.168.0.1", "192.168.0.44"})
 
+    def test_ipv6_neighbors_linux_and_windows(self):
+        linux = discovery.parse_ip6_neigh(
+            "fe80::1 dev eth0 lladdr a4:2b:b0:11:22:33 router REACHABLE\n"
+            "fe80::2 dev eth0 lladdr b8:27:eb:aa:bb:cc STALE\n"
+            "fe80::3 dev eth0  FAILED\n"
+            "ff02::1 dev eth0 lladdr 33:33:00:00:00:01 NOARP\n")
+        self.assertEqual(linux, {"A4:2B:B0:11:22:33": ["fe80::1"], "B8:27:EB:AA:BB:CC": ["fe80::2"]})
+        windows = discovery.parse_netsh_ipv6_neighbors(
+            "Interface 7: Wi-Fi\n\nEndereço da Internet    Endereço Físico   Tipo\n"
+            "fe80::1%7               a4-2b-b0-11-22-33  Acessível (Roteador)\n"
+            "fe80::9                 00-00-00-00-00-00  Inacessível\n"
+            "ff02::1                 33-33-00-00-00-01  Permanente\n")
+        self.assertEqual(windows, {"A4:2B:B0:11:22:33": ["fe80::1"]})
+
+    def test_ssdp_is_restricted_to_the_same_private_ip(self):
+        import ipaddress
+        from ultron.network import ssdp
+        net = ipaddress.IPv4Network("192.168.0.0/24")
+        self.assertEqual(ssdp.safe_location("http://192.168.0.5:49152/desc.xml", "192.168.0.5", net),
+                         "http://192.168.0.5:49152/desc.xml")
+        self.assertIsNone(ssdp.safe_location("http://192.168.0.9/desc.xml", "192.168.0.5", net), "outro IP")
+        self.assertIsNone(ssdp.safe_location("http://8.8.8.8/desc.xml", "8.8.8.8", net), "fora da rede")
+        self.assertIsNone(ssdp.safe_location("https://192.168.0.5/x", "192.168.0.5", net), "só http local")
+        xml = (b'<root xmlns="urn:schemas-upnp-org:device-1-0"><device><friendlyName>TV Sala</friendlyName>'
+               b'<manufacturer>Samsung</manufacturer><modelName>QN55</modelName></device></root>')
+        self.assertEqual(ssdp.parse_description(xml), {"friendly_name": "TV Sala", "manufacturer": "Samsung",
+                                                       "model": "QN55"})
+        bomb = b'<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">]><root>&lol;</root>'
+        self.assertEqual(ssdp.parse_description(bomb), {}, "XML com entidades é recusado")
+
     def test_ping_latency_parsing(self):
         self.assertAlmostEqual(discovery.parse_ping_latency("Resposta de 192.168.0.1: bytes=32 tempo=3ms TTL=64"), 3.0)
         self.assertAlmostEqual(discovery.parse_ping_latency("64 bytes from 1.1.1.1: icmp_seq=1 time=12.4 ms"), 12.4)
@@ -71,7 +101,59 @@ class InventoryTest(unittest.TestCase):
         second = inventory.merge_scan({"hosts": [{"ip": "192.168.0.1", "mac": "A4:2B:B0:11:22:33", "alive": True}]},
                                       gateway="192.168.0.1")
         self.assertEqual(second["new"], [])
-        self.assertEqual({d.ip for d in second["offline"]}, {"192.168.0.20", "192.168.0.12"})
+        # uma varredura sem resposta NÃO prova saída da rede: fica "desconhecido", não "ausente"
+        self.assertEqual({d.ip for d in second["unknown"]}, {"192.168.0.20", "192.168.0.12"})
+        self.assertEqual(second["absent"], [])
+        third = inventory.merge_scan({"hosts": [{"ip": "192.168.0.1", "mac": "A4:2B:B0:11:22:33", "alive": True}]},
+                                     gateway="192.168.0.1")
+        self.assertEqual({d.ip for d in third["absent"]}, {"192.168.0.20", "192.168.0.12"})
+        self.assertEqual(inventory.count("absent"), 2)
+        db.close()
+
+    def test_passive_read_never_marks_absence_and_user_fields_survive(self):
+        db = Database(helpers.temp_dir() / "net.sqlite3")
+        inventory = NetworkInventory(db)
+        scan = {"network": "192.168.0.0/24", "hosts": [
+            {"ip": "192.168.0.20", "mac": "B8:27:EB:AA:BB:CC", "alive": True, "methods": ["icmp", "arp"]},
+            {"ip": "192.168.0.30", "mac": "", "alive": True, "methods": ["icmp"]}]}
+        inventory.merge_scan(scan)
+        key = inventory.find("192.168.0.20").key
+        inventory.update(key, alias="Servidor", notes="fica na estante", trusted=True)
+        for _ in range(3):
+            inventory.merge_scan({"network": "192.168.0.0/24", "passive": True, "hosts": []})
+        device = inventory.get(key)
+        self.assertEqual(device.status, "online", "leitura passiva não prova ausência")
+        self.assertEqual((device.alias, device.notes, device.trusted), ("Servidor", "fica na estante", True))
+        self.assertGreaterEqual(device.confidence, 0.9)
+        # o aparelho sem MAC ganha MAC depois: o registro migra sem duplicar
+        inventory.merge_scan({"network": "192.168.0.0/24", "hosts": [
+            {"ip": "192.168.0.30", "mac": "11:22:33:44:55:66", "alive": True, "methods": ["icmp", "arp"]},
+            {"ip": "192.168.0.20", "mac": "B8:27:EB:AA:BB:CC", "alive": True, "methods": ["icmp"]}]})
+        self.assertEqual(len([d for d in inventory.devices() if d.ip == "192.168.0.30"]), 1)
+        self.assertEqual(inventory.get(key).alias, "Servidor", "varredura nunca apaga dados do usuário")
+        with self.assertRaises(Exception):
+            inventory.update(key, notes="a senha do roteador é 1234")
+        # outra rede: não observável daqui → desconhecido, nunca ausente
+        inventory.merge_scan({"network": "10.0.0.0/24", "hosts": []})
+        inventory.merge_scan({"network": "10.0.0.0/24", "hosts": []})
+        self.assertEqual(inventory.get(key).status, "unknown")
+        db.close()
+
+    def test_unknown_fields_stay_empty_and_export(self):
+        db = Database(helpers.temp_dir() / "net.sqlite3")
+        inventory = NetworkInventory(db)
+        inventory.merge_scan({"network": "192.168.0.0/24", "hosts": [
+            {"ip": "192.168.0.40", "mac": "", "alive": True, "methods": ["icmp"]},
+            {"ip": "192.168.0.41", "mac": "DA:A1:19:00:00:01", "alive": False, "methods": ["arp"]}]})
+        no_mac = inventory.find("192.168.0.40")
+        self.assertEqual((no_mac.mac, no_mac.vendor, no_mac.hostname), ("", "", ""), "nada é inventado")
+        random_mac = inventory.find("192.168.0.41")
+        self.assertEqual(random_mac.vendor_source, "local_admin")
+        csv_text = inventory.export("csv")
+        self.assertIn("192.168.0.40", csv_text)
+        self.assertIn("ipv6", csv_text.splitlines()[0])
+        md = inventory.export("md")
+        self.assertIn("não identifica quem o usa", md)
         db.close()
 
     def test_vendor_lookup(self):
