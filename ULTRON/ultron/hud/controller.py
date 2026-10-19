@@ -1,10 +1,12 @@
 """Controlador da interface: liga o Neural Core aos dois hubs sem misturar responsabilidades.
 
-* **HUB 1 — NEURAL CORE** (``HudWindow`` + orbe): atividade cognitiva e sistemas ativos.
-* **HUB 2 — SECOND BRAIN** (``SecondBrainWindow``, criado sob demanda): o impacto prático
-  dessa atividade — tarefas, compromissos, ideias, lembretes, rede e saúde.
+* **HUB principal — JARVIS CORE** (``HudWindow`` + orbe): percepção, decisão, planejamento,
+  execução, verificação, voz e saúde dos subsistemas; o **Painel de Sistemas** (voz, rede,
+  desempenho) abre a partir dele.
+* **Segundo HUB — TARDIS** (``TardisWindow``, criado sob demanda): a memória pessoal como
+  espaço navegável — compromissos, tarefas, projetos, ideias, memórias e lembretes.
 
-Os dois hubs leem o MESMO estado central (ULTRON_STATE) e os MESMOS eventos:
+Os hubs leem o MESMO estado central (JARVIS_STATE) e os MESMOS eventos:
 
 * Event Bus → interface: eventos chegam em qualquer thread e entram numa fila limitada; a
   thread da interface drena em lotes (uma única chamada enfileirada por rajada). Em
@@ -61,7 +63,8 @@ class HudController(QtCore.QObject):
         self.view = BrainView(self.scene)
         self.window = HudWindow(self.view)
         self.orb = OrbWindow(self.scene)
-        self.second = None                          # HUB 2 (criado na primeira abertura)
+        self.second = None                          # TARDIS (criado na primeira abertura)
+        self.systems = None                         # Painel de Sistemas (criado na primeira abertura)
         self.tray = self._make_tray()
         self._inbox: deque = deque()
         self._inbox_lock = threading.Lock()
@@ -112,11 +115,13 @@ class HudController(QtCore.QObject):
         w.input.submitted.connect(lambda text: self.core.submit(text, source="text"))
         w.input.mic_toggled.connect(self._toggle_mic)
         w.input.voice_toggled.connect(self._toggle_voice)
-        w.input.second_brain.connect(lambda: self.open_second_brain())
+        w.input.second_brain.connect(lambda: self.open_tardis())
+        w.input.systems.connect(lambda: self.open_systems())
         w.authorization.decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="hud"))
         w.suggestion.decided.connect(lambda ok: self.core.accept_suggestion(ok, by="hud"))
         w.collapse_requested.connect(self.collapse)
-        w.second_brain_requested.connect(lambda: self.open_second_brain())
+        w.second_brain_requested.connect(lambda: self.open_tardis())
+        w.systems_requested.connect(lambda: self.open_systems())
         w.closing.connect(self._closed_to_tray)
         self.orb.expand_requested.connect(self.expand)
         self.orb.menu_requested.connect(lambda pos: self._menu().exec(pos))
@@ -153,8 +158,9 @@ class HudController(QtCore.QObject):
                 metrics.record("ui.event_delay", max(0.0, now - stamp))
             try:
                 self.scene.on_event(kind, payload)
-                if self.second is not None:
-                    self.second.on_event(kind, payload)
+                for hub in (self.second, self.systems):
+                    if hub is not None:
+                        hub.on_event(kind, payload)
             except Exception:                               # um evento malformado nunca derruba a interface
                 log.exception("falha ao tratar %s na interface", kind)
             if kind == EventType.SYSTEM_READY.value:
@@ -163,8 +169,12 @@ class HudController(QtCore.QObject):
                 self._notify(payload)
             elif kind == EventType.NOTIFICATION.value and payload.get("popup") and not payload.get("silent"):
                 self._show_message(f"JARVIS · {payload.get('title', '')}", str(payload.get("body", "")))
-            elif kind == EventType.UI_REQUEST.value and payload.get("view") == "second_brain":
-                self.open_second_brain(payload.get("section") or None)
+            elif kind == EventType.UI_REQUEST.value:
+                view = payload.get("view")
+                if view in ("second_brain", "tardis"):
+                    self.open_tardis(payload.get("section") or None)
+                elif view in ("systems", "voice", "network"):
+                    self.open_systems(payload.get("section") or (view if view != "systems" else None))
             if kind in AUTO_EXPAND and not self.window.isVisible() \
                     and getattr(self.core.settings(), "hud_auto_expand", True):
                 self.expand()
@@ -178,8 +188,9 @@ class HudController(QtCore.QObject):
             return
         self.state_cache.update(self.core.state.subset(names))
         self.scene.on_state(self.state_cache)
-        if self.second is not None:
-            self.second.on_state(self.state_cache, names)
+        for hub in (self.second, self.systems):
+            if hub is not None:
+                hub.on_state(self.state_cache, names)
         if "pending_authorization" in names:
             pending = self.state_cache.get("pending_authorization")
             self.window.authorization.present(
@@ -231,8 +242,9 @@ class HudController(QtCore.QObject):
         self.scene.profile = self.profile
         self._state_timer.setInterval(self.profile.state_ms)
         self._telemetry_timer.setInterval(self.profile.telemetry_ms)
-        if self.second is not None:
-            self.second.on_profile(self.profile)
+        for hub in (self.second, self.systems):
+            if hub is not None:
+                hub.on_profile(self.profile)
 
     # ================================================================ relógio
     def _tick(self) -> None:
@@ -284,7 +296,12 @@ class HudController(QtCore.QObject):
         metrics.gauge("ui.profile", self.profile.name)
         metrics.gauge("ui.events_dropped", self.dropped_events)
         metrics.gauge("ui.inbox", len(self._inbox))
-        metrics.gauge("ui.hub2_open", bool(self.second is not None and self.second.isVisible()))
+        tardis_open = bool(self.second is not None and self.second.isVisible())
+        metrics.gauge("ui.tardis_open", tardis_open)
+        if tardis_open:
+            metrics.gauge("ui.tardis_fps", self.second.target_fps)
+            for value in list(self.second.view.frame_times)[-5:]:
+                metrics.record("ui.tardis_frame", value)
 
     def health(self) -> dict:
         visible = self.window.isVisible() or self.orb.isVisible()
@@ -321,15 +338,36 @@ class HudController(QtCore.QObject):
                 self.orb.place_default()
             self.orb.show()
 
-    def open_second_brain(self, section: str | None = None) -> None:
+    def open_tardis(self, section: str | None = None) -> None:
+        """Abre o TARDIS (memória espacial). Fechar ou voltar só esconde: o estado é preservado."""
         if self.second is None:
-            from .second_hub import SecondBrainWindow
-            self.second = SecondBrainWindow(self.core, state=self.state_cache, profile=self.profile)
-            self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="hub2"))
-        self.second.show_section(section)
+            from .tardis import TardisWindow
+            self.second = TardisWindow(self.core, state=self.state_cache, profile=self.profile)
+            self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="tardis"))
+            self.second.return_requested.connect(self.return_to_core)
+        if section:
+            self.second.show_section(section)
         self.second.showNormal() if self.second.isMinimized() else self.second.show()
         self.second.raise_()
         self.second.activateWindow()
+
+    open_second_brain = open_tardis                 # nome antigo (compatibilidade)
+
+    def return_to_core(self) -> None:
+        if self.second is not None:
+            self.second.hide()                      # nada é destruído: câmera, região e filtros ficam
+        self.expand()
+
+    def open_systems(self, section: str | None = None) -> None:
+        """Painel de Sistemas do JARVIS CORE: voz, rede local, desempenho e saúde."""
+        if self.systems is None:
+            from .systems_panel import SystemsPanel
+            self.systems = SystemsPanel(self.core, state=self.state_cache, profile=self.profile)
+            self.systems.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="sistemas"))
+        self.systems.show_section(section)
+        self.systems.showNormal() if self.systems.isMinimized() else self.systems.show()
+        self.systems.raise_()
+        self.systems.activateWindow()
 
     def _closed_to_tray(self) -> None:
         if self.tray is None:
@@ -375,14 +413,16 @@ class HudController(QtCore.QObject):
         tray.setContextMenu(self._menu())
         tray.activated.connect(lambda reason: self.expand()
                                if reason == QtWidgets.QSystemTrayIcon.Trigger else None)
-        tray.messageClicked.connect(lambda: self.open_second_brain("notifications"))
+        tray.messageClicked.connect(lambda: self.open_tardis("notifications"))
         tray.show()
         return tray
 
     def _menu(self) -> QtWidgets.QMenu:
         menu = QtWidgets.QMenu()
-        menu.addAction("Abrir o HUB", self.expand)
-        menu.addAction("Second Brain", lambda: self.open_second_brain())
+        menu.addAction("Abrir o JARVIS CORE", self.expand)
+        menu.addAction("TARDIS — memória pessoal", lambda: self.open_tardis())
+        menu.addAction("Sistemas (voz, rede, desempenho)", lambda: self.open_systems())
+        menu.addAction("Diagnóstico de voz", lambda: self.open_systems("voice"))
         menu.addAction("Orbe compacto", self.collapse)
         menu.addSeparator()
         mic = menu.addAction("Microfone")
@@ -393,10 +433,10 @@ class HudController(QtCore.QObject):
         voice.setCheckable(True)
         voice.setChecked(not self.core.speaker.muted)
         voice.toggled.connect(lambda on: self.window.input.voice.setChecked(on))
-        profiles = menu.addMenu("Perfil de desempenho")
+        profiles = menu.addMenu("Qualidade visual")
         group = QtGui.QActionGroup(profiles)
-        for name, label in (("performance", "Performance (fluidez)"), ("balanced", "Balanced (equilíbrio)"),
-                            ("cinematic", "Cinematic (efeitos)")):
+        for name, label in (("economy", "Econômico (máxima fluidez)"), ("balanced", "Equilibrado"),
+                            ("high", "Alto"), ("cinematic", "Cinematográfico (efeitos completos)")):
             action = profiles.addAction(label)
             action.setCheckable(True)
             action.setChecked(self.profile.name == name)
@@ -424,8 +464,9 @@ class HudController(QtCore.QObject):
         self.window.hide_to_tray = False
         for timer in (self._frame, self._state_timer, self._telemetry_timer, self._heartbeat_timer):
             timer.stop()
-        if self.second is not None:
-            self.second.shutdown()
+        for hub in (self.second, self.systems):
+            if hub is not None:
+                hub.shutdown()
         if self.tray is not None:
             self.tray.hide()
         app = QtWidgets.QApplication.instance()

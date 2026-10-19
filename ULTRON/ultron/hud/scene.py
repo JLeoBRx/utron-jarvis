@@ -1,6 +1,6 @@
 """NEURAL SCENE — o estado visual do JARVIS NEURAL HUB (sem Qt, testável).
 
-A cena só muda por dados reais: eventos do Event Bus, o ULTRON_STATE e a telemetria.
+A cena só muda por dados reais: eventos do Event Bus, o JARVIS_STATE e a telemetria.
 Nada aqui é decorativo ou aleatório sem causa:
 
 * malha neural 3D: densidade proporcional ao tamanho real do Neural Graph; os nós e as

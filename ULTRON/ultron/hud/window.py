@@ -38,7 +38,8 @@ class InputBar(QtWidgets.QWidget):
     mic_toggled = QtCore.Signal(bool)
     voice_toggled = QtCore.Signal(bool)
     collapse = QtCore.Signal()
-    second_brain = QtCore.Signal()
+    second_brain = QtCore.Signal()          # abre o TARDIS
+    systems = QtCore.Signal()               # abre o Painel de Sistemas (voz, rede, desempenho)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,7 +51,7 @@ class InputBar(QtWidgets.QWidget):
         layout.setSpacing(8)
         self.line = QtWidgets.QLineEdit()
         self.line.setObjectName("HudLine")
-        self.line.setPlaceholderText("Diga \"Jarvis\" ou digite um comando…")
+        self.line.setPlaceholderText("Diga \"Jarvis\" ou digite um pedido…")
         self.line.returnPressed.connect(self._submit)
         self.line.installEventFilter(self)
         self.mic = self._button("MIC", "Microfone ligado/desligado (Ctrl+M)", checkable=True)
@@ -61,11 +62,14 @@ class InputBar(QtWidgets.QWidget):
         self.voice.toggled.connect(self.voice_toggled)
         self.orb = self._button("ORBE", "Recolher para o orbe compacto (Esc)")
         self.orb.clicked.connect(self.collapse)
-        self.brain = self._button("2º CÉREBRO", "Abrir o Second Brain: tarefas, agenda, lembretes, rede (F2)")
+        self.sys = self._button("SISTEMAS", "Voz (diagnóstico e microfone), rede local, desempenho e saúde (F3)")
+        self.sys.clicked.connect(self.systems)
+        self.brain = self._button("TARDIS", "Memória pessoal: compromissos, tarefas, projetos, ideias, lembretes (F2)")
         self.brain.clicked.connect(self.second_brain)
         layout.addWidget(self.line, 1)
         layout.addWidget(self.mic)
         layout.addWidget(self.voice)
+        layout.addWidget(self.sys)
         layout.addWidget(self.brain)
         layout.addWidget(self.orb)
 
@@ -148,11 +152,12 @@ class DecisionBar(QtWidgets.QWidget):
 class HudWindow(QtWidgets.QWidget):
     collapse_requested = QtCore.Signal()
     second_brain_requested = QtCore.Signal()
+    systems_requested = QtCore.Signal()
     closing = QtCore.Signal()
 
     def __init__(self, view: BrainView):
         super().__init__()
-        self.setWindowTitle("JARVIS — Neural Hub")
+        self.setWindowTitle("JARVIS — Core")
         self.setWindowIcon(app_icon())
         self.resize(1320, 820)
         self.setMinimumSize(820, 540)
@@ -166,12 +171,13 @@ class HudWindow(QtWidgets.QWidget):
         QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.collapse_requested)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+M"), self, activated=self.input.mic.toggle)
         QtGui.QShortcut(QtGui.QKeySequence("F2"), self, activated=self.second_brain_requested)
+        QtGui.QShortcut(QtGui.QKeySequence("F3"), self, activated=self.systems_requested)
         self.hide_to_tray = True
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)
         w, h = self.width(), self.height()
         self.view.setGeometry(0, 0, w, h)
-        bar_w = min(900, w - 48)
+        bar_w = min(1000, w - 48)
         x = (w - bar_w) // 2
         self.input.setGeometry(x, h - 62, bar_w, 40)
         self._layout_bars()
@@ -179,7 +185,7 @@ class HudWindow(QtWidgets.QWidget):
 
     def _layout_bars(self) -> None:
         w, h = self.width(), self.height()
-        bar_w = min(900, w - 48)
+        bar_w = min(1000, w - 48)
         x = (w - bar_w) // 2
         y = h - 62 - 8
         for bar in (self.authorization, self.suggestion):

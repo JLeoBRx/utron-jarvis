@@ -20,12 +20,10 @@ from functools import lru_cache
 
 from PySide6 import QtCore, QtGui
 
-NAME = "jarvis-blue"
-HEX = {
-    "space": "#030712", "abyss": "#071426", "deep": "#0B1F3A", "tech": "#075985", "cyan": "#00D9FF",
-    "glow": "#67F3FF", "electric": "#168BFF", "ice": "#DCEEFF", "dim_text": "#7F9BB7", "alert": "#FFB547",
-    "error": "#FF5D73",
-}
+from . import palette
+
+NAME, HEX, STATE, TONE_HEX = palette.NAME, palette.HEX, palette.STATE, palette.TONE_HEX
+state_glow, state_label = palette.state_glow, palette.state_label
 
 BG = QtGui.QColor(HEX["space"])              # fundo
 BG2 = QtGui.QColor(HEX["abyss"])             # camadas e painéis
@@ -46,34 +44,14 @@ BLACK, GRAPHITE, GRAPHITE_LIGHT = BG, BG2, PANEL
 GOLD, GOLD_DIM, AMBER, WARM_WHITE = PRIMARY, PRIMARY_DIM, ALERT, TEXT_BRIGHT
 
 # Tons das partículas, pulsos e nós ("gold"/"amber"/"white" = nomes antigos, mesmas cores novas).
-TONES = {"cyan": PRIMARY, "glow": GLOW, "blue": ELECTRIC, "electric": ELECTRIC, "ice": TEXT, "dim": PRIMARY_DIM,
-         "deep": PRIMARY_DIM, "alert": ALERT, "error": ERROR,
-         "gold": PRIMARY, "amber": ALERT, "white": TEXT}
+TONES = {tone: QtGui.QColor(value) for tone, value in TONE_HEX.items()}
 
 # Estado de atividade (contrato do núcleo) → (cor principal, intensidade do halo 0..1, descrição do efeito)
-STATE_STYLE = {
-    "IDLE": (PANEL, 0.25, "azul profundo discreto"),
-    "LISTENING": (PRIMARY, 0.75, "halo ciano suave"),
-    "PERCEIVING": (PRIMARY, 0.6, "ondas sutis"),
-    "CONTEXT": (ELECTRIC, 0.55, "memória consultada"),
-    "DECIDING": (ELECTRIC, 0.6, "conexões se acendem"),
-    "PLANNING": (ELECTRIC, 0.7, "conexões progressivamente iluminadas"),
-    "EXECUTING": (PRIMARY, 0.85, "pulsos acompanham a operação"),
-    "VERIFYING": (GLOW, 0.7, "confirmação"),
-    "RECOVERY": (ALERT, 0.6, "correção em andamento"),
-    "SPEAKING": (GLOW, 0.8, "sincronizado com a voz"),
-    "REMINDING": (GLOW, 0.8, "lembrete"),
-    "IMAGINING": (ELECTRIC, 0.65, "espaço interno com profundidade"),
-    "ERROR": (ERROR, 0.6, "falha identificável"),
-}
+STATE_STYLE = {state: (QtGui.QColor(hex_), glow, effect) for state, (hex_, glow, effect) in STATE.items()}
 
 
 def state_color(activity: str) -> QtGui.QColor:
     return QtGui.QColor(STATE_STYLE.get(str(activity or "IDLE"), STATE_STYLE["IDLE"])[0])
-
-
-def state_glow(activity: str) -> float:
-    return STATE_STYLE.get(str(activity or "IDLE"), STATE_STYLE["IDLE"])[1]
 
 
 DISPLAY_FAMILIES = ["Bahnschrift", "Segoe UI", "DejaVu Sans", "Sans Serif"]
@@ -217,6 +195,11 @@ QScrollBar:horizontal { background: #050E1C; height: 10px; }
 QScrollBar::handle:horizontal { background: rgba(0, 217, 255, 60); border-radius: 4px; min-width: 24px; }
 QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
 QSplitter::handle { background: rgba(0, 217, 255, 20); }
+QTabWidget::pane { border: 1px solid rgba(0, 217, 255, 40); border-radius: 4px; top: -1px; }
+QTabBar::tab { background: #050E1C; color: #9FB9D3; padding: 8px 18px; letter-spacing: 2px; font-size: 9pt;
+    border: 1px solid rgba(0, 217, 255, 30); border-bottom: none; margin-right: 2px; }
+QTabBar::tab:selected { background: #0B1F3A; color: #E6FBFF; border-color: rgba(0, 217, 255, 120); }
+QFrame#Panel { background: #071426; border-left: 1px solid rgba(0, 217, 255, 60); }
 """
 
 STYLESHEET = STYLESHEET + PANEL_STYLESHEET

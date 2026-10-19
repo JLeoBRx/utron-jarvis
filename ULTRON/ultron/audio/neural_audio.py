@@ -30,7 +30,8 @@ log = logging.getLogger("ultron.neural_audio")
 RATE = 22050
 BUSY_BED = {"THINKING": 0.55, "PLANNING": 0.55, "EXECUTING": 0.6, "VERIFYING": 0.5, "RECOVERY": 0.65,
             "IMAGINING": 0.5, "SIMULATING": 0.5, "NETWORK": 0.4, "DREAMING": 0.3, "LISTENING": 0.2,
-            "AWAITING_AUTHORIZATION": 0.35}
+            "AWAITING_AUTHORIZATION": 0.35, "PERCEIVING": 0.3, "CONTEXT": 0.4, "DECIDING": 0.5, "REMINDING": 0.3}
+AMBIENT_BED = 0.12               # som ambiente discreto do TARDIS (opcional, desligado por padrão)
 
 
 # ---------------------------------------------------------------- síntese
@@ -166,6 +167,7 @@ class NeuralAudio:
         self._lock = threading.Lock()
         self.played = 0
         self.reason = ""
+        self.ambient = False
 
     # ------------------------------------------------------------ ciclo de vida
     def start(self) -> None:
@@ -234,8 +236,19 @@ class NeuralAudio:
     def _on_state(self, event) -> None:
         if "runtime_state" not in (event.get("changed") or ()) or self._state is None:
             return
-        runtime = self._state.runtime_state
-        target = BUSY_BED.get(runtime, 0.0) if self._enabled() and not self.reason else 0.0
+        self._apply_bed()
+
+    def set_ambient(self, on: bool) -> None:
+        """Som ambiente do TARDIS: um leito grave e discreto enquanto a janela está visível."""
+        self.ambient = bool(on)
+        self._apply_bed()
+
+    def _apply_bed(self) -> None:
+        if self.reason or not self._enabled():
+            target = 0.0
+        else:
+            runtime = self._state.runtime_state if self._state is not None else "IDLE"
+            target = max(BUSY_BED.get(runtime, 0.0), AMBIENT_BED if self.ambient else 0.0)
         if self.output is not None and hasattr(self.output, "bed_target"):
             self.output.bed_target = target
 

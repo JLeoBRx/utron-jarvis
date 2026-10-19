@@ -11,7 +11,7 @@ central de autonomia e auditoria). Não existe banco nem regra de negócio paral
   sozinho;
 * senhas, tokens e dados financeiros/autenticação são recusados antes de qualquer gravação;
 * cada mudança publica um evento com o registro completo: os dois hubs se atualizam pelo
-  evento, sem reconsultar o banco inteiro; o resumo vai para o ULTRON_STATE.
+  evento, sem reconsultar o banco inteiro; o resumo vai para o JARVIS_STATE.
 """
 from __future__ import annotations
 

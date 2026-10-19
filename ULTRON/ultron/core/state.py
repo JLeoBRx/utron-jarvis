@@ -1,4 +1,4 @@
-"""ULTRON_STATE — o estado global estruturado.
+"""JARVIS_STATE — o estado global estruturado.
 
 Existe um único estado. Módulos escrevem por ``StateStore.update`` e leem cópias
 (``snapshot``). Assim nenhum módulo mantém sua própria versão divergente do mundo.
@@ -22,7 +22,7 @@ RUNTIME_STATES = (
 )
 
 # Contrato de atividade compartilhado pelos dois hubs (NEURAL CORE e SECOND BRAIN). Não é um
-# segundo estado: é a leitura reduzida do ``runtime_state`` deste mesmo ULTRON_STATE.
+# segundo estado: é a leitura reduzida do ``runtime_state`` deste mesmo JARVIS_STATE.
 ACTIVITY_STATES = ("PERCEIVING", "CONTEXT", "DECIDING", "PLANNING", "EXECUTING", "VERIFYING", "RECOVERY",
                    "LISTENING", "SPEAKING", "REMINDING", "IMAGINING", "IDLE", "ERROR")
 _ACTIVITY_OF = {"BOOTING": "IDLE", "SHUTDOWN": "IDLE", "THINKING": "DECIDING",
@@ -113,7 +113,7 @@ class StateStore:
     def update(self, *, _source: str = "", **changes: Any) -> list[str]:
         unknown = set(changes) - _FIELDS
         if unknown:
-            raise KeyError(f"campos inexistentes no ULTRON_STATE: {sorted(unknown)}")
+            raise KeyError(f"campos inexistentes no JARVIS_STATE: {sorted(unknown)}")
         changed = []
         with self._lock:
             for key, value in changes.items():

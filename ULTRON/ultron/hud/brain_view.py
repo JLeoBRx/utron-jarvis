@@ -705,13 +705,18 @@ class BrainView(QtWidgets.QWidget):
         if alpha <= 0.01:
             return
         top = min(fr.cy + 0.93 * fr.R + 12, fr.rcy + RING_BOTTOM * fr.rry - 26)
-        state = "BOOT" if scene.boot.active else scene.runtime_state.replace("_", " ")
+        if scene.boot.active:
+            state = "INICIALIZAÇÃO"
+        elif scene.runtime_state == "AWAITING_AUTHORIZATION":
+            state = "AGUARDANDO AUTORIZAÇÃO"
+        else:
+            state = theme.state_label(scene.state.get("activity") or scene.runtime_state)
         privacy = scene.state.get("privacy") or {}
         mode = "LOCAL" if privacy.get("local_mode") else str(privacy.get("mode") or "").upper()
         alert = not scene.boot.active and scene.runtime_state in ("AWAITING_AUTHORIZATION", "ERROR")
         self._centered(p, "JARVIS", theme.font(14, weight=600, spacing=9),
                        theme.with_alpha(theme.TEXT_BRIGHT, 0.92 * alpha), fr.rcx, top, shadow=True)
-        self._centered(p, "NEURAL CORE", theme.font(7.5, weight=600, spacing=5),
+        self._centered(p, "CORE", theme.font(7.5, weight=600, spacing=5),
                        theme.with_alpha(theme.PRIMARY, 0.9 * alpha), fr.rcx, top + 25, shadow=True)
         self._centered(p, f"{state} · {mode}" if mode else state, theme.font(7, weight=500, spacing=3.5),
                        theme.with_alpha(theme.ALERT if alert else theme.TEXT_DIM, 0.9 * alpha), fr.rcx, top + 41,
@@ -892,9 +897,9 @@ class BrainView(QtWidgets.QWidget):
         p.drawText(QPointF(26, 38), "JARVIS")
         p.setFont(theme.font(7, weight=500, spacing=3))
         p.setPen(theme.with_alpha(theme.PRIMARY, 0.8))
-        p.drawText(QPointF(27, 55), "NEURAL HUB")
+        p.drawText(QPointF(27, 55), "CORE · HUB PRINCIPAL")
         # profundidade cognitiva (canto superior direito)
-        label = f"DEPTH {scene.depth_level}"
+        label = f"PROFUNDIDADE {scene.depth_level}"
         fm = QtGui.QFontMetricsF(p.font())
         p.drawText(QPointF(w - 26 - fm.horizontalAdvance(label), 38), label)
         bar_w = 70

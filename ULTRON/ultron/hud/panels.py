@@ -1,17 +1,16 @@
-"""HUB 2 — JARVIS SECOND BRAIN.
+"""Painéis reutilizáveis dos HUBs do JARVIS (memória pessoal, rede, sistema).
 
-O impacto prático da atividade do JARVIS: prioridades do dia, compromissos, atrasados, linha do
-tempo, tarefas, projetos, ideias e notas, busca na memória, central de notificações, dispositivos
-da rede, saúde do sistema, revisão do que foi inferido e lixeira.
+As páginas daqui aparecem em dois lugares, sem duplicação de código nem de estado:
 
-Regras desta tela:
+* no **TARDIS** (memória espacial): ao entrar numa região, a página dela abre ao lado;
+* no **Painel de Sistemas** do JARVIS CORE: voz, rede e desempenho/saúde.
 
-* é o MESMO programa e o MESMO estado do HUB 1 (cache de estado do controlador + eventos do
-  barramento) — não existe um segundo sistema de estado;
-* nenhuma consulta roda na thread da interface: cada seção pede seus dados a uma thread de
+Regras (valem para os dois):
+
+* nenhuma consulta roda na thread da interface: cada página pede seus dados a uma thread de
   leitura própria e recebe o resultado por sinal (respostas antigas são descartadas);
-* atualização por EVENTO (registro criado/alterado, lembrete, rede…): só as seções afetadas
-  ficam "sujas" e só a visível recarrega (com debounce); seções ocultas carregam ao abrir;
+* atualização por EVENTO (registro criado/alterado, lembrete, rede…): só as páginas afetadas
+  ficam "sujas" e só a visível recarrega (com debounce); páginas ocultas carregam ao abrir;
 * toda alteração passa pelo Neural Core (``core.run_skill``): autonomia, autorização específica,
   auditoria e verificação lida do banco. A tela mostra o resultado real — falha aparece como
   falha, e "executado sem confirmação" nunca vira animação de sucesso;
@@ -50,36 +49,6 @@ EVENT_SECTIONS = {
 }
 OPEN = ("open", "in_progress", "waiting")
 RELOAD_DEBOUNCE_MS = 250
-
-STYLE = """
-QWidget#Hub2 { background: #070706; }
-QWidget#Hub2 QLabel { color: #e8decc; }
-QLabel#H2Title { color: #d6a242; font-size: 10pt; letter-spacing: 3px; }
-QLabel#H2Dim { color: #968c7c; font-size: 9pt; }
-QLabel#H2Big { color: #fff0d6; font-size: 13pt; }
-QLabel#H2Answer { color: #f0e6d2; background: rgba(214,162,66,18); border-left: 2px solid #d6a242; padding: 8px; }
-QListWidget#H2Nav { background: #0b0a09; border: none; border-right: 1px solid rgba(214,162,66,40);
-    color: #b9ab93; font-size: 9pt; outline: none; }
-QListWidget#H2Nav::item { padding: 11px 14px; letter-spacing: 2px; }
-QListWidget#H2Nav::item:selected { background: rgba(214,162,66,34); color: #ffe6b8;
-    border-left: 2px solid #d6a242; }
-QListWidget#H2Nav::item:hover { color: #f0e6d2; }
-QFrame#H2Card { background: #0e0d0c; border: 1px solid rgba(214,162,66,38); border-radius: 4px; }
-QListWidget, QTreeWidget, QTableView, QPlainTextEdit, QTextBrowser {
-    background: #0b0a09; color: #e8decc; border: 1px solid rgba(214,162,66,30);
-    selection-background-color: rgba(214,162,66,70); selection-color: #fff0d6; alternate-background-color: #100f0d; }
-QHeaderView::section { background: #12100e; color: #d6a242; border: none; border-bottom: 1px solid rgba(214,162,66,60);
-    padding: 5px 6px; font-size: 8pt; letter-spacing: 1px; }
-QTableView { gridline-color: rgba(214,162,66,14); }
-QLineEdit, QComboBox { background: #0e0d0c; color: #f0e6d2; border: 1px solid rgba(214,162,66,60);
-    border-radius: 3px; padding: 5px 8px; }
-QComboBox QAbstractItemView { background: #121110; color: #e8decc; selection-background-color: rgba(214,162,66,70); }
-QCheckBox { color: #e8decc; }
-QScrollBar:vertical { background: #0b0a09; width: 10px; }
-QScrollBar::handle:vertical { background: rgba(214,162,66,60); border-radius: 4px; min-height: 24px; }
-QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
-"""
-
 
 # ====================================================================== utilidades
 def _button(text: str, tip: str = "", *, primary: bool = False) -> QtWidgets.QPushButton:
@@ -334,93 +303,6 @@ def _table(model, *, stretch: int = 1) -> QtWidgets.QTableView:
     return view
 
 
-# ====================================================================== cabeçalho
-class Header(QtWidgets.QWidget):
-    """Título, estado de atividade compartilhado com o HUB 1 e indicadores do resumo central."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(74)
-        self.activity = "IDLE"
-        self.reason = ""
-        self.summary: dict = {}
-        self.network: dict = {}
-        self.pulse = 0.0                    # brilho âmbar breve quando um lembrete dispara
-
-    def set_state(self, state: dict) -> None:
-        self.activity = str(state.get("activity") or "IDLE")
-        self.reason = str(state.get("runtime_reason") or "")
-        self.summary = dict(state.get("second_brain") or {})
-        self.network = dict(state.get("network_state") or {})
-        self.update()
-
-    def chips(self) -> list[tuple[str, bool]]:
-        s, n = self.summary, self.network
-        chips = [(f"ABERTAS {s.get('open_tasks', 0)}", False), (f"ATRASADAS {s.get('overdue', 0)}", bool(s.get("overdue"))),
-                 (f"HOJE {s.get('today', 0)}", False), (f"REVISAR {s.get('unreviewed', 0)}", bool(s.get("unreviewed"))),
-                 (f"AVISOS {s.get('unread_notifications', 0)}", bool(s.get("unread_notifications")))]
-        nxt = s.get("next_reminder") or {}
-        if nxt:
-            chips.append((f"PRÓXIMO: {str(nxt.get('title', ''))[:22]} · {nxt.get('when_text', '')}", False))
-        if n:
-            if not n.get("discovery_enabled", True):
-                chips.append(("REDE: DESCOBERTA DESLIGADA", False))
-            elif n.get("scan_error"):
-                chips.append(("REDE: INDISPONÍVEL", True))
-            else:
-                chips.append((f"REDE {n.get('devices_online', 0)} PRESENTES · {n.get('devices_untrusted_online', 0)} "
-                              f"NÃO CONHECIDOS", bool(n.get("devices_untrusted_online"))))
-        return chips
-
-    def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
-        p = QtGui.QPainter(self)
-        p.setRenderHint(QtGui.QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        grad = QtGui.QLinearGradient(0, 0, 0, h)
-        grad.setColorAt(0, QtGui.QColor(16, 14, 12))
-        grad.setColorAt(1, QtGui.QColor(8, 8, 7))
-        p.fillRect(self.rect(), grad)
-        if self.pulse > 0:
-            p.fillRect(self.rect(), theme.with_alpha(theme.ALERT, 0.12 * self.pulse))
-        p.setPen(QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.55), 1))
-        p.drawLine(0, h - 1, w, h - 1)
-        p.setPen(theme.PRIMARY)
-        p.setFont(theme.font(13, weight=600, spacing=4))
-        p.drawText(QtCore.QRectF(20, 8, 420, 28), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, "JARVIS · SECOND BRAIN")
-        p.setFont(theme.font(8.5, spacing=2))
-        p.setPen(theme.TEXT_DIM)
-        today = dt.date.today()
-        p.drawText(QtCore.QRectF(20, 34, 420, 18), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
-                   f"{timeutil.DIAS[today.weekday()].upper()} · {today:%d/%m/%Y}")
-        # atividade (o mesmo contrato do HUB 1)
-        tone = theme.ALERT if self.activity in ("ERROR", "RECOVERY", "REMINDING") else theme.PRIMARY
-        p.setPen(tone)
-        p.setFont(theme.font(9, weight=600, spacing=3))
-        right = QtCore.QRectF(w - 380, 8, 360, 22)
-        p.drawText(right, QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight, f"● {self.activity}")
-        if self.reason:
-            p.setPen(theme.TEXT_DIM)
-            p.setFont(theme.font(8))
-            p.drawText(QtCore.QRectF(w - 380, 30, 360, 18), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight,
-                       self.reason[:60])
-        # indicadores
-        x = 20.0
-        p.setFont(theme.font(7.5, weight=600, spacing=1.5))
-        metrics = QtGui.QFontMetricsF(p.font())
-        for text, alert in self.chips():
-            width = metrics.horizontalAdvance(text) + 18
-            if x + width > w - 20:
-                break
-            rect = QtCore.QRectF(x, 52, width, 17)
-            p.setPen(QtGui.QPen(theme.with_alpha(theme.ALERT if alert else theme.PRIMARY, 0.65 if alert else 0.35), 1))
-            p.setBrush(theme.with_alpha(theme.ALERT if alert else theme.PRIMARY, 0.10 if alert else 0.04))
-            p.drawRoundedRect(rect, 3, 3)
-            p.setPen(theme.TEXT_BRIGHT if alert else theme.TEXT)
-            p.drawText(rect, QtCore.Qt.AlignCenter, text)
-            x += width + 8
-        p.end()
-
-
 # ====================================================================== diálogo de registro
 class RecordDialog(QtWidgets.QDialog):
     """Criar ou editar um registro. Datas em português ("amanhã às 18h") ou "AAAA-MM-DD HH:MM"."""
@@ -518,20 +400,20 @@ class Page(QtWidgets.QWidget):
     key = ""
     title = ""
 
-    def __init__(self, hub: "SecondBrainWindow"):
+    def __init__(self, hub: "PageHost"):
         super().__init__()
         self.hub = hub
         self.service = hub.core.second_brain
         self.layout_ = QtWidgets.QVBoxLayout(self)
         self.layout_.setContentsMargins(22, 16, 22, 12)
         self.layout_.setSpacing(10)
-        head = QtWidgets.QHBoxLayout()
-        head.addWidget(_label(self.title, "H2Title"))
-        head.addStretch(1)
+        self.layout_.addWidget(_label(self.title, "H2Title"))
+        row = QtWidgets.QHBoxLayout()                 # ações numa linha própria: cabem em painéis estreitos
         self.toolbar = QtWidgets.QHBoxLayout()
         self.toolbar.setSpacing(6)
-        head.addLayout(self.toolbar)
-        self.layout_.addLayout(head)
+        row.addLayout(self.toolbar)
+        row.addStretch(1)
+        self.layout_.addLayout(row)
         self.status = _label("", "H2Dim")
 
     def fetch(self) -> Callable[[], Any]:     # pragma: no cover - cada página define
@@ -562,7 +444,7 @@ class RecordsPage(Page):
         self.detail = QtWidgets.QTextBrowser()
         self.detail.setMinimumWidth(300)
         self.detail.setOpenLinks(False)
-        split = QtWidgets.QSplitter()
+        split = QtWidgets.QSplitter(QtCore.Qt.Vertical)      # lista em cima, detalhes embaixo
         split.addWidget(self.table)
         split.addWidget(self.detail)
         split.setStretchFactor(0, 3)
@@ -887,7 +769,7 @@ class ProjectsPage(RecordsPage):
     def __init__(self, hub):
         super().__init__(hub)
         self.projects = QtWidgets.QListWidget()
-        self.projects.setMaximumWidth(280)
+        self.projects.setMaximumHeight(170)
         self.projects.currentItemChanged.connect(lambda *_: self.hub.reload(self.key, keep_projects=True))
         split = self.table.parentWidget()
         split.insertWidget(0, self.projects)
@@ -1420,106 +1302,51 @@ class SystemPage(Page):
             self.profile.blockSignals(False)
 
 
-# ====================================================================== janela
-class SecondBrainWindow(QtWidgets.QWidget):
+# ====================================================================== hospedeiro das páginas
+class PageHost(QtWidgets.QWidget):
+    """Base do TARDIS e do Painel de Sistemas: leitura assíncrona, recarga por evento, ações pelo
+    núcleo e barra de autorização. Subclasses montam o layout e chamam ``add_page``."""
+
     authorization_decided = QtCore.Signal(bool)
     _action_done = QtCore.Signal(str, object)
-
-    PAGES = (TodayPage, TimelinePage, TasksPage, ProjectsPage, IdeasPage, SearchPage, NotificationsPage,
-             NetworkPage, SystemPage, ReviewPage)
 
     def __init__(self, core, *, state: dict | None = None, profile=None):
         super().__init__()
         self.core = core
         self.state = state if state is not None else core.state.as_dict()
         self.profile = profile
-        self.setObjectName("Hub2")
-        self.setWindowTitle("JARVIS — Second Brain")
+        self.setStyleSheet(theme.PANEL_STYLESHEET)
         self.setWindowIcon(app_icon())
-        self.setStyleSheet(STYLE)
-        self.resize(1280, 800)
-        self.setMinimumSize(900, 560)
         self.reader = _Reader(self)
         self.reader.loaded.connect(self._loaded)
         self._action_done.connect(self._finished, QtCore.Qt.QueuedConnection)
-        self.dirty: set[str] = {key for key, _ in SECTIONS}
+        self.pages: dict[str, Page] = {}
+        self.dirty: set[str] = set()
         self.loaded_once: set[str] = set()
         self._closed = False
-        self.header = Header(self)
-        self.nav = QtWidgets.QListWidget()
-        self.nav.setObjectName("H2Nav")
-        self.nav.setFixedWidth(200)
-        self.stack = QtWidgets.QStackedWidget()
-        self.pages: dict[str, Page] = {}
-        for cls, (key, label) in zip(self.PAGES, SECTIONS):
-            self.nav.addItem(label)
-            page = cls(self)
-            self.pages[key] = page
-            self.stack.addWidget(page)
-        self.nav.currentRowChanged.connect(self._nav_changed)
-        self.capture = QtWidgets.QLineEdit()
-        self.capture.setObjectName("HudLine")
-        self.capture.setPlaceholderText("Anotar ou perguntar: \"reunião com a equipe quarta às 14h\", "
-                                        "\"ideia: …\", \"o que está atrasado?\"")
-        self.capture.returnPressed.connect(self._capture)
-        self.capture_kind = QtWidgets.QComboBox()
-        self.capture_kind.addItem("Automático", "")
-        for key, label in KINDS.items():
-            self.capture_kind.addItem(label, key)
-        send = _button("REGISTRAR", primary=True)
-        send.clicked.connect(self._capture)
-        self.feedback = _label("", "H2Dim")
+        self.feedback = _label("", "PanelDim")
         self.authorization = DecisionBar("AUTORIZAR", "NEGAR", self)
         self.authorization.decided.connect(self.authorization_decided)
-        bottom = QtWidgets.QHBoxLayout()
-        bottom.setContentsMargins(22, 6, 22, 4)
-        bottom.addWidget(self.capture, 1)
-        bottom.addWidget(self.capture_kind)
-        bottom.addWidget(send)
-        body = QtWidgets.QHBoxLayout()
-        body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(0)
-        body.addWidget(self.nav)
-        body.addWidget(self.stack, 1)
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 8)
-        root.setSpacing(0)
-        root.addWidget(self.header)
-        root.addLayout(body, 1)
-        root.addWidget(self.authorization)
-        root.addLayout(bottom)
-        root.addWidget(self.feedback)
-        self.feedback.setContentsMargins(24, 0, 24, 0)
         self._reload_timer = QtCore.QTimer(self)
         self._reload_timer.setSingleShot(True)
         self._reload_timer.setInterval(RELOAD_DEBOUNCE_MS)
         self._reload_timer.timeout.connect(self._reload_visible)
-        self._pulse_timer = QtCore.QTimer(self)
-        self._pulse_timer.setInterval(60)
-        self._pulse_timer.timeout.connect(self._pulse_step)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+N"), self, activated=self.focus_capture)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+F"), self, activated=lambda: self.show_section("search"))
-        self.header.set_state(self.state)
-        self._present_authorization(self.state.get("pending_authorization"))
-        self.nav.setCurrentRow(0)
 
-    # ------------------------------------------------------------ navegação e carregamento sob demanda
-    def show_section(self, section: str | None) -> None:
-        keys = [key for key, _ in SECTIONS]
-        if section and section in keys:
-            self.nav.setCurrentRow(keys.index(section))
-        if section == "search":
-            self.pages["search"].query.setFocus()
+    # ------------------------------------------------------------ páginas
+    def add_page(self, page: "Page") -> "Page":
+        self.pages[page.key] = page
+        self.dirty.add(page.key)
+        return page
 
-    def current_key(self) -> str:
-        index = self.stack.currentIndex()
-        return SECTIONS[index][0] if 0 <= index < len(SECTIONS) else ""
+    def visible_keys(self) -> set[str]:
+        """Páginas visíveis agora (as subclasses dizem quais)."""
+        return set()
 
-    def _nav_changed(self, row: int) -> None:
-        self.stack.setCurrentIndex(row)
-        key = SECTIONS[row][0]
-        if key in self.dirty or key not in self.loaded_once:
-            self.reload(key)
+    def show_section(self, section: str | None) -> None:          # pragma: no cover - cada hospedeiro
+        pass
+
+    def focus_capture(self) -> None:                              # pragma: no cover
+        pass
 
     def reload(self, key: str, **_ignored) -> None:
         page = self.pages.get(key)
@@ -1533,9 +1360,14 @@ class SecondBrainWindow(QtWidgets.QWidget):
             return
         self.reader.request(key, work)
 
+    def ensure_loaded(self, key: str) -> None:
+        if key in self.dirty or key not in self.loaded_once:
+            self.reload(key)
+
     def _reload_visible(self) -> None:
-        key = self.current_key()
-        if key in self.dirty and self.isVisible():
+        if not self.isVisible():
+            return
+        for key in self.visible_keys() & self.dirty:
             self.reload(key)
 
     @QtCore.Slot(str, int, object)
@@ -1557,42 +1389,33 @@ class SecondBrainWindow(QtWidgets.QWidget):
         try:
             page.apply(data)
         except Exception:
-            log.exception("HUB 2: falha ao exibir %s", key)
+            log.exception("painel: falha ao exibir %s", key)
+        self.page_loaded(key, data)
+
+    def page_loaded(self, key: str, data: Any) -> None:
+        """Gancho para as subclasses (ex.: o TARDIS atualiza as regiões)."""
 
     # ------------------------------------------------------------ estado e eventos compartilhados
     def on_state(self, state: dict, names) -> None:
         self.state = state
-        names = set(names or ())
-        if names & {"activity", "runtime_state", "runtime_reason", "second_brain", "network_state"}:
-            self.header.set_state(state)
-        if "pending_authorization" in names:
-            self._present_authorization(state.get("pending_authorization"))
+        if "pending_authorization" in set(names or ()):
+            self.present_authorization(state.get("pending_authorization"))
 
     def on_event(self, kind: str, payload: dict) -> None:
         sections = EVENT_SECTIONS.get(kind)
         if sections:
-            self.dirty |= sections
-            if self.current_key() in sections and self.isVisible():
+            affected = sections & set(self.pages)
+            self.dirty |= affected
+            if affected & self.visible_keys() and self.isVisible():
                 self._reload_timer.start()          # debounce: rajadas de eventos → uma leitura
-        if kind == "REMINDER_DUE" and not payload.get("silent"):
-            self.feedback.setText(f"Lembrete: {payload.get('title', '')} — {payload.get('when_text', '')}")
-            if self.profile is None or getattr(self.profile, "name", "") != "performance":
-                self.header.pulse = 1.0
-                self._pulse_timer.start()
-            else:
-                self.header.update()
 
     def on_profile(self, profile) -> None:
         self.profile = profile
-        self.pages["system"].on_profile(getattr(profile, "name", ""))
+        system = self.pages.get("system")
+        if system is not None:
+            system.on_profile(getattr(profile, "name", ""))
 
-    def _pulse_step(self) -> None:
-        self.header.pulse = max(0.0, self.header.pulse - 0.04)
-        self.header.update()
-        if self.header.pulse <= 0:
-            self._pulse_timer.stop()
-
-    def _present_authorization(self, pending: dict | None) -> None:
+    def present_authorization(self, pending: dict | None) -> None:
         if pending and pending.get("status") == "pending":
             scope = f" [{pending['category_label']}]" if pending.get("category_label") else ""
             self.authorization.present(f"Autorização específica{scope}: {pending.get('description', '')}")
@@ -1612,63 +1435,41 @@ class SecondBrainWindow(QtWidgets.QWidget):
             if not self._closed:
                 self._action_done.emit(label, outcome)
 
-        self.core.runtime.submit("actions", work, name=f"hub2:{skill}")
+        self.core.runtime.submit("actions", work, name=f"painel:{skill}")
 
     @QtCore.Slot(str, object)
     def _finished(self, label: str, outcome: dict) -> None:
         if self._closed:
             return
-        if outcome.get("success") and (outcome.get("data") or {}).get("clarify"):
-            text = f"Esclarecimento necessário — {outcome.get('text', '')}"
-        elif outcome.get("success") and outcome.get("verified"):
-            text = outcome.get("text") or f"{label}: concluído."
-        elif outcome.get("success"):
-            text = f"{outcome.get('text') or label} (sem confirmação independente)"
-        elif outcome.get("status") in ("denied", "cancelled"):
-            text = f"{label}: não autorizado. Nada foi alterado."
-        else:
-            text = f"{label}: FALHOU — {outcome.get('error') or outcome.get('status')}"
-        self.feedback.setText(text)
+        self.feedback.setText(outcome_text(label, outcome))
         if outcome.get("success"):
-            current = self.current_key()
-            if current in ("network", "system", "notifications"):
-                self.dirty.add(current)
-                self._reload_timer.start()
-
-    def focus_capture(self) -> None:
-        self.capture.setFocus()
-
-    def _capture(self) -> None:
-        text = " ".join(self.capture.text().split())
-        if not text:
-            return
-        self.capture.clear()
-        kind = self.capture_kind.currentData()
-        from ..secondbrain import queries
-        if not kind and (text.endswith("?") or queries.classify(text) is not None and
-                         queries.classify(text)[0] != "search"):
-            self.pages["search"].query.setText(text)
-            self.show_section("search")
-            return
-        args = {"text": text}
-        if kind:
-            args["kind"] = kind
-        self.run_action(f"Registrar: {text[:40]}", "secondbrain.capture", args)
+            for key in self.visible_keys() & {"network", "system", "notifications"}:
+                self.dirty.add(key)
+            self._reload_timer.start()
 
     # ------------------------------------------------------------ ciclo de vida
-    def showEvent(self, event) -> None:  # noqa: N802 (Qt)
-        super().showEvent(event)
-        key = self.current_key()
-        if key in self.dirty or key not in self.loaded_once:
-            self.reload(key)
-
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt)
-        event.ignore()                           # fechar só esconde; "Sair" no menu encerra
+        event.ignore()                           # fechar só esconde: o estado da tela é preservado
         self.hide()
 
     def shutdown(self) -> None:
         self._closed = True
-        for timer in (self._reload_timer, self._pulse_timer, self.pages["system"]._timer):
-            timer.stop()
+        self._reload_timer.stop()
+        system = self.pages.get("system")
+        if system is not None:
+            system._timer.stop()
         self.reader.shutdown()
         self.hide()
+
+
+def outcome_text(label: str, outcome: dict) -> str:
+    """Resultado honesto de uma ação: sucesso só com verificação; falha aparece como falha."""
+    if outcome.get("success") and (outcome.get("data") or {}).get("clarify"):
+        return f"Esclarecimento necessário — {outcome.get('text', '')}"
+    if outcome.get("success") and outcome.get("verified"):
+        return outcome.get("text") or f"{label}: concluído."
+    if outcome.get("success"):
+        return f"{outcome.get('text') or label} (sem confirmação independente)"
+    if outcome.get("status") in ("denied", "cancelled"):
+        return f"{label}: não autorizado. Nada foi alterado."
+    return f"{label}: FALHOU — {outcome.get('error') or outcome.get('status')}"

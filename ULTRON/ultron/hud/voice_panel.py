@@ -21,7 +21,7 @@ from . import theme
 MARK = {"OK": "●  OK", "WARN": "●  AVISO", "FAIL": "●  FALHA", "SKIPPED": "○  —", "PENDING": "○  …"}
 
 
-class VoicePanel(QtWidgets.QDialog):
+class VoicePanel(QtWidgets.QWidget):
     _step = QtCore.Signal(object)
     _done = QtCore.Signal(object)
     _devices = QtCore.Signal(object)
@@ -30,9 +30,7 @@ class VoicePanel(QtWidgets.QDialog):
     def __init__(self, core, parent=None):
         super().__init__(parent)
         self.core = core
-        self.setWindowTitle("JARVIS — diagnóstico de voz")
-        self.setObjectName("VoicePanel")
-        self.setMinimumSize(720, 560)
+        self.setObjectName("Panel")
         self._busy = False
         self._cancel = None
         layout = QtWidgets.QVBoxLayout(self)
@@ -76,12 +74,9 @@ class VoicePanel(QtWidgets.QDialog):
         self.speak.clicked.connect(lambda: self.run_test(interactive=True))
         self.calibrate = self._button("CALIBRAR", "Ensinar como o reconhecedor ouve \"Jarvis\" na sua voz")
         self.calibrate.clicked.connect(self.run_calibration)
-        close = self._button("FECHAR")
-        close.clicked.connect(self.close)
         for button in (self.test, self.speak, self.calibrate):
             buttons.addWidget(button)
         buttons.addStretch(1)
-        buttons.addWidget(close)
         layout.addLayout(buttons)
         self._step.connect(self._on_step, QtCore.Qt.QueuedConnection)
         self._done.connect(self._on_done, QtCore.Qt.QueuedConnection)
