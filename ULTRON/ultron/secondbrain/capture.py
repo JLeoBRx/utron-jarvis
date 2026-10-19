@@ -156,8 +156,9 @@ class Capture:
     # ------------------------------------------------------------ explícito
     def explicit(self, text: str, *, kind: str | None = None, title: str | None = None, when: str | None = None,
                  priority: int | None = None, project: str | None = None, origin: str = "user",
-                 remind: bool | None = None, leads: list | None = None, record_id: str | None = None) -> CaptureResult:
-        if looks_secret(text) or (title and looks_secret(title)):
+                 remind: bool | None = None, leads: list | None = None, record_id: str | None = None,
+                 body: str = "") -> CaptureResult:
+        if looks_secret(text) or (title and looks_secret(title)) or (body and looks_secret(body)):
             raise SecondBrainError("o ULTRON não armazena senhas, tokens ou dados de autenticação")
         now = self.service.now_wall()
         resolved = iso_when(when) if when else None
@@ -167,6 +168,7 @@ class Capture:
                                   spans=parsed.spans, has_date=True, has_time=not resolved[1])
         kind = kind or explicit_kind(text)
         pending = {"mode": "explicit", "text": text[:600], "kind": kind, "title": title or "", "priority": priority,
+                   "body": body or "",
                    "project": project or "", "remind": remind, "leads": list(leads or [])}
         if record_id:
             pending["record_id"] = record_id
@@ -200,7 +202,8 @@ class Capture:
             question = "Qual a data e o horário do compromisso?"
             return CaptureResult(question=question, pending={**pending, "need": "datetime", "question": question})
         record = self.service.create(
-            kind, clean_title, when=_when_value(parsed), priority=priority or (3 if kind == "deadline" else 2),
+            kind, clean_title, body=body or "", when=_when_value(parsed),
+            priority=priority or (3 if kind == "deadline" else 2),
             project=project, tags=tags, origin=origin, origin_detail=text[:300], confirmed=True,
             remind=(leads if leads else True) if (is_reminder or remind) else None, recurrence=parsed.recurrence)
         return CaptureResult(records=[record])
@@ -298,7 +301,8 @@ class Capture:
         args = {"text": pending.get("text") or reply, "kind": pending.get("kind") or None,
                 "title": pending.get("title") or None, "priority": pending.get("priority"),
                 "project": pending.get("project") or None, "remind": pending.get("remind"),
-                "leads": pending.get("leads") or None, "record": pending.get("record_id") or None}
+                "leads": pending.get("leads") or None, "record": pending.get("record_id") or None,
+                "body": pending.get("body") or None}
         if need == "title":
             args.update(text=reply, title=None, when=pending.get("when") or None)
             return {k: v for k, v in args.items() if v not in (None, "", [])}

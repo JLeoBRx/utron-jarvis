@@ -1,0 +1,167 @@
+{
+  "root": "/home/user/utron-jarvis/ULTRON",
+  "version": "1.0.0",
+  "python": "3.13.16",
+  "platform": "Linux 6.18.44-fc-v139",
+  "cpus": 4,
+  "when": "2026-10-19 23:20:37",
+  "render": {
+    "idle_young": {
+      "n": 600,
+      "mean": 5.819,
+      "p50": 4.961,
+      "p95": 9.596,
+      "p99": 11.11,
+      "max": 21.072,
+      "over_16ms": 2
+    },
+    "idle_mature": {
+      "n": 600,
+      "mean": 6.949,
+      "p50": 4.857,
+      "p95": 13.853,
+      "p99": 17.884,
+      "max": 19.232,
+      "over_16ms": 12
+    },
+    "active_mature": {
+      "n": 600,
+      "mean": 15.595,
+      "p50": 13.16,
+      "p95": 24.887,
+      "p99": 31.596,
+      "max": 34.42,
+      "over_16ms": 217
+    },
+    "camera_moves": {
+      "n": 600,
+      "mean": 10.989,
+      "p50": 12.254,
+      "p95": 17.514,
+      "p99": 19.036,
+      "max": 28.392,
+      "over_16ms": 41
+    }
+  },
+  "core": {
+    "state_as_dict": {
+      "n": 400,
+      "mean": 0.181,
+      "p50": 0.172,
+      "p95": 0.215,
+      "p99": 0.231,
+      "max": 0.846
+    },
+    "graph_snapshot_800": {
+      "n": 20,
+      "mean": 5.801,
+      "p50": 5.658,
+      "p95": 6.965,
+      "p99": 7.822,
+      "max": 7.822
+    }
+  },
+  "ui": {
+    "idle": {
+      "event_loop_lag": {
+        "n": 1607,
+        "mean": 2.73,
+        "p50": 0.659,
+        "p95": 12.089,
+        "p99": 16.697,
+        "max": 26.848
+      },
+      "cpu_percent": 44.9,
+      "rss_mb": 144.5,
+      "ticks_per_s": 38.4,
+      "paints_per_s": 40.2,
+      "paint_ms": {
+        "n": 483,
+        "mean": 9.149,
+        "p50": 9.502,
+        "p95": 15.57,
+        "p99": 19.615,
+        "max": 26.991
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 368.23,
+        "_tick": 8.87,
+        "_pull_telemetry": 1.03,
+        "_pull_state": 0.25
+      },
+      "threads": 14
+    },
+    "idle_steady": {
+      "event_loop_lag": {
+        "n": 1625,
+        "mean": 2.597,
+        "p50": 0.636,
+        "p95": 13.053,
+        "p99": 17.246,
+        "max": 20.743
+      },
+      "cpu_percent": 42.7,
+      "rss_mb": 144.6,
+      "ticks_per_s": 32.1,
+      "paints_per_s": 34.0,
+      "paint_ms": {
+        "n": 408,
+        "mean": 10.076,
+        "p50": 10.138,
+        "p95": 16.494,
+        "p99": 18.884,
+        "max": 20.74
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 342.32,
+        "_tick": 8.22,
+        "_pull_telemetry": 1.15,
+        "_pull_state": 0.31
+      },
+      "threads": 14
+    },
+    "busy": {
+      "event_loop_lag": {
+        "n": 1279,
+        "mean": 4.578,
+        "p50": 0.656,
+        "p95": 23.847,
+        "p99": 33.706,
+        "max": 45.912
+      },
+      "cpu_percent": 58.4,
+      "rss_mb": 145.4,
+      "ticks_per_s": 29.2,
+      "paints_per_s": 31.2,
+      "paint_ms": {
+        "n": 374,
+        "mean": 15.727,
+        "p50": 13.825,
+        "p95": 31.739,
+        "p99": 39.979,
+        "max": 47.96
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 490.02,
+        "_tick": 8.3,
+        "_pull_telemetry": 1.02,
+        "_pull_state": 0.44
+      },
+      "threads": 14
+    },
+    "response_latency": {
+      "n": 5,
+      "mean": 189.785,
+      "p50": 261.249,
+      "p95": 319.41,
+      "p99": 319.41,
+      "max": 319.41
+    },
+    "simulated_inference_ms": 250.0,
+    "threads_before_shutdown": 14,
+    "threads_after_shutdown": 2,
+    "threads_left": [
+      "Thread-1 (serve_forever)"
+    ]
+  }
+}

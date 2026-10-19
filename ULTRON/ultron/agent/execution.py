@@ -145,6 +145,12 @@ class ExecutionEngine:
         if decision.action == "authorize":
             specific = type(skill).describe_action is not Skill.describe_action
             description = skill.describe_action(args) if specific or not action.description else action.description
+            try:
+                resource = skill.describe_resource(self._ctx(cancel), args)
+            except Exception:
+                resource = ""
+            if resource:
+                description = f"{description} — {resource}"
             req = self.authorizations.request(description, skill=skill.name, risk=risk.value,
                                               args={k: str(v)[:80] for k, v in args.items()}, category=sensitive)
             if req.status == "pending":                        # pré-aprovado (sugestão aceita) não pergunta de novo

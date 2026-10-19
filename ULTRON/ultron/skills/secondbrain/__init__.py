@@ -59,21 +59,23 @@ class Capture(_SBSkill):
     inputs = schema({"text": string(600), "kind": string(20, enum=sorted(KINDS)), "title": string(200),
                      "when": string(120), "priority": {"type": "integer", "minimum": 1, "maximum": 4},
                      "project": string(80), "remind": {"type": "boolean"},
-                     "leads": {"type": "array", "items": {"type": "integer"}}, "record": string(40)}, ("text",))
+                     "leads": {"type": "array", "items": {"type": "integer"}}, "record": string(40),
+                     "body": string(4000)}, ("text",))
 
     def describe_action(self, args):
         return f"registrar no Second Brain: {args.get('title') or args.get('text', '')[:80]}"
 
     def execute(self, ctx, text: str, kind: str | None = None, title: str | None = None, when: str | None = None,
                 priority: int | None = None, project: str | None = None, remind: bool | None = None,
-                leads: list | None = None, record: str | None = None) -> SkillResult:
+                leads: list | None = None, record: str | None = None, body: str = "") -> SkillResult:
         capture = (ctx.extras or {}).get("capture")
         if capture is None:
             return SkillResult(False, error="Second Brain indisponível nesta execução", error_kind="UNSUPPORTED")
         try:
             result = capture.explicit(text, kind=kind, title=title, when=when, priority=priority, project=project,
                                       origin=(ctx.extras or {}).get("origin", "user"), remind=remind,
-                                      leads=[int(x) for x in leads] if leads else None, record_id=record)
+                                      leads=[int(x) for x in leads] if leads else None, record_id=record,
+                                      body=body)
         except Exception as exc:
             return _fail(exc)
         if result.question:
@@ -241,8 +243,17 @@ class Delete(_Target):
 
     def describe_action(self, args):
         if args.get("permanent"):
-            return f"EXCLUIR DEFINITIVAMENTE do Second Brain: {args.get('ref')} (sem recuperação)"
-        return f"mandar para a lixeira: {args.get('ref')}"
+            return "EXCLUIR DEFINITIVAMENTE do Second Brain (sem recuperação)"
+        return "mandar para a lixeira"
+
+    def describe_resource(self, ctx, args):
+        ref = str(args.get("ref", ""))
+        service = _service(ctx)
+        record = service.store.get(ref) if ref.startswith("r_") else None
+        if record is None:
+            return f"\"{ref}\""
+        state = " (na lixeira)" if record.deleted_at else ""
+        return f"{record.label.lower()} \"{record.title}\"{state}"
 
     def execute(self, ctx, ref: str, permanent: bool = False) -> SkillResult:
         service = _service(ctx)
@@ -333,4 +344,57 @@ class Relate(_SBSkill):
         return [check("related", stored, "relação gravada no banco")]
 
 
-SKILLS = (Capture, Query, Complete, Update, Snooze, Delete, Restore, Archive, Relate)
+class Dismiss(_SBSkill):
+    name = "secondbrain.dismiss"
+    description = "Marcar um lembrete como ciente (encerra as repetições; recorrentes seguem para a próxima)."
+    inputs = schema({"reminder": string(40)}, ("reminder",))
+    expose_to_llm = False
+
+    def execute(self, ctx, reminder: str) -> SkillResult:
+        service = _service(ctx)
+        if service.reminders is None:
+            return SkillResult(False, error="agendador de lembretes indisponível", error_kind="UNSUPPORTED")
+        rem = service.reminders.dismiss(reminder)
+        if rem is None:
+            return SkillResult(False, error="lembrete não encontrado", error_kind="NOT_FOUND")
+        record = service.get(rem.record_id)
+        return SkillResult(True, f"Ciente: {record.title if record else 'lembrete'}.", [rem.id],
+                           {"reminder_id": rem.id, "status": rem.status, "next_at": rem.next_at})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        rem = _service(ctx).store.reminder(result.data["reminder_id"])
+        ok = rem is not None and (rem.status == "done" or rem.next_at == result.data["next_at"])
+        return VerificationResult.from_checks([check("dismissed", ok, "estado do lembrete gravado")])
+
+
+class EmptyTrash(_SBSkill):
+    name = "secondbrain.empty_trash"
+    description = "Esvaziar a lixeira do Second Brain (exclusão definitiva de tudo que está nela)."
+    inputs = schema({})
+    risk = Risk.CRITICAL
+    reversible = False
+    sensitive = "permanent_delete"
+    expose_to_llm = False
+
+    def describe_action(self, args):
+        return "ESVAZIAR A LIXEIRA do Second Brain (exclusão definitiva, sem recuperação)"
+
+    def describe_resource(self, ctx, args):
+        return f"{len(_service(ctx).trash())} registro(s) na lixeira"
+
+    def execute(self, ctx, **_) -> SkillResult:
+        service = _service(ctx)
+        count = service.empty_trash(origin=(ctx.extras or {}).get("origin", "user"))
+        return SkillResult(True, f"Lixeira esvaziada: {count} registro(s) excluído(s) definitivamente.", [],
+                           {"count": count})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        left = len(_service(ctx).trash())
+        return VerificationResult.from_checks([check("trash_empty", left == 0, f"{left} item(ns) na lixeira")])
+
+
+SKILLS = (Capture, Query, Complete, Update, Snooze, Delete, Restore, Archive, Relate, Dismiss, EmptyTrash)

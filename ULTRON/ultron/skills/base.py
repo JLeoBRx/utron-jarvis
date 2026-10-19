@@ -196,6 +196,10 @@ class Skill:
     def describe_action(self, args: dict) -> str:
         return f"{self.name}({', '.join(f'{k}={v!r}' for k, v in args.items())})"
 
+    def describe_resource(self, ctx: "SkillContext", args: dict) -> str:
+        """O recurso exato afetado (ex.: título do registro, endereço), mostrado no pedido de autorização."""
+        return ""
+
     def execute(self, ctx: SkillContext, **args: Any) -> SkillResult:  # pragma: no cover
         raise NotImplementedError
 

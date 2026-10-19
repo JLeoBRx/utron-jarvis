@@ -183,6 +183,12 @@ class OpenRouterAdmin(_NetSkill):
     def describe_action(self, args):
         return "abrir a página de administração do roteador no navegador"
 
+    def describe_resource(self, ctx, args):
+        try:
+            return self._net(ctx).admin_url()
+        except Exception:
+            return ""
+
     def execute(self, ctx, **_) -> SkillResult:
         try:
             url = self._net(ctx).admin_url()

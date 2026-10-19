@@ -70,6 +70,7 @@ class HudController(QtCore.QObject):
         self._dirty_lock = threading.Lock()
         self.state_cache: dict = core.state.as_dict()
         self.dropped_events = 0
+        self.notifications_shown = 0
         self._quitting = False
         self._last_tick = time.perf_counter()
         self._tick_times: deque = deque(maxlen=120)
@@ -160,6 +161,10 @@ class HudController(QtCore.QObject):
                 self._load_graph_async()
             elif kind == EventType.REMINDER_DUE.value:
                 self._notify(payload)
+            elif kind == EventType.NOTIFICATION.value and payload.get("popup") and not payload.get("silent"):
+                self._show_message(f"ULTRON · {payload.get('title', '')}", str(payload.get("body", "")))
+            elif kind == EventType.UI_REQUEST.value and payload.get("view") == "second_brain":
+                self.open_second_brain(payload.get("section") or None)
             if kind in AUTO_EXPAND and not self.window.isVisible() \
                     and getattr(self.core.settings(), "hud_auto_expand", True):
                 self.expand()
@@ -344,13 +349,22 @@ class HudController(QtCore.QObject):
     # ================================================================ notificações
     def _notify(self, payload: dict) -> None:
         """Notificação nativa (bandeja do Windows) para um lembrete real; respeita silêncio."""
-        if payload.get("silent") or self.tray is None or not self.tray.isVisible():
+        if payload.get("silent"):
             return
-        title = "ULTRON · Lembrete" + (" antecipado" if payload.get("lead") else "")
+        title = {"lead": "ULTRON · Lembrete antecipado", "missed": "ULTRON · Lembrete perdido"}.get(
+            payload.get("kind"), "ULTRON · Lembrete")
         body = str(payload.get("title", ""))[:160]
         if payload.get("when_text"):
             body += f"\n{payload['when_text']}"
-        self.tray.showMessage(title, body, app_icon(), 9000)
+        self._show_message(title, body)
+
+    def _show_message(self, title: str, body: str) -> None:
+        """Usa a notificação nativa do sistema (no Windows 10/11, o centro de notificações) quando há
+        bandeja; sem bandeja, o aviso fica na central de notificações do HUB 2 e na fala."""
+        self.notifications_shown += 1
+        if self.tray is None or not self.tray.isVisible():
+            return
+        self.tray.showMessage(title[:80], body[:240], app_icon(), 9000)
 
     # ================================================================ bandeja e menu
     def _make_tray(self) -> QtWidgets.QSystemTrayIcon | None:
