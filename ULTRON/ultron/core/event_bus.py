@@ -1,4 +1,4 @@
-"""Event Bus interno do ULTRON.
+"""Event Bus interno do JARVIS.
 
 * ``publish`` nunca bloqueia quem publica: o evento entra numa fila e uma thread
   despachante entrega aos assinantes.
@@ -22,6 +22,7 @@ from .events import Event, EventType
 log = logging.getLogger("ultron.bus")
 
 Handler = Callable[[Event], None]
+DROP_LOG_INTERVAL = 5.0
 
 
 @dataclass
@@ -60,6 +61,8 @@ class EventBus:
         self._pending = 0
         self._sync_depth = threading.local()
         self.stats = BusStats()
+        self._drop_logged_at = 0.0            # aviso de descarte agregado (no máximo 1 a cada 5 s)
+        self._drops_since_log = 0
 
     # ------------------------------------------------------------ assinaturas
     def subscribe(self, types: EventType | Iterable[EventType] | None, handler: Handler,
@@ -98,12 +101,18 @@ class EventBus:
         try:
             self._queue.put_nowait(event)
         except queue.Full:
+            now = time.monotonic()
             with self._lock:
                 self.stats.dropped += 1
                 self._pending -= 1
                 if self._pending <= 0:
                     self._idle.set()
-            log.warning("fila do Event Bus cheia; evento %s descartado", type_.value)
+                self._drops_since_log += 1
+                report = now - self._drop_logged_at >= DROP_LOG_INTERVAL
+                if report:
+                    count, self._drops_since_log, self._drop_logged_at = self._drops_since_log, 0, now
+            if report:                          # um aviso por intervalo: o log não vira mais carga
+                log.warning("fila do Event Bus cheia: %d evento(s) descartado(s) (último: %s)", count, type_.value)
         return event
 
     def emit(self, type_: EventType, source: str = "", **payload) -> Event:

@@ -1,4 +1,4 @@
-"""Repertório de falas do ULTRON.
+"""Repertório de falas do JARVIS.
 
 Falas curtas, por situação. A escolha evita repetir a mesma frase em sequência.
 A lógica do sistema pede uma *situação* (``say("done")``); a personalidade decide a frase.
@@ -9,34 +9,34 @@ import random
 import threading
 
 LINES: dict[str, tuple[str, ...]] = {
-    "ack": ("Entendido.", "Entendido, senhor.", "Certo."),
-    "analyzing": ("Analisando.", "Vou verificar.", "Analisando o contexto."),
-    "executing": ("Executando.", "Em execução."),
-    "verifying": ("Verificando.", "Verificando o resultado."),
-    "inconsistency": ("Há uma inconsistência.", "Detectei uma inconsistência."),
-    "correcting": ("Corrigindo.", "Estou corrigindo."),
-    "done": ("Concluído.", "Resultado confirmado.", "A análise foi concluída."),
+    "ack": ("Entendido.", "Certo, senhor.", "Às suas ordens."),
+    "analyzing": ("Analisando.", "Um momento, estou verificando.", "Verificando o contexto."),
+    "executing": ("Executando.", "Em andamento."),
+    "verifying": ("Verificando o resultado.", "Conferindo."),
+    "inconsistency": ("Há uma inconsistência.", "Algo não confere."),
+    "correcting": ("Corrigindo.", "Ajustando a abordagem."),
+    "done": ("Concluído.", "Feito e verificado.", "Pronto, senhor."),
     "done_unverified": ("Executado, mas não consegui confirmar o resultado.",),
-    "failed_retry": ("Não funcionou. Tentando outra abordagem.", "Falhou. Vou testar outra abordagem."),
+    "failed_retry": ("Não funcionou. Vou tentar outra abordagem.", "Falhou. Testando uma alternativa."),
     "alternative": ("Encontrei uma alternativa.",),
     "testing": ("Vou testar.",),
-    "deep": ("Isso exige uma análise mais profunda.",),
+    "deep": ("Isso pede uma análise mais cuidadosa.",),
     "not_a_problem": ("Isso não representa um problema.",),
-    "unexpected": ("Interessante. O resultado não corresponde ao esperado.",),
+    "unexpected": ("Curioso. O resultado não é o esperado.",),
     "failed": ("Não foi possível concluir.", "A tarefa falhou."),
     "cancelled": ("Cancelado.", "Operação cancelada."),
-    "auth_request": ("Ação sensível: {action}. Autoriza?", "Isto requer autorização: {action}. Confirma?"),
+    "auth_request": ("Ação sensível: {action}. Autoriza?", "Isto requer sua autorização: {action}. Prossigo?"),
     "auth_denied": ("Não autorizado. Nada foi executado.",),
     "auth_expired": ("Sem autorização. A ação foi descartada.",),
     "ambiguous": ("Há mais de uma interpretação. {question}",),
-    "unavailable": ("{module} indisponível.", "{module} não está disponível neste momento."),
+    "unavailable": ("{module} indisponível.", "{module} não está disponível no momento."),
     "model_missing": ("O modelo {model} não está instalado.",),
-    "wake": ("Sim.", "Estou ouvindo.", "Prossiga."),
-    "online": ("ULTRON online.", "Sistemas online."),
-    "shutdown": ("Encerrando.",),
-    "busy": ("Ainda estou processando a tarefa anterior.",),
+    "wake": ("Sim, senhor?", "Pois não?", "Estou ouvindo."),
+    "online": ("JARVIS online.", "Sistemas online, senhor."),
+    "shutdown": ("Encerrando.", "Até breve, senhor."),
+    "busy": ("Ainda estou concluindo a tarefa anterior.",),
     "imagining": ("Construindo o conceito.", "Imaginando."),
-    "dream_found": ("Encontrei uma nova conexão.",),
+    "dream_found": ("Encontrei uma conexão interessante.",),
     "nothing": ("Não há nada a fazer.",),
 }
 

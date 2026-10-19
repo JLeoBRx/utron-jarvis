@@ -192,7 +192,7 @@ class ClickElement(Skill):
 
 class Screenshot(Skill):
     name = "vision.screenshot"
-    description = "Salvar uma captura de tela na pasta Imagens/ULTRON (somente sob pedido)."
+    description = "Salvar uma captura de tela na pasta Imagens/JARVIS (somente sob pedido)."
     category = "vision"
     inputs = schema({})
     risk = Risk.LOW
@@ -205,7 +205,7 @@ class Screenshot(Skill):
             return SkillResult(False, error=str(exc), error_kind="PERMISSION_ERROR")
         except Exception as exc:
             return SkillResult(False, error=str(exc), error_kind="VISION_ERROR")
-        folder = user_dir("Pictures", "ULTRON")
+        folder = user_dir("Pictures", "JARVIS")
         path = os.path.join(str(folder), time.strftime("captura_%Y%m%d_%H%M%S.png"))
         image.save(path)
         return SkillResult(True, f"Captura salva em {path}.", [path], {"path": path})

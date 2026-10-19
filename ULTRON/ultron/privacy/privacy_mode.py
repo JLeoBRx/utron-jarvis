@@ -1,4 +1,4 @@
-"""PRIVACY LOCAL — reduz a exposição do próprio ULTRON.
+"""PRIVACY LOCAL — reduz a exposição do próprio JARVIS.
 
 Quando ativo:
 
@@ -6,7 +6,7 @@ Quando ativo:
 * nenhuma conexão externa automática (em segundo plano) é permitida;
 * conexões externas pedidas explicitamente pelo usuário podem ser autorizadas, e ficam
   registradas (``strict_block`` bloqueia até estas);
-* o ULTRON não abre portas nem inicia servidores;
+* o JARVIS não abre portas nem inicia servidores;
 * conexões do processo são monitoradas e exibidas;
 * o firewall do Windows é apenas consultado — nunca alterado; nada tenta burlar monitoramento.
 """

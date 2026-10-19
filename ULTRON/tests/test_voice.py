@@ -7,7 +7,7 @@ import numpy as np
 import helpers
 
 from ultron.core.events import EventType
-from ultron.personality.voice_profile import ULTRON
+from ultron.personality.voice_profile import JARVIS
 from ultron.voice import dsp
 from ultron.voice.audio import AudioOutput, mix_block
 from ultron.voice.processor import VoicePipeline, classify_short_command, echo_ratio, find_barge_in
@@ -66,19 +66,29 @@ class FakeSpeaker:
 
 class WakeWordTest(unittest.TestCase):
     def test_strong_and_weak_forms(self):
-        d = WakeWordDetector(("ultron",), ("ultrom", "ul tron"))
-        self.assertEqual(d.detect("Ultron, abra o chrome").command, "abra o chrome")
-        self.assertEqual(d.detect("ok ultron que horas são").strength, "strong")
-        self.assertFalse(d.detect("eu sou o ultron").detected, "só no início da frase")
-        weak = d.detect("o tom abra o bloco de notas")
+        d = WakeWordDetector()                         # formas medidas do JARVIS
+        self.assertEqual(d.detect("Jarvis, abra o chrome").command, "abra o chrome")
+        self.assertEqual(d.detect("ok jarvis que horas são").strength, "strong")
+        self.assertEqual(d.detect("já vis liste os dispositivos").strength, "strong")
+        self.assertFalse(d.detect("eu falei com o jarvis ontem").detected, "só no início da frase")
+        weak = d.detect("aviso abra o bloco de notas")
         self.assertEqual((weak.strength, weak.command), ("weak", "abra o bloco de notas"))
+        self.assertFalse(d.detect("ultron abra o chrome").detected, "a identidade anterior não ativa mais")
+
+    def test_names_are_strong_only_opening_the_sentence(self):
+        d = WakeWordDetector()
+        self.assertEqual(d.detect("Jarbas.").strength, "strong", "\"Jarvis\" ouvido como o nome Jarbas")
+        self.assertEqual(d.detect("jarbas que horas são").strength, "strong")
+        named = d.detect("o jarbas ligou ontem")
+        self.assertEqual(named.strength, "weak", "depois de 'o' é o nome de alguém: exige comando")
 
     def test_calibration_never_learns_common_words(self):
-        learned = learn_variants(["ultrom", "outro", "ultra", "atenção", "ul tron"], ("ultron",))
-        self.assertIn("ultrom", learned)
-        self.assertNotIn("outro", learned)
+        learned = learn_variants(["jarves", "aviso", "aves", "atenção", "jarbis"], ("jarvis",))
+        self.assertIn("jarves", learned)
+        self.assertIn("jarbis", learned)
+        self.assertNotIn("aviso", learned)
         self.assertNotIn("atenção", learned)
-        self.assertEqual(learn_weak_variants(["o tom", "o tom", "atenção"], ("ultron",)), ("o tom",))
+        self.assertEqual(learn_weak_variants(["a vez", "a vez", "atenção"], ("jarvis",)), ("a vez",))
 
     def test_followup_window(self):
         d = WakeWordDetector(followup_seconds=0.2)
@@ -90,17 +100,17 @@ class WakeWordTest(unittest.TestCase):
 
 class BargeInLogicTest(unittest.TestCase):
     def setUp(self):
-        detector = WakeWordDetector(("ultron",), ())
+        detector = WakeWordDetector(("jarvis",), ())
         self.wake = lambda t: (lambda r: r if r.detected and (r.strength == "strong" or r.command) else None)(
             detector.detect(t))
-        self.spoken = "Entendido. Analisando o sistema. Eu sou o Ultron."
+        self.spoken = "Entendido. Analisando o sistema. Eu sou o Jarvis."
 
     def test_echo_vs_user(self):
         self.assertGreaterEqual(echo_ratio("analisando o sistema", self.spoken), 0.5)
         self.assertIsNone(find_barge_in("analisando o sistema", self.spoken, self.wake))
-        self.assertIsNone(find_barge_in("eu sou o ultron", self.spoken, self.wake), "a própria voz não ativa")
+        self.assertIsNone(find_barge_in("eu sou o jarvis", self.spoken, self.wake), "a própria voz não ativa")
         self.assertEqual(find_barge_in("entendido analisando pode parar", self.spoken, self.wake)[0], "cancel")
-        self.assertEqual(find_barge_in("ultron abra o chrome", self.spoken, self.wake), ("wake", "abra o chrome"))
+        self.assertEqual(find_barge_in("jarvis abra o chrome", self.spoken, self.wake), ("wake", "abra o chrome"))
 
     def test_short_commands(self):
         self.assertEqual(classify_short_command("pode parar"), "cancel")
@@ -135,26 +145,27 @@ class VoicePipelineTest(unittest.TestCase):
         self.say("abra o navegador")
         self.assertEqual(self.commands, [], "sem palavra de ativação: descartado")
         self.assertEqual(self.vp.ignored, 1)
-        self.say("ultron abra o navegador", partials=("ultron", "ultron abra"))
+        self.say("jarvis abra o navegador", partials=("jarvis", "jarvis abra"))
         self.assertEqual(self.commands[-1][0], "abra o navegador")
         self.assertTrue(self.commands[-1][1]["wake"])
 
     def test_weak_form_needs_a_real_command(self):
-        self.say("o tom")
-        self.say("o tom bom dia")
-        self.assertEqual(self.commands, [])
-        self.say("o tom abra o bloco de notas")
+        self.say("aviso")
+        self.say("aviso bom dia")
+        self.say("o jarbas ligou ontem")
+        self.assertEqual(self.commands, [], "formas fracas e nomes no meio da frase não ativam sozinhos")
+        self.say("aviso abra o bloco de notas")
         self.assertEqual(self.commands[-1][0], "abra o bloco de notas")
 
     def test_followup_after_spoken_response(self):
-        self.say("ultron que horas são")
+        self.say("jarvis que horas são")
         self.bus.publish(EventType.VOICE_FINISHED, {"spoken": True, "interrupted": False})
         self.say("abra o navegador")
         self.assertEqual(self.commands[-1][0], "abra o navegador")
         self.assertTrue(self.commands[-1][1]["followup"])
 
     def test_wake_only_then_command(self):
-        self.say("ultron")
+        self.say("jarvis")
         self.assertTrue(self.vp.listening)
         self.say("abra o navegador")
         self.assertEqual(self.commands[-1][0], "abra o navegador")
@@ -182,6 +193,28 @@ class VoicePipelineTest(unittest.TestCase):
         self.assertFalse(probe["enabled"])
         self.assertIn("level", probe)
 
+    def test_counters_and_absolute_silence_warning(self):
+        from ultron.voice.processor import SILENT_CHUNKS_WARNING
+        for _ in range(SILENT_CHUNKS_WARNING):
+            self.vp.process_chunk(b"\x00\x00" * 64)
+        self.assertIn("Privacidade", self.vp.silence_warning)
+        self.vp.capturing, self.vp.device = True, "Mic"
+        self.assertEqual(self.vp.health()["status"], "WARN", "silêncio absoluto é informado, não escondido")
+        self.vp.process_chunk(b"\x10\x00" * 64)
+        self.assertEqual(self.vp.silence_warning, "", "som de verdade limpa o aviso")
+        counters = self.vp.counters()
+        self.assertEqual(counters["chunks"], SILENT_CHUNKS_WARNING + 1)
+        self.assertEqual(counters["zero_chunks"], SILENT_CHUNKS_WARNING)
+
+    def test_injected_text_takes_the_voice_route(self):
+        taps = []
+        self.vp.diagnostic_tap = lambda kind, data: taps.append(kind)
+        self.vp.inject_text("que horas são", diagnostic=True)
+        self.assertEqual(self.commands[-1][0], "que horas são")
+        self.assertTrue(self.commands[-1][1]["diagnostic"])
+        self.assertEqual(self.vp.stats["delivered"], 1)
+        self.assertIn("delivered", taps)
+
 
 class SupervisorTest(unittest.TestCase):
     def test_microphone_failures_are_retried_and_reported(self):
@@ -204,7 +237,7 @@ class SupervisorTest(unittest.TestCase):
             return None, Stream(), "Microfone de teste"
 
         stt = FakeSTT()
-        stt.script = [("ultron que horas são", None)]
+        stt.script = [("jarvis que horas são", None)]
         got = []
         vp = VoicePipeline(on_command=lambda t, m: got.append(t), stt_factory=lambda: (stt, ""), mic_opener=opener)
         vp._sleep = lambda s: time.sleep(min(s, 0.02))
@@ -227,29 +260,76 @@ class DspTest(unittest.TestCase):
         signal += 0.02 * np.random.default_rng(1).standard_normal(len(t))
         return (signal / np.max(np.abs(signal)) * 0.8).astype(np.float32)
 
-    def test_ultron_profile_lowers_pitch_and_darkens(self):
+    def test_jarvis_profile_is_deeper_but_natural(self):
+        from ultron.personality.voice_profile import ULTRON
         rate = 22050
         raw = self.voice_like(rate=rate)
-        processed = dsp.process(raw, rate, ULTRON)
+        processed = dsp.process(raw, rate, JARVIS)
         before, after = dsp.estimate_pitch(raw, rate), dsp.estimate_pitch(processed, rate)
-        self.assertLess(after, before * 0.93)
+        self.assertLess(after, before * 0.98, "um pouco mais grave")
+        self.assertGreater(after, before * 0.9, "sem rebaixar a ponto de perder naturalidade")
         self.assertLessEqual(float(np.max(np.abs(processed))), 0.93)
 
-        def centroid(x):
-            spec = np.abs(np.fft.rfft(x))
-            freqs = np.fft.rfftfreq(len(x), 1 / rate)
-            return float((spec * freqs).sum() / spec.sum())
-
-        def treble(x, cut=5000.0):
+        def presence(x):
+            """Energia na faixa de inteligibilidade (1–4 kHz) relativa à faixa da voz (100 Hz–4 kHz)."""
             power = np.abs(np.fft.rfft(x)) ** 2
-            return float(power[np.fft.rfftfreq(len(x), 1 / rate) > cut].sum() / power.sum())
-        self.assertLess(centroid(processed), centroid(raw) * 0.7, "voz mais escura")
-        self.assertLess(treble(processed), treble(raw) / 5, "agudos cortados")
+            freqs = np.fft.rfftfreq(len(x), 1 / rate)
+            return float(power[(freqs >= 1000) & (freqs < 4000)].sum() / power[(freqs >= 100) & (freqs < 4000)].sum())
+
+        kept = presence(processed) / presence(raw)
+        self.assertGreater(kept, 0.65, "a clareza da fala é preservada")
+        self.assertLess(presence(dsp.process(raw, rate, ULTRON)) / presence(raw), kept,
+                        "o perfil robótico anterior era menos inteligível")
 
     def test_speed_compensation_and_pcm_roundtrip(self):
-        self.assertAlmostEqual(dsp.length_scale_for(ULTRON), ULTRON.pitch / ULTRON.speed, places=3)
+        self.assertAlmostEqual(dsp.length_scale_for(JARVIS), JARVIS.pitch / JARVIS.speed, places=3)
         x = np.linspace(-0.5, 0.5, 100).astype(np.float32)
         self.assertTrue(np.allclose(dsp.from_int16(dsp.to_int16(x)), x, atol=1e-3))
+
+
+class MicrophoneBackendTest(unittest.TestCase):
+    def test_resampling_stream_turns_48k_into_16k(self):
+        from ultron.voice.audio import _ResamplingStream
+
+        class Source:
+            def __init__(self):
+                t = np.arange(48000 * 2) / 48000
+                tone = 0.5 * np.sin(2 * np.pi * 440 * t) + 0.3 * np.sin(2 * np.pi * 15000 * t)   # 15 kHz: acima do Nyquist
+                self.pcm = (tone * 32767).astype(np.int16).tobytes()
+                self.pos = 0
+
+            def read(self, frames, exception_on_overflow=False):
+                chunk = self.pcm[self.pos:self.pos + frames * 2]
+                self.pos += frames * 2
+                return chunk
+
+            def close(self):
+                pass
+
+        stream = _ResamplingStream(Source(), 48000, 16000)
+        out = np.frombuffer(b"".join(stream.read(4000) for _ in range(6)), dtype=np.int16).astype(np.float32)
+        self.assertEqual(len(out), 24000, "blocos de 250 ms a 16 kHz")
+        spectrum = np.abs(np.fft.rfft(out[2000:]))
+        freqs = np.fft.rfftfreq(len(out) - 2000, 1 / 16000)
+        tone = spectrum[np.argmin(np.abs(freqs - 440))]
+        alias = spectrum[np.argmin(np.abs(freqs - 1000))]          # 15 kHz dobraria para 1 kHz sem filtro
+        self.assertGreater(tone, alias * 20, "o filtro impede o serrilhado")
+
+    def test_device_order_never_tries_other_inputs_on_its_own(self):
+        from ultron.voice.audio import _candidates
+        devices = [{"index": 0, "name": "Mixagem estéreo (Realtek)"}, {"index": 1, "name": "Microfone (USB)"},
+                   {"index": 2, "name": "Microfone (Realtek)"}]
+        self.assertEqual([d["index"] for d in _candidates(devices, 2, "usb", -1)], [1, 2])
+        self.assertEqual([d["index"] for d in _candidates(devices, None, "", 1)], [1])
+        self.assertEqual(_candidates(devices, None, "", -1), [], "sem escolha nem padrão: pergunta ao usuário")
+
+    def test_missing_audio_libraries_are_reported(self):
+        from ultron.voice import audio
+        listing = audio.list_input_devices("nao-existe")
+        self.assertIsNone(listing["backend"])
+        if not helpers.module_available("pyaudio") and not helpers.module_available("sounddevice"):
+            with self.assertRaises(audio.AudioBackendMissing):
+                audio.open_microphone()
 
 
 class AudioOutputTest(unittest.TestCase):

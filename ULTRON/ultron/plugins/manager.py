@@ -1,11 +1,11 @@
 """Gerenciador de plugins.
 
-Procura plugins em ``<ULTRON>/plugins`` e em ``<dados do usuário>/plugins``: um arquivo
+Procura plugins em ``<JARVIS>/plugins`` e em ``<dados do usuário>/plugins``: um arquivo
 ``nome.py`` ou uma pasta ``nome/`` com ``plugin.py`` (ou ``__init__.py``). O módulo expõe
 ``PLUGIN`` (instância), ``create_plugin()`` ou uma subclasse de ``Plugin``.
 
 Cada plugin passa por: verificação de requisitos → ``initialize`` com tempo limite →
-estado ``ACTIVE``. Falha em um plugin nunca impede o ULTRON de iniciar; o motivo fica
+estado ``ACTIVE``. Falha em um plugin nunca impede o JARVIS de iniciar; o motivo fica
 registrado e visível no diagnóstico.
 """
 from __future__ import annotations
@@ -67,7 +67,7 @@ def check_requirements(plugin: Plugin) -> str:
             return f"módulo {module} não instalado"
     minimum = req.get("ultron")
     if minimum and _version_tuple(__version__) < _version_tuple(minimum):
-        return f"requer ULTRON {minimum} ou superior"
+        return f"requer JARVIS {minimum} ou superior"
     unknown = set(plugin.capabilities) - set(CAPABILITIES)
     if unknown:
         return f"capacidades desconhecidas: {sorted(unknown)}"

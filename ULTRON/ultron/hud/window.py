@@ -1,4 +1,4 @@
-"""Janela principal do ULTRON NEURAL HUB e seus controles.
+"""Janela principal do JARVIS NEURAL HUB e seus controles.
 
 A janela é só apresentação e entrada: o texto digitado, os botões de autorização e o
 microfone são repassados ao Neural Core pelo controlador. F11 alterna tela cheia; Esc
@@ -18,14 +18,14 @@ def app_icon(size: int = 64) -> QtGui.QIcon:
     pix.fill(QtCore.Qt.transparent)
     p = QtGui.QPainter(pix)
     p.setRenderHint(QtGui.QPainter.Antialiasing)
-    p.setBrush(QtGui.QColor(10, 9, 8))
-    p.setPen(QtGui.QPen(theme.GOLD, size * 0.07))
+    p.setBrush(theme.BG2)
+    p.setPen(QtGui.QPen(theme.PRIMARY, size * 0.07))
     margin = size * 0.1
     p.drawEllipse(QtCore.QRectF(margin, margin, size - 2 * margin, size - 2 * margin))
     grad = QtGui.QRadialGradient(size / 2, size / 2, size * 0.24)
-    grad.setColorAt(0, theme.WARM_WHITE)
-    grad.setColorAt(0.5, theme.GOLD)
-    grad.setColorAt(1, QtGui.QColor(0, 0, 0, 0))
+    grad.setColorAt(0, theme.TEXT_BRIGHT)
+    grad.setColorAt(0.5, theme.PRIMARY)
+    grad.setColorAt(1, theme.with_alpha(theme.BG, 0.0))
     p.setBrush(grad)
     p.setPen(QtCore.Qt.NoPen)
     p.drawEllipse(QtCore.QPointF(size / 2, size / 2), size * 0.24, size * 0.24)
@@ -50,13 +50,13 @@ class InputBar(QtWidgets.QWidget):
         layout.setSpacing(8)
         self.line = QtWidgets.QLineEdit()
         self.line.setObjectName("HudLine")
-        self.line.setPlaceholderText("Diga \"Ultron\" ou digite um comando…")
+        self.line.setPlaceholderText("Diga \"Jarvis\" ou digite um comando…")
         self.line.returnPressed.connect(self._submit)
         self.line.installEventFilter(self)
         self.mic = self._button("MIC", "Microfone ligado/desligado (Ctrl+M)", checkable=True)
         self.mic.setChecked(True)
         self.mic.toggled.connect(self.mic_toggled)
-        self.voice = self._button("VOZ", "Fala do ULTRON ligada/desligada", checkable=True)
+        self.voice = self._button("VOZ", "Fala do JARVIS ligada/desligada", checkable=True)
         self.voice.setChecked(True)
         self.voice.toggled.connect(self.voice_toggled)
         self.orb = self._button("ORBE", "Recolher para o orbe compacto (Esc)")
@@ -130,8 +130,8 @@ class DecisionBar(QtWidgets.QWidget):
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
         p = QtGui.QPainter(self)
-        p.fillRect(self.rect(), QtGui.QColor(14, 12, 10, 225))
-        p.setPen(QtGui.QPen(theme.with_alpha(theme.AMBER, 0.8), 1))
+        p.fillRect(self.rect(), theme.with_alpha(theme.BG2, 0.9))
+        p.setPen(QtGui.QPen(theme.with_alpha(theme.ALERT, 0.8), 1))
         p.drawLine(0, 0, self.width(), 0)
         p.end()
 
@@ -152,7 +152,7 @@ class HudWindow(QtWidgets.QWidget):
 
     def __init__(self, view: BrainView):
         super().__init__()
-        self.setWindowTitle("ULTRON — Neural Hub")
+        self.setWindowTitle("JARVIS — Neural Hub")
         self.setWindowIcon(app_icon())
         self.resize(1320, 820)
         self.setMinimumSize(820, 540)

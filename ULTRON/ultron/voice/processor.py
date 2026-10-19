@@ -3,13 +3,17 @@
 Fluxo por bloco de áudio (250 ms):
 
 1. nível de entrada (para a HUD) e reconhecimento contínuo (Vosk, offline);
-2. **fora de uma conversa**, só frases que começam com "Ultron" (ou uma variante
-   calibrada) viram comando; o resto é descartado sem registro;
+2. **fora de uma conversa**, só frases que começam com "Jarvis" (ou uma variante
+   medida/calibrada) viram comando; o resto é descartado sem registro;
 3. depois de uma resposta, uma **janela de continuação** aceita a próxima frase sem a
    palavra de ativação;
-4. **enquanto o ULTRON fala** (sem cancelamento de eco por hardware), o que o microfone
-   capta é comparado com o texto sendo falado: eco é ignorado; "pare", "Ultron" ou
+4. **enquanto o JARVIS fala** (sem cancelamento de eco por hardware), o que o microfone
+   capta é comparado com o texto sendo falado: eco é ignorado; "pare", "Jarvis" ou
    "pausa" ditos pelo usuário interrompem/pausam a fala na hora (*barge-in*).
+
+Diagnóstico: contadores por etapa (blocos lidos, silêncio absoluto, parciais, finais,
+ativações, entregas ao núcleo) e uma "escuta de diagnóstico" opcional que mostra o texto
+reconhecido SOMENTE durante um teste pedido pelo usuário.
 
 A captura roda em thread própria com supervisor: se o microfone falha ou é desconectado,
 o pipeline tenta reabrir com espera exponencial (2 s → 60 s) e informa o motivo.
@@ -24,8 +28,10 @@ from typing import Any, Callable
 
 from ..core.events import EventType
 from ..perception.microphone import pcm_level
+from .audio import AudioBackendMissing
 from .stt import VoskSTT, choose_model
-from .wake_word import DEFAULT_WEAK_VARIANTS, WakeResult, WakeWordDetector, _norm
+from .wake_word import (DEFAULT_NAME_VARIANTS, DEFAULT_STRONG_VARIANTS, DEFAULT_WEAK_VARIANTS, WakeResult,
+                        WakeWordDetector, _norm)
 
 log = logging.getLogger("ultron.voice")
 
@@ -44,8 +50,11 @@ RESUME_PHRASES = {"pode continuar", "pode seguir", "pode prosseguir", "continue 
 NOISE_WORDS = {"a", "e", "o", "hum", "ah", "uh", "eh", "ha", "hm", "the", "um", "ai"}
 
 ECHO_TAIL_SECONDS = 0.9           # reverberação da própria fala após o fim da reprodução
+SILENT_CHUNKS_WARNING = 20        # 5 s de zeros exatos: microfone bloqueado (privacidade) ou mudo por hardware
+SILENCE_REASON = ("o microfone entrega silêncio absoluto — verifique Configurações do Windows > Privacidade > "
+                  "Microfone (permitir que aplicativos da área de trabalho acessem) ou se ele está mudo")
 LISTEN_TIMEOUT = 8.0              # escuta sem fala → volta ao repouso
-WAKE_ONLY_WINDOW = 8.0            # "Ultron" sozinho: espera o comando por este tempo
+WAKE_ONLY_WINDOW = 8.0            # "Jarvis" sozinho: espera o comando por este tempo
 AWAIT_RESPONSE_SECONDS = 180.0    # limite de espera pela resposta antes de encerrar a conversa
 
 
@@ -54,7 +63,7 @@ def _words(text: str) -> list[str]:
 
 
 def echo_ratio(heard: str, spoken: str) -> float:
-    """Fração das palavras ouvidas que estão no texto que o ULTRON está falando."""
+    """Fração das palavras ouvidas que estão no texto que o JARVIS está falando."""
     heard_words = [w for w in _words(heard) if len(w) >= 2]
     if not heard_words:
         return 0.0
@@ -82,7 +91,7 @@ def find_barge_in(heard: str, spoken: str, wake_fn: Callable[[str], Any]) -> tup
 
     Frases de controle de duas palavras ("pode parar", "pode continuar") valem em qualquer
     posição, se não forem eco. Fora isso, palavras do texto falado (eco) e ruídos são puladas
-    e o trecho restante precisa começar com "Ultron …" ou um controle curto ("pare", "pausa").
+    e o trecho restante precisa começar com "Jarvis …" ou um controle curto ("pare", "pausa").
     Uma ativação cujas palavras (e o comando que a segue) estão no próprio texto falado é eco.
     Devolve (tipo, comando) com tipo em wake | cancel | pause | resume.
     """
@@ -132,9 +141,10 @@ class VoicePipeline:
         self.stt = None
         self.stt_reason = ""
         s = self._settings()
-        self.detector = WakeWordDetector(tuple(getattr(s, "wake_words", ("ultron",))),
-                                         tuple(getattr(s, "wake_variants", ())),
+        self.detector = WakeWordDetector(tuple(getattr(s, "wake_words", ("jarvis",))),
+                                         tuple(getattr(s, "wake_variants", DEFAULT_STRONG_VARIANTS)),
                                          weak=tuple(getattr(s, "wake_weak_variants", DEFAULT_WEAK_VARIANTS)),
+                                         names=tuple(getattr(s, "wake_names", DEFAULT_NAME_VARIANTS)),
                                          followup_seconds=float(getattr(s, "followup_seconds", 12.0)))
         self._thread: threading.Thread | None = None
         self._running = False
@@ -160,12 +170,18 @@ class VoicePipeline:
         self._overlapped_speech = False
         self._barged = False
         self._barge_cut = False                    # fala cortada pelo usuário: sem cauda de eco
-        # contadores (sem conteúdo: falas não endereçadas ao ULTRON não são guardadas)
+        # contadores (sem conteúdo: falas não endereçadas ao JARVIS não são guardadas)
         self.commands = 0
         self.ignored = 0
         self.echoes = 0
         self.last_command = ""
         self.last_confidence = 0.0
+        self.stats = {"chunks": 0, "zero_chunks": 0, "partials": 0, "finals": 0, "wakes": 0, "delivered": 0}
+        self.last_chunk_at = 0.0
+        self.peak_level = 0.0
+        self.silence_warning = ""
+        self._silent_run = 0
+        self.diagnostic_tap: Callable[[str, dict], None] | None = None   # só durante um teste pedido
 
     # ------------------------------------------------------------ ciclo de vida
     def start(self) -> None:
@@ -189,13 +205,19 @@ class VoicePipeline:
             sub.unsubscribe()
         self._subs = []
         if self._thread is not None:
-            self._thread.join(2.0)
+            self._thread.join(2.0)               # a leitura bloqueia no máximo um bloco (250 ms)
+            if self._thread.is_alive():
+                log.warning("captura de áudio não encerrou em 2 s; segue como daemon")
+        self._thread = None
+        self.capturing = False
 
     def health(self) -> dict:
         if not self._mic_enabled:
             return {"status": "WARN", "detail": "microfone desativado pelo usuário"}
         if self.stt is None and self.stt_reason:
             return {"status": "UNAVAILABLE", "detail": f"reconhecimento de fala: {self.stt_reason}"}
+        if self.capturing and self.silence_warning:
+            return {"status": "WARN", "detail": f"{self.device}: {self.silence_warning}"}
         if self.capturing:
             return {"status": "OK", "detail": f"{self.device} · {getattr(self.stt, 'label', '?')}"}
         return {"status": "UNAVAILABLE" if self.reason else "UNKNOWN", "detail": self.reason or "iniciando"}
@@ -224,13 +246,14 @@ class VoicePipeline:
 
     def apply_settings(self, changed: list[str] | tuple[str, ...]) -> None:
         s = self._settings()
-        if {"wake_words", "wake_variants", "wake_weak_variants"} & set(changed):
-            self.detector.set_variants(tuple(s.wake_words), tuple(s.wake_variants), tuple(s.wake_weak_variants))
+        if {"wake_words", "wake_variants", "wake_weak_variants", "wake_names"} & set(changed):
+            self.detector.set_variants(tuple(s.wake_words), tuple(s.wake_variants), tuple(s.wake_weak_variants),
+                                       tuple(getattr(s, "wake_names", DEFAULT_NAME_VARIANTS)))
         if "followup_seconds" in changed:
             self.detector.followup_seconds = float(s.followup_seconds)
         if "voice_enabled" in changed:
             self.toggle_mic(bool(s.voice_enabled))
-        if {"mic_name", "mic_index"} & set(changed):
+        if {"mic_name", "mic_index", "mic_backend"} & set(changed):
             self.restart()
         if "stt_engine" in changed:
             self.restart(reload_stt=True)
@@ -246,8 +269,29 @@ class VoicePipeline:
             "capturing": self.capturing, "enabled": self._mic_enabled, "device": self.device,
             "level": round(self.level, 3), "listening": self.listening, "conversation": self.conversation,
             "followup": round(self.detector.followup_remaining(), 1), "stt": getattr(self.stt, "label", None),
-            "reason": self.reason or self.stt_reason, "commands": self.commands,
+            "reason": self.reason or self.stt_reason or self.silence_warning, "commands": self.commands,
         }
+
+    def counters(self) -> dict:
+        """Contadores por etapa (diagnóstico). Nenhum conteúdo de fala é guardado."""
+        age = time.monotonic() - self.last_chunk_at if self.last_chunk_at else None
+        return {**self.stats, "commands": self.commands, "ignored": self.ignored, "echoes": self.echoes,
+                "last_chunk_age": round(age, 2) if age is not None else None, "peak_level": round(self.peak_level, 3),
+                "silence_warning": self.silence_warning, "failures": self.failures,
+                "wake_forms": self.detector.forms, "weak_forms": self.detector.weak_forms}
+
+    # ------------------------------------------------------------ dispositivos
+    @staticmethod
+    def list_devices() -> dict:
+        from .audio import list_input_devices
+        return list_input_devices()
+
+    def select_device(self, name: str = "", index: int = -1, *, settings_manager=None) -> None:
+        """Troca o microfone (nome exato ou índice) e reabre a captura. Persistido nas configurações."""
+        if settings_manager is not None:
+            settings_manager.update(mic_name=name or "", mic_index=int(index))   # dispara restart via apply_settings
+        else:
+            self.restart()
 
     # ------------------------------------------------------------ supervisor
     def _sleep(self, seconds: float) -> None:
@@ -279,7 +323,8 @@ class VoicePipeline:
         from .audio import open_microphone
         s = self._settings()
         return open_microphone(rate=RATE, chunk=CHUNK, name_hint=getattr(s, "mic_name", ""),
-                               index=int(getattr(s, "mic_index", -1)), log_fn=log.info)
+                               index=int(getattr(s, "mic_index", -1)), log_fn=log.info,
+                               backend=str(getattr(s, "mic_backend", "auto") or "auto"))
 
     def _supervise(self) -> None:
         while self._running:
@@ -297,8 +342,9 @@ class VoicePipeline:
             self._restart.clear()
             try:
                 handle, stream, device = self._open_mic()
-            except ImportError:
-                self._set_capture(False, "PyAudio não instalado: microfone indisponível")
+            except (AudioBackendMissing, ImportError):
+                self._set_capture(False, "nenhuma biblioteca de áudio instalada (PyAudio ou sounddevice): "
+                                         "microfone indisponível — execute INSTALL_JARVIS.bat")
                 self._sleep(300.0)                          # dependência ausente não se resolve sozinha
                 continue
             except Exception as exc:
@@ -311,6 +357,7 @@ class VoicePipeline:
                 self._sleep(delay)
                 continue
             self.failures, self.retry_at, self.device = 0, 0.0, device
+            self._silent_run, self.silence_warning = 0, ""
             self._set_capture(True, "")
             try:
                 while self._running and self._mic_enabled and not self._restart.is_set():
@@ -371,15 +418,43 @@ class VoicePipeline:
     def process_chunk(self, data: bytes) -> None:
         """Processa um bloco PCM 16 bits mono a 16 kHz (mesmo caminho para microfone e testes)."""
         now = time.monotonic()
+        self.stats["chunks"] += 1
+        self.last_chunk_at = now
+        if not data.strip(b"\x00"):                       # zeros exatos: nenhum som chega do dispositivo
+            self.stats["zero_chunks"] += 1
+            self._silent_run += 1
+            if self._silent_run == SILENT_CHUNKS_WARNING:
+                self.silence_warning = SILENCE_REASON
+                log.warning("microfone %s: silêncio absoluto por 5 s", self.device or "?")
+                self._publish_state()
+        elif self._silent_run:
+            self._silent_run = 0
+            if self.silence_warning:
+                self.silence_warning = ""
+                self._publish_state()
         self.level = pcm_level(data)
+        self.peak_level = max(self.level, self.peak_level * 0.97)
         if self._speech_active():
             self._overlapped_speech = True
         final, partial = self.stt.accept(data)
         if partial:
+            self.stats["partials"] += 1
+            self._tap("partial", text=partial)
             self._on_partial(partial)
         if final:
-            self._on_final(final, float(getattr(self.stt, "last_confidence", 0.0)))
+            self.stats["finals"] += 1
+            confidence = float(getattr(self.stt, "last_confidence", 0.0))
+            self._tap("final", text=final, confidence=confidence)
+            self._on_final(final, confidence)
         self._tick(now)
+
+    def _tap(self, kind: str, **data: Any) -> None:
+        tap = self.diagnostic_tap
+        if tap is not None:
+            try:
+                tap(kind, data)
+            except Exception:
+                pass
 
     def flush(self) -> None:
         """Fecha a frase em andamento (fim de arquivo nos testes, ou ao parar a captura)."""
@@ -423,11 +498,13 @@ class VoicePipeline:
         wake = self.wake(text)
         in_followup = self.detector.in_followup()
         if wake is None and not in_followup:
-            self.ignored += 1                                   # não endereçado ao ULTRON: descartado
+            self.ignored += 1                                   # não endereçado ao JARVIS: descartado
             self._stop_listening()
             return
         command = wake.command if wake is not None else text.strip()
         if wake is not None:
+            self.stats["wakes"] += 1
+            self._tap("wake", matched=wake.matched, strength=wake.strength, command=command)
             self._publish(EventType.WAKE_WORD, matched=wake.matched, strength=wake.strength, command=command[:200],
                           confidence=round(confidence, 3))
             if not command:
@@ -437,11 +514,11 @@ class VoicePipeline:
                                  "confidence": round(confidence, 3), "control": classify_short_command(command)})
 
     def _on_final_during_speech(self, text: str, confidence: float, barged: bool) -> None:
-        """Enquanto o ULTRON fala, só passam "Ultron …" e controles curtos ditos pelo usuário."""
+        """Enquanto o JARVIS fala, só passam "Jarvis …" e controles curtos ditos pelo usuário."""
         barge = find_barge_in(text, self._spoken_text(), self.wake)
         if barge is None:
             if self._listen_mode == "wake" and self.listening and echo_ratio(text, self._spoken_text()) < 0.5:
-                # o usuário foi convidado a falar ("Ultron." → confirmação): a frase é o comando
+                # o usuário foi convidado a falar ("Jarvis." → confirmação): a frase é o comando
                 self._dispatch(text.strip(), {"wake": True, "followup": False, "barge_in": False,
                                               "confidence": round(confidence, 3),
                                               "control": classify_short_command(text)})
@@ -458,6 +535,8 @@ class VoicePipeline:
         if not barged:
             self._interrupt_speech()
         if kind == "wake":
+            self.stats["wakes"] += 1
+            self._tap("wake", matched="barge-in", strength="strong", command=command)
             self._publish(EventType.WAKE_WORD, matched="barge-in", command=command[:200],
                           confidence=round(confidence, 3))
             if not command:
@@ -466,6 +545,13 @@ class VoicePipeline:
         self._dispatch(command, {"wake": kind == "wake", "followup": False, "barge_in": True,
                                  "confidence": round(confidence, 3),
                                  "control": "cancel" if kind == "cancel" else classify_short_command(command)})
+
+    def inject_text(self, text: str, *, diagnostic: bool = False) -> None:
+        """Entrega um texto como se tivesse sido reconhecido: o MESMO caminho de um comando falado
+        (VOICE_RECEIVED → on_command → Neural Core). Usado pelo diagnóstico de voz."""
+        self._dispatch(" ".join(str(text or "").split()), {
+            "wake": True, "followup": False, "barge_in": False, "confidence": 1.0,
+            "control": classify_short_command(text), "diagnostic": diagnostic})
 
     def _await_command(self) -> None:
         """Só a palavra de ativação: abre a escuta para o comando que vem a seguir."""
@@ -484,6 +570,8 @@ class VoicePipeline:
         if self._on_command is not None:
             try:
                 self._on_command(command, dict(meta, source="voice"))
+                self.stats["delivered"] += 1
+                self._tap("delivered", text=command)
             except Exception:
                 log.exception("falha ao entregar comando de voz")
 

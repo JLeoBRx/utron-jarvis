@@ -25,7 +25,7 @@ MAX_RESPONSES = 64
 MAX_DESCRIPTIONS = 32
 MAX_XML_BYTES = 64 * 1024
 SEARCH = ("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\n"
-          "ST: ssdp:all\r\nUSER-AGENT: ULTRON/1 UPnP/1.1\r\n\r\n").encode("ascii")
+          "ST: ssdp:all\r\nUSER-AGENT: JARVIS/1 UPnP/1.1\r\n\r\n").encode("ascii")
 FIELDS = {"friendlyName": "friendly_name", "manufacturer": "manufacturer", "modelName": "model",
           "modelDescription": "model_description", "deviceType": "device_type"}
 
@@ -78,7 +78,7 @@ _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedire
 
 
 def fetch_description(url: str, *, timeout: float = 1.5) -> dict[str, str]:
-    request = urllib.request.Request(url, headers={"User-Agent": "ULTRON/1"})
+    request = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1"})
     with _OPENER.open(request, timeout=timeout) as response:
         data = response.read(MAX_XML_BYTES + 1)
     return parse_description(data)

@@ -1,4 +1,4 @@
-"""Processamento de sinal da voz do ULTRON (numpy).
+"""Processamento de sinal da voz do JARVIS (numpy).
 
 Cadeia: deslocamento de altura (reamostragem) → reforço de graves → corte de agudos →
 rouquidão (saturação suave + ruído modulado pela envolvente) → camada sintética
@@ -103,7 +103,7 @@ def room(signal: np.ndarray, amount: float, rate: int) -> np.ndarray:
 
 
 def process(samples: np.ndarray, rate: int, profile: VoiceProfile) -> np.ndarray:
-    """Aplica o perfil ULTRON. ``samples`` em float32 [-1, 1]. Devolve float32."""
+    """Aplica o perfil de voz (JARVIS por padrão). ``samples`` em float32 [-1, 1]. Devolve float32."""
     x = samples.astype(np.float32, copy=True)
     if len(x) == 0:
         return x

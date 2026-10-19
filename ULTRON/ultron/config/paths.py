@@ -1,9 +1,11 @@
-"""Resolução de caminhos do ULTRON.
+"""Resolução de caminhos do JARVIS.
 
 * ``project_root()``: pasta do produto (onde ficam ``assets/``, ``plugins/`` e os .bat).
 * ``data_dir()``: dados do usuário (banco, grafo, world model, logs). No Windows fica em
-  ``%LOCALAPPDATA%\\ULTRON``; em outros sistemas em ``$XDG_DATA_HOME/ultron``.
-  A variável ``ULTRON_DATA_DIR`` sobrescreve (usada pelos testes).
+  ``%LOCALAPPDATA%\\ULTRON`` — o MESMO lugar de antes da identidade JARVIS, para que memórias,
+  lembretes, inventário da rede e configurações do usuário continuem onde estão; em outros
+  sistemas em ``$XDG_DATA_HOME/ultron``. As variáveis ``JARVIS_DATA_DIR`` (ou, por
+  compatibilidade, ``ULTRON_DATA_DIR``) sobrescrevem (usadas pelos testes).
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ _PACKAGE_DIR = Path(__file__).resolve().parent.parent
 
 
 def project_root() -> Path:
-    override = os.environ.get("ULTRON_HOME")
+    override = os.environ.get("JARVIS_HOME") or os.environ.get("ULTRON_HOME")
     if override:
         return Path(override)
     return _PACKAGE_DIR.parent
@@ -30,12 +32,12 @@ def plugins_dir() -> Path:
 
 
 def data_dir() -> Path:
-    override = os.environ.get("ULTRON_DATA_DIR")
+    override = os.environ.get("JARVIS_DATA_DIR") or os.environ.get("ULTRON_DATA_DIR")
     if override:
         path = Path(override)
     elif sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-        path = Path(base) / "ULTRON"
+        path = Path(base) / "ULTRON"                     # pasta mantida: dados existentes do usuário
     else:
         base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
         path = Path(base) / "ultron"

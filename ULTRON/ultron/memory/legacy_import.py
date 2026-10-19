@@ -1,7 +1,7 @@
 """Importação única dos dados do JARVIS legado.
 
 Lê ``%LOCALAPPDATA%\\JARVIS\\assistant.sqlite3`` em modo somente leitura e copia fatos,
-preferências permitidas e automações para a base do ULTRON. Executa uma única vez
+preferências permitidas e automações para a base do JARVIS. Executa uma única vez
 (registrado na tabela ``meta``). O banco legado nunca é alterado.
 """
 from __future__ import annotations

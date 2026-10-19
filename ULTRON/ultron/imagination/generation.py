@@ -12,7 +12,7 @@ from ..models.router import ModelUnavailable
 log = logging.getLogger("ultron.imagination")
 
 CREATIVE_SYSTEM = (
-    "Você é o núcleo de imaginação do ULTRON. Crie conteúdo original, coerente e específico em português do Brasil. "
+    "Você é o núcleo de imaginação do JARVIS. Crie conteúdo original, coerente e específico em português do Brasil. "
     "Responda SOMENTE com JSON válido no formato pedido, sem comentários."
 )
 

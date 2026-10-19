@@ -1,4 +1,4 @@
-"""Tipos de evento do ULTRON.
+"""Tipos de evento do JARVIS.
 
 Os eventos são a linguagem comum entre módulos. Nenhum módulo chama a HUD ou a voz
 diretamente: ele publica um evento e quem estiver interessado reage.

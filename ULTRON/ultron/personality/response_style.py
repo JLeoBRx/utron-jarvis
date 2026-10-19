@@ -1,9 +1,9 @@
-"""Estilo de resposta do ULTRON.
+"""Estilo de resposta do JARVIS.
 
 Pós-processamento aplicado a qualquer texto antes de ser exibido ou falado. Garante a
 personalidade mesmo quando o modelo local ignora parte das instruções:
 
-* remove emojis e entusiasmo de atendente ("Claro!", "Perfeito!", ...);
+* remove emojis e entusiasmo de atendente ("Perfeito!", "Fico feliz em ajudar", ...);
 * corrige autorreferências a identidades antigas;
 * para voz: remove marcação, encurta URLs e limita o número de frases.
 """
@@ -24,9 +24,10 @@ _EMOJI_RE = re.compile(
 )
 
 # Aberturas proibidas no início de uma frase (com pontuação opcional).
+# Entusiasmo de atendente no início de frase (JARVIS é sereno: "Claro" e "Certamente" são aceitos).
 _FORBIDDEN_OPENERS = re.compile(
-    r"(^|(?<=[.!?]\s))(?:claro|perfeito|ótimo|otimo|com certeza|excelente|maravilha|beleza|"
-    r"que bom|fico feliz(?: em ajudar)?|sem problemas|certamente|olá|ola|oi)"
+    r"(^|(?<=[.!?]\s))(?:perfeito|ótimo|otimo|excelente|maravilha|beleza|que bom|fico feliz(?: em ajudar)?|"
+    r"sem problemas|olá|ola|oi)"
     r"(?:,?\s*senhor)?\s*[!.,]*\s*",
     re.IGNORECASE,
 )

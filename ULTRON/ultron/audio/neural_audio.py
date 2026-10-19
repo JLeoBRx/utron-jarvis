@@ -1,8 +1,8 @@
-"""NEURAL AUDIO — a identidade sonora do ULTRON.
+"""NEURAL AUDIO — a identidade sonora do JARVIS.
 
 Sons procedurais (numpy), sintetizados uma vez no início, sem arquivos externos:
 
-* ``LOW HUM``              zumbido grave contínuo (laço de 4 s) enquanto o ULTRON trabalha;
+* ``LOW HUM``              zumbido grave contínuo (laço de 4 s) enquanto o JARVIS trabalha;
 * ``NEURAL PULSE``         pulso grave com transiente — atenção, ativação, insight;
 * ``LOW FREQUENCY``        ondulação subgrave lenta — boot, escuta, sonho;
 * ``ELECTRONIC RESONANCE`` ressonância metálica inarmônica — confirmação;
@@ -10,7 +10,7 @@ Sons procedurais (numpy), sintetizados uma vez no início, sem arquivos externos
 * ``ENERGY SURGE``         subida de energia — sistema pronto, conceito novo.
 
 Cada som é disparado por um evento real do Event Bus (nunca por temporizador decorativo).
-Em repouso o ULTRON fica em silêncio. Os efeitos são atenuados durante a fala e
+Em repouso o JARVIS fica em silêncio. Os efeitos são atenuados durante a fala e
 respeitam ``sound_effects``/``sfx_volume``.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Voz do ULTRON: captura, reconhecimento, ativação, síntese e processamento de sinal."""
+"""Voz do JARVIS: captura, reconhecimento, ativação, síntese e processamento de sinal."""
 from .audio import AudioOutput, open_microphone
 from .processor import VoicePipeline
 from .profile import effective_profile

@@ -1,6 +1,6 @@
 """Perfil de voz efetivo.
 
-O timbre do ULTRON é definido em ``personality/voice_profile.py`` (personalidade); este
+O timbre do JARVIS é definido em ``personality/voice_profile.py`` (personalidade); este
 módulo combina esse perfil com as preferências do usuário (volume e velocidade) e o
 descreve de forma legível para a HUD e o diagnóstico.
 """
@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..personality.voice_profile import NEUTRAL, ULTRON, VoiceProfile
+from ..personality.voice_profile import JARVIS, NEUTRAL, ULTRON, VoiceProfile
 
-PRESETS = {"ultron": ULTRON, "neutral": NEUTRAL}
+PRESETS = {"jarvis": JARVIS, "neutral": NEUTRAL, "ultron": ULTRON}
 
 
-def effective_profile(settings: Any = None, preset: str = "ultron") -> VoiceProfile:
-    base = PRESETS.get(preset, ULTRON)
+def effective_profile(settings: Any = None, preset: str | None = None) -> VoiceProfile:
+    preset = preset or str(getattr(settings, "voice_profile", "jarvis") or "jarvis")
+    base = PRESETS.get(preset, JARVIS)
     if settings is None:
         return base
     return base.with_user(volume=getattr(settings, "volume", None), speed=getattr(settings, "speech_speed", None))

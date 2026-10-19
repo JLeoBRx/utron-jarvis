@@ -53,7 +53,7 @@ LEXICON: dict[str, tuple[str, str]] = {
 _PROJECT_RE = re.compile(r"\b[Pp]rojeto\s+([A-Za-zÀ-ÿ0-9_.\-]{2,40}(?:\s+[A-Z][A-Za-zÀ-ÿ0-9_.\-]{1,30})?)")
 _QUOTED_RE = re.compile(r"[\"“']([^\"”']{2,48})[\"”']")
 _PROPER_RE = re.compile(r"(?<![.!?]\s)(?<!^)\b([A-Z][a-zà-ÿ]{2,}(?:\s+[A-Z][a-zà-ÿ]{2,}){0,2})\b")
-_STOP_PROPER = {"Ultron", "Senhor", "Entendido", "Analisando", "Concluído", "Windows", "Eu", "Você"}
+_STOP_PROPER = {"Jarvis", "Senhor", "Entendido", "Analisando", "Concluído", "Windows", "Eu", "Você"}
 _PROJECT_STOP = {"de", "do", "da", "que", "e", "o", "a", "em", "para", "com", "meu", "minha", "esse", "este"}
 
 

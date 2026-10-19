@@ -18,7 +18,7 @@ class IntentTest(unittest.TestCase):
 
     def test_routing_of_portuguese_commands(self):
         cases = {
-            "Ultron, abra o bloco de notas": ("command", "app.open"),
+            "Jarvis, abra o bloco de notas": ("command", "app.open"),
             "quais dispositivos estão na rede": ("command", "network.devices"),     # inventário (varre se vazio/antigo)
             "escaneie a rede": ("command", "network.scan"),
             "diagnostique a rede": ("command", "network.diagnose"),
@@ -33,7 +33,7 @@ class IntentTest(unittest.TestCase):
                 self.assertEqual(intent.skill, skill, text)
 
     def test_goals_and_templates(self):
-        intent = self.engine.classify("Ultron, prepare meu projeto Atlas")
+        intent = self.engine.classify("Jarvis, prepare meu projeto Atlas")
         self.assertEqual((intent.kind, intent.template), ("goal", "prepare_project"))
         self.assertEqual(intent.entities["project"], "Atlas")
         multi = self.engine.classify("abra o chrome e depois pesquise python")
@@ -65,7 +65,7 @@ class PlannerTest(unittest.TestCase):
         self.memory.stop()
 
     def test_prepare_project_becomes_ten_adaptive_tasks(self):
-        intent = IntentEngine().classify("Ultron, prepare meu projeto Atlas")
+        intent = IntentEngine().classify("Jarvis, prepare meu projeto Atlas")
         plan = self.planner.create("g1", intent.goal, intent)
         self.assertEqual(plan.strategy, "template")
         self.assertEqual(len(plan.steps), 10)
@@ -153,7 +153,7 @@ class PrepareProjectEndToEndTest(unittest.TestCase):
                 planner=PlannerEngine(registry, memory=memory, bus=bus, state=state), executor=executor,
                 verifier=VerificationEngine(registry, bus=bus, state=state), recovery=RecoveryEngine(bus=bus, state=state),
                 registry=registry, router=None)
-            response = orchestrator.handle(Command("Ultron, prepare meu projeto Atlas"), CancellationToken())
+            response = orchestrator.handle(Command("Jarvis, prepare meu projeto Atlas"), CancellationToken())
             steps = {s["id"]: s for s in state.get("current_plan")["steps"]}
             self.assertEqual(steps["locate"]["status"], "DONE", steps["locate"])
             self.assertEqual(steps["run"]["status"], "DONE", steps["run"])

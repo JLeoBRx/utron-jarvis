@@ -10,7 +10,8 @@ import sys
 from ..config import paths
 
 KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-NAME = "ULTRON"
+NAME = "JARVIS"
+LEGACY_NAMES = ("ULTRON",)        # entrada criada pela identidade anterior (mesmo programa)
 
 
 def command() -> str:
@@ -26,23 +27,42 @@ def supported() -> bool:
     return sys.platform == "win32"
 
 
-def is_enabled() -> bool:
-    if not supported():
-        return False
+def _value(name: str) -> str:
     import winreg
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY) as key:
-            return bool(winreg.QueryValueEx(key, NAME)[0])
+            return str(winreg.QueryValueEx(key, name)[0] or "")
     except FileNotFoundError:
+        return ""
+
+
+def legacy_entries() -> list[str]:
+    """Entradas antigas (ULTRON) que apontam para este mesmo programa."""
+    if not supported():
+        return []
+    main = str(paths.project_root() / "main.py").lower()
+    return [name for name in LEGACY_NAMES if main in _value(name).lower()]
+
+
+def is_enabled() -> bool:
+    if not supported():
         return False
+    return bool(_value(NAME)) or bool(legacy_entries())
 
 
 def enable() -> str:
+    """Pedido explícito do usuário: grava a entrada JARVIS e remove a entrada antiga do mesmo programa
+    (evita duas inicializações)."""
     if not supported():
         raise OSError("inicialização automática disponível apenas no Windows")
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_SET_VALUE) as key:
         winreg.SetValueEx(key, NAME, 0, winreg.REG_SZ, command())
+        for legacy in legacy_entries():
+            try:
+                winreg.DeleteValue(key, legacy)
+            except FileNotFoundError:
+                pass
     return command()
 
 
@@ -50,12 +70,15 @@ def disable() -> bool:
     if not supported():
         return False
     import winreg
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_SET_VALUE) as key:
-            winreg.DeleteValue(key, NAME)
-        return True
-    except FileNotFoundError:
-        return False
+    removed = False
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_SET_VALUE) as key:
+        for name in (NAME, *legacy_entries()):
+            try:
+                winreg.DeleteValue(key, name)
+                removed = True
+            except FileNotFoundError:
+                pass
+    return removed
 
 
 def main(argv: list[str]) -> int:

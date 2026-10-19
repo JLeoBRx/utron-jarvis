@@ -1,10 +1,10 @@
-"""PROACTIVE INTELLIGENCE — o ULTRON percebe e se antecipa, sem agir por conta própria.
+"""PROACTIVE INTELLIGENCE — o JARVIS percebe e se antecipa, sem agir por conta própria.
 
 Entradas: hipóteses da fusão de percepção (``PERCEPTION_FUSED``, nunca um sensor isolado),
 mudanças de rede (``NETWORK_CHANGED``) e dispositivos novos na rede local
 (``DEVICE_DETECTED``).
 
-Saída: ``INSIGHT`` com texto curto no estilo do ULTRON e, quando faz sentido, uma
+Saída: ``INSIGHT`` com texto curto no estilo do JARVIS e, quando faz sentido, uma
 *sugestão* (comando ou skill). A sugestão só é executada se o usuário aceitar; se a ação
 for sensível, o texto da sugestão descreve a ação e suas consequências, e a aceitação vale
 como autorização apenas para aquela ação exata.

@@ -1,7 +1,7 @@
-"""SECOND BRAIN — memória pessoal persistente e pesquisável do ULTRON.
+"""SECOND BRAIN — memória pessoal persistente e pesquisável do JARVIS.
 
 * ``service``: camada única de serviços (interface, voz e texto usam a mesma);
-* ``store``: SQLite do ULTRON (migração versionada), busca FTS5 sem acentos;
+* ``store``: SQLite do JARVIS (migração versionada), busca FTS5 sem acentos;
 * ``reminders``: lembretes persistentes com fuso, recorrência, avisos antecipados e
   deduplicação após reinício;
 * ``capture``: frases → registros (explícito = confirmado; automático = inferido);

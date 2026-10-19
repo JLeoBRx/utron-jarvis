@@ -1,4 +1,4 @@
-"""Contrato de plugins do ULTRON.
+"""Contrato de plugins do JARVIS.
 
 Um plugin declara ``name``, ``version``, ``capabilities`` e ``requirements`` e implementa
 ``initialize(ctx)`` e ``shutdown()``. Ele só pode usar o que declarou:
@@ -10,7 +10,7 @@ Um plugin declara ``name``, ``version``, ``capabilities`` e ``requirements`` e i
   modelos externos, e cada chamada é registrada como conexão externa.
 
 Tudo o que um plugin registra é removido no ``shutdown``. Plugins são código local
-carregado das pastas de plugins; o ULTRON não baixa plugins.
+carregado das pastas de plugins; o JARVIS não baixa plugins.
 """
 from __future__ import annotations
 

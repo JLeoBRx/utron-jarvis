@@ -1,4 +1,4 @@
-"""TTS — síntese de fala com o perfil de voz do ULTRON.
+"""TTS — síntese de fala com o perfil de voz do JARVIS.
 
 Motores, em ordem:
 
@@ -164,6 +164,10 @@ class Speaker:
         self._running = False
         self.interrupt()
         self._queue.put(None)
+        thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(2.0)                     # encerramento ordenado: a síntese em curso termina ou é cortada
+        self._thread = None
 
     def wait_ready(self, timeout: float = 30.0) -> bool:
         return self._ready.wait(timeout)

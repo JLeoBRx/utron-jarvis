@@ -1,4 +1,4 @@
-"""Armazenamento persistente do ULTRON (SQLite, modo WAL).
+"""Armazenamento persistente do JARVIS (SQLite, modo WAL).
 
 Uma única base para todas as memórias, objetivos, grafo e inventário. As migrações são
 versionadas e idempotentes. Textos que parecem segredos (senhas, tokens, cartões) são
@@ -37,7 +37,7 @@ def clean_text(value: Any, limit: int, *, field: str = "texto", allow_empty: boo
     if len(text) > limit:
         raise ValueError(f"{field} excede {limit} caracteres")
     if looks_secret(text):
-        raise ValueError("o ULTRON não armazena senhas, tokens ou dados financeiros")
+        raise ValueError("o JARVIS não armazena senhas, tokens ou dados financeiros")
     return text
 
 

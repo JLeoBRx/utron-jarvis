@@ -5,7 +5,9 @@
   volume que desliza até o alvo). Backend PyAudio em modo callback; sem PyAudio, ``sounddevice``;
   sem nenhum, ``winsound`` (sem mixagem: efeitos são suprimidos durante a fala); sem
   dispositivo, o backend nulo registra que não há saída de áudio.
-* ``open_microphone``: seleção de microfone por nome, índice e padrão (lógica do JARVIS).
+* ``open_microphone``: seleção de microfone por nome, índice e padrão (lógica do JARVIS original),
+  com PyAudio e, na falta ou falha dele, ``sounddevice``; se o dispositivo não aceitar 16 kHz, abre
+  na taxa nativa e converte. ``list_input_devices`` lista os microfones sem abrir nenhum.
 """
 from __future__ import annotations
 
@@ -110,6 +112,10 @@ class AudioOutput:
                 self._pa.terminate()
         except Exception:
             pass
+        self._stream = self._pa = None
+        if self._thread is not None and self._thread is not threading.current_thread():
+            self._thread.join(1.0)                 # laço do winsound: sai no próximo ciclo (≤ 50 ms)
+        self._thread = None
 
     @property
     def available(self) -> bool:
@@ -259,41 +265,231 @@ class AudioOutput:
         return self._paused
 
 
-def open_microphone(*, rate: int = 16000, chunk: int = 4000, name_hint: str = "", index: int = -1,
-                    log_fn: Callable[[str], None] | None = None):
-    """Abre o microfone: por nome, depois índice e por fim o padrão do sistema."""
+class AudioBackendMissing(ImportError):
+    """Nenhuma biblioteca de áudio (PyAudio ou sounddevice) está instalada."""
+
+
+INPUT_BACKENDS = ("pyaudio", "sounddevice")
+
+
+def _lowpass_taps(ratio: int, taps: int = 63) -> np.ndarray:
+    """FIR passa-baixas (sinc janelado) para reduzir a taxa por um fator inteiro sem serrilhado."""
+    cutoff = 0.45 / ratio
+    n = np.arange(taps) - (taps - 1) / 2
+    h = np.sinc(2 * cutoff * n) * np.hamming(taps)
+    return (h / h.sum()).astype(np.float32)
+
+
+class _ResamplingStream:
+    """Abre o microfone na taxa nativa (ex.: 48 kHz) e entrega PCM 16 bits a 16 kHz.
+
+    Usado só quando o dispositivo recusa 16 kHz. Fator inteiro: filtro FIR + decimação; fator
+    não inteiro: filtro + interpolação linear. O estado do filtro passa de um bloco ao outro."""
+
+    def __init__(self, inner, source_rate: int, target_rate: int = 16000):
+        self.inner = inner
+        self.source_rate, self.target_rate = int(source_rate), int(target_rate)
+        ratio = self.source_rate / self.target_rate
+        self.integer = abs(ratio - round(ratio)) < 1e-6
+        self.ratio = int(round(ratio)) if self.integer else ratio
+        self.taps = _lowpass_taps(max(2, int(round(ratio))))
+        self._history = np.zeros(len(self.taps) - 1, dtype=np.float32)
+        self._phase = 0.0
+
+    def read(self, frames: int, exception_on_overflow: bool = False) -> bytes:
+        need = int(np.ceil(frames * self.source_rate / self.target_rate))
+        raw = self.inner.read(need, exception_on_overflow=False)
+        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+        joined = np.concatenate([self._history, samples])
+        filtered = np.convolve(joined, self.taps, mode="valid")
+        self._history = joined[-(len(self.taps) - 1):]
+        if self.integer:
+            out = filtered[:: self.ratio][:frames]
+        else:
+            positions = np.arange(frames) * self.ratio
+            positions = positions[positions < len(filtered) - 1]
+            out = np.interp(positions, np.arange(len(filtered)), filtered)
+        return np.clip(out, -32768, 32767).astype(np.int16).tobytes()
+
+    def stop_stream(self) -> None:
+        stop = getattr(self.inner, "stop_stream", None)
+        if stop:
+            stop()
+
+    def close(self) -> None:
+        self.inner.close()
+
+
+class _SoundDeviceInput:
+    """Adapta ``sounddevice.RawInputStream`` à interface usada pelo pipeline (read/stop_stream/close)."""
+
+    def __init__(self, stream):
+        self.stream = stream
+
+    def read(self, frames: int, exception_on_overflow: bool = False) -> bytes:
+        data, _overflowed = self.stream.read(frames)
+        return bytes(data)
+
+    def stop_stream(self) -> None:
+        self.stream.stop()
+
+    def close(self) -> None:
+        self.stream.close()
+
+
+class _NoHandle:
+    def terminate(self) -> None:
+        pass
+
+
+def _pyaudio_devices():
     import pyaudio
     audio = pyaudio.PyAudio()
-
-    def usable(i: int) -> bool:
-        try:
-            return int(audio.get_device_info_by_index(i)["maxInputChannels"]) > 0
-        except Exception:
-            return False
-
-    candidates: list[int] = []
-    if name_hint:
-        for i in range(audio.get_device_count()):
-            if usable(i) and name_hint.lower() in str(audio.get_device_info_by_index(i)["name"]).lower():
-                candidates.append(i)
-    if index >= 0 and usable(index) and index not in candidates:
-        candidates.append(index)
+    devices, default = [], None
     try:
-        default = int(audio.get_default_input_device_info()["index"])
-        if default not in candidates:
-            candidates.append(default)
-    except Exception:
-        pass
-    last_error = None
-    for i in candidates:
         try:
-            stream = audio.open(format=pyaudio.paInt16, channels=1, rate=rate, input=True, input_device_index=i,
-                                frames_per_buffer=chunk)
-            name = str(audio.get_device_info_by_index(i)["name"])
-            if log_fn:
-                log_fn(f"Microfone: {name} (índice {i}).")
-            return audio, stream, name
+            default = int(audio.get_default_input_device_info()["index"])
+        except Exception:
+            default = None
+        for i in range(audio.get_device_count()):
+            try:
+                info = audio.get_device_info_by_index(i)
+            except Exception:
+                continue
+            if int(info.get("maxInputChannels", 0)) <= 0:
+                continue
+            try:
+                host = audio.get_host_api_info_by_index(int(info["hostApi"]))["name"]
+            except Exception:
+                host = ""
+            devices.append({"index": i, "name": str(info["name"]), "host_api": host,
+                            "channels": int(info["maxInputChannels"]), "rate": int(info.get("defaultSampleRate", 0)),
+                            "default": i == default})
+    finally:
+        audio.terminate()
+    return devices, default
+
+
+def _sounddevice_devices():
+    import sounddevice as sd
+    devices = []
+    try:
+        default = int(sd.default.device[0]) if sd.default.device[0] is not None else None
+    except Exception:
+        default = None
+    hostapis = sd.query_hostapis()
+    for i, info in enumerate(sd.query_devices()):
+        if int(info.get("max_input_channels", 0)) <= 0:
+            continue
+        host = hostapis[info["hostapi"]]["name"] if 0 <= info.get("hostapi", -1) < len(hostapis) else ""
+        devices.append({"index": i, "name": str(info["name"]), "host_api": host,
+                        "channels": int(info["max_input_channels"]), "rate": int(info.get("default_samplerate", 0)),
+                        "default": i == default})
+    return devices, default
+
+
+def list_input_devices(backend: str = "auto") -> dict:
+    """Microfones visíveis para a biblioteca de áudio disponível (nada é aberto)."""
+    errors = []
+    for name in (INPUT_BACKENDS if backend == "auto" else (backend,)):
+        try:
+            devices, default = (_pyaudio_devices if name == "pyaudio" else _sounddevice_devices)()
+            return {"backend": name, "devices": devices, "default": default, "errors": errors}
+        except ImportError:
+            errors.append(f"{name} não instalado")
         except Exception as exc:
-            last_error = exc
+            errors.append(f"{name}: {exc}")
+    return {"backend": None, "devices": [], "default": None, "errors": errors}
+
+
+def _candidates(devices: list[dict], default: int | None, name_hint: str, index: int) -> list[dict]:
+    """Ordem: nome escolhido → índice configurado → padrão do sistema. Outros dispositivos NÃO são
+    tentados sozinhos (poderiam ser 'Mixagem estéreo' e captar a própria voz do JARVIS)."""
+    out: list[dict] = []
+    if name_hint:
+        out += [d for d in devices if name_hint.lower() in d["name"].lower()]
+    if index >= 0:
+        out += [d for d in devices if d["index"] == index and d not in out]
+    if default is not None:
+        out += [d for d in devices if d["index"] == default and d not in out]
+    return out
+
+
+def _open_pyaudio_input(rate: int, chunk: int, name_hint: str, index: int):
+    import pyaudio
+    devices, default = _pyaudio_devices()
+    audio = pyaudio.PyAudio()
+    last_error = None
+    for device in _candidates(devices, default, name_hint, index):
+        for wanted in (rate, device["rate"]):
+            if not wanted:
+                continue
+            try:
+                stream = audio.open(format=pyaudio.paInt16, channels=1, rate=int(wanted), input=True,
+                                    input_device_index=device["index"],
+                                    frames_per_buffer=int(chunk * wanted / rate))
+            except Exception as exc:
+                last_error = exc
+                continue
+            if int(wanted) != rate:
+                stream = _ResamplingStream(stream, int(wanted), rate)
+            return audio, stream, device, int(wanted)
     audio.terminate()
-    raise RuntimeError(f"nenhum microfone disponível ({last_error})" if last_error else "nenhum microfone disponível")
+    raise RuntimeError(_no_device_message(devices, last_error))
+
+
+def _open_sounddevice_input(rate: int, chunk: int, name_hint: str, index: int):
+    import sounddevice as sd
+    devices, default = _sounddevice_devices()
+    last_error = None
+    for device in _candidates(devices, default, name_hint, index):
+        for wanted in (rate, device["rate"]):
+            if not wanted:
+                continue
+            try:
+                raw = sd.RawInputStream(samplerate=int(wanted), channels=1, dtype="int16",
+                                        blocksize=int(chunk * wanted / rate), device=device["index"])
+                raw.start()
+            except Exception as exc:
+                last_error = exc
+                continue
+            stream = _SoundDeviceInput(raw)
+            if int(wanted) != rate:
+                stream = _ResamplingStream(stream, int(wanted), rate)
+            return _NoHandle(), stream, device, int(wanted)
+    raise RuntimeError(_no_device_message(devices, last_error))
+
+
+def _no_device_message(devices: list[dict], error) -> str:
+    if not devices:
+        return "nenhum dispositivo de entrada de áudio encontrado"
+    names = "; ".join(f"{d['index']}: {d['name']}" for d in devices[:8])
+    return f"nenhum microfone pôde ser aberto ({error}); disponíveis: {names}"
+
+
+def open_microphone(*, rate: int = 16000, chunk: int = 4000, name_hint: str = "", index: int = -1,
+                    log_fn: Callable[[str], None] | None = None, backend: str = "auto"):
+    """Abre o microfone: nome escolhido → índice → padrão do sistema; PyAudio e, se faltar ou falhar,
+    sounddevice. Devolve (handle, stream, nome) com ``stream.read(n)`` → PCM 16 bits mono a ``rate``."""
+    errors = []
+    missing = 0
+    order = INPUT_BACKENDS if backend == "auto" else (backend,)
+    for name in order:
+        opener = _open_pyaudio_input if name == "pyaudio" else _open_sounddevice_input
+        try:
+            handle, stream, device, opened_rate = opener(rate, chunk, name_hint, index)
+        except ImportError:
+            missing += 1
+            errors.append(f"{name} não instalado")
+            continue
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
+            continue
+        label = f"{device['name']} (índice {device['index']}, {name}"
+        label += f", {opened_rate} Hz convertidos para {rate} Hz)" if opened_rate != rate else ")"
+        if log_fn:
+            log_fn(f"Microfone: {label}.")
+        return handle, stream, device["name"]
+    if missing == len(order):
+        raise AudioBackendMissing("nenhuma biblioteca de áudio instalada (PyAudio ou sounddevice)")
+    raise RuntimeError("; ".join(errors))

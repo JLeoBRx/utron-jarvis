@@ -1,7 +1,7 @@
 """Skills de navegador: abrir endereços e pesquisar.
 
 Somente HTTP/HTTPS, sem credenciais embutidas na URL. Abrir uma página no navegador é ação
-do usuário (não é uma conexão do próprio ULTRON).
+do usuário (não é uma conexão do próprio JARVIS).
 """
 from __future__ import annotations
 

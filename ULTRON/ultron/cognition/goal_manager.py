@@ -71,7 +71,7 @@ class GoalManager:
     def start(self) -> None:
         interrupted = 0
         for goal in self.list(active_only=True):
-            self._write_status(goal, "FAILED", "interrompido: o ULTRON foi reiniciado durante a execução")
+            self._write_status(goal, "FAILED", "interrompido: o JARVIS foi reiniciado durante a execução")
             interrupted += 1
         self.interrupted_on_start = interrupted
 

@@ -1,14 +1,22 @@
-"""Configuração do ULTRON.
+"""Configuração do JARVIS.
 
 Ordem de carga (a última vence):
 
 1. valores padrão desta classe;
 2. perfil escolhido (``profiles.py``);
-3. ``settings.json`` na pasta de dados do usuário;
-4. variáveis de ambiente ``ULTRON_<CAMPO>`` (ex.: ``ULTRON_MODEL=qwen2.5:7b``).
+3. ``settings.json`` na pasta de dados do usuário (migrado da identidade ULTRON, se preciso);
+4. variáveis de ambiente ``JARVIS_<CAMPO>`` ou, por compatibilidade, ``ULTRON_<CAMPO>``
+   (ex.: ``JARVIS_MODEL=qwen2.5:7b``).
 
 Todo valor passa por validação: campos desconhecidos são ignorados e números fora da faixa
 são limitados. A configuração nunca guarda credenciais.
+
+Migração de identidade (versão 2): só os campos que eram IDENTIDADE do ULTRON mudam —
+palavra de ativação "ultron" → "jarvis" (variantes do ULTRON trocadas pelas do JARVIS; formas
+calibradas pelo usuário que não são do ULTRON são mantidas), tema dourado → azul e perfil
+"performance" → "economy". Antes de regravar, uma cópia do arquivo original é guardada em
+``settings.ultron-backup.json``. Preferências pessoais (microfone, volume, modelos, horários…)
+não são tocadas.
 """
 from __future__ import annotations
 
@@ -27,17 +35,22 @@ log = logging.getLogger("ultron.config")
 _QUIET_RE = re.compile(r"([01]?\d|2[0-3]):[0-5]\d-([01]?\d|2[0-3]):[0-5]\d")
 
 AUTONOMY_LEVELS = ("restricted", "balanced", "autonomous")
-PERFORMANCE_PROFILES = ("performance", "balanced", "cinematic")
+PERFORMANCE_PROFILES = ("economy", "balanced", "high", "cinematic")
+LEGACY_PROFILES = {"performance": "economy"}           # nome antigo (ULTRON) → nome atual
 PRIVACY_MODES = ("local", "standard")
-THEMES = ("ultron-gold",)
+THEMES = ("jarvis-blue",)
 STT_ENGINES = ("auto", "vosk-large", "vosk-small")
+MIC_BACKENDS = ("auto", "pyaudio", "sounddevice")
+SETTINGS_VERSION = 2                                   # 2 = identidade JARVIS
 
-DEFAULT_WAKE_VARIANTS = (
-    "ultron", "ultrom", "ultrão", "ultrao", "últron", "ultrón", "altron", "ultro",
-    "ul tron", "u tron", "ultrone", "outron",
-)
-# Confusões com palavras comuns: só ativam seguidas de um comando reconhecido.
-DEFAULT_WEAK_WAKE_VARIANTS = ("o tom", "o trom", "o tron", "u tom", "u trom", "ultra", "outro", "autor")
+DEFAULT_WAKE_VARIANTS = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
+# Nomes próprios que soam como "Jarvis": fortes só no início da frase.
+DEFAULT_WAKE_NAMES = ("jarbas", "javi")
+# Confusões com palavras comuns (medidas): só ativam seguidas de um comando reconhecido.
+DEFAULT_WEAK_WAKE_VARIANTS = ("aviso", "aves", "a vez", "ja vi", "e vi", "davis", "travis", "avis")
+LEGACY_WAKE_VARIANTS = ("ultron", "ultrom", "ultrão", "ultrao", "últron", "ultrón", "altron", "ultro",
+                        "ul tron", "u tron", "ultrone", "outron")
+LEGACY_WEAK_WAKE_VARIANTS = ("o tom", "o trom", "o tron", "u tom", "u trom", "ultra", "outro", "autor")
 
 
 @dataclass
@@ -56,10 +69,13 @@ class Settings:
     volume: float = 0.9
     speech_speed: float = 0.9
     voice_enabled: bool = True
+    voice_profile: str = "jarvis"          # jarvis (masculina, grave, natural) | neutral
     stt_engine: str = "auto"
-    wake_words: tuple = ("ultron",)
+    wake_words: tuple = ("jarvis",)
     wake_variants: tuple = DEFAULT_WAKE_VARIANTS
+    wake_names: tuple = DEFAULT_WAKE_NAMES
     wake_weak_variants: tuple = DEFAULT_WEAK_WAKE_VARIANTS
+    mic_backend: str = "auto"              # auto (PyAudio, depois sounddevice) | pyaudio | sounddevice
     mic_name: str = ""
     mic_index: int = -1
     followup_seconds: float = 12.0
@@ -104,8 +120,9 @@ class Settings:
     quiet_hours: str = ""                     # "22:00-07:00": sem som, voz ou pop-up (fica na central)
     timezone: str = ""                        # vazio = fuso do sistema; ou IANA (ex.: America/Sao_Paulo)
     # ------------------------------------------------------------ interface e som
-    theme: str = "ultron-gold"
-    performance_profile: str = "balanced"     # performance | balanced | cinematic (custo visual)
+    theme: str = "jarvis-blue"
+    performance_profile: str = "balanced"     # economy | balanced | high | cinematic (custo visual)
+    ambient_sound: bool = False               # som ambiente discreto do TARDIS (desligado por padrão)
     hud_fps: int = 60
     hud_start_minimized: bool = False
     hud_auto_expand: bool = True
@@ -119,6 +136,7 @@ class Settings:
     startup: bool = False
     debug: bool = False
     profile: str = "default"
+    settings_version: int = SETTINGS_VERSION
 
     # Faixas numéricas aceitas.
     _RANGES = {
@@ -137,6 +155,7 @@ class Settings:
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,
         "theme": THEMES, "stt_engine": STT_ENGINES, "performance_profile": PERFORMANCE_PROFILES,
+        "mic_backend": MIC_BACKENDS, "voice_profile": ("jarvis", "neutral"),
     }
 
     # ------------------------------------------------------------ utilidades
@@ -186,6 +205,8 @@ class Settings:
             value = tuple(str(x).strip() for x in raw if str(x).strip())
         else:
             value = str(raw).strip()
+        if key == "performance_profile":
+            value = LEGACY_PROFILES.get(value, value)
         if key in self._RANGES:
             low, high = self._RANGES[key]
             value = type(value)(max(low, min(high, value)))
@@ -206,6 +227,53 @@ class Settings:
         return value
 
 
+def _close_to_ultron(form: str) -> bool:
+    import difflib
+    import unicodedata
+    value = unicodedata.normalize("NFD", str(form).casefold())
+    value = "".join(c for c in value if unicodedata.category(c) != "Mn").replace(" ", "")
+    return difflib.SequenceMatcher(None, value, "ultron").ratio() >= 0.6
+
+
+def migrate(stored: dict) -> tuple[dict, list[str]]:
+    """Migra um settings.json da identidade ULTRON (versão 1) para JARVIS (versão 2)."""
+    stored = dict(stored or {})
+    try:
+        version = int(stored.get("settings_version", 1))
+    except (TypeError, ValueError):
+        version = 1
+    if version >= SETTINGS_VERSION or not stored:
+        return stored, []
+    notes: list[str] = []
+    words = [str(w) for w in stored.get("wake_words") or []]
+    if words:
+        new_words = ["jarvis" if _close_to_ultron(w) else w for w in words]
+        new_words = list(dict.fromkeys(new_words))
+        if new_words != words:
+            stored["wake_words"] = new_words
+            notes.append("palavra de ativação ultron → jarvis")
+    variants = [str(v) for v in stored.get("wake_variants") or []]
+    if variants:
+        kept = [v for v in variants if v not in LEGACY_WAKE_VARIANTS and not _close_to_ultron(v)]
+        stored["wake_variants"] = list(dict.fromkeys(list(DEFAULT_WAKE_VARIANTS) + kept))
+        if len(kept) != len(variants):
+            notes.append("variantes do ULTRON trocadas pelas do JARVIS")
+    weak = [str(v) for v in stored.get("wake_weak_variants") or []]
+    if weak:
+        kept = [v for v in weak if v not in LEGACY_WEAK_WAKE_VARIANTS and not _close_to_ultron(v)]
+        stored["wake_weak_variants"] = list(dict.fromkeys(list(DEFAULT_WEAK_WAKE_VARIANTS) + kept))
+        if len(kept) != len(weak):
+            notes.append("formas fracas do ULTRON trocadas pelas do JARVIS")
+    if stored.get("theme") not in (None, *THEMES):
+        stored["theme"] = THEMES[0]
+        notes.append("tema dourado → azul JARVIS")
+    if stored.get("performance_profile") in LEGACY_PROFILES:
+        stored["performance_profile"] = LEGACY_PROFILES[stored["performance_profile"]]
+        notes.append("perfil performance → economy")
+    stored["settings_version"] = SETTINGS_VERSION
+    return stored, notes or ["versão das configurações atualizada"]
+
+
 class SettingsManager:
     """Carrega, valida, persiste e notifica mudanças de configuração."""
 
@@ -214,6 +282,7 @@ class SettingsManager:
         self._lock = threading.RLock()
         self._listeners: list = []
         self.settings = Settings()
+        self.migration_notes: list[str] = []
 
     def load(self, profile: str | None = None) -> Settings:
         from . import profiles
@@ -227,19 +296,39 @@ class SettingsManager:
                 except (OSError, ValueError) as exc:
                     log.warning("settings.json ilegível (%s); usando padrões", exc)
                     stored = {}
-            chosen = profile or os.environ.get("ULTRON_PROFILE") or stored.get("profile") or "default"
+            stored, notes = migrate(stored)
+            if notes and self.path.is_file():
+                self._backup_and_rewrite(stored, notes)
+            chosen = (profile or os.environ.get("JARVIS_PROFILE") or os.environ.get("ULTRON_PROFILE")
+                      or stored.get("profile") or "default")
             settings.apply(profiles.get(chosen), source=f"perfil {chosen}")
             settings.apply(stored, source="settings.json")
             if profile:
                 settings.profile = profile
             env = {}
             for name in Settings.field_names():
-                value = os.environ.get("ULTRON_" + name.upper())
+                value = os.environ.get("JARVIS_" + name.upper(), os.environ.get("ULTRON_" + name.upper()))
                 if value is not None:
                     env[name] = value
             settings.apply(env, source="ambiente")
             self.settings = settings
+            self.migration_notes = notes
             return settings
+
+    def _backup_and_rewrite(self, stored: dict, notes: list[str]) -> None:
+        """Guarda o arquivo original e grava a versão migrada (só campos de identidade mudam)."""
+        backup = self.path.with_name("settings.ultron-backup.json")
+        try:
+            if not backup.exists():
+                backup.write_text(self.path.read_text(encoding="utf-8"), encoding="utf-8")
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, self.path)
+            log.info("configurações migradas para a identidade JARVIS: %s (cópia em %s)", "; ".join(notes),
+                     backup.name)
+        except OSError as exc:
+            log.warning("não foi possível regravar settings.json migrado (%s); a migração vale só nesta sessão",
+                        exc)
 
     def save(self) -> None:
         with self._lock:

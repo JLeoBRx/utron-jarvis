@@ -87,7 +87,7 @@ class OllamaClient:
     # ------------------------------------------------------------ transporte
     def _guard(self) -> None:
         if self._local_only() and not is_local_url(self.base_url):
-            raise OllamaError("BLOCKED", "Modo local ativo: o ULTRON só aceita Ollama nesta máquina "
+            raise OllamaError("BLOCKED", "Modo local ativo: o JARVIS só aceita Ollama nesta máquina "
                                          f"(endereço configurado: {self.base_url}).")
 
     def _request(self, path: str, payload: dict | None = None, *, timeout: float | None = None,

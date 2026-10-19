@@ -165,21 +165,24 @@ class RuntimeTest(unittest.TestCase):
 
 class PersonalityTest(unittest.TestCase):
     def test_style_removes_forbidden_expressions_and_emojis(self):
-        text = stylize("Claro! Perfeito! 😀 Ótimo, vou abrir o Chrome!!")
-        for banned in ("Claro", "Perfeito", "Ótimo", "😀", "!"):
+        text = stylize("Perfeito! 😀 Ótimo, vou abrir o Chrome!! Espero ter ajudado.")
+        for banned in ("Perfeito", "Ótimo", "😀", "!", "Espero ter ajudado"):
             self.assertNotIn(banned, text)
         self.assertTrue(text)
+        self.assertEqual(stylize("O ULTRON abriu o Chrome."), "O JARVIS abriu o Chrome.", "identidade anterior corrigida")
 
     def test_dialogue_and_voice_shortening(self):
         self.assertIn(dialogue.say("done"), dialogue.LINES["done"])
         long_text = "Primeira frase curta. " + "Segunda frase muito longa " * 30
         self.assertLessEqual(len(short_for_voice(long_text)), 400)
 
-    def test_identity_never_jarvis(self):
+    def test_identity_is_jarvis(self):
         from ultron.personality import identity
         prompt = identity.system_prompt()
-        self.assertIn("ULTRON", prompt)
-        self.assertNotIn("JARVIS", prompt)
+        self.assertIn("JARVIS", prompt)
+        self.assertNotIn("ULTRON", prompt)
+        self.assertIn("pergunta objetiva", prompt, "pede esclarecimento quando falta informação essencial")
+        self.assertIn("JARVIS online.", dialogue.LINES["online"])
 
 
 class NeuralCoreTest(unittest.TestCase):

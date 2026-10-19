@@ -1,4 +1,4 @@
-"""Garante uma única instância do ULTRON (duas instâncias disputariam o microfone)."""
+"""Garante uma única instância do JARVIS (duas instâncias disputariam o microfone)."""
 from __future__ import annotations
 
 import ctypes

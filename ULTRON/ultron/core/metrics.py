@@ -1,4 +1,4 @@
-"""PERFORMANCE MONITOR — métricas reais de desempenho do ULTRON.
+"""PERFORMANCE MONITOR — métricas reais de desempenho do JARVIS.
 
 Séries de tempo (janelas limitadas, sem crescimento ilimitado) e contadores, alimentados
 por quem mede de verdade:
@@ -37,7 +37,7 @@ def percentiles(values: list[float]) -> dict[str, float]:
 
 
 class _ErrorCounter(logging.Handler):
-    """Conta registros de erro do ULTRON (sem guardar texto que possa conter dados sensíveis)."""
+    """Conta registros de erro do JARVIS (sem guardar texto que possa conter dados sensíveis)."""
 
     def __init__(self, monitor: "PerformanceMonitor"):
         super().__init__(level=logging.ERROR)
@@ -117,7 +117,7 @@ class PerformanceMonitor:
         return percentiles(values)
 
     def sample_process(self) -> dict[str, Any]:
-        """CPU e memória do processo do ULTRON (psutil). Chamado pelo agendador, nunca pela interface."""
+        """CPU e memória do processo do JARVIS (psutil). Chamado pelo agendador, nunca pela interface."""
         try:
             import psutil
             proc = psutil.Process()

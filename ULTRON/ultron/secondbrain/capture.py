@@ -159,7 +159,7 @@ class Capture:
                  remind: bool | None = None, leads: list | None = None, record_id: str | None = None,
                  body: str = "") -> CaptureResult:
         if looks_secret(text) or (title and looks_secret(title)) or (body and looks_secret(body)):
-            raise SecondBrainError("o ULTRON não armazena senhas, tokens ou dados de autenticação")
+            raise SecondBrainError("o JARVIS não armazena senhas, tokens ou dados de autenticação")
         now = self.service.now_wall()
         resolved = iso_when(when) if when else None
         parsed = parsing.parse(text if resolved else (when if when else text), now)
@@ -295,7 +295,7 @@ class Capture:
         """
         reply = " ".join(str(reply or "").split())
         if looks_secret(reply):
-            raise SecondBrainError("o ULTRON não armazena senhas, tokens ou dados de autenticação")
+            raise SecondBrainError("o JARVIS não armazena senhas, tokens ou dados de autenticação")
         now = self.service.now_wall()
         need = pending.get("need", "datetime")
         args = {"text": pending.get("text") or reply, "kind": pending.get("kind") or None,

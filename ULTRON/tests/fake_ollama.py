@@ -1,6 +1,6 @@
 """Servidor HTTP que imita a API do Ollama para testes de integração.
 
-Não é um *mock* de função: o cliente real do ULTRON fala HTTP com este servidor,
+Não é um *mock* de função: o cliente real do JARVIS fala HTTP com este servidor,
 exercitando serialização, *streaming*, erros e cancelamento.
 """
 from __future__ import annotations

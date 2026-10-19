@@ -1,4 +1,4 @@
-"""NEURAL CORE — o ULTRON montado.
+"""NEURAL CORE — o JARVIS montado.
 
 Responsabilidades:
 
@@ -243,7 +243,7 @@ class NeuralCore:
         self.state.set_runtime_state("IDLE", "", source="core")
         self.bus.publish(EventType.SYSTEM_READY, {"seconds": seconds, "components": statuses, "failed": failed},
                          source="core")
-        log.info("ULTRON online em %.2fs (%d componentes, %d com falha)", seconds, len(statuses), len(failed))
+        log.info("JARVIS online em %.2fs (%d componentes, %d com falha)", seconds, len(statuses), len(failed))
         self.runtime.submit("health", self.health.check_all, name="health:boot")
         self.say(dialogue.say("online"))
         return statuses
@@ -419,7 +419,7 @@ class NeuralCore:
             response = self.orchestrator.handle(Command(text, source=source), token)
         except CancelledError:
             response = Response(dialogue.say("cancelled"), "info", success=False)
-        except Exception as exc:  # o ULTRON nunca cai por causa de um pedido
+        except Exception as exc:  # o JARVIS nunca cai por causa de um pedido
             log.exception("falha ao processar pedido")
             response = Response(f"Falha interna ao processar o pedido ({type(exc).__name__}). Registrado.", "error",
                                 success=False)
@@ -655,7 +655,7 @@ class NeuralCore:
     def _on_wake(self, event) -> None:
         if event.get("command"):
             return
-        # só "Ultron.": o pulso neural confirma; sem mixagem de efeitos, a confirmação é falada
+        # só "Jarvis.": o pulso neural confirma; sem mixagem de efeitos, a confirmação é falada
         if not getattr(self.audio_out, "mixes_effects", False):
             self.say(dialogue.say("wake"))
 
@@ -685,8 +685,8 @@ class NeuralCore:
     def _on_settings_changed(self, changed: list[str], settings) -> None:
         if not changed:
             return
-        voice_keys = {"wake_words", "wake_variants", "wake_weak_variants", "followup_seconds", "voice_enabled",
-                      "mic_name", "mic_index", "stt_engine"}
+        voice_keys = {"wake_words", "wake_variants", "wake_weak_variants", "wake_names", "followup_seconds",
+                      "voice_enabled", "mic_name", "mic_index", "mic_backend", "stt_engine"}
         if voice_keys & set(changed):
             self.voice.apply_settings(changed)
         if {"window_interval", "process_interval", "system_interval", "vision_interval", "filesystem_interval",

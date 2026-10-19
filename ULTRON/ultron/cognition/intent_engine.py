@@ -64,7 +64,7 @@ def pt_number(text: str) -> int | None:
     return total
 
 
-def strip_wake(raw: str, wake_words: tuple = ("ultron",)) -> str:
+def strip_wake(raw: str, wake_words: tuple = ("jarvis",)) -> str:
     text = str(raw or "").strip()
     pattern = r"^(?:(?:ok|ei|oi|ola|olá)\s+)?(?:" + "|".join(re.escape(w) for w in wake_words) + r")(?:[,;:]\s*|\s+|$)"
     return re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
@@ -84,7 +84,7 @@ class IntentEngine:
                  wake_words: Callable[[], tuple] | None = None,
                  recent_topic: Callable[[], dict | None] | None = None):
         self._automations = automations
-        self._wake_words = wake_words or (lambda: ("ultron",))
+        self._wake_words = wake_words or (lambda: ("jarvis",))
         self._recent_topic = recent_topic or (lambda: None)     # assunto recente ("anote essa ideia", "disso")
 
     # ------------------------------------------------------------ API
@@ -115,8 +115,8 @@ class IntentEngine:
 
     # ------------------------------------------------------------ regras
     def _rules(self, raw: str, t: str) -> Intent | None:
-        for rule in (self._secondbrain_rules, self._time_rules, self._control_rules, self._power_rules,
-                     self._network_rules,
+        for rule in (self._secondbrain_rules, self._time_rules, self._control_rules, self._voice_rules,
+                     self._power_rules, self._network_rules,
                      self._system_rules, self._project_rules, self._imagination_rules, self._memory_rules,
                      self._vision_rules, self._file_rules, self._web_rules, self._window_rules, self._app_rules,
                      self._media_rules, self._input_rules):
@@ -263,6 +263,18 @@ class IntentEngine:
                              r"\d{1,2}/\d{1,2}|\d{1,2}h|as \d{1,2}|dia \d{1,2}|semana que vem|proxima semana|"
                              r"ate (o fim|sexta|segunda|amanha))\b", jot.group(1)):
             return _cmd(raw, "secondbrain.capture", text=r[:600])
+        return None
+
+    def _voice_rules(self, raw, t):
+        if re.search(r"\b(diagnostic\w*|test\w*|verifi\w*|cheq\w*)\b.*\b(voz|microfone|escuta|audio|fala)\b|"
+                     r"\b(voz|microfone|escuta)\b.*\b(nao (esta )?funciona\w*|com problema|falhando)\b", t):
+            return _cmd(raw, "voice.diagnose")
+        if re.search(r"\b(list\w*|quais|mostr\w*)\b.*\bmicrofones\b", t):
+            return _cmd(raw, "voice.list_mics")
+        pick = re.match(r"(?i)^(?:use|usar|selecione|selecionar|troque para|mude para|escolha)\s+(?:o\s+)?microfone\s+"
+                        r"(?:numero\s+|número\s+)?(.+)$", raw.strip().rstrip(".!"))
+        if pick:
+            return _cmd(raw, "voice.select_mic", device=pick.group(1).strip()[:120])
         return None
 
     def _power_rules(self, raw, t):

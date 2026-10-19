@@ -1,4 +1,4 @@
-"""ULTRON — agente computacional local-first.
+"""JARVIS — agente computacional local-first.
 
 O pacote é organizado por responsabilidade (ver ARCHITECTURE_REPORT.md):
 
@@ -25,4 +25,4 @@ O pacote é organizado por responsabilidade (ver ARCHITECTURE_REPORT.md):
 """
 
 __version__ = "1.0.0"
-NAME = "ULTRON"
+NAME = "JARVIS"

@@ -1,10 +1,13 @@
-"""Calibração da palavra de ativação.
+"""Calibração da palavra de ativação "Jarvis".
 
-O reconhecedor pode transcrever "Ultron" de formas diferentes conforme o sotaque e o
-microfone ("ultrom", "ul tron"...). A calibração grava algumas repetições, transcreve com
-o mesmo modelo usado no dia a dia e acrescenta as formas ouvidas às variantes aceitas.
+O reconhecedor transcreve "Jarvis" de formas diferentes conforme o sotaque e o microfone
+("jarvis", "jarbas", "aviso", "já vi"…). A calibração ouve algumas repetições com o MESMO
+modelo usado no dia a dia e acrescenta as formas ouvidas: próximas de "jarvis" e que não são
+palavras comuns viram formas fortes; confusões repetidas com palavras comuns viram formas
+fracas (só ativam seguidas de um comando reconhecido).
 
-Uso: ``python -m ultron.voice.calibrate`` (pede para dizer "Ultron" três vezes).
+Uso: ``python -m ultron.voice.calibrate`` (pede para dizer "Jarvis" três vezes) ou, com o
+JARVIS aberto, HUB > Voz > Calibrar (usa a captura já aberta, sem um segundo microfone).
 """
 from __future__ import annotations
 
@@ -14,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from .stt import VoskSTT, choose_model
-from .wake_word import _norm, learn_variants
+from .wake_word import _norm, learn_variants, learn_weak_variants
 
 RATE = 16000
 CHUNK = 4000
@@ -25,6 +28,8 @@ class CalibrationResult:
     transcripts: list[str] = field(default_factory=list)
     variants: tuple = ()
     added: tuple = ()
+    weak: tuple = ()
+    weak_added: tuple = ()
 
 
 def transcribe(stt, pcm: bytes) -> str:
@@ -41,11 +46,52 @@ def transcribe(stt, pcm: bytes) -> str:
     return " ".join(pieces).strip()
 
 
-def calibrate(stt, recordings: list[bytes], known: tuple) -> CalibrationResult:
-    transcripts = [t for t in (transcribe(stt, pcm) for pcm in recordings) if t]
+def learn(transcripts: list[str], known: tuple, known_weak: tuple = ()) -> CalibrationResult:
     variants = learn_variants(transcripts, tuple(known))
     added = tuple(v for v in variants if v not in {_norm(k) for k in known} and v not in known)
-    return CalibrationResult(transcripts, variants, added)
+    weak = learn_weak_variants(transcripts, variants, tuple(known_weak))
+    weak_added = tuple(w for w in weak if w not in known_weak)
+    return CalibrationResult(list(transcripts), variants, added, weak, weak_added)
+
+
+def calibrate(stt, recordings: list[bytes], known: tuple, known_weak: tuple = ()) -> CalibrationResult:
+    transcripts = [t for t in (transcribe(stt, pcm) for pcm in recordings) if t]
+    return learn(transcripts, known, known_weak)
+
+
+def calibrate_live(core, *, repetitions: int = 3, seconds: float = 4.0,
+                   prompt: Callable[[str], None] | None = None, cancel=None) -> CalibrationResult:
+    """Calibração com o JARVIS aberto: usa a captura em andamento (diagnostic_tap), sem abrir outro
+    fluxo de microfone. Grava as formas aprendidas nas configurações."""
+    import queue
+    pipeline = core.voice
+    if not pipeline.capturing or pipeline.stt is None:
+        raise RuntimeError(pipeline.reason or pipeline.stt_reason or "captura de voz indisponível")
+    heard: queue.Queue = queue.Queue()
+    transcripts: list[str] = []
+    pipeline.diagnostic_tap = lambda kind, data: heard.put(data.get("text", "")) if kind == "final" else None
+    try:
+        for number in range(1, repetitions + 1):
+            if cancel is not None and getattr(cancel, "cancelled", False):
+                break
+            if prompt:
+                prompt(f"[{number}/{repetitions}] Diga apenas \"Jarvis\".")
+            deadline = time.monotonic() + seconds
+            while time.monotonic() < deadline:
+                try:
+                    text = heard.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                if text:
+                    transcripts.append(text)
+                    break
+    finally:
+        pipeline.diagnostic_tap = None
+    s = core.settings()
+    result = learn(transcripts, tuple(s.wake_variants), tuple(s.wake_weak_variants))
+    if result.added or result.weak_added:
+        core.settings_manager.update(wake_variants=list(result.variants), wake_weak_variants=list(result.weak))
+    return result
 
 
 def record_microphone(seconds: float, *, name_hint: str = "", index: int = -1) -> bytes:
@@ -78,15 +124,18 @@ def main(argv: list[str] | None = None, *, recorder: Callable[[float], bytes] | 
     record = recorder or (lambda secs: record_microphone(secs, name_hint=s.mic_name, index=s.mic_index))
     recordings = []
     for number in range(1, repetitions + 1):
-        input(f"[{number}/{repetitions}] Pressione Enter e diga apenas \"Ultron\".")
+        input(f"[{number}/{repetitions}] Pressione Enter e diga apenas \"Jarvis\".")
         recordings.append(record(2.5))
-    result = calibrate(stt, recordings, tuple(s.wake_variants))
+    result = calibrate(stt, recordings, tuple(s.wake_variants), tuple(s.wake_weak_variants))
     print("Ouvido:", "; ".join(result.transcripts) or "(nada reconhecido)")
-    if result.added:
-        manager.update(wake_variants=list(result.variants))
-        print("Variantes adicionadas:", ", ".join(result.added))
+    if result.added or result.weak_added:
+        manager.update(wake_variants=list(result.variants), wake_weak_variants=list(result.weak))
+        if result.added:
+            print("Formas fortes adicionadas:", ", ".join(result.added))
+        if result.weak_added:
+            print("Formas fracas adicionadas (exigem comando):", ", ".join(result.weak_added))
     else:
-        print("Nenhuma variante nova. As formas atuais já cobrem a sua pronúncia.")
+        print("Nenhuma forma nova. As formas atuais já cobrem a sua pronúncia.")
     return 0
 
 

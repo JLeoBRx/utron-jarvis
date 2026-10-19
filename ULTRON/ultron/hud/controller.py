@@ -162,7 +162,7 @@ class HudController(QtCore.QObject):
             elif kind == EventType.REMINDER_DUE.value:
                 self._notify(payload)
             elif kind == EventType.NOTIFICATION.value and payload.get("popup") and not payload.get("silent"):
-                self._show_message(f"ULTRON · {payload.get('title', '')}", str(payload.get("body", "")))
+                self._show_message(f"JARVIS · {payload.get('title', '')}", str(payload.get("body", "")))
             elif kind == EventType.UI_REQUEST.value and payload.get("view") == "second_brain":
                 self.open_second_brain(payload.get("section") or None)
             if kind in AUTO_EXPAND and not self.window.isVisible() \
@@ -351,8 +351,8 @@ class HudController(QtCore.QObject):
         """Notificação nativa (bandeja do Windows) para um lembrete real; respeita silêncio."""
         if payload.get("silent"):
             return
-        title = {"lead": "ULTRON · Lembrete antecipado", "missed": "ULTRON · Lembrete perdido"}.get(
-            payload.get("kind"), "ULTRON · Lembrete")
+        title = {"lead": "JARVIS · Lembrete antecipado", "missed": "JARVIS · Lembrete perdido"}.get(
+            payload.get("kind"), "JARVIS · Lembrete")
         body = str(payload.get("title", ""))[:160]
         if payload.get("when_text"):
             body += f"\n{payload['when_text']}"
@@ -371,7 +371,7 @@ class HudController(QtCore.QObject):
         if not QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
             return None
         tray = QtWidgets.QSystemTrayIcon(app_icon(), self)
-        tray.setToolTip("ULTRON")
+        tray.setToolTip("JARVIS")
         tray.setContextMenu(self._menu())
         tray.activated.connect(lambda reason: self.expand()
                                if reason == QtWidgets.QSystemTrayIcon.Trigger else None)
@@ -389,7 +389,7 @@ class HudController(QtCore.QObject):
         mic.setCheckable(True)
         mic.setChecked(self.core.voice.mic_enabled if self.core.enable_voice else False)
         mic.toggled.connect(lambda on: self.window.input.mic.setChecked(on))
-        voice = menu.addAction("Voz do ULTRON")
+        voice = menu.addAction("Voz do JARVIS")
         voice.setCheckable(True)
         voice.setChecked(not self.core.speaker.muted)
         voice.toggled.connect(lambda on: self.window.input.voice.setChecked(on))
@@ -412,7 +412,7 @@ class HudController(QtCore.QObject):
         text = format_report(report) if report else "Verificação de saúde ainda não concluída."
         plugins = ", ".join(f"{p['name']} ({p['status']})" for p in self.core.plugins.list()) or "nenhum"
         box = QtWidgets.QMessageBox(self.window)
-        box.setWindowTitle("ULTRON — diagnóstico")
+        box.setWindowTitle("JARVIS — diagnóstico")
         box.setIcon(QtWidgets.QMessageBox.NoIcon)
         box.setText(f"<pre>{text}\n\nPlugins: {plugins}</pre>")
         box.exec()
@@ -438,7 +438,7 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     from . import theme
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    app.setApplicationName("ULTRON")
+    app.setApplicationName("JARVIS")
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(theme.STYLESHEET)
     app.setWindowIcon(app_icon())

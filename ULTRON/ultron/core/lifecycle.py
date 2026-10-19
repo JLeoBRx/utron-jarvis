@@ -1,9 +1,9 @@
-"""Ciclo de vida dos componentes do ULTRON.
+"""Ciclo de vida dos componentes do JARVIS.
 
 Cada componente declara dependências; o ``LifecycleManager`` inicia em ordem topológica,
 publica ``COMPONENT_STARTED``/``COMPONENT_FAILED`` (que a HUD usa na inicialização
 cinematográfica) e para em ordem inversa. Um componente que falha não derruba o sistema:
-o ULTRON segue em modo degradado e informa a ausência.
+o JARVIS segue em modo degradado e informa a ausência.
 """
 from __future__ import annotations
 

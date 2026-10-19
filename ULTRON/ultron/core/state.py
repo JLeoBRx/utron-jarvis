@@ -13,7 +13,7 @@ from typing import Any
 
 from .events import EventType
 
-# Estados de runtime (o que o ULTRON está fazendo agora). A HUD traduz cada um em
+# Estados de runtime (o que o JARVIS está fazendo agora). A HUD traduz cada um em
 # um comportamento visual; nenhum outro módulo inventa estados próprios.
 RUNTIME_STATES = (
     "BOOTING", "IDLE", "PERCEIVING", "CONTEXT", "DECIDING", "LISTENING", "THINKING", "PLANNING", "EXECUTING",

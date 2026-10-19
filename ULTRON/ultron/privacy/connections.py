@@ -1,8 +1,8 @@
-"""Monitor das conexões de rede do próprio ULTRON.
+"""Monitor das conexões de rede do próprio JARVIS.
 
 Lista as conexões do processo atual (via psutil), classifica em locais/externas e registra
 cada destino externo observado. Também lista portas em escuta (serviços expostos) — o
-ULTRON não deve ter nenhuma. O status do firewall do Windows é lido, nunca alterado.
+JARVIS não deve ter nenhuma. O status do firewall do Windows é lido, nunca alterado.
 """
 from __future__ import annotations
 

@@ -26,7 +26,7 @@ AGENT_RULES = (
     "Se o pedido for apenas uma pergunta ou conversa, responda diretamente sem ferramentas. Resposta final: curta."
 )
 PLAN_PROMPT = (
-    "Você é o planejador do ULTRON. Decomponha o objetivo em passos executáveis usando SOMENTE as skills listadas. "
+    "Você é o planejador do JARVIS. Decomponha o objetivo em passos executáveis usando SOMENTE as skills listadas. "
     "Responda SOMENTE com JSON no formato {\"steps\": [{\"description\": \"...\", \"skill\": \"nome\", "
     "\"args\": {}}], \"confidence\": 0.0}. No máximo 8 passos. Argumentos devem seguir os nomes da lista. "
     "Se o objetivo não exigir ações, devolva steps vazio."

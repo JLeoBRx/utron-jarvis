@@ -1,4 +1,4 @@
-"""Orbe compacto: a forma recolhida do ULTRON (sempre visível, arrastável).
+"""Orbe compacto: a forma recolhida do JARVIS (sempre visível, arrastável).
 
 O orbe mostra o mesmo estado real da cena: o cérebro em miniatura (a mesma malha, no
 mesmo giro), brilho do núcleo pelo estado de runtime, anel de profundidade cognitiva,
@@ -32,7 +32,7 @@ class OrbWindow(QtWidgets.QWidget):
         self.scene = scene
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setFixedSize(self.SIZE, self.SIZE)
-        self.setToolTip("ULTRON — clique duplo para expandir")
+        self.setToolTip("JARVIS — clique duplo para expandir")
         self._drag: QtCore.QPoint | None = None
         self._dragged = False
 
@@ -71,18 +71,18 @@ class OrbWindow(QtWidgets.QWidget):
         now = scene.clock()
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        p.setPen(QtGui.QPen(theme.with_alpha(theme.GOLD, 0.55), 1.0))
-        p.setBrush(QtGui.QColor(8, 8, 8, 235))
+        p.setPen(QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.55), 1.0))
+        p.setBrush(theme.with_alpha(theme.BG2, 0.92))
         p.drawEllipse(c, s * 0.44, s * 0.44)
         p.setPen(QtCore.Qt.NoPen)
         authorization = scene.runtime_state == "AWAITING_AUTHORIZATION"
-        tone = theme.AMBER if authorization else theme.GOLD
+        tone = theme.ALERT if authorization else theme.PRIMARY
         level = STATE_LEVEL.get(scene.runtime_state, 0.3)
         breath = 0.5 + 0.5 * math.sin(2 * math.pi * scene.breath)
         mic = float(scene.telemetry.get("mic_level", 0.0)) if scene.telemetry.get("listening") else 0.0
         intensity = min(1.0, level * (0.85 + 0.15 * breath) + 0.6 * mic + 0.4 * scene.release)
         grad = QtGui.QRadialGradient(c, s * 0.36)
-        grad.setColorAt(0.0, theme.with_alpha(theme.WARM_WHITE, 0.55 * intensity))
+        grad.setColorAt(0.0, theme.with_alpha(theme.TEXT_BRIGHT, 0.55 * intensity))
         grad.setColorAt(0.3, theme.with_alpha(tone, 0.35 * intensity))
         grad.setColorAt(1.0, theme.with_alpha(tone, 0.0))
         p.setBrush(grad)
@@ -98,14 +98,14 @@ class OrbWindow(QtWidgets.QWidget):
             start = 90 - i * 36
             p.drawArc(rect, int((start - 30) * 16), int(26 * 16))
         if scene.telemetry.get("listening"):
-            pen = QtGui.QPen(theme.with_alpha(theme.WARM_WHITE, 0.35 + 0.6 * mic), 1.2)
+            pen = QtGui.QPen(theme.with_alpha(theme.TEXT_BRIGHT, 0.35 + 0.6 * mic), 1.2)
             p.setPen(pen)
             p.setBrush(QtCore.Qt.NoBrush)
             radius = s * (0.30 + 0.08 * mic)
             p.drawEllipse(c, radius, radius)
         if authorization:
             pulse = 0.5 + 0.5 * math.sin(now * 4)
-            p.setPen(QtGui.QPen(theme.with_alpha(theme.AMBER, 0.5 + 0.5 * pulse), 1.6))
+            p.setPen(QtGui.QPen(theme.with_alpha(theme.ALERT, 0.5 + 0.5 * pulse), 1.6))
             p.setBrush(QtCore.Qt.NoBrush)
             p.drawEllipse(c, s * 0.46, s * 0.46)
         p.end()

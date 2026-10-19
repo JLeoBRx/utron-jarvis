@@ -1,7 +1,7 @@
 """Sensor de tela: captura em memória, privacidade e detecção de mudança.
 
 * A captura nunca é gravada em disco nem enviada à rede.
-* Não captura quando a HUD cobre a tela, quando o próprio ULTRON está em foco, em apps
+* Não captura quando a HUD cobre a tela, quando o próprio JARVIS está em foco, em apps
   excluídos (gerenciadores de senha etc.) ou em janelas com título sensível.
 * Mudança: miniatura 48×27 em tons de cinza comparada com a anterior (método do Observador
   do JARVIS, preservado).
@@ -113,7 +113,7 @@ class ScreenSensor(Sensor):
         if self._hud_covering():
             return "HUD cobrindo a tela"
         if fg.get("pid") == os.getpid():
-            return "ULTRON em foco"
+            return "JARVIS em foco"
         haystack = _norm(f"{fg.get('process', '')} {fg.get('title', '')}")
         for item in tuple(DEFAULT_EXCLUDED) + tuple(self._excluded() or ()):
             key = _norm(item)

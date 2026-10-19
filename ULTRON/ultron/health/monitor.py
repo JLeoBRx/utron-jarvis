@@ -7,7 +7,7 @@ Cada verificação devolve ``{"status", "detail", "value"}`` com status:
 * ``FAIL``        — deveria funcionar e não funciona;
 * ``UNAVAILABLE`` — recurso opcional ausente (com o motivo).
 
-Os recursos da máquina são medidos aqui; os módulos do ULTRON são consultados por
+Os recursos da máquina são medidos aqui; os módulos do JARVIS são consultados por
 *probes* registradas pelo Neural Core. Nenhuma verificação pode travar o monitor: cada
 uma tem tempo limite e erro vira ``FAIL`` com a causa.
 """

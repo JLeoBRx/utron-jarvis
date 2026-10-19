@@ -1,4 +1,4 @@
-"""Infraestrutura de execução concorrente do ULTRON.
+"""Infraestrutura de execução concorrente do JARVIS.
 
 Separação de threads exigida pelo projeto:
 

@@ -1,6 +1,6 @@
-"""HUB 2 — ULTRON SECOND BRAIN.
+"""HUB 2 — JARVIS SECOND BRAIN.
 
-O impacto prático da atividade do ULTRON: prioridades do dia, compromissos, atrasados, linha do
+O impacto prático da atividade do JARVIS: prioridades do dia, compromissos, atrasados, linha do
 tempo, tarefas, projetos, ideias e notas, busca na memória, central de notificações, dispositivos
 da rede, saúde do sistema, revisão do que foi inferido e lixeira.
 
@@ -203,7 +203,7 @@ class RecordModel(QtCore.QAbstractTableModel):
             return row["cells"][index.column()]
         if role == QtCore.Qt.ForegroundRole:
             if row["overdue"]:
-                return theme.AMBER
+                return theme.ALERT
             if row["record"].get("status") in ("done", "cancelled"):
                 return theme.TEXT_DIM
             if row["inferred"]:
@@ -291,7 +291,7 @@ class DeviceModel(QtCore.QAbstractTableModel):
             if d.get("status") == "absent":
                 return theme.TEXT_DIM
             if d.get("status") == "online" and not d.get("trusted"):
-                return theme.AMBER
+                return theme.ALERT
             return None
         if role == QtCore.Qt.ToolTipRole:
             parts = [f"Métodos: {', '.join(d.get('method_labels') or []) or '—'}"]
@@ -381,19 +381,19 @@ class Header(QtWidgets.QWidget):
         grad.setColorAt(1, QtGui.QColor(8, 8, 7))
         p.fillRect(self.rect(), grad)
         if self.pulse > 0:
-            p.fillRect(self.rect(), theme.with_alpha(theme.AMBER, 0.12 * self.pulse))
-        p.setPen(QtGui.QPen(theme.with_alpha(theme.GOLD, 0.55), 1))
+            p.fillRect(self.rect(), theme.with_alpha(theme.ALERT, 0.12 * self.pulse))
+        p.setPen(QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.55), 1))
         p.drawLine(0, h - 1, w, h - 1)
-        p.setPen(theme.GOLD)
+        p.setPen(theme.PRIMARY)
         p.setFont(theme.font(13, weight=600, spacing=4))
-        p.drawText(QtCore.QRectF(20, 8, 420, 28), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, "ULTRON · SECOND BRAIN")
+        p.drawText(QtCore.QRectF(20, 8, 420, 28), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, "JARVIS · SECOND BRAIN")
         p.setFont(theme.font(8.5, spacing=2))
         p.setPen(theme.TEXT_DIM)
         today = dt.date.today()
         p.drawText(QtCore.QRectF(20, 34, 420, 18), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
                    f"{timeutil.DIAS[today.weekday()].upper()} · {today:%d/%m/%Y}")
         # atividade (o mesmo contrato do HUB 1)
-        tone = theme.AMBER if self.activity in ("ERROR", "RECOVERY", "REMINDING") else theme.GOLD
+        tone = theme.ALERT if self.activity in ("ERROR", "RECOVERY", "REMINDING") else theme.PRIMARY
         p.setPen(tone)
         p.setFont(theme.font(9, weight=600, spacing=3))
         right = QtCore.QRectF(w - 380, 8, 360, 22)
@@ -412,10 +412,10 @@ class Header(QtWidgets.QWidget):
             if x + width > w - 20:
                 break
             rect = QtCore.QRectF(x, 52, width, 17)
-            p.setPen(QtGui.QPen(theme.with_alpha(theme.AMBER if alert else theme.GOLD, 0.65 if alert else 0.35), 1))
-            p.setBrush(theme.with_alpha(theme.AMBER if alert else theme.GOLD, 0.10 if alert else 0.04))
+            p.setPen(QtGui.QPen(theme.with_alpha(theme.ALERT if alert else theme.PRIMARY, 0.65 if alert else 0.35), 1))
+            p.setBrush(theme.with_alpha(theme.ALERT if alert else theme.PRIMARY, 0.10 if alert else 0.04))
             p.drawRoundedRect(rect, 3, 3)
-            p.setPen(theme.WARM_WHITE if alert else theme.TEXT)
+            p.setPen(theme.TEXT_BRIGHT if alert else theme.TEXT)
             p.drawText(rect, QtCore.Qt.AlignCenter, text)
             x += width + 8
         p.end()
@@ -734,7 +734,7 @@ class TodayPage(Page):
             item = QtWidgets.QListWidgetItem(text)
             item.setData(QtCore.Qt.UserRole, payload)
             if alert:
-                item.setForeground(theme.AMBER)
+                item.setForeground(theme.ALERT)
             widget.addItem(item)
 
     def apply(self, data: dict) -> None:
@@ -792,7 +792,7 @@ class TimelinePage(Page):
             if day_key not in days:
                 label = timeutil.describe(wall, all_day=True, now=now)
                 top = QtWidgets.QTreeWidgetItem([label.upper(), "", ""])
-                top.setForeground(0, theme.GOLD)
+                top.setForeground(0, theme.PRIMARY)
                 self.tree.addTopLevelItem(top)
                 days[day_key] = top
             if item["kind"] == "record":
@@ -804,7 +804,7 @@ class TimelinePage(Page):
             else:
                 rem = item["reminder"]
                 child = QtWidgets.QTreeWidgetItem([f"{wall:%H:%M}", f"lembrete: {rem['title']}", "Lembrete"])
-                child.setForeground(1, theme.AMBER)
+                child.setForeground(1, theme.ALERT)
             days[day_key].addChild(child)
         self.tree.expandAll()
         self.status.setText(f"{len(data['items'])} item(ns) nos próximos 14 dias." if data["items"] else
@@ -1131,7 +1131,7 @@ class NotificationsPage(Page):
             item = QtWidgets.QListWidgetItem(f"{when}  {n['title']}" + (f" — {n['body']}" if n.get("body") else "") + flags)
             item.setData(QtCore.Qt.UserRole, n)
             if n.get("state") == "new":
-                item.setForeground(theme.AMBER if n.get("kind") in ("missed", "overdue") else theme.WARM_WHITE)
+                item.setForeground(theme.ALERT if n.get("kind") in ("missed", "overdue") else theme.TEXT_BRIGHT)
             else:
                 item.setForeground(theme.TEXT_DIM)
             self.list.addItem(item)
@@ -1376,7 +1376,7 @@ class SystemPage(Page):
         for name, check in sorted(data["health"].items()):
             item = QtWidgets.QTreeWidgetItem([name, check.get("status", ""), check.get("detail", "")])
             if check.get("status") in ("FAIL", "WARN"):
-                item.setForeground(1, theme.AMBER)
+                item.setForeground(1, theme.ALERT)
             self.health.addTopLevelItem(item)
         if not data["health"]:
             self.health.addTopLevelItem(QtWidgets.QTreeWidgetItem(["—", "", "verificação de saúde ainda não concluída"]))
@@ -1434,7 +1434,7 @@ class SecondBrainWindow(QtWidgets.QWidget):
         self.state = state if state is not None else core.state.as_dict()
         self.profile = profile
         self.setObjectName("Hub2")
-        self.setWindowTitle("ULTRON — Second Brain")
+        self.setWindowTitle("JARVIS — Second Brain")
         self.setWindowIcon(app_icon())
         self.setStyleSheet(STYLE)
         self.resize(1280, 800)

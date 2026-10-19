@@ -1,4 +1,4 @@
-"""NEURAL SCENE — o estado visual do ULTRON NEURAL HUB (sem Qt, testável).
+"""NEURAL SCENE — o estado visual do JARVIS NEURAL HUB (sem Qt, testável).
 
 A cena só muda por dados reais: eventos do Event Bus, o ULTRON_STATE e a telemetria.
 Nada aqui é decorativo ou aleatório sem causa:
@@ -123,8 +123,8 @@ CATEGORY_SUBSYSTEM = {"development": "CÓDIGO", "browser": "WEB", "automation": 
 HEALTH_SUBSYSTEM = {"OLLAMA": "OLLAMA", "VOICE": "VOZ", "VISION": "VISÃO", "NETWORK": "REDE", "MEMORY": "MEMÓRIA",
                     "SECOND_BRAIN": "AGENDA"}
 STATUS_FROM_HEALTH = {"OK": "ok", "WARN": "warn", "FAIL": "fail", "UNAVAILABLE": "off", "UNKNOWN": "unknown"}
-NODE_TYPE_COLOR = {"MEMORY": "amber", "IDEA": "white", "CONCEPT": "white", "SKILL": "gold", "PROJECT": "gold",
-                   "WORLD": "white", "SCENARIO": "white", "DEVICE": "amber", "APPLICATION": "gold"}
+NODE_TYPE_COLOR = {"MEMORY": "blue", "IDEA": "ice", "CONCEPT": "ice", "SKILL": "cyan", "PROJECT": "cyan",
+                   "WORLD": "ice", "SCENARIO": "ice", "DEVICE": "blue", "APPLICATION": "cyan"}
 
 
 def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -160,7 +160,7 @@ class Particle:
     t: float = 0.0
     speed: float = 0.8
     size: float = 1.0
-    tone: str = "gold"
+    tone: str = "cyan"
 
     def position(self) -> tuple[float, float, float]:
         x0, y0, z0, cx, cy, cz, x1, y1, z1 = self.points
@@ -177,7 +177,7 @@ class Pulse:
     born: float
     duration: float = 1.2
     radius: float = 0.18
-    tone: str = "gold"
+    tone: str = "cyan"
     strength: float = 1.0
 
 
@@ -428,7 +428,7 @@ class NeuralScene:
         x, y, z = self.mesh.region_center(region, self.camera.facing_side())
         return float(x), float(y), float(z)
 
-    def stimulate(self, region: str, amount: float = 0.6, *, pulse: bool = True, tone: str = "gold") -> None:
+    def stimulate(self, region: str, amount: float = 0.6, *, pulse: bool = True, tone: str = "cyan") -> None:
         if region not in REGIONS:
             return
         self.region_activity[region] = _clamp(self.region_activity[region] + amount)
@@ -442,7 +442,7 @@ class NeuralScene:
         if sub is not None:
             sub.activity = _clamp(max(sub.activity, amount))
 
-    def activate_nodes(self, ids: list[str], *, spread: bool = True, tone: str = "gold") -> None:
+    def activate_nodes(self, ids: list[str], *, spread: bool = True, tone: str = "cyan") -> None:
         for node_id in ids:
             node = self.nodes.get(node_id)
             if node is None:
@@ -472,7 +472,7 @@ class NeuralScene:
                 old.activation = 0.0
             self._hot_edges.pop(next(iter(self._hot_edges)))
 
-    def _emit_particle(self, a: str, b: str, *, tone: str = "gold") -> None:
+    def _emit_particle(self, a: str, b: str, *, tone: str = "cyan") -> None:
         key = (a, b) if a < b else (b, a)
         edge = self.edges.get(key)
         na, nb = self.nodes.get(a), self.nodes.get(b)
@@ -486,7 +486,7 @@ class NeuralScene:
         self.particles.append(Particle((na.x, na.y, na.z, mx * 0.8, my * 0.8, mz * 0.8, nb.x, nb.y, nb.z), 0.0,
                                        0.55 + 0.5 * edge.weight, 1.0 + edge.weight, tone))
 
-    def region_particles(self, src: str, dst: str, count: int = 3, tone: str = "gold") -> None:
+    def region_particles(self, src: str, dst: str, count: int = 3, tone: str = "cyan") -> None:
         """Sinal entre regiões (ex.: percepção → córtex), em arco pelo interior do cérebro."""
         if src not in REGIONS or dst not in REGIONS:
             return
@@ -542,11 +542,11 @@ class NeuralScene:
                     self.total_nodes += 1
                     self._newborn.append((node.id, now))
                 if len(self.pulses) < self.profile.max_pulses:
-                    self.pulses.append(Pulse(node.x, node.y, node.z, now, 1.4, 0.07, "white", 0.8))
+                    self.pulses.append(Pulse(node.x, node.y, node.z, now, 1.4, 0.07, "ice", 0.8))
                 parent = p.get("parent")
                 if parent:
                     self._add_edge(str(parent), node.id, "DERIVED", 0.3)
-                    self._emit_particle(str(parent), node.id, tone="white")
+                    self._emit_particle(str(parent), node.id, tone="ice")
             self._update_development()
         elif kind == "GRAPH_EDGE_ADDED":
             edge = self._add_edge(str(p.get("src", "")), str(p.get("dst", "")), str(p.get("type", "RELATED")),
@@ -570,7 +570,7 @@ class NeuralScene:
             self._override_camera("WORLD_EXPLORATION", "occipital", 6.0)
         elif kind == "DREAM_STARTED":
             self.overlay_label, self.overlay_until = "EXPLORING CONNECTIONS", now + 30.0
-            self.activate_nodes([str(i) for i in (p.get("sources") or [])], tone="white")
+            self.activate_nodes([str(i) for i in (p.get("sources") or [])], tone="ice")
         elif kind == "DREAM_FINISHED":
             self.overlay_label, self.overlay_until = "NEW CONCEPT FOUND", now + 5.0
             self._module("dream", "NEW CONCEPT FOUND", "prefrontal",
@@ -600,19 +600,19 @@ class NeuralScene:
             self.transcript.append({"role": "user", "text": str(p.get("text", "")), "at": now, "kind": "input"})
             self._waiting_since = now
         elif kind == "WAKE_WORD":
-            self.stimulate("auditory", 0.9, tone="white")
-            self.region_particles("auditory", "prefrontal", 3, "white")
+            self.stimulate("auditory", 0.9, tone="ice")
+            self.region_particles("auditory", "prefrontal", 3, "ice")
         elif kind == "VERIFICATION_SUCCESS":
-            self.stimulate("motor", 0.7, tone="white")
+            self.stimulate("motor", 0.7, tone="ice")
         elif kind in ("VERIFICATION_FAILED", "ERROR_DETECTED", "RECOVERY_STARTED"):
-            self.stimulate(region or "frontal", 0.8, tone="amber")
+            self.stimulate(region or "frontal", 0.8, tone="error" if kind != "RECOVERY_STARTED" else "alert")
         elif kind == "REMINDER_DUE":
             when = str(p.get("when_text") or "")
             lines = [str(p.get("title", ""))[:90]] + ([when] if when else [])
             if p.get("lead"):
                 lines.append(f"aviso antecipado · {p.get('lead')}")
             self._module("reminder", "LEMBRETE", "hippocampus", lines, ttl=18.0, priority=5)
-            self.stimulate("hippocampus", 0.9, tone="amber")
+            self.stimulate("hippocampus", 0.9, tone="glow")
         elif kind in ("RECORD_CREATED", "RECORD_UPDATED", "RECORD_DELETED"):
             verb = {"RECORD_CREATED": "registrado", "RECORD_UPDATED": "atualizado",
                     "RECORD_DELETED": "excluído" if p.get("permanent") else "enviado à lixeira"}[kind]
@@ -639,7 +639,7 @@ class NeuralScene:
             elif kind == "ACTION_STARTED":
                 self.region_particles("frontal", "motor", 2)
             elif kind == "VOICE_RECEIVED":
-                self.region_particles("auditory", "frontal", 2, "white")
+                self.region_particles("auditory", "frontal", 2, "ice")
 
     def _update_development(self) -> None:
         self.development = development_for(self.total_nodes, self.total_edges)

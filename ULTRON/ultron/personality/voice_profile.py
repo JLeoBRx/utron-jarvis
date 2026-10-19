@@ -1,7 +1,7 @@
-"""Perfil de voz do ULTRON.
+"""Perfil de voz do JARVIS.
 
-Masculina, grave, rouca, fria, autoritária, baixa, controlada e lenta. Os parâmetros são
-aplicados pelo processamento de sinal em ``ultron/voice/tts.py``:
+Masculina, grave, NATURAL e controlada — a inteligibilidade vem antes do timbre. Os
+parâmetros são aplicados pelo processamento de sinal em ``ultron/voice/dsp.py``:
 
 * ``pitch``: fator de altura (< 1 = mais grave). Também desloca formantes, o que dá
   "corpo" e frieza sintética à voz;
@@ -42,6 +42,10 @@ class VoiceProfile:
         return asdict(self)
 
 
-ULTRON = VoiceProfile()
+# JARVIS: só 5 % mais grave, ritmo calmo, corpo nos graves e um ar de sala mínimo. Sem rouquidão
+# nem camada sintética (o perfil robótico do ULTRON prejudicava a clareza).
+JARVIS = VoiceProfile(pitch=0.95, speed=0.97, rasp=0.0, depth_db=2.5, air_cut_hz=9500.0, doubling=0.0,
+                      room=0.04, volume=0.9, sapi_rate=165)
 NEUTRAL = VoiceProfile(pitch=1.0, speed=1.0, rasp=0.0, depth_db=0.0, air_cut_hz=11000.0,
                        doubling=0.0, room=0.0)
+ULTRON = VoiceProfile()          # identidade anterior (mantida só para comparação/testes)

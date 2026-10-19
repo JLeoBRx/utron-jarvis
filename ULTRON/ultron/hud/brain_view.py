@@ -30,8 +30,8 @@ QPointF, QRectF, QLineF = QtCore.QPointF, QtCore.QRectF, QtCore.QLineF
 PLUS = QtGui.QPainter.CompositionMode_Plus
 OVER = QtGui.QPainter.CompositionMode_SourceOver
 
-STATUS_TONE = {"done": "gold", "running": "white", "unconfirmed": "amber", "failed": "amber", "skipped": "dim",
-               "cancelled": "amber", "pending": "dim"}
+STATUS_TONE = {"done": "cyan", "running": "ice", "unconfirmed": "alert", "failed": "error", "skipped": "dim",
+               "cancelled": "alert", "pending": "dim"}
 
 RING_RX = 2.5                      # raio horizontal do anel (× escala do cérebro)
 RING_RY = 1.375                    # raio vertical: o anel é visto em perspectiva
@@ -42,8 +42,8 @@ NODE_RADIUS = (1.0, 1.3, 1.65)                 # nós do grafo, do fundo para a 
 MAX_STRONG_NODES = 48              # nós do grafo com brilho permanente (os mais fortes)
 LEVELS = 10                        # níveis de intensidade das sinapses ativadas (desvanecimento suave)
 ANGLE_STEP = 0.0005                # rad: resolução angular da camada da malha em cache
-NODE_TONES = ("gold", "amber", "white")
-GOLD_RGB, AMBER_RGB, WHITE_RGB = (theme.GOLD.getRgb()[:3], theme.AMBER.getRgb()[:3], theme.WARM_WHITE.getRgb()[:3])
+NODE_TONES = ("cyan", "blue", "ice")              # atividade/skills · memória/dispositivos · ideias/conceitos
+CYAN_RGB, BLUE_RGB, ICE_RGB = (theme.PRIMARY.getRgb()[:3], theme.ELECTRIC.getRgb()[:3], theme.TEXT.getRgb()[:3])
 # fase da inicialização → região que acende quando a fase é alcançada
 BOOT_REGIONS = {3: "hippocampus", 4: "broca", 5: "frontal", 6: "parietal", 7: "motor", 8: "prefrontal",
                 9: "auditory", 10: "occipital"}
@@ -51,9 +51,9 @@ BOOT_INDEX = {name: i for i, (_label, name) in enumerate(BOOT_PHASES) if name}
 BOOT_INDEX.update({"skills": BOOT_INDEX["agent"], "voice_output": BOOT_INDEX["voice"], "health": len(BOOT_PHASES) - 1})
 # status do subsistema → (tom do nó, opacidade do nó, cor do rótulo, opacidade do rótulo, palavra de status)
 RING_LOOK = {
-    "ok": ("gold", 0.95, theme.TEXT_DIM, 0.85, ""),
-    "warn": ("amber", 0.95, theme.AMBER, 0.9, ""),
-    "fail": ("amber", 0.85, theme.AMBER, 0.9, "FALHA"),
+    "ok": ("cyan", 0.95, theme.TEXT_DIM, 0.85, ""),
+    "warn": ("alert", 0.95, theme.ALERT, 0.9, ""),
+    "fail": ("error", 0.85, theme.ERROR, 0.9, "FALHA"),
     "off": ("dim", 0.45, theme.TEXT_DIM, 0.45, "OFF"),
     "unknown": ("dim", 0.35, theme.TEXT_DIM, 0.4, ""),
 }
@@ -63,9 +63,7 @@ def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return lo if v < lo else hi if v > hi else v
 
 
-def _mix(a: QtGui.QColor, b: QtGui.QColor, t: float) -> QtGui.QColor:
-    return QtGui.QColor(int(a.red() + (b.red() - a.red()) * t), int(a.green() + (b.green() - a.green()) * t),
-                        int(a.blue() + (b.blue() - a.blue()) * t))
+_mix = theme.mix
 
 
 def _pen(c: QtGui.QColor, alpha: float, width: float = 1.0, *, round_cap: bool = False) -> QtGui.QPen:
@@ -130,7 +128,7 @@ class BrainView(QtWidgets.QWidget):
         self.mesh_renders = 0
         self.frame_times: deque = deque(maxlen=600)       # duração de cada pintura (métricas)
         self.paint_count = 0
-        self._point_colors = [_mix(theme.GOLD_DIM, _mix(theme.GOLD, theme.WARM_WHITE, 0.35), k / 4).getRgb()[:3]
+        self._point_colors = [_mix(theme.PRIMARY_DIM, _mix(theme.PRIMARY, theme.TEXT_BRIGHT, 0.35), k / 4).getRgb()[:3]
                               for k in range(5)]
         self.stats: dict[str, int] = {}             # o que o último quadro desenhou (diagnóstico e testes)
         self.fps = 0.0
@@ -169,12 +167,12 @@ class BrainView(QtWidgets.QWidget):
             pix = self._canvas(w, h)
             p = QtGui.QPainter(pix)
             grad = QtGui.QRadialGradient(w * 0.5, h * 0.44, max(w, h) * 0.75)
-            grad.setColorAt(0.0, QtGui.QColor(20, 18, 16))
-            grad.setColorAt(0.55, QtGui.QColor(9, 9, 9))
-            grad.setColorAt(1.0, theme.BLACK)
+            grad.setColorAt(0.0, theme.PANEL)                    # câmara central: azul profundo
+            grad.setColorAt(0.55, theme.BG2)
+            grad.setColorAt(1.0, theme.BG)
             p.fillRect(0, 0, w, h, grad)
             rng = np.random.default_rng(5)                      # grão fino estático (sem animação)
-            p.setPen(QtGui.QColor(255, 255, 255, 6))
+            p.setPen(theme.with_alpha(theme.TEXT, 0.025))
             for x, y in rng.integers(0, [w, h], size=(int(w * h / 900), 2)):
                 p.drawPoint(int(x), int(y))
             p.end()
@@ -184,8 +182,8 @@ class BrainView(QtWidgets.QWidget):
             pix.fill(QtCore.Qt.transparent)
             p = QtGui.QPainter(pix)
             grad = QtGui.QRadialGradient(w * 0.5, h * 0.46, max(w, h) * 0.68)
-            grad.setColorAt(0.55, QtGui.QColor(0, 0, 0, 0))
-            grad.setColorAt(1.0, QtGui.QColor(0, 0, 0, 255))
+            grad.setColorAt(0.55, theme.with_alpha(theme.BG, 0.0))
+            grad.setColorAt(1.0, theme.with_alpha(theme.BG, 1.0))
             p.fillRect(0, 0, w, h, grad)
             p.end()
             self._vignette = pix
@@ -207,7 +205,7 @@ class BrainView(QtWidgets.QWidget):
         self._draw_title(p, fr)
         p.drawPixmap(0, 0, self._vignette)
         if scene.suspense > 0.03 or scene.dim > 0.01:
-            p.fillRect(self.rect(), QtGui.QColor(0, 0, 0, int(min(200, 70 * scene.suspense + 140 * scene.dim))))
+            p.fillRect(self.rect(), theme.with_alpha(theme.BG, min(200, 70 * scene.suspense + 140 * scene.dim) / 255))
         self._draw_modules(p, fr)
         self._draw_overlay_text(p, fr)
         p.end()
@@ -302,7 +300,7 @@ class BrainView(QtWidgets.QWidget):
         p.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self._draw_orbits(p, fr, orbit)
         p.setCompositionMode(PLUS)
-        self._sprite(p, "soft", "gold", fr.cx, fr.cy, fr.R * 1.55, halo)
+        self._sprite(p, "soft", "cyan", fr.cx, fr.cy, fr.R * 1.55, halo)
         p.end()
         self._base, self._base_key = pix, key
         self.base_renders += 1
@@ -312,9 +310,9 @@ class BrainView(QtWidgets.QWidget):
             return
         p.setBrush(QtCore.Qt.NoBrush)
         center = QPointF(fr.rcx, fr.rcy)
-        p.setPen(_pen(theme.GOLD, 0.10 * alpha))
+        p.setPen(_pen(theme.PRIMARY, 0.10 * alpha))
         p.drawEllipse(center, fr.rrx, fr.rry)
-        p.setPen(_pen(theme.GOLD, 0.05 * alpha))
+        p.setPen(_pen(theme.PRIMARY, 0.05 * alpha))
         p.drawEllipse(center, fr.rrx * 0.80, fr.rry * 0.80)
         p.drawEllipse(center, fr.rrx * 1.12, fr.rry * 1.12)
 
@@ -438,10 +436,10 @@ class BrainView(QtWidgets.QWidget):
         for k in range(first, 5):
             sel = (edge_level == k) & ~deep
             if sel.any():
-                p.setPen(_pen(theme.GOLD, EDGE_ALPHA[k] * shell))
+                p.setPen(_pen(theme.PRIMARY, EDGE_ALPHA[k] * shell))
                 p.drawLines(_lines(sx[a[sel]], sy[a[sel]], sx[b[sel]], sy[b[sel]]))
         if deep.any():
-            p.setPen(_pen(theme.WARM_WHITE, 0.30 * inner))
+            p.setPen(_pen(theme.TEXT_BRIGHT, 0.30 * inner))
             p.drawLines(_lines(sx[a[deep]], sy[a[deep]], sx[b[deep]], sy[b[deep]]))
         shell_points = visible & ~mesh.inner_mask                # nós da malha: maiores e mais claros à frente
         for k in range(max(0, first - 1), 5):
@@ -449,20 +447,20 @@ class BrainView(QtWidgets.QWidget):
             self._dots(p, sx[sel], sy[sel], self._point_colors[k], POINT_RADIUS[k],
                        (0.30 + 0.70 * (k / 4) ** 1.2) * shell)
         deep_points = visible & mesh.inner_mask
-        self._dots(p, sx[deep_points], sy[deep_points], WHITE_RGB, 1.3, 0.75 * inner)
+        self._dots(p, sx[deep_points], sy[deep_points], ICE_RGB, 1.3, 0.75 * inner)
         p.setCompositionMode(PLUS)
         if profile.front_glow:                                   # cintilação dos nós mais próximos
             for i in np.nonzero(shell_points & (depth > 0.90))[0]:
-                self._sprite(p, "glow", "gold", sx[i], sy[i], 4.0, 0.16 * shell, clip=False)
+                self._sprite(p, "glow", "cyan", sx[i], sy[i], 4.0, 0.16 * shell, clip=False)
         if genesis < 1.0:                                        # nós nascendo (inicialização)
             for i in np.nonzero(visible & (mesh.genesis_rank > genesis - 0.05))[0]:
-                self._sprite(p, "glow", "white", sx[i], sy[i], 5.0, 0.85, clip=False)
+                self._sprite(p, "glow", "ice", sx[i], sy[i], 5.0, 0.85, clip=False)
         p.setOpacity(1.0)
         p.setCompositionMode(OVER)
         if gsx is not None:                                      # nós reais do Neural Graph
             tone = graph["tone"]
             glevel = np.minimum(2, (gdepth * 3).astype(np.int32))
-            for t, rgb in enumerate((GOLD_RGB, AMBER_RGB, WHITE_RGB)):
+            for t, rgb in enumerate((CYAN_RGB, BLUE_RGB, ICE_RGB)):
                 for k, alpha in enumerate((0.35, 0.6, 0.9)):
                     sel = (tone == t) & (glevel == k)
                     self._dots(p, gsx[sel], gsy[sel], rgb, NODE_RADIUS[k], alpha * reveal)
@@ -500,7 +498,7 @@ class BrainView(QtWidgets.QWidget):
                 faint = lvl < 3                          # opacidade < 20%: serrilhado imperceptível, 3× mais barato
                 if faint:
                     p.setRenderHint(QtGui.QPainter.Antialiasing, False)
-                p.setPen(_pen(theme.GOLD, 0.55 * (lvl + 0.5) / LEVELS * reveal))
+                p.setPen(_pen(theme.PRIMARY, 0.55 * (lvl + 0.5) / LEVELS * reveal))
                 p.drawLines(_lines(cx[rows, :-1].ravel(), cy[rows, :-1].ravel(),
                                    cx[rows, 1:].ravel(), cy[rows, 1:].ravel()))
                 if faint:
@@ -550,7 +548,7 @@ class BrainView(QtWidgets.QWidget):
                 continue
             lit += 1
             x, y, d = self._region_screen(fr, name)
-            tone = "white" if name in ("auditory", "broca") and level > 0.5 else "gold"
+            tone = "ice" if name in ("auditory", "broca") and level > 0.5 else "cyan"
             self._sprite(p, "soft", tone, x, y, REGIONS[name][3] * fr.R * 1.9, min(1.0, amount * 0.75))
             p.setOpacity(1.0)
             members = mesh.membership[name]
@@ -561,12 +559,12 @@ class BrainView(QtWidgets.QWidget):
             inside[members] = True
             sel = inside[a] & inside[b]
             if scene.profile.region_lines and sel.any():
-                p.setPen(_pen(theme.GOLD, min(1.0, 0.12 + 0.5 * amount)))
+                p.setPen(_pen(theme.PRIMARY, min(1.0, 0.12 + 0.5 * amount)))
                 p.drawLines(_lines(sx[a[sel]], sy[a[sel]], sx[b[sel]], sy[b[sel]]))
             front = members[depth[members] > 0.5]
             back = members[depth[members] <= 0.5]
             for group, alpha, radius in ((front, 0.85, 1.6), (back, 0.35, 1.2)):
-                self._dots(p, sx[group], sy[group], WHITE_RGB, radius, min(1.0, amount) * alpha)
+                self._dots(p, sx[group], sy[group], ICE_RGB, radius, min(1.0, amount) * alpha)
         p.setCompositionMode(OVER)
         self.stats["regions"] = lit
 
@@ -577,7 +575,7 @@ class BrainView(QtWidgets.QWidget):
         online = _clamp(scene.boot.shown - 10.0) if scene.boot.active else 1.0
         glow = reveal * (0.30 + 0.45 * (1 - online) * booting + 0.4 * heartbeat * scene.suspense + 0.3 * scene.release)
         p.setCompositionMode(PLUS)
-        self._sprite(p, "glow", "white", fr.cx, fr.cy, (0.07 + 0.05 * scene.release) * fr.R, glow)
+        self._sprite(p, "glow", "ice", fr.cx, fr.cy, (0.07 + 0.05 * scene.release) * fr.R, glow)
         p.setOpacity(1.0)
         p.setCompositionMode(OVER)
 
@@ -601,7 +599,7 @@ class BrainView(QtWidgets.QWidget):
             for i, pulse in enumerate(pulses):
                 t = (now - pulse.born) / pulse.duration
                 ease = 1 - (1 - t) ** 3
-                p.setPen(_pen(theme.TONES.get(pulse.tone, theme.GOLD), 0.6 * pulse.strength * (1 - t) ** 1.5))
+                p.setPen(_pen(theme.TONES.get(pulse.tone, theme.PRIMARY), 0.6 * pulse.strength * (1 - t) ** 1.5))
                 r = pulse.radius * fr.R * f[i] * ease
                 p.drawEllipse(QPointF(sx[i], sy[i]), r * 1.2, r * 0.9)
         self.stats["signals"] = len(active) + len(pulses)
@@ -625,18 +623,18 @@ class BrainView(QtWidgets.QWidget):
                     synapses += 1
                     self._draw_ring_synapse(p, fr, sub, nx, ny, reveal, now)
                 p.setCompositionMode(PLUS)
-                self._sprite(p, "glow", tone if tone != "dim" else "gold", nx, ny, 9 + 5 * sub.activity,
+                self._sprite(p, "glow", tone if tone != "dim" else "cyan", nx, ny, 9 + 5 * sub.activity,
                              (0.18 + 0.6 * sub.activity) * dot_alpha * reveal)
                 if sub.name in arrivals:                       # o sinal chegou ao subsistema
                     age = _clamp(now - arrivals[sub.name])
                     p.setOpacity(1.0)
                     p.setCompositionMode(OVER)
                     p.setBrush(QtCore.Qt.NoBrush)
-                    p.setPen(_pen(theme.WARM_WHITE, 0.7 * (1 - age) * reveal))
+                    p.setPen(_pen(theme.TEXT_BRIGHT, 0.7 * (1 - age) * reveal))
                     p.drawEllipse(QPointF(nx, ny), 4 + 16 * age, 4 + 16 * age)
                 p.setOpacity(1.0)
                 p.setCompositionMode(OVER)
-                c = theme.TONES.get(tone, theme.GOLD)
+                c = theme.TONES.get(tone, theme.PRIMARY)
                 if sub.status == "fail":
                     p.setBrush(QtCore.Qt.NoBrush)
                     p.setPen(QtGui.QPen(theme.with_alpha(c, dot_alpha * reveal), 1.2))
@@ -645,7 +643,7 @@ class BrainView(QtWidgets.QWidget):
                     p.setPen(QtCore.Qt.NoPen)
                     p.setBrush(theme.with_alpha(c, dot_alpha * reveal))
                     p.drawEllipse(QPointF(nx, ny), 2.8, 2.8)
-                label = _mix(label_color, theme.WARM_WHITE, sub.activity) if sub.status == "ok" else label_color
+                label = _mix(label_color, theme.TEXT_BRIGHT, sub.activity) if sub.status == "ok" else label_color
                 self._centered(p, sub.name, theme.font(7, weight=600, spacing=1.8),
                                theme.with_alpha(label, min(1.0, label_alpha + 0.2 * sub.activity) * reveal),
                                nx, ny - 19)
@@ -664,7 +662,7 @@ class BrainView(QtWidgets.QWidget):
         xs = u * u * ax + 2 * u * t * kx + t * t * nx
         ys = u * u * ay + 2 * u * t * ky + t * t * ny
         p.setBrush(QtCore.Qt.NoBrush)
-        p.setPen(_pen(theme.GOLD, (0.16 + 0.45 * sub.activity) * reveal))
+        p.setPen(_pen(theme.PRIMARY, (0.16 + 0.45 * sub.activity) * reveal))
         p.drawPolyline(_polygon(xs, ys))
         if sub.activity > 0.12:                           # sinal percorrendo a sinapse
             s = ((now * 0.9 + sub.angle / 360.0) % 1.0) * sub.grow
@@ -672,7 +670,7 @@ class BrainView(QtWidgets.QWidget):
             x = v * v * ax + 2 * v * s * kx + s * s * nx
             y = v * v * ay + 2 * v * s * ky + s * s * ny
             p.setCompositionMode(PLUS)
-            self._sprite(p, "glow", "gold", x, y, 4.0, 0.85 * sub.activity * reveal)
+            self._sprite(p, "glow", "cyan", x, y, 4.0, 0.85 * sub.activity * reveal)
             p.setOpacity(1.0)
             p.setCompositionMode(OVER)
 
@@ -695,7 +693,7 @@ class BrainView(QtWidgets.QWidget):
         pos = QPointF(x - st.size().width() / 2, top)
         p.setFont(font)
         if shadow:
-            p.setPen(QtGui.QColor(0, 0, 0, int(200 * color.alphaF())))
+            p.setPen(theme.with_alpha(theme.BG, 0.78 * color.alphaF()))
             p.drawStaticText(pos + QPointF(0, 1), st)
         p.setPen(color)
         p.drawStaticText(pos, st)
@@ -711,12 +709,12 @@ class BrainView(QtWidgets.QWidget):
         privacy = scene.state.get("privacy") or {}
         mode = "LOCAL" if privacy.get("local_mode") else str(privacy.get("mode") or "").upper()
         alert = not scene.boot.active and scene.runtime_state in ("AWAITING_AUTHORIZATION", "ERROR")
-        self._centered(p, "ULTRON", theme.font(14, weight=600, spacing=9),
-                       theme.with_alpha(theme.WARM_WHITE, 0.92 * alpha), fr.rcx, top, shadow=True)
+        self._centered(p, "JARVIS", theme.font(14, weight=600, spacing=9),
+                       theme.with_alpha(theme.TEXT_BRIGHT, 0.92 * alpha), fr.rcx, top, shadow=True)
         self._centered(p, "NEURAL CORE", theme.font(7.5, weight=600, spacing=5),
-                       theme.with_alpha(theme.GOLD, 0.9 * alpha), fr.rcx, top + 25, shadow=True)
+                       theme.with_alpha(theme.PRIMARY, 0.9 * alpha), fr.rcx, top + 25, shadow=True)
         self._centered(p, f"{state} · {mode}" if mode else state, theme.font(7, weight=500, spacing=3.5),
-                       theme.with_alpha(theme.AMBER if alert else theme.TEXT_DIM, 0.9 * alpha), fr.rcx, top + 41,
+                       theme.with_alpha(theme.ALERT if alert else theme.TEXT_DIM, 0.9 * alpha), fr.rcx, top + 41,
                        shadow=True)
 
     # ---------------------------------------------------------------- módulos neurais
@@ -761,7 +759,7 @@ class BrainView(QtWidgets.QWidget):
             path = QtGui.QPainterPath(anchor)
             bend = (end.x() - anchor.x()) * 0.5
             path.cubicTo(anchor + QPointF(bend, 0), end - QPointF(bend, 0), end)
-            pen = QtGui.QPen(theme.with_alpha(theme.GOLD, 0.45 * alpha), 1.0)
+            pen = QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.45 * alpha), 1.0)
             if growth < 1:
                 pen.setDashPattern([growth * path.length() / 1.1, 1e6])
             p.setPen(pen)
@@ -769,8 +767,8 @@ class BrainView(QtWidgets.QWidget):
             p.drawPath(path)
             p.setCompositionMode(PLUS)
             spark = path.pointAtPercent(((now * 0.6) % 1.0) * growth)
-            self._sprite(p, "glow", "gold", spark.x(), spark.y(), 5, 0.8 * alpha)
-            self._sprite(p, "glow", "gold", anchor.x(), anchor.y(), 9, 0.7 * alpha)
+            self._sprite(p, "glow", "cyan", spark.x(), spark.y(), 5, 0.8 * alpha)
+            self._sprite(p, "glow", "cyan", anchor.x(), anchor.y(), 9, 0.7 * alpha)
             p.setCompositionMode(OVER)
             p.setOpacity(alpha * min(1.0, growth * 1.5))
             p.drawPixmap(rect.topLeft(), self._panel_pixmap(module, rect))
@@ -797,8 +795,8 @@ class BrainView(QtWidgets.QWidget):
         return pix
 
     def _draw_panel(self, p: QtGui.QPainter, module, rect: QRectF) -> None:
-        p.fillRect(rect, QtGui.QColor(10, 9, 8, 205))
-        pen = QtGui.QPen(theme.with_alpha(theme.GOLD, 0.75), 1.2)
+        p.fillRect(rect, theme.with_alpha(theme.BG2, 0.82))
+        pen = QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.75), 1.2)
         p.setPen(pen)
         c = 10
         for (x, y, dx, dy) in ((rect.left(), rect.top(), 1, 1), (rect.right(), rect.top(), -1, 1),
@@ -806,7 +804,7 @@ class BrainView(QtWidgets.QWidget):
             p.drawLine(QPointF(x, y), QPointF(x + c * dx, y))
             p.drawLine(QPointF(x, y), QPointF(x, y + c * dy))
         p.setFont(theme.font(8.5, weight=600, spacing=2.2))
-        p.setPen(theme.GOLD)
+        p.setPen(theme.PRIMARY)
         p.drawText(QRectF(rect.left() + 12, rect.top() + 8, rect.width() - 24, 18), QtCore.Qt.AlignLeft,
                    module.title)
         y = rect.top() + 32
@@ -819,7 +817,7 @@ class BrainView(QtWidgets.QWidget):
             return
         left = max(0.0, min(1.0, (expires - time.time()) / (expires - created)))
         bar = QRectF(rect.left() + 12, rect.top() + 26, (rect.width() - 24) * left, 2)
-        p.fillRect(bar, theme.with_alpha(theme.AMBER, 0.8))
+        p.fillRect(bar, theme.with_alpha(theme.GLOW, 0.8))
 
     def _draw_line(self, p: QtGui.QPainter, line, rect: QRectF, y: float) -> float:
         x, width = rect.left() + 12, rect.width() - 24
@@ -829,7 +827,7 @@ class BrainView(QtWidgets.QWidget):
             p.setFont(theme.font(7, weight=600, spacing=1.0))
             cursor = x
             for i, stage in enumerate(stages):
-                tone = theme.WARM_WHITE if i == index else theme.GOLD if i < index else theme.TEXT_DIM
+                tone = theme.TEXT_BRIGHT if i == index else theme.PRIMARY if i < index else theme.TEXT_DIM
                 p.setPen(theme.with_alpha(tone, 1.0 if i <= index else 0.55))
                 label = stage.replace("WORLD MODEL", "WORLD").replace("VISUALIZATION", "VISUAL")
                 p.drawText(QPointF(cursor, y + 12), label)
@@ -840,7 +838,7 @@ class BrainView(QtWidgets.QWidget):
         if isinstance(line, tuple) and line[0] == "option":
             option, recommended = line[1], line[2]
             p.setFont(theme.font(9, weight=700 if recommended else 500))
-            p.setPen(theme.WARM_WHITE if recommended else theme.TEXT)
+            p.setPen(theme.TEXT_BRIGHT if recommended else theme.TEXT)
             title = f"{option.get('id', '?')}  {str(option.get('title', ''))[:34]}" + ("  ◆" if recommended else "")
             p.drawText(QPointF(x, y + 12), title)
             bx = x
@@ -851,7 +849,7 @@ class BrainView(QtWidgets.QWidget):
                 p.setPen(theme.TEXT_DIM)
                 p.drawText(QPointF(bx, y + 31), label)
                 for k in range(5):
-                    tone = theme.GOLD if k < value else theme.GRAPHITE_LIGHT
+                    tone = theme.PRIMARY if k < value else theme.PANEL
                     p.fillRect(QRectF(bx + k * 6.5, y + 34, 5, 3), tone)
                 bx += width / 5
             return y + 40
@@ -890,10 +888,10 @@ class BrainView(QtWidgets.QWidget):
         now = scene.clock()
         # identidade (canto superior esquerdo)
         p.setFont(theme.font(13, weight=600, spacing=6))
-        p.setPen(theme.with_alpha(theme.WARM_WHITE, 0.92 * max(self._core_reveal(), 0.15)))
-        p.drawText(QPointF(26, 38), "ULTRON")
+        p.setPen(theme.with_alpha(theme.TEXT_BRIGHT, 0.92 * max(self._core_reveal(), 0.15)))
+        p.drawText(QPointF(26, 38), "JARVIS")
         p.setFont(theme.font(7, weight=500, spacing=3))
-        p.setPen(theme.with_alpha(theme.GOLD, 0.8))
+        p.setPen(theme.with_alpha(theme.PRIMARY, 0.8))
         p.drawText(QPointF(27, 55), "NEURAL HUB")
         # profundidade cognitiva (canto superior direito)
         label = f"DEPTH {scene.depth_level}"
@@ -903,7 +901,7 @@ class BrainView(QtWidgets.QWidget):
         for i in range(10):
             on = i <= scene.depth_level and scene.depth_level > 0
             p.fillRect(QRectF(w - 26 - bar_w + i * 7.2, 46, 5, 2),
-                       theme.with_alpha(theme.GOLD if on else theme.GRAPHITE_LIGHT, 0.9 if on else 1))
+                       theme.with_alpha(theme.PRIMARY if on else theme.PANEL, 0.9 if on else 1))
         # título central (fase cognitiva / fase da inicialização / sonho)
         headline = scene.headline()
         if headline:
@@ -915,14 +913,14 @@ class BrainView(QtWidgets.QWidget):
                 text = f"{scene.boot.phase + 1:02d} · {headline}" + (" · OFFLINE" if failed else "")
             alert = scene.runtime_state == "AWAITING_AUTHORIZATION" and not scene.boot.active
             pulse = 0.75 + 0.25 * math.sin(now * 2.4)
-            p.setPen(theme.with_alpha(theme.AMBER if alert or failed else theme.GOLD, pulse))
+            p.setPen(theme.with_alpha(theme.ERROR if failed else theme.ALERT if alert else theme.PRIMARY, pulse))
             p.drawText(QPointF((w - fm.horizontalAdvance(text)) / 2, 44), text)
         if scene.boot.active:
             online = _clamp(scene.boot.shown - 10.0)
             if online > 0:
                 y = min(h - self.bottom_reserved - 24, fr.rcy + RING_BOTTOM * fr.rry + 64)
-                self._centered(p, "ULTRON ONLINE", theme.font(20, weight=300, spacing=14),
-                               theme.with_alpha(theme.WARM_WHITE, online * 0.9), w / 2, y)
+                self._centered(p, "JARVIS ONLINE", theme.font(20, weight=300, spacing=14),
+                               theme.with_alpha(theme.TEXT_BRIGHT, online * 0.9), w / 2, y)
             self._draw_boot_track(p, w, h)
         self._draw_telemetry(p, w, h)
         self._draw_transcript(p, w, h, now)
@@ -936,7 +934,7 @@ class BrainView(QtWidgets.QWidget):
         for i in range(total):
             x = x0 + span * i / (total - 1)
             done = boot.shown >= i
-            tone = theme.AMBER if boot.phase_failed(i) else theme.GOLD
+            tone = theme.ERROR if boot.phase_failed(i) else theme.PRIMARY
             p.setBrush(theme.with_alpha(tone, 0.9 if done else 0.15))
             p.setPen(QtCore.Qt.NoPen)
             p.drawEllipse(QPointF(x, y), 2.4 if done else 1.6, 2.4 if done else 1.6)
@@ -958,7 +956,7 @@ class BrainView(QtWidgets.QWidget):
         p.setPen(theme.with_alpha(theme.TEXT_DIM, 0.85))
         p.drawText(QPointF(26, h - 18), "   ".join(parts))
         overall = (scene.state.get("health") or {}).get("overall", "")
-        tone = {"OK": theme.GOLD, "WARN": theme.AMBER, "FAIL": theme.AMBER}.get(overall, theme.GRAPHITE_LIGHT)
+        tone = {"OK": theme.PRIMARY, "WARN": theme.ALERT, "FAIL": theme.ERROR}.get(overall, theme.PANEL)
         p.setBrush(tone)
         p.setPen(QtCore.Qt.NoPen)
         p.drawEllipse(QPointF(18, h - 21), 2.5, 2.5)
@@ -988,7 +986,7 @@ class BrainView(QtWidgets.QWidget):
             height = min(rect.height(), fm.lineSpacing() * (2 if user else 4))
             y -= height + 6
             box = QRectF((w - max_w) / 2, y, max_w, height + 2)
-            p.setPen(theme.with_alpha(theme.TEXT_DIM if user else theme.WARM_WHITE, fade * (0.8 if user else 0.95)))
+            p.setPen(theme.with_alpha(theme.TEXT_DIM if user else theme.TEXT_BRIGHT, fade * (0.8 if user else 0.95)))
             p.drawText(box, QtCore.Qt.AlignHCenter | QtCore.Qt.TextWordWrap, text)
 
 
@@ -1003,13 +1001,13 @@ def mini_brain(p: QtGui.QPainter, scene: NeuralScene, cx: float, cy: float, scal
     front = (depth[a] + depth[b]) > 1.0
     for sel, a_level in ((~front, 0.10), (front, 0.26)):
         if sel.any():
-            p.setPen(_pen(theme.GOLD, a_level * alpha))
+            p.setPen(_pen(theme.PRIMARY, a_level * alpha))
             p.drawLines(_lines(sx[a[sel]], sy[a[sel]], sx[b[sel]], sy[b[sel]]))
     near = depth[indices] > 0.5
     for sel, width, a_level in ((~near, 1.2, 0.4), (near, 1.8, 0.95)):
         chosen = indices[sel]
         if len(chosen):
-            p.setPen(_pen(_mix(theme.GOLD, theme.WARM_WHITE, 0.3), a_level * alpha, width, round_cap=True))
+            p.setPen(_pen(_mix(theme.PRIMARY, theme.TEXT_BRIGHT, 0.3), a_level * alpha, width, round_cap=True))
             p.drawPoints(_polygon(sx[chosen], sy[chosen]))
 
 

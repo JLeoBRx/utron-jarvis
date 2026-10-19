@@ -1,10 +1,10 @@
-"""ULTRON NEURAL HUB — interface neural procedural (PySide6).
+"""JARVIS NEURAL HUB — interface neural procedural (PySide6).
 
 * ``brain_model``: malha neural 3D procedural do cérebro (numpy);
 * ``scene``: estado visual derivado só de eventos e do ULTRON_STATE reais (sem Qt);
 * ``brain_view``: desenho da cena; ``window``/``orb``: janelas; ``controller``: ligação com o Core.
 
-Os módulos com Qt são importados sob demanda: o ULTRON roda sem interface (``--headless``)
+Os módulos com Qt são importados sob demanda: o JARVIS roda sem interface (``--headless``)
 mesmo sem PySide6 instalado.
 """
 

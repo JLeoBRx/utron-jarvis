@@ -1,10 +1,10 @@
-"""Malha neural 3D do cérebro do ULTRON (numpy, sem Qt).
+"""Malha neural 3D do cérebro do JARVIS (numpy, sem Qt).
 
 Cérebro de nós e sinapses: uma casca com giros e fissura longitudinal entre os
 hemisférios, lobos temporais, cerebelo e tronco; cada ponto ligado aos vizinhos mais
 próximos. A malha gira em perspectiva; pontos à frente são maiores e mais brilhantes.
 
-* a densidade da malha **cresce com o Neural Graph real** (``development``): um ULTRON
+* a densidade da malha **cresce com o Neural Graph real** (``development``): um JARVIS
   novo tem uma rede esparsa; com o uso, ela se adensa;
 * os nós do grafo ocupam posições fixas na região do seu tipo (memórias no hipocampo e
   lobo temporal, ideias no pré-frontal, skills no córtex motor e cerebelo...);

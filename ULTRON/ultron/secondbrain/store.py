@@ -1,4 +1,4 @@
-"""Armazenamento do Second Brain no banco único do ULTRON (SQLite, migrações versionadas).
+"""Armazenamento do Second Brain no banco único do JARVIS (SQLite, migrações versionadas).
 
 Busca de texto: índice FTS5 sem acentos (``unicode61 remove_diacritics``) mantido por gatilhos.
 Se o SQLite da máquina não tiver FTS5, a busca usa a coluna ``search_text`` normalizada

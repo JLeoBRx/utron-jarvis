@@ -2,7 +2,7 @@
 
 * uma thread própria dorme até o próximo instante relevante (aviso antecipado, horário, repetição)
   e é acordada quando algo muda — sem varredura constante;
-* tudo fica no SQLite: fechar ou reiniciar o ULTRON não perde nada. Ao iniciar, lembretes que
+* tudo fica no SQLite: fechar ou reiniciar o JARVIS não perde nada. Ao iniciar, lembretes que
   venceram com o programa fechado são identificados e avisados UMA vez (marcados como
   perdidos); recorrentes saltam para a próxima ocorrência futura sem rajada de avisos antigos;
 * cada disparo é registrado em ``sb_fired`` (lembrete, ocorrência, tipo) antes de avisar: a
@@ -377,7 +377,7 @@ class ReminderScheduler:
         else:
             title = f"Lembrete: {record.title}" + (" (repetição)" if repeat else "")
             kind = "reminder"
-        body = when_text + (" · enquanto o ULTRON estava fechado" if late else "")
+        body = when_text + (" · enquanto o JARVIS estava fechado" if late else "")
         notification_id = self.store.add_notification(kind, title, body, record_id=record.id, reminder_id=rem.id,
                                                       silent=silent)
         self.store.log(record.id, "reminded", {"kind": kind, "occurrence": rem.at_local, "silent": silent}, "system")
