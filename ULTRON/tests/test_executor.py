@@ -37,6 +37,17 @@ class Dangerous(Counter):
         return f"apagar tudo de {args.get('label', '?')}"
 
 
+class Moderate(Counter):
+    name = "test.moderate"
+    risk = Risk.MEDIUM
+    reversible = False                     # escolhido pelo agente e irreversível: pede autorização
+
+
+class ModerateReversible(Counter):
+    name = "test.moderate_rev"
+    risk = Risk.MEDIUM
+
+
 class AlreadyDone(Counter):
     name = "test.already"
 
@@ -147,6 +158,79 @@ class ExecutorTest(unittest.TestCase):
         for text in ("não", "nao", "negativo", "cancela"):
             self.assertEqual(classify_reply(text), "no", text)
         self.assertIsNone(classify_reply("abra o chrome"))
+
+
+class StandingAuthorizationTest(unittest.TestCase):
+    """"Sim, sempre": vale só para a MESMA ação com o MESMO recurso, por tempo limitado, e nunca para
+    ações sensíveis, críticas, irreversíveis ou proativas."""
+
+    def setUp(self):
+        self.bus, self.state = helpers.make_bus_state()
+        self.settings = helpers.make_settings(autonomy_level="restricted")
+        self.registry = SkillRegistry()
+        self.skills = {cls.name: cls() for cls in (Counter, Dangerous, Moderate, ModerateReversible)}
+        for skill in self.skills.values():
+            self.registry.register(skill)
+        self.clock = helpers.FakeClock(1_000_000.0)
+        self.store = helpers.temp_dir("auth-") / "autorizacoes.json"
+        self.auth = AuthorizationManager(bus=self.bus, state=self.state, timeout_getter=lambda: 1.0,
+                                         store_path=self.store, clock=self.clock)
+        self.engine = ExecutionEngine(self.registry, autonomy=AutonomyPolicy(lambda: self.settings),
+                                      authorizations=self.auth, context_factory=lambda c: SkillContext(cancel=c),
+                                      bus=self.bus, state=self.state)
+
+    def _reply_later(self, text: str, delay: float = 0.05):
+        threading.Timer(delay, lambda: self.auth.handle_reply(text, by="teste")).start()
+
+    def test_always_covers_only_the_same_action_and_resource(self):
+        self.assertEqual(classify_reply("sim, sempre"), "always")
+        self._reply_later("sim, sempre")
+        first = self.engine.execute(Action("test.moderate_rev", {"label": "relatorio"}, origin="agent"))
+        self.assertEqual(first.status, "executed")
+        self.assertEqual(len(self.auth.standing()), 1)
+        again = self.engine.execute(Action("test.moderate_rev", {"label": "relatorio"}, origin="agent"))
+        self.assertEqual(again.status, "executed", "mesma ação + mesmo recurso: não pergunta de novo")
+        self.assertIn("permanente", again.authorization["resolved_by"])
+        other = self.engine.execute(Action("test.moderate_rev", {"label": "outro"}, origin="agent"))
+        self.assertEqual(other.status, "denied", "outro recurso: pergunta (e expira = não)")
+        self.clock.advance(25 * 3600)
+        expired = self.engine.execute(Action("test.moderate_rev", {"label": "relatorio"}, origin="agent"))
+        self.assertEqual(expired.status, "denied", "passadas 24 h, volta a perguntar")
+        self.assertEqual(self.auth.standing(), [])
+
+    def test_never_for_sensitive_critical_irreversible_or_proactive(self):
+        self._reply_later("sim, sempre")
+        critical = self.engine.execute(Action("test.dangerous", {"label": "x"}))
+        self.assertEqual(critical.status, "executed", "aprovado só desta vez")
+        self.assertFalse(critical.authorization["standing_allowed"])
+        self.assertEqual(self.auth.standing(), [], "crítico/irreversível nunca vira autorização permanente")
+        self.assertEqual(self.engine.execute(Action("test.dangerous", {"label": "x"})).status, "denied")
+        self._reply_later("sim, sempre")
+        self.engine.execute(Action("test.moderate", {"label": "y"}, origin="agent"))
+        self.assertEqual(self.auth.standing(), [], "irreversível: nunca permanente")
+        self._reply_later("sim, sempre")
+        self.engine.execute(Action("test.moderate_rev", {"label": "z"}, origin="proactive"))
+        self.assertEqual(self.auth.standing(), [], "proatividade nunca ganha autorização permanente")
+
+    def test_grants_persist_are_revalidated_and_revocable(self):
+        self._reply_later("sim, sempre")
+        self.engine.execute(Action("test.moderate_rev", {"label": "a"}, origin="agent"))
+        reloaded = AuthorizationManager(store_path=self.store, clock=self.clock)
+        self.assertEqual(len(reloaded.standing()), 1, "a autorização sobrevive ao reinício")
+        # um arquivo adulterado não autoriza ação sensível: a elegibilidade é verificada a cada uso
+        import json
+        data = json.loads(self.store.read_text(encoding="utf-8"))
+        forged = dict(data["grants"][0], key=AuthorizationManager._key("test.dangerous", {"label": "x"}),
+                      skill="test.dangerous", args={"label": "x"})
+        data["grants"].append(forged)
+        self.store.write_text(json.dumps(data), encoding="utf-8")
+        tampered = AuthorizationManager(store_path=self.store, clock=self.clock, timeout_getter=lambda: 0.3)
+        req = tampered.request("apagar tudo", skill="test.dangerous", risk="critical", args={"label": "x"},
+                               reversible=False)
+        self.assertEqual(req.status, "pending", "autorização forjada para ação crítica é ignorada")
+        tampered.resolve(False, by="teste")
+        self.assertEqual(self.auth.revoke(), 1)
+        self.assertEqual(AuthorizationManager(store_path=self.store, clock=self.clock).standing(), [])
 
 
 class AutonomyPolicyTest(unittest.TestCase):

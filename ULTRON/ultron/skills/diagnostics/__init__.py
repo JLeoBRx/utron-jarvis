@@ -106,4 +106,55 @@ class ProcessList(Skill):
         return VerificationResult("VERIFIED", 0.9, [check("measured", True, "amostragem de 0,5 s")])
 
 
-SKILLS = (SystemReport, HealthReport, ProcessList)
+def _authorizations(ctx):
+    core = (ctx.extras or {}).get("core")
+    return getattr(core, "authorizations", None)
+
+
+class ListStanding(Skill):
+    name = "autonomy.list"
+    description = "Listar as autorizações permanentes escopadas em vigor (ação, recurso e validade)."
+    category = "autonomy"
+    inputs = schema({})
+    risk = Risk.NONE
+
+    def execute(self, ctx, **_) -> SkillResult:
+        manager = _authorizations(ctx)
+        if manager is None:
+            return SkillResult(False, error="gerenciador de autorizações indisponível", error_kind="UNSUPPORTED")
+        grants = manager.standing()
+        if not grants:
+            return SkillResult(True, "Nenhuma autorização permanente em vigor: tudo que exige confirmação pergunta "
+                                     "a cada vez.", [], {"grants": []})
+        import time
+        lines = [f"{g['description']} (até {time.strftime('%d/%m %H:%M', time.localtime(g['expires_at']))}, "
+                 f"{g.get('uses', 0)} uso(s))" for g in grants[:8]]
+        return SkillResult(True, f"{len(grants)} autorização(ões) permanente(s): " + "; ".join(lines) + ".", [],
+                           {"grants": grants})
+
+
+class RevokeStanding(Skill):
+    name = "autonomy.revoke"
+    description = "Revogar autorizações permanentes escopadas (todas, ou uma pela chave)."
+    category = "autonomy"
+    inputs = schema({"key": string(600)})
+    risk = Risk.NONE                    # só reduz permissões
+
+    def execute(self, ctx, key: str | None = None) -> SkillResult:
+        manager = _authorizations(ctx)
+        if manager is None:
+            return SkillResult(False, error="gerenciador de autorizações indisponível", error_kind="UNSUPPORTED")
+        count = manager.revoke(key or None)
+        text = (f"{count} autorização(ões) permanente(s) revogada(s). A partir de agora, essas ações voltam a "
+                "pedir confirmação." if count else "Não havia autorização permanente para revogar.")
+        return SkillResult(True, text, [f"{count} revogada(s)"], {"revoked": count, "key": key or ""})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        manager = _authorizations(ctx)
+        left = [g for g in manager.standing() if not args.get("key") or g["key"] == args.get("key")]
+        return VerificationResult.from_checks([check("revoked", not left, f"{len(left)} restante(s) no escopo")])
+
+
+SKILLS = (SystemReport, HealthReport, ProcessList, ListStanding, RevokeStanding)

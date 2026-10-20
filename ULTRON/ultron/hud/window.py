@@ -130,11 +130,13 @@ class InputBar(QtWidgets.QWidget):
 
 
 class DecisionBar(QtWidgets.QWidget):
-    """Barra de decisão (autorização ou sugestão): texto + dois botões."""
+    """Barra de decisão (autorização ou sugestão): texto + botões. ``always`` (opcional) concede a
+    autorização permanente ESCOPADA — o botão só aparece quando o pedido é elegível."""
 
     decided = QtCore.Signal(bool)
+    always = QtCore.Signal()
 
-    def __init__(self, yes: str, no: str, parent=None):
+    def __init__(self, yes: str, no: str, parent=None, *, always: str = ""):
         super().__init__(parent)
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(14, 8, 8, 8)
@@ -149,9 +151,18 @@ class DecisionBar(QtWidgets.QWidget):
         for button, value in ((self.yes, True), (self.no, False)):
             button.setCursor(QtCore.Qt.PointingHandCursor)
             button.clicked.connect(lambda _=False, v=value: self.decided.emit(v))
+        self.forever = QtWidgets.QPushButton(always or "SEMPRE")
+        self.forever.setObjectName("HudButton")
+        self.forever.setCursor(QtCore.Qt.PointingHandCursor)
+        self.forever.setToolTip("Autorizar agora e não perguntar de novo por 24 h para ESTA MESMA ação com o MESMO "
+                                "recurso. Nunca disponível para ações sensíveis, críticas ou irreversíveis.")
+        self.forever.clicked.connect(self.always)
+        self.forever.hide()
         layout.addWidget(self.label, 1)
         layout.addWidget(self.yes)
+        layout.addWidget(self.forever)
         layout.addWidget(self.no)
+        self._has_always = bool(always)
         self.setAutoFillBackground(False)
         self.hide()
 
@@ -162,7 +173,8 @@ class DecisionBar(QtWidgets.QWidget):
         p.drawLine(0, 0, self.width(), 0)
         p.end()
 
-    def present(self, text: str | None) -> None:
+    def present(self, text: str | None, *, allow_always: bool = False) -> None:
+        self.forever.setVisible(bool(text) and allow_always and self._has_always)
         if text:
             self.label.setText(text)
             if not self.isVisible():
@@ -187,7 +199,7 @@ class HudWindow(QtWidgets.QWidget):
         self.view = view
         view.setParent(self)
         self.input = InputBar(self)
-        self.authorization = DecisionBar("AUTORIZAR", "NEGAR", self)
+        self.authorization = DecisionBar("AUTORIZAR", "NEGAR", self, always="SEMPRE (24 h)")
         self.suggestion = DecisionBar("SIM", "NÃO", self)
         self.input.collapse.connect(self.collapse_requested)
         QtGui.QShortcut(QtGui.QKeySequence("F11"), self, activated=self.toggle_fullscreen)

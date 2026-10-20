@@ -1,4 +1,4 @@
-"""PAINEL DE SISTEMAS do JARVIS CORE: voz, rede local e desempenho/saúde.
+"""PAINEL DE SISTEMAS do JARVIS CORE: voz, rede local, autonomia e desempenho/saúde.
 
 Fica no HUB principal porque trata do cérebro operacional do computador (o TARDIS cuida da
 memória pessoal). É a mesma infraestrutura de páginas do TARDIS (``panels.PageHost``):
@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .panels import NetworkPage, PageHost, SystemPage, _label
+from .panels import AutonomyPage, NetworkPage, PageHost, SystemPage, _label
 from .voice_panel import VoicePanel
 
-TABS = (("voice", "VOZ"), ("network", "REDE LOCAL"), ("system", "DESEMPENHO E SAÚDE"))
+TABS = (("voice", "VOZ"), ("network", "REDE LOCAL"), ("autonomy", "AUTONOMIA"), ("system", "DESEMPENHO E SAÚDE"))
 
 
 class SystemsPanel(PageHost):
@@ -26,6 +26,7 @@ class SystemsPanel(PageHost):
         self.voice = VoicePanel(core, self)
         self.tabs.addTab(self.voice, "VOZ")
         self.tabs.addTab(self.add_page(NetworkPage(self)), "REDE LOCAL")
+        self.tabs.addTab(self.add_page(AutonomyPage(self)), "AUTONOMIA")
         self.tabs.addTab(self.add_page(SystemPage(self)), "DESEMPENHO E SAÚDE")
         self.tabs.currentChanged.connect(self._tab_changed)
         title = _label("JARVIS · SISTEMAS", "PanelTitle")

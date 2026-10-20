@@ -34,6 +34,7 @@ from ..cognition.intent_engine import IntentEngine
 from ..cognition.planner_engine import PlannerEngine
 from ..cognition.reasoning_engine import ReasoningEngine
 from ..cognition.types import Command, Intent
+from ..config import paths
 from ..config import settings as settings_module
 from ..health.monitor import HealthMonitor
 from ..imagination.imagination_core import ImaginationCore
@@ -144,7 +145,8 @@ class NeuralCore:
         self.capture = Capture(self.second_brain, settings_getter=s)
         self.registry = load_builtin(SkillRegistry())
         self.authorizations = AuthorizationManager(bus=self.bus, state=self.state,
-                                                   timeout_getter=lambda: s().authorization_timeout)
+                                                   timeout_getter=lambda: s().authorization_timeout,
+                                                   store_path=paths.data_file("autorizacoes_permanentes.json"))
         self.autonomy = AutonomyPolicy(s)
         self.imagination = ImaginationCore(router=self.router, memory=self.memory, bus=self.bus, state=self.state,
                                            privacy=self.privacy, settings_getter=s)
@@ -385,6 +387,13 @@ class NeuralCore:
             return True
         if self.authorizations.pending() is not None:
             reply = self.authorizations.handle_reply(text, by=source)
+            if reply == "always":
+                grant = self.authorizations.last_standing
+                note = (f"Autorizado. Esta mesma ação, com o mesmo recurso, não pedirá confirmação até "
+                        f"{time.strftime('%d/%m às %H:%M', time.localtime(grant['expires_at']))}."
+                        if grant else "Autorizado só desta vez: autorização permanente não é permitida para "
+                                      "ações sensíveis, críticas, irreversíveis ou proativas.")
+                self._emit_response(Response(note, "info"), source, speak=False)
             if reply is not None:
                 return True
             self.authorizations.resolve(False, by="novo pedido")      # outro assunto: nega e segue
@@ -503,8 +512,8 @@ class NeuralCore:
                 return Response("Interface gráfica indisponível nesta execução.", "error", success=False)
             self.bus.publish(EventType.UI_REQUEST, {"view": args["open_view"], "section": args.get("section", "")},
                              source="core")
-            label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz",
-                     "network": "a rede local"}.get(args["open_view"], "o TARDIS")
+            label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz", "network": "a rede local",
+                     "autonomy": "o painel de autonomia"}.get(args["open_view"], "o TARDIS")
             return Response(f"Abrindo {label}.", "info")
         return Response("Ajuste não reconhecido.", "error")
 
@@ -737,7 +746,6 @@ class NeuralCore:
                                     "second_brain": self.second_brain, "capture": self.capture})
 
     def _plugin_context(self, plugin) -> PluginContext:
-        from ..config import paths
         return PluginContext(plugin=plugin, bus=self.bus, state=self.state, settings=self.settings,
                              registry=self.registry, health_monitor=self.health, router=self.router,
                              privacy=self.privacy, data_dir=paths.data_dir() / "plugins" / plugin.name,

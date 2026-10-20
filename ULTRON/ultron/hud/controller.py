@@ -119,6 +119,7 @@ class HudController(QtCore.QObject):
         w.input.second_brain.connect(lambda: self.open_tardis())
         w.input.systems.connect(lambda: self.open_systems())
         w.authorization.decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="hud"))
+        w.authorization.always.connect(lambda: self._authorize_always("hud"))
         w.suggestion.decided.connect(lambda ok: self.core.accept_suggestion(ok, by="hud"))
         w.collapse_requested.connect(self.collapse)
         w.second_brain_requested.connect(lambda: self.open_tardis())
@@ -174,7 +175,7 @@ class HudController(QtCore.QObject):
                 view = payload.get("view")
                 if view in ("second_brain", "tardis"):
                     self.open_tardis(payload.get("section") or None)
-                elif view in ("systems", "voice", "network"):
+                elif view in ("systems", "voice", "network", "autonomy"):
                     self.open_systems(payload.get("section") or (view if view != "systems" else None))
             if kind in AUTO_EXPAND and not self.window.isVisible() \
                     and getattr(self.core.settings(), "hud_auto_expand", True):
@@ -196,7 +197,8 @@ class HudController(QtCore.QObject):
             pending = self.state_cache.get("pending_authorization")
             self.window.authorization.present(
                 f"Ação sensível: {pending.get('description', '')}"
-                if pending and pending.get("status") == "pending" else None)
+                if pending and pending.get("status") == "pending" else None,
+                allow_always=bool(pending and pending.get("standing_allowed")))
             self.window.refresh_layout()
 
     def _pull_telemetry(self) -> None:
@@ -353,6 +355,7 @@ class HudController(QtCore.QObject):
             from .tardis import TardisWindow
             self.second = TardisWindow(self.core, state=self.state_cache, profile=self.profile)
             self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="tardis"))
+            self.second.authorization_always.connect(lambda: self._authorize_always("tardis"))
             self.second.return_requested.connect(self.return_to_core)
         if section:
             self.second.show_section(section)
@@ -373,6 +376,7 @@ class HudController(QtCore.QObject):
             from .systems_panel import SystemsPanel
             self.systems = SystemsPanel(self.core, state=self.state_cache, profile=self.profile)
             self.systems.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="sistemas"))
+            self.systems.authorization_always.connect(lambda: self._authorize_always("sistemas"))
         self.systems.show_section(section)
         self.systems.showNormal() if self.systems.isMinimized() else self.systems.show()
         self.systems.raise_()
@@ -383,6 +387,12 @@ class HudController(QtCore.QObject):
             self.quit()
         elif not self.orb.isVisible():
             self.orb.show()
+
+    def _authorize_always(self, by: str) -> None:
+        """SEMPRE: aprova e cria a autorização permanente escopada (24 h) — o núcleo recusa a parte
+        permanente se o pedido não for elegível e aprova só esta vez."""
+        from ..agent.autonomy import STANDING_DEFAULT
+        self.core.authorizations.resolve(True, by=by, remember=STANDING_DEFAULT)
 
     def _toggle_mic(self, enabled: bool) -> None:
         if self.core.enable_voice:
@@ -432,6 +442,7 @@ class HudController(QtCore.QObject):
         menu.addAction("TARDIS — memória pessoal", lambda: self.open_tardis())
         menu.addAction("Sistemas (voz, rede, desempenho)", lambda: self.open_systems())
         menu.addAction("Diagnóstico de voz", lambda: self.open_systems("voice"))
+        menu.addAction("Autonomia e autorizações", lambda: self.open_systems("autonomy"))
         menu.addAction("Orbe compacto", self.collapse)
         menu.addSeparator()
         mic = menu.addAction("Microfone")

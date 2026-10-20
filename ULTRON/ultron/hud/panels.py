@@ -46,6 +46,7 @@ EVENT_SECTIONS = {
     "NOTIFICATION": frozenset({"notifications"}),
     "NETWORK_INVENTORY_UPDATED": frozenset({"network"}), "DEVICE_UPDATED": frozenset({"network"}),
     "HEALTH_UPDATED": frozenset({"system"}),
+    "AUTHORIZATION_RESOLVED": frozenset({"autonomy"}), "ACTION_FINISHED": frozenset({"autonomy"}),
 }
 OPEN = ("open", "in_progress", "waiting")
 RELOAD_DEBOUNCE_MS = 250
@@ -1267,6 +1268,134 @@ class NetworkPage(Page):
             self.run(f"Verificar {d['name']}", "network.check_device", {"ref": d["key"]})
 
 
+class AutonomyPage(Page):
+    """O que o JARVIS faz sozinho, o que pergunta, o que ficou autorizado e o que foi executado."""
+
+    key, title = "autonomy", "AUTONOMIA, AUTORIZAÇÕES E REGISTRO DE AÇÕES"
+    LEVELS = (("restricted", "Restrita — pergunta antes de quase tudo"),
+              ("balanced", "Equilibrada — executa o que é comum e reversível"),
+              ("autonomous", "Autônoma — também tarefas moderadas e reversíveis"))
+
+    def __init__(self, hub):
+        super().__init__(hub)
+        intro = _label("Ações comuns, reversíveis e de baixo risco são executadas sem perguntar e sempre verificadas. "
+                       "Ações sensíveis (exclusão definitiva, sistema, segurança, administração de rede, envio de "
+                       "dados, credenciais, terceiros) pedem autorização ESPECÍFICA, válida uma única vez. "
+                       "\"SEMPRE (24 h)\" vale só para a mesma ação com o mesmo recurso e nunca para ações "
+                       "sensíveis, críticas, irreversíveis ou proativas. Diga \"pare\" a qualquer momento para "
+                       "cancelar o que estiver em andamento.", "H2Dim")
+        intro.setWordWrap(True)
+        self.layout_.addWidget(intro)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(_label("Nível de autonomia:", "H2Dim"))
+        self.level = QtWidgets.QComboBox()
+        for key, label in self.LEVELS:
+            self.level.addItem(label, key)
+        self.level.activated.connect(self._level_chosen)
+        row.addWidget(self.level, 1)
+        self.layout_.addLayout(row)
+        self.grants = QtWidgets.QTreeWidget()
+        self.grants.setHeaderLabels(["AUTORIZAÇÃO PERMANENTE (AÇÃO + RECURSO)", "VÁLIDA ATÉ", "USOS"])
+        self.grants.setColumnWidth(0, 520)
+        self.grants.setRootIsDecorated(False)
+        self.grants.setMaximumHeight(140)
+        self.layout_.addWidget(self.grants)
+        self.history = QtWidgets.QTreeWidget()
+        self.history.setHeaderLabels(["QUANDO", "PEDIDO DE AUTORIZAÇÃO", "RESULTADO", "POR"])
+        self.history.setColumnWidth(0, 110)
+        self.history.setColumnWidth(1, 460)
+        self.history.setRootIsDecorated(False)
+        self.actions = QtWidgets.QTreeWidget()
+        self.actions.setHeaderLabels(["QUANDO", "AÇÃO", "RESULTADO"])
+        self.actions.setColumnWidth(0, 110)
+        self.actions.setColumnWidth(1, 220)
+        self.actions.setRootIsDecorated(False)
+        split = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        split.addWidget(self.history)
+        split.addWidget(self.actions)
+        self.layout_.addWidget(split, 1)
+        self.layout_.addWidget(self.status)
+        revoke = _button("REVOGAR SELECIONADA", "A ação volta a pedir confirmação")
+        revoke.clicked.connect(self._revoke_selected)
+        revoke_all = _button("REVOGAR TODAS")
+        revoke_all.clicked.connect(lambda: self.run("Revogar autorizações", "autonomy.revoke"))
+        refresh = _button("ATUALIZAR")
+        refresh.clicked.connect(lambda: self.hub.reload(self.key))
+        for button in (revoke, revoke_all, refresh):
+            self.toolbar.addWidget(button)
+
+    def fetch(self):
+        core = self.hub.core
+
+        def work():
+            rows = core.memory.db.query("SELECT created_at, action, detail FROM audit WHERE source='execution' "
+                                        "ORDER BY id DESC LIMIT 60")
+            return {"level": getattr(core.settings(), "autonomy_level", "balanced"),
+                    "grants": core.authorizations.standing(),
+                    "history": list(core.authorizations.history)[-40:][::-1],
+                    "actions": [dict(r) for r in rows]}
+        return work
+
+    def apply(self, data) -> None:
+        keys = [key for key, _ in self.LEVELS]
+        if data["level"] in keys:
+            self.level.setCurrentIndex(keys.index(data["level"]))
+
+        def when(ts):
+            return time.strftime("%d/%m %H:%M:%S", time.localtime(ts)) if ts else "—"
+
+        self.grants.clear()
+        for grant in data["grants"]:
+            item = QtWidgets.QTreeWidgetItem([grant.get("description", grant.get("skill", "")),
+                                              time.strftime("%d/%m %H:%M", time.localtime(grant["expires_at"])),
+                                              str(grant.get("uses", 0))])
+            item.setData(0, QtCore.Qt.UserRole, grant["key"])
+            item.setToolTip(0, f"{grant.get('skill')} {grant.get('args')}")
+            self.grants.addTopLevelItem(item)
+        if not data["grants"]:
+            self.grants.addTopLevelItem(QtWidgets.QTreeWidgetItem(["Nenhuma — tudo que exige confirmação pergunta "
+                                                                   "a cada vez.", "", ""]))
+        labels = {"approved": "autorizado", "denied": "negado", "expired": "expirou (negado)",
+                  "cancelled": "cancelado", "pending": "aguardando"}
+        self.history.clear()
+        for entry in data["history"]:
+            item = QtWidgets.QTreeWidgetItem([when(entry.get("created")), entry.get("description", ""),
+                                              labels.get(entry.get("status"), entry.get("status", "")),
+                                              entry.get("resolved_by", "")])
+            if entry.get("status") != "approved":
+                item.setForeground(2, theme.ALERT)
+            self.history.addTopLevelItem(item)
+        self.actions.clear()
+        statuses = {"executed": "executada", "skipped": "já estava feito", "failed": "FALHOU", "denied": "negada",
+                    "cancelled": "cancelada", "refused": "recusada", "unavailable": "indisponível"}
+        for row in data["actions"]:
+            status, _sep, rest = str(row.get("detail") or "").partition(":")
+            detail = f"{statuses.get(status, status)}:{rest}"
+            item = QtWidgets.QTreeWidgetItem([when(row.get("created_at")), row.get("action", ""), detail[:160]])
+            item.setToolTip(2, detail)
+            if status not in ("executed", "skipped"):
+                item.setForeground(2, theme.ALERT)
+            self.actions.addTopLevelItem(item)
+        self.status.setText(f"{len(data['grants'])} autorização(ões) permanente(s) · "
+                            f"{len(data['history'])} pedido(s) recente(s) · {len(data['actions'])} ação(ões) registradas")
+
+    def _level_chosen(self, index: int) -> None:
+        level = self.level.itemData(index)
+        try:
+            self.hub.core.settings_manager.update(autonomy_level=level)
+            self.status.setText(f"Nível de autonomia: {self.level.itemText(index)}.")
+        except Exception as exc:
+            self.status.setText(f"Não foi possível mudar o nível: {exc}")
+
+    def _revoke_selected(self) -> None:
+        items = self.grants.selectedItems()
+        key = items[0].data(0, QtCore.Qt.UserRole) if items else None
+        if not key:
+            self.status.setText("Selecione uma autorização permanente.")
+            return
+        self.run("Revogar autorização", "autonomy.revoke", {"key": key})
+
+
 class SystemPage(Page):
     key, title = "system", "SAÚDE DO SISTEMA E DESEMPENHO"
 
@@ -1381,6 +1510,7 @@ class PageHost(QtWidgets.QWidget):
     núcleo e barra de autorização. Subclasses montam o layout e chamam ``add_page``."""
 
     authorization_decided = QtCore.Signal(bool)
+    authorization_always = QtCore.Signal()
     _action_done = QtCore.Signal(str, object)
 
     def __init__(self, core, *, state: dict | None = None, profile=None):
@@ -1398,8 +1528,9 @@ class PageHost(QtWidgets.QWidget):
         self.loaded_once: set[str] = set()
         self._closed = False
         self.feedback = _label("", "PanelDim")
-        self.authorization = DecisionBar("AUTORIZAR", "NEGAR", self)
+        self.authorization = DecisionBar("AUTORIZAR", "NEGAR", self, always="SEMPRE (24 h)")
         self.authorization.decided.connect(self.authorization_decided)
+        self.authorization.always.connect(self.authorization_always)
         self._reload_timer = QtCore.QTimer(self)
         self._reload_timer.setSingleShot(True)
         self._reload_timer.setInterval(RELOAD_DEBOUNCE_MS)
@@ -1491,7 +1622,8 @@ class PageHost(QtWidgets.QWidget):
     def present_authorization(self, pending: dict | None) -> None:
         if pending and pending.get("status") == "pending":
             scope = f" [{pending['category_label']}]" if pending.get("category_label") else ""
-            self.authorization.present(f"Autorização específica{scope}: {pending.get('description', '')}")
+            self.authorization.present(f"Autorização específica{scope}: {pending.get('description', '')}",
+                                       allow_always=bool(pending.get("standing_allowed")))
         else:
             self.authorization.present(None)
 
@@ -1516,7 +1648,7 @@ class PageHost(QtWidgets.QWidget):
             return
         self.feedback.setText(outcome_text(label, outcome))
         if outcome.get("success"):
-            for key in self.visible_keys() & {"network", "system", "notifications"}:
+            for key in self.visible_keys() & {"network", "system", "notifications", "autonomy"}:
                 self.dirty.add(key)
             self._reload_timer.start()
 

@@ -159,6 +159,13 @@ class NetworkIntelligence:
             self._publish(self.snapshot or {})
             self._inventory_event("scan", None, error=str(exc))
             return self.last_scan
+        except Exception as exc:          # adaptador caiu, permissão, comando ausente: relatado, nunca escondido
+            log.warning("varredura da rede falhou: %s", exc)
+            self.last_scan = {"error": f"{type(exc).__name__}: {exc}"[:300], "timestamp": time.time(),
+                              "limitations": [f"varredura falhou: {exc}"[:200]]}
+            self._publish(self.snapshot or {})
+            self._inventory_event("scan", None, error=str(exc))
+            return self.last_scan
         finally:
             self._scan_lock.release()
 

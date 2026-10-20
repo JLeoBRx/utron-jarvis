@@ -372,6 +372,13 @@ class IntentEngine:
         return None
 
     def _system_rules(self, raw, t):
+        if re.search(r"\b(revog\w*|cancel\w*|remov\w*|apag\w*|retir\w*)\b.*\bautorizac\w*\b", t):
+            return _cmd(raw, "autonomy.revoke")
+        if re.search(r"\b(abr\w*|mostr\w*|exib\w*)\b.*\b(painel de )?autonomia\b", t):
+            return _intent("control", raw, args={"open_view": "systems", "section": "autonomy"})
+        if re.search(r"\b(quais|que|liste|mostre|minhas)\b.*\bautorizac\w* (permanentes?|ativas?|em vigor)\b|"
+                     r"\bautorizacoes permanentes\b", t):
+            return _cmd(raw, "autonomy.list")
         if re.search(r"\b(saude|health)\b|como voce esta|status do (jarvis|ultron)|"
                      r"diagnostico (do (jarvis|ultron)|interno)", t):
             return _cmd(raw, "diagnostics.health")

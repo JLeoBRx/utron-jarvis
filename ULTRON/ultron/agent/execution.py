@@ -152,7 +152,8 @@ class ExecutionEngine:
             if resource:
                 description = f"{description} — {resource}"
             req = self.authorizations.request(description, skill=skill.name, risk=risk.value,
-                                              args={k: str(v)[:80] for k, v in args.items()}, category=sensitive)
+                                              args={k: str(v)[:80] for k, v in args.items()}, category=sensitive,
+                                              reversible=skill.reversible, origin=action.origin)
             if req.status == "pending":                        # pré-aprovado (sugestão aceita) não pergunta de novo
                 if self._state is not None:
                     self._state.set_runtime_state("AWAITING_AUTHORIZATION", description, source="execution")
@@ -162,7 +163,9 @@ class ExecutionEngine:
             record.authorization = req.to_dict()
             if not approved:
                 record.status = "cancelled" if req.status == "cancelled" else "denied"
-                record.result = SkillResult(False, error=f"autorização {req.status}", error_kind="NOT_AUTHORIZED")
+                outcome = {"denied": "negada", "expired": "expirada (sem resposta = não)",
+                           "cancelled": "cancelada"}.get(req.status, req.status)
+                record.result = SkillResult(False, error=f"autorização {outcome}", error_kind="NOT_AUTHORIZED")
                 return self._finish(record)
             if self._state is not None:
                 self._state.set_runtime_state("EXECUTING", description, source="execution")
