@@ -41,7 +41,7 @@ COGNITIVE_PHASES = ("", "ANALYZING", "CONNECTING", "EVALUATING", "PLANNING", "SE
 
 
 @dataclass
-class UltronState:
+class JarvisState:
     identity: dict = field(default_factory=dict)
     runtime_state: str = "BOOTING"
     activity: str = "IDLE"                     # contrato de atividade (derivado de runtime_state)
@@ -81,19 +81,20 @@ class UltronState:
     version: int = 0
 
 
-_FIELDS = {f.name for f in fields(UltronState)}
+UltronState = JarvisState                  # nome antigo (plugins e módulos externos)
+_FIELDS = {f.name for f in fields(JarvisState)}
 
 
 class StateStore:
     def __init__(self, bus=None):
-        self._state = UltronState()
+        self._state = JarvisState()
         self._lock = threading.RLock()
         self._bus = bus
 
     def attach_bus(self, bus) -> None:
         self._bus = bus
 
-    def snapshot(self) -> UltronState:
+    def snapshot(self) -> JarvisState:
         with self._lock:
             return copy.deepcopy(self._state)
 

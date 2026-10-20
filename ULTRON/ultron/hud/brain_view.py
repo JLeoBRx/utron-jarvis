@@ -24,7 +24,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import theme
 from .brain_model import LEFT_ONLY, REGIONS
-from .scene import BOOT_PHASES, NeuralScene
+from .scene import BOOT_PHASES, WAVE_SECONDS, NeuralScene
 
 QPointF, QRectF, QLineF = QtCore.QPointF, QtCore.QRectF, QtCore.QLineF
 PLUS = QtGui.QPainter.CompositionMode_Plus
@@ -33,6 +33,12 @@ OVER = QtGui.QPainter.CompositionMode_SourceOver
 STATUS_TONE = {"done": "cyan", "running": "ice", "unconfirmed": "alert", "failed": "error", "skipped": "dim",
                "cancelled": "alert", "pending": "dim"}
 
+# identidade dos estados: repouso em azul profundo, atividade em ciano, erro identificável sem alarme
+STATE_HALO_TONE = {"IDLE": "blue", "DREAMING": "blue", "SHUTDOWN": "blue", "ERROR": "error"}
+PLAN_ARC = (-150.0, -30.0)         # graus: etapas do plano no arco superior da órbita interna
+STEP_LOOK = {"done": ("cyan", 3.0, 0.95), "running": ("glow", 4.2, 0.75), "unconfirmed": ("alert", 3.0, 0.85),
+             "failed": ("error", 3.4, 0.9), "cancelled": ("dim", 2.4, 0.5), "skipped": ("dim", 2.4, 0.5)}
+DONE_STEPS = ("done", "unconfirmed", "skipped")
 RING_RX = 2.5                      # raio horizontal do anel (× escala do cérebro)
 RING_RY = 1.375                    # raio vertical: o anel é visto em perspectiva
 RING_BOTTOM = math.sin(math.radians(62))       # altura relativa dos nós mais baixos do anel
@@ -200,7 +206,11 @@ class BrainView(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.drawPixmap(0, 0, self._base)
         p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        now = scene.clock()
+        self._draw_presence(p, fr)
         self._draw_brain(p, fr)
+        self._draw_waves(p, fr, now)
+        self._draw_plan_arc(p, fr, now)
         self._draw_ring(p, fr)
         self._draw_title(p, fr)
         p.drawPixmap(0, 0, self._vignette)
@@ -290,8 +300,9 @@ class BrainView(QtWidgets.QWidget):
     def _ensure_base(self, fr: Frame) -> None:
         orbit = round(fr.ring_alpha * self._core_reveal(), 2)
         halo = self._halo_level()
+        tone = STATE_HALO_TONE.get(self.scene.runtime_state, "cyan")
         key = (fr.w, fr.h, round(self._dpr, 2), round(fr.cx, 1), round(fr.cy, 1), round(fr.R, 1),
-               round(fr.rcx, 1), round(fr.rcy, 1), round(fr.rrx, 1), round(fr.rry, 1), orbit, halo)
+               round(fr.rcx, 1), round(fr.rcy, 1), round(fr.rrx, 1), round(fr.rry, 1), orbit, halo, tone)
         if key == self._base_key and self._base is not None:
             return
         pix = self._canvas(fr.w, fr.h)
@@ -300,7 +311,7 @@ class BrainView(QtWidgets.QWidget):
         p.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self._draw_orbits(p, fr, orbit)
         p.setCompositionMode(PLUS)
-        self._sprite(p, "soft", "cyan", fr.cx, fr.cy, fr.R * 1.55, halo)
+        self._sprite(p, "soft", tone, fr.cx, fr.cy, fr.R * 1.55, halo * (0.7 if tone == "error" else 1.0))
         p.end()
         self._base, self._base_key = pix, key
         self.base_renders += 1
@@ -315,6 +326,89 @@ class BrainView(QtWidgets.QWidget):
         p.setPen(_pen(theme.PRIMARY, 0.05 * alpha))
         p.drawEllipse(center, fr.rrx * 0.80, fr.rry * 0.80)
         p.drawEllipse(center, fr.rrx * 1.12, fr.rry * 1.12)
+
+    # ---------------------------------------------------------------- estados (sinais reais)
+    def _draw_presence(self, p: QtGui.QPainter, fr: Frame) -> None:
+        """Escuta: halo ciano que respira com o nível REAL do microfone. Fala: anéis que seguem o nível
+        real da voz do JARVIS. Sem sinal (ou fora desses estados), nada é desenhado."""
+        scene = self.scene
+        hearing, voice = scene.hearing, scene.voice_level
+        listening = scene.runtime_state == "LISTENING"
+        center = QPointF(fr.cx, fr.cy)
+        if scene.runtime_state == "ERROR" and not scene.boot.active:
+            # erro: um contorno fixo no tom de falha — identificável, sem piscar nem alarmar
+            p.setBrush(QtCore.Qt.NoBrush)
+            p.setPen(_pen(theme.ERROR, 0.28))
+            p.drawEllipse(center, fr.R * 1.20, fr.R * 0.96)
+            self.stats["error_ring"] = 1
+        if hearing <= 0.0 and voice <= 0.0 and not listening:
+            return
+        self.stats["presence"] = 1
+        p.setCompositionMode(PLUS)
+        if hearing > 0.0 or listening:
+            self._sprite(p, "soft", "cyan", fr.cx, fr.cy, fr.R * (1.25 + 0.10 * hearing), 0.10 + 0.40 * hearing)
+        if voice > 0.0:
+            self._sprite(p, "soft", "glow", fr.cx, fr.cy, fr.R * (1.10 + 0.12 * voice), 0.06 + 0.30 * voice)
+        p.setOpacity(1.0)
+        p.setCompositionMode(OVER)
+        p.setBrush(QtCore.Qt.NoBrush)
+        if hearing > 0.0 or listening:
+            grow = 1.0 + 0.06 * hearing
+            p.setPen(_pen(theme.PRIMARY, 0.16 + 0.5 * hearing))
+            p.drawEllipse(center, fr.R * 1.22 * grow, fr.R * 0.98 * grow)
+        for k in (1, 2) if voice > 0.0 else ():
+            spread = 1.0 + (0.05 + 0.07 * k) * voice
+            p.setPen(_pen(theme.GLOW, 0.04 + (0.30 - 0.08 * k) * voice))
+            p.drawEllipse(center, fr.R * 1.16 * spread, fr.R * 0.93 * spread)
+
+    def _draw_waves(self, p: QtGui.QPainter, fr: Frame, now: float) -> None:
+        """Percepção: ondas sutis — uma por análise real (visão, OCR, fusão, rede)."""
+        waves = [(now - born) / WAVE_SECONDS for born in self.scene.waves]
+        waves = [t for t in waves if 0.0 <= t <= 1.0]
+        self.stats["waves"] = len(waves)
+        if not waves:
+            return
+        p.setBrush(QtCore.Qt.NoBrush)
+        center = QPointF(fr.cx, fr.cy)
+        for t in waves:
+            grow = 0.92 + 0.55 * t
+            p.setPen(_pen(theme.PRIMARY, 0.24 * (1.0 - t) ** 1.5))
+            p.drawEllipse(center, fr.R * 1.12 * grow, fr.R * 0.90 * grow)
+
+    def _draw_plan_arc(self, p: QtGui.QPainter, fr: Frame, now: float) -> None:
+        """Planejamento e execução: as etapas REAIS do plano no arco superior da órbita interna; as
+        conexões entre etapas se acendem à medida que cada uma termina (progresso, não enfeite)."""
+        statuses = self.scene.plan_progress()
+        self.stats["plan_steps"] = len(statuses)
+        if not statuses:
+            return
+        n = len(statuses)
+        rx, ry = fr.rrx * 0.80, fr.rry * 0.80
+        a0, a1 = math.radians(PLAN_ARC[0]), math.radians(PLAN_ARC[1])
+        angles = np.linspace(a0, a1, n) if n > 1 else np.array([(a0 + a1) / 2])
+        breathing = 0.5 + 0.5 * math.sin(now * 4.0)
+        lit = 0
+        for i in range(n - 1):
+            here, there = statuses[i], statuses[i + 1]
+            if here in DONE_STEPS and there in DONE_STEPS:
+                pen, lit = _pen(theme.PRIMARY, 0.75), lit + 1
+            elif here in DONE_STEPS and there == "running":
+                pen = _pen(theme.GLOW, 0.30 + 0.40 * breathing)
+            else:
+                pen = _pen(theme.PRIMARY_DIM, 0.22)
+            arc = np.linspace(angles[i], angles[i + 1], 10)
+            p.setPen(pen)
+            p.drawPolyline(_polygon(fr.rcx + rx * np.cos(arc), fr.rcy + ry * np.sin(arc)))
+        self.stats["plan_lit"] = lit
+        p.setCompositionMode(PLUS)
+        for angle, status in zip(angles.tolist(), statuses):
+            tone, radius, alpha = STEP_LOOK.get(status, ("dim", 2.2, 0.45))
+            if status == "running":
+                alpha *= 0.6 + 0.4 * breathing
+            self._sprite(p, "glow", tone, fr.rcx + rx * math.cos(angle), fr.rcy + ry * math.sin(angle),
+                         radius * 2.4, alpha)
+        p.setOpacity(1.0)
+        p.setCompositionMode(OVER)
 
     # ---------------------------------------------------------------- cérebro
     def _ensure_graph(self) -> dict:
@@ -511,7 +605,7 @@ class BrainView(QtWidgets.QWidget):
                 i = index.get(node.id)
                 if i is None:
                     continue
-                xs.append(sx[i]); ys.append(sy[i]); tones.append(NODE_TONES[tone[i]])
+                xs.append(sx[i]); ys.append(sy[i]); tones.append(node.glow_tone or NODE_TONES[tone[i]])
                 radii.append((5.0 + 7.0 * node.activation) * f[i])
                 alphas.append((0.85 * node.activation + (1.0 - _clamp(age / 0.8)) * 0.9) * reveal)
             p.setCompositionMode(PLUS)

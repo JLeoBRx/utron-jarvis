@@ -12,25 +12,48 @@ from . import theme
 from .brain_view import BrainView
 
 
-def app_icon(size: int = 64) -> QtGui.QIcon:
-    """Ícone procedural: anel dourado com núcleo."""
+def _icon_pixmap(size: int) -> QtGui.QPixmap:
+    """Disco azul profundo, anel ciano e núcleo luminoso — o mesmo símbolo do JARVIS CORE."""
     pix = QtGui.QPixmap(size, size)
     pix.fill(QtCore.Qt.transparent)
     p = QtGui.QPainter(pix)
     p.setRenderHint(QtGui.QPainter.Antialiasing)
-    p.setBrush(theme.BG2)
-    p.setPen(QtGui.QPen(theme.PRIMARY, size * 0.07))
-    margin = size * 0.1
-    p.drawEllipse(QtCore.QRectF(margin, margin, size - 2 * margin, size - 2 * margin))
-    grad = QtGui.QRadialGradient(size / 2, size / 2, size * 0.24)
-    grad.setColorAt(0, theme.TEXT_BRIGHT)
-    grad.setColorAt(0.5, theme.PRIMARY)
-    grad.setColorAt(1, theme.with_alpha(theme.BG, 0.0))
-    p.setBrush(grad)
+    margin = size * 0.08
+    disc = QtCore.QRectF(margin, margin, size - 2 * margin, size - 2 * margin)
+    fill = QtGui.QRadialGradient(size / 2, size / 2, size / 2)
+    fill.setColorAt(0.0, theme.PANEL)
+    fill.setColorAt(1.0, theme.BG)
+    p.setBrush(fill)
+    p.setPen(QtGui.QPen(theme.PRIMARY, max(1.0, size * 0.07)))
+    p.drawEllipse(disc)
+    if size >= 32:                                   # arco interno (giro do anel de subsistemas)
+        p.setPen(QtGui.QPen(theme.with_alpha(theme.GLOW, 0.75), max(1.0, size * 0.035)))
+        inner = disc.adjusted(size * 0.14, size * 0.14, -size * 0.14, -size * 0.14)
+        p.drawArc(inner, 30 * 16, 120 * 16)
+        p.drawArc(inner, 210 * 16, 120 * 16)
+    core = QtGui.QRadialGradient(size / 2, size / 2, size * 0.22)
+    core.setColorAt(0, theme.TEXT_BRIGHT)
+    core.setColorAt(0.45, theme.PRIMARY)
+    core.setColorAt(1, theme.with_alpha(theme.BG, 0.0))
+    p.setBrush(core)
     p.setPen(QtCore.Qt.NoPen)
-    p.drawEllipse(QtCore.QPointF(size / 2, size / 2), size * 0.24, size * 0.24)
+    p.drawEllipse(QtCore.QPointF(size / 2, size / 2), size * 0.22, size * 0.22)
     p.end()
-    return QtGui.QIcon(pix)
+    return pix
+
+
+_ICON: QtGui.QIcon | None = None
+
+
+def app_icon(size: int = 64) -> QtGui.QIcon:
+    """Ícone do JARVIS em vários tamanhos (bandeja do Windows, barra de tarefas, janelas)."""
+    global _ICON
+    if _ICON is None:
+        icon = QtGui.QIcon()
+        for side in (16, 20, 24, 32, 40, 48, 64, 128, 256):
+            icon.addPixmap(_icon_pixmap(side))
+        _ICON = icon
+    return _ICON
 
 
 class InputBar(QtWidgets.QWidget):

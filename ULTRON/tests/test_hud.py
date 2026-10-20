@@ -228,6 +228,67 @@ class SceneTest(unittest.TestCase):
         self.assertTrue(all(sub.grow == 0.0 for sub in scene.subsystems.values()))
 
 
+class StateIdentityTest(unittest.TestCase):
+    """Cada estado tem um visual próprio, e todo movimento vem de um sinal real."""
+
+    def _scene(self, state="IDLE"):
+        scene, clock = make_scene()
+        scene.on_state({"runtime_state": state})
+        run(scene, clock, 0.5)
+        return scene, clock
+
+    def test_listening_halo_follows_the_real_microphone_level(self):
+        scene, clock = self._scene("LISTENING")
+        for _ in range(30):
+            scene.on_telemetry({"listening": True, "mic_level": 0.4})
+            run(scene, clock, 1 / 30)
+        loud = scene.hearing
+        self.assertGreater(loud, 0.4)
+        for _ in range(30):
+            scene.on_telemetry({"listening": True, "mic_level": 0.0})
+            run(scene, clock, 1 / 30)
+        self.assertLess(scene.hearing, 0.05, "silêncio: o halo recolhe")
+        scene.on_telemetry({"listening": True, "mic_level": 0.5})
+        scene.on_state({"runtime_state": "IDLE"})
+        run(scene, clock, 2.0)                               # telemetria parou de chegar (janela oculta)
+        self.assertEqual(scene.hearing, 0.0, "leitura velha do microfone não mantém o halo aceso")
+
+    def test_speech_rings_follow_the_real_output_level(self):
+        scene, clock = self._scene("SPEAKING")
+        for _ in range(20):
+            scene.on_telemetry({"speaking": True, "out_level": 0.3})
+            run(scene, clock, 1 / 30)
+        self.assertGreater(scene.voice_level, 0.5)
+        self.assertTrue(scene.in_motion())
+
+    def test_perception_waves_only_from_analysis(self):
+        scene, clock = self._scene()
+        scene.on_event("WINDOW_CHANGED", {})
+        self.assertEqual(len(scene.waves), 0, "troca de janela é rotina: sem onda")
+        scene.on_event("VISION_UPDATED", {})
+        scene.on_event("PERCEPTION_FUSED", {})
+        self.assertEqual(len(scene.waves), 1, "ondas limitadas por intervalo mínimo")
+        run(scene, clock, 3.0)
+        self.assertEqual(len(scene.waves), 0, "a onda se dissipa")
+
+    def test_memory_recall_lights_nodes_in_blue_and_plan_in_cyan(self):
+        scene, clock = self._scene("CONTEXT")
+        scene.load_graph({"nodes": [{"id": "memory:a", "type": "MEMORY", "label": "a"},
+                                    {"id": "skill:b", "type": "SKILL", "label": "b"}], "edges": []})
+        scene.on_event("GRAPH_ACTIVATED", {"ids": ["memory:a"], "reason": "recall"})
+        scene.on_event("GRAPH_ACTIVATED", {"ids": ["skill:b"], "reason": "plan"})
+        self.assertEqual(scene.nodes["memory:a"].glow_tone, "blue")
+        self.assertEqual(scene.nodes["skill:b"].glow_tone, "cyan")
+
+    def test_plan_progress_is_the_real_plan(self):
+        scene, clock = self._scene()
+        steps = [{"id": "a", "status": "DONE"}, {"id": "b", "status": "RUNNING"}, {"id": "c", "status": "PENDING"}]
+        scene.on_state({"runtime_state": "EXECUTING", "current_plan": {"steps": steps}})
+        self.assertEqual(scene.plan_progress(), ["done", "running", "pending"])
+        scene.on_state({"runtime_state": "IDLE", "current_plan": {"steps": steps}})
+        self.assertEqual(scene.plan_progress(), [], "sem execução em andamento, o arco do plano some")
+
+
 @unittest.skipIf(helpers.QUICK, "teste lento (--quick)")
 @unittest.skipUnless(helpers.qt_available(), "PySide6 (com bibliotecas do sistema) necessário")
 class RenderTest(unittest.TestCase):
@@ -281,6 +342,36 @@ class RenderTest(unittest.TestCase):
         per_frame = (time.perf_counter() - started) / 20
         self.assertLessEqual(view.base_renders - renders, 3, "fundo, órbitas e auréola vêm do cache")
         self.assertLess(per_frame, 0.05)
+
+    def test_state_visuals_are_drawn_from_real_signals(self):
+        scene, clock = make_scene()
+        for name in BOOT_ORDER:
+            scene.on_event("COMPONENT_STARTED", {"component": name})
+        scene.on_state({"runtime_state": "IDLE"})
+        run(scene, clock, 3)
+        view = self._view(scene)
+        self._render(view)
+        self.assertNotIn("presence", view.stats, "repouso: sem halo de escuta")
+        self.assertEqual((view.stats["waves"], view.stats["plan_steps"]), (0, 0))
+        scene.on_state({"runtime_state": "LISTENING"})
+        for _ in range(10):
+            scene.on_telemetry({"listening": True, "mic_level": 0.3})
+            run(scene, clock, 1 / 30)
+        self._render(view)
+        self.assertEqual(view.stats.get("presence"), 1)
+        steps = [{"id": "a", "status": "done"}, {"id": "b", "status": "done"}, {"id": "c", "status": "running"},
+                 {"id": "d", "status": "pending"}]
+        scene.on_state({"runtime_state": "EXECUTING", "current_plan": {"steps": steps}})
+        scene.on_event("VISION_UPDATED", {})
+        run(scene, clock, 0.2)
+        self._render(view)
+        self.assertEqual(view.stats["plan_steps"], 4)
+        self.assertEqual(view.stats["plan_lit"], 1, "só a conexão entre as duas etapas concluídas está acesa")
+        self.assertEqual(view.stats["waves"], 1)
+        scene.on_state({"runtime_state": "ERROR"})
+        run(scene, clock, 0.2)
+        self._render(view)
+        self.assertEqual(view.stats.get("error_ring"), 1)
 
     def test_boot_genesis_starts_from_void(self):
         scene, clock = make_scene()

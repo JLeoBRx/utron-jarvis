@@ -118,6 +118,10 @@ EVENT_SUBSYSTEM = {
     "GOAL_FAILED": ("OBJETIVOS", 0.8), "RECORD_CREATED": ("AGENDA", 0.9), "RECORD_UPDATED": ("AGENDA", 0.6),
     "RECORD_DELETED": ("AGENDA", 0.5), "REMINDER_DUE": ("AGENDA", 1.0), "NETWORK_INVENTORY_UPDATED": ("REDE", 0.7),
 }
+WAVE_SECONDS = 2.4             # duração de uma onda de percepção (expande e some)
+# percepção que analisou algo (troca de janela é rotina: não gera onda nem tira a cena do repouso)
+PERCEPTION_EVENTS = ("PERCEPTION_FUSED", "VISION_UPDATED", "OCR_UPDATED", "NETWORK_CHANGED")
+GRAPH_REASON_TONE = {"recall": "blue", "consolidation": "blue", "plan": "cyan", "input": "cyan", "focus": "ice"}
 GROW_THRESHOLD = 0.12          # atividade mínima para a sinapse de um subsistema crescer até o anel
 ROUTINE_TOUCH = 0.08           # sinais de rotina (ex.: verificação de saúde sem mudança): brilho, sem crescer
 CATEGORY_SUBSYSTEM = {"development": "CÓDIGO", "browser": "WEB", "automation": "AUTOMAÇÃO", "applications": "WINDOWS",
@@ -147,6 +151,7 @@ class SceneNode:
     strength: float = 0.3
     activation: float = 0.0
     born: float = 0.0
+    glow_tone: str = ""                    # tom da ativação real (memória = azul); vazio = tom do tipo
 
 
 @dataclass
@@ -382,6 +387,12 @@ class NeuralScene:
         self._camera_override: tuple[str, str, float] | None = None
         self._time = 0.0
         self.graph_version = 0              # muda quando a geometria de nós/arestas muda (cache da view)
+        # sinais reais dos estados (identidade visual do JARVIS)
+        self.hearing = 0.0                  # nível do microfone suavizado, só enquanto escuta (halo ciano)
+        self.voice_level = 0.0              # nível da fala do JARVIS suavizado (anéis sincronizados com a voz)
+        self.waves: deque = deque(maxlen=6)  # ondas de percepção: instante de nascimento
+        self._last_wave = -1e9
+        self._telemetry_at = -1e9
 
     # ================================================================ grafo
     def load_graph(self, snapshot: dict) -> None:
@@ -452,6 +463,7 @@ class NeuralScene:
             if node is None:
                 continue
             node.activation = 1.0
+            node.glow_tone = tone
             self._heat_node(node_id)
             if not spread:
                 continue
@@ -509,6 +521,8 @@ class NeuralScene:
         now = self.clock()
         region = EVENT_REGION.get(kind)
         target = EVENT_SUBSYSTEM.get(kind)
+        if kind in PERCEPTION_EVENTS:
+            self._wave(now)
         if kind == "HEALTH_UPDATED" and not p.get("changed"):
             # verificação de rotina sem mudança: só um brilho no anel, abaixo do limiar que faz a
             # sinapse crescer (antes, a cada 15 s, ~4 s de animação no teto de quadros em repouso)
@@ -564,7 +578,9 @@ class NeuralScene:
                 self._emit_particle(edge.a, edge.b)
             self._update_development()
         elif kind == "GRAPH_ACTIVATED":
-            self.activate_nodes([str(i) for i in (p.get("ids") or [])][:24])
+            # memória consultada acende em azul; o caminho de um plano/entrada em ciano
+            self.activate_nodes([str(i) for i in (p.get("ids") or [])][:24],
+                                tone=GRAPH_REASON_TONE.get(str(p.get("reason") or ""), "cyan"))
         elif kind == "MEMORY_RECALLED" and int(p.get("count", 0) or 0) > 0:
             self._override_camera("MEMORY_DIVE", "hippocampus", 2.6)
             self._module("memory", "MEMORY RECALL", "hippocampus",
@@ -648,6 +664,20 @@ class NeuralScene:
                 self.region_particles("frontal", "motor", 2)
             elif kind == "VOICE_RECEIVED":
                 self.region_particles("auditory", "frontal", 2, "ice")
+
+    def _wave(self, now: float, *, min_gap: float = 0.6) -> None:
+        if now - self._last_wave >= min_gap:
+            self.waves.append(now)
+            self._last_wave = now
+
+    def plan_progress(self) -> list[str]:
+        """Estado de cada etapa do plano atual (só enquanto há plano em andamento): o desenho acende
+        as conexões entre etapas à medida que elas terminam — progresso real, não animação solta."""
+        if self.runtime_state not in ("PLANNING", "EXECUTING", "VERIFYING", "RECOVERY", "AWAITING_AUTHORIZATION",
+                                      "THINKING"):
+            return []
+        steps = (self.state.get("current_plan") or {}).get("steps") or []
+        return [str(step.get("status", "pending")).lower() for step in steps[:12]]
 
     def _update_development(self) -> None:
         self.development = development_for(self.total_nodes, self.total_edges)
@@ -779,6 +809,7 @@ class NeuralScene:
 
     def on_telemetry(self, telemetry: dict) -> None:
         self.telemetry = telemetry
+        self._telemetry_at = self.clock()
         if telemetry.get("listening"):
             self.region_activity["auditory"] = max(self.region_activity["auditory"],
                                                    _clamp(0.25 + float(telemetry.get("mic_level", 0.0))))
@@ -859,6 +890,23 @@ class NeuralScene:
         else:
             self.camera.tx = self.camera.ty = 0.0
         self.camera.step(dt)
+        # escuta e fala: níveis REAIS (microfone / saída de áudio), suavizados para não tremer
+        tel = (self.telemetry or {}) if now - self._telemetry_at < 1.0 else {}     # leitura velha não conta
+        hearing = float(tel.get("mic_level", 0.0) or 0.0) if tel.get("listening") or self.runtime_state == "LISTENING" \
+            else 0.0
+        voice = float(tel.get("out_level", 0.0) or 0.0) if tel.get("speaking") or self.runtime_state == "SPEAKING" \
+            else 0.0
+        self.hearing += (_clamp(hearing * 1.6) - self.hearing) * (1 - math.exp(-dt / 0.12))
+        self.voice_level += (_clamp(voice * 2.2) - self.voice_level) * (1 - math.exp(-dt / 0.08))
+        if self.hearing < 0.003:
+            self.hearing = 0.0
+        if self.voice_level < 0.003:
+            self.voice_level = 0.0
+        # percepção: ondas sutis enquanto o estado real é de percepção (além das de cada evento)
+        if self.runtime_state in ("PERCEIVING", "NETWORK"):
+            self._wave(now, min_gap=1.8)
+        while self.waves and now - self.waves[0] > WAVE_SECONDS:
+            self.waves.popleft()
         # suspense: esperando resposta há mais de 1,5 s, ou autorização pendente
         waiting = self._waiting_since and now - self._waiting_since > 1.5 and \
             self.runtime_state in ("THINKING", "PLANNING")          # nada visível acontecendo ainda
@@ -970,6 +1018,8 @@ class NeuralScene:
         subsistemas apagando), o giro livre e a respiração ficam na cadência econômica."""
         if self.boot.active or self.particles or self.pulses or self.release > 0.0:
             return True
+        if self.waves or self.hearing > 0.02 or self.voice_level > 0.02:
+            return True                                   # ondas de percepção, escuta e fala acompanham o sinal
         if self._newborn or self.ring_pulses or self.camera.moving():
             return True
         if abs(self.suspense - self._suspense_target) > 0.01 or abs(self.dim - self._dim_target) > 0.01:
