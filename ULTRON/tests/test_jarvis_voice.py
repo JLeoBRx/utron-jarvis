@@ -205,6 +205,31 @@ class VoiceDiagnosticsTest(unittest.TestCase):
         finally:
             core.shutdown()
 
+    def test_model_step_trusts_the_recognizer_in_use(self):
+        """O reconhecedor já carregado pela captura é a evidência; o que está no disco agora não decide
+        (pacote sem modelos, modelo trocado depois de carregado ou escolha automática por RAM)."""
+        from ultron.voice import stt as stt_module
+        from ultron.voice.diagnostics import VoiceDiagnostics
+        self._devices({"backend": "simulado", "default": 0, "errors": [],
+                       "devices": [{"index": 0, "name": "Microfone simulado", "host_api": "MME", "channels": 1,
+                                    "rate": 16000, "default": True}]})
+        original = stt_module.choose_model
+        stt_module.choose_model = lambda engine="auto": (None, "nenhum modelo em assets/stt")
+        self.addCleanup(lambda: setattr(stt_module, "choose_model", original))
+        core, _stt = make_voice_core()
+        core.boot()
+        try:
+            deadline = time.time() + 10
+            while time.time() < deadline and not core.voice.capturing:
+                time.sleep(0.05)
+            report = VoiceDiagnostics(core).run(interactive=False, probe_response=False)
+            steps = {s["key"]: s for s in report["steps"]}
+            self.assertEqual(steps["stt_engine"]["status"], "OK", steps["stt_engine"])
+            self.assertEqual(steps["pt_model"]["status"], "OK", steps["pt_model"])
+            self.assertIn("stt-simulado", steps["pt_model"]["detail"], "nomeia o reconhecedor realmente em uso")
+        finally:
+            core.shutdown()
+
     def test_missing_microphone_is_reported_with_cause(self):
         from ultron.voice.diagnostics import VoiceDiagnostics
         self._devices({"backend": None, "default": None, "devices": [],

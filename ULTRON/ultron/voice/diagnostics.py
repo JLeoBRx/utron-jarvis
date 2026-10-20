@@ -214,6 +214,13 @@ class VoiceDiagnostics:
         import importlib.util
 
         from .stt import choose_model
+        pipeline = self.pipeline
+        live = getattr(pipeline, "stt", None) if pipeline is not None else None
+        if live is not None:                 # evidência mais forte: o reconhecedor já está carregado e em uso
+            label = getattr(live, "label", None) or type(live).__name__
+            self._set("stt_engine", "OK", f"reconhecedor em uso: {label}")
+            self._set("pt_model", "OK", f"carregado e em uso pela captura: {label}")
+            return
         if importlib.util.find_spec("vosk") is None:
             self._set("stt_engine", "FAIL", "Vosk não instalado", "Execute INSTALL_JARVIS.bat.")
             self._set("pt_model", "SKIPPED", "sem mecanismo de reconhecimento")
@@ -226,11 +233,6 @@ class VoiceDiagnostics:
                       "Coloque os modelos Vosk em português em assets/stt (veja VOICE_DIAGNOSTICS.md).")
             return
         self._set("stt_engine", "OK", f"Vosk disponível (modo {engine}); modelo escolhido: {path.name}")
-        pipeline = self.pipeline
-        stt = getattr(pipeline, "stt", None) if pipeline is not None else None
-        if stt is not None:
-            self._set("pt_model", "OK", f"carregado: {getattr(stt, 'label', path.name)}")
-            return
         if pipeline is not None and pipeline.stt_reason:
             self._set("pt_model", "FAIL", pipeline.stt_reason)
             return

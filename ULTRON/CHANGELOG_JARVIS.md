@@ -93,3 +93,9 @@ finais em `PERFORMANCE_REPORT.md`.
 * `--status` e `--stop` (parada normal pedida à instância em execução, sem forçar).
 * Dependências: `sounddevice` obrigatório (funciona sem PyAudio), `tzdata` no Windows.
 * `JARVIS_FINAL.zip` sem `.venv`, caches, dados pessoais nem modelos grandes.
+* `tools/build_release.py`: o pacote sai só de arquivos versionados no Git, é validado
+  (conteúdo obrigatório, nada proibido, `.bat` em ASCII com CRLF, tamanho) e foi **testado depois
+  de extraído** numa pasta nova.
+* Esse teste encontrou um defeito: o diagnóstico de voz acusava "modelo ausente" quando os
+  arquivos não estavam no disco, mesmo com o reconhecedor carregado e em uso. Agora a etapa 5
+  confia primeiro no reconhecedor em uso; teste de regressão em `test_jarvis_voice.py`.
