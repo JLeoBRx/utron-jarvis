@@ -25,7 +25,7 @@ from typing import Any, Callable
 from ..memory.store import looks_secret
 from . import parsing, timeutil
 from .models import KINDS, Record
-from .service import NeedsClarification, SecondBrainError, SecondBrainService, describe_record
+from .service import NeedsClarification, SecondBrainError, SecondBrainService, brief, describe_record
 
 EVENT_WORDS = ("reuniao", "consulta", "prova", "aula", "entrevista", "compromisso", "dentista", "medico", "medica",
                "exame", "voo", "viagem", "jogo", "apresentacao", "palestra", "encontro", "almoco", "jantar",
@@ -36,7 +36,7 @@ FINANCIAL_RE = re.compile(r"(r\$\s*\d|\bus\$\s*\d|\b\d+[.,]\d{2}\s*(reais|dolare
                           r"\bconta\s*(corrente|poupanca)?\s*\d{3,}|\bcartao\b.*\d{4}|\bboleto\s*\d{10,}|\biban\b|"
                           r"\bcnpj\b|\bcpf\b|\bsenha\b|\bcodigo de (seguranca|verificacao)\b|\btoken\b|\blogin\b)")
 LEADING_RE = re.compile(
-    r"^(?:ultron[,:]?\s+)?(?:por favor[,]?\s+)?(?:"
+    r"^(?:(?:jarvis|ultron)[,:]?\s+)?(?:por favor[,]?\s+)?(?:"
     r"lembre-me|lembre me|me lembre|me lembra|lembra-me|me avise|me avisa|avise-me|anote|anota|registre|registra|"
     r"adicione|adiciona|crie|cria|marque|marca|agende|agenda|nova|novo|inclua|coloque|salve|guarde)\b"
     r"(?:\s+(?:que|de|do|da|para|pra|essa|esta|esse|este|uma|um|o|a|isso)\b)*[:,]?\s*", re.I)
@@ -67,6 +67,7 @@ class CaptureResult:
     inferred: bool = False
     pending: dict = field(default_factory=dict)   # o que falta para completar o registro (ver Capture.answer)
     reminder: Any = None                          # lembrete criado sobre um registro existente
+    conflicts: list = field(default_factory=list)  # compromissos que se sobrepõem ao registrado (informados)
 
     @property
     def ok(self) -> bool:
@@ -75,7 +76,8 @@ class CaptureResult:
     def to_dict(self) -> dict[str, Any]:
         return {"records": [r.to_dict() for r in self.records], "question": self.question,
                 "skipped": self.skipped, "inferred": self.inferred, "pending": dict(self.pending),
-                "reminder": self.reminder.to_dict() if self.reminder is not None else None}
+                "reminder": self.reminder.to_dict() if self.reminder is not None else None,
+                "conflicts": [brief(r) for r in self.conflicts]}
 
 
 TITLE_QUESTIONS = {"idea": "Qual é a ideia?", "note": "O que devo anotar?", "task": "Qual é a tarefa?",
@@ -206,7 +208,7 @@ class Capture:
             priority=priority or (3 if kind == "deadline" else 2),
             project=project, tags=tags, origin=origin, origin_detail=text[:300], confirmed=True,
             remind=(leads if leads else True) if (is_reminder or remind) else None, recurrence=parsed.recurrence)
-        return CaptureResult(records=[record])
+        return CaptureResult(records=[record], conflicts=self.service.conflicts(record))
 
     # ------------------------------------------------------------ automático
     def auto(self, text: str, *, origin: str = "auto") -> CaptureResult:
@@ -250,7 +252,7 @@ class Capture:
         record = self.service.create(kind, title, when=_when_value(parsed), origin=origin, origin_detail=clean[:300],
                                      confirmed=False, confidence=0.6,
                                      remind=True if kind == "event" else None, recurrence=parsed.recurrence)
-        return CaptureResult(records=[record], inferred=True)
+        return CaptureResult(records=[record], inferred=True, conflicts=self.service.conflicts(record))
 
     def _remind_existing(self, record_id: str, parsed: parsing.When, pending: dict, now: dt.datetime) -> CaptureResult:
         """"Lembre-me disso amanhã às 18h" sobre um registro que já existe: lembrete com horário próprio."""
@@ -371,6 +373,10 @@ def confirmation_text(result: CaptureResult, *, now: dt.datetime | None = None) 
         text += " Marcado como inferido; confirme ou corrija em Revisão."
     if result.skipped == "já registrado":
         text = f"{label} já estava registrado: {describe_record(record, now=now)}."
+    if result.conflicts:
+        names = "; ".join(describe_record(r, now=now) for r in result.conflicts[:3])
+        more = f" e mais {len(result.conflicts) - 3}" if len(result.conflicts) > 3 else ""
+        text += f" Atenção: conflita com {names}{more}."
     return text
 
 

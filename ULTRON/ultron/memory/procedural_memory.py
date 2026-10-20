@@ -18,7 +18,7 @@ from typing import Any
 from .store import Database, clean_text, dumps, loads
 
 _STOP = {"o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "em", "no", "na", "um", "uma",
-         "para", "por", "com", "que", "meu", "minha", "me", "por favor", "ultron", "senhor"}
+         "para", "por", "com", "que", "meu", "minha", "me", "por favor", "jarvis", "ultron", "senhor"}
 
 
 def fingerprint(text: str) -> str:

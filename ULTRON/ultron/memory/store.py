@@ -330,12 +330,51 @@ class Database:
                                (str(source)[:40], str(action)[:80], text, verified_int, time.time()))
             self._conn.execute("DELETE FROM audit WHERE id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT 2000)")
 
+    def backup_to(self, destination: Path | str) -> Path:
+        """Cópia consistente do banco inteiro com o JARVIS rodando (API de backup do SQLite: não
+        copia um arquivo pela metade). O destino não pode existir — nada é sobrescrito."""
+        destination = Path(destination)
+        if destination.exists():
+            raise FileExistsError(f"já existe: {destination}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        partial = destination.with_name(destination.name + ".partial")
+        target = sqlite3.connect(str(partial))
+        try:
+            with self._lock:
+                self._conn.backup(target)
+            row = target.execute("PRAGMA quick_check").fetchone()
+            if not row or str(row[0]).lower() != "ok":
+                raise sqlite3.DatabaseError("a cópia não passou na verificação de integridade")
+        finally:
+            target.close()
+        partial.replace(destination)
+        return destination
+
     def close(self) -> None:
         with self._lock:
             try:
                 self._conn.close()
             except sqlite3.Error:
                 pass
+
+
+def verify_database_file(path: Path | str) -> tuple[bool, str]:
+    """(íntegro?, detalhe) de um arquivo de banco — usado antes de restaurar um backup."""
+    path = Path(path)
+    if not path.is_file():
+        return False, "arquivo não encontrado"
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        try:
+            row = conn.execute("PRAGMA integrity_check").fetchone()
+            version = conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return False, f"não é um banco do JARVIS legível: {exc}"
+    if not row or str(row[0]).lower() != "ok":
+        return False, f"integridade comprometida: {row[0] if row else '?'}"
+    return True, f"íntegro (esquema v{version[0] if version and version[0] is not None else '?'})"
 
 
 def dumps(value: Any) -> str:

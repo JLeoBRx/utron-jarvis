@@ -171,8 +171,19 @@ class IntentEngine:
 
     def _secondbrain_rules(self, raw, t):
         r = raw.strip().rstrip(".!")
-        if re.search(r"\b(abr\w*|mostr\w*|exib\w*)\b.*\b(segundo cerebro|second brain|hub 2|hub dois)\b", t):
-            return _intent("control", raw, args={"open_view": "second_brain"})
+        if re.search(r"\b(abr\w*|mostr\w*|exib\w*|v\w+ para)\b.*\b(segundo cerebro|second brain|hub 2|hub dois|"
+                     r"tardis|memoria espacial)\b", t):
+            return _intent("control", raw, args={"open_view": "tardis"})
+        # agenda: conflitos de horário (só leitura)
+        if re.search(r"\b(conflit\w*|choque\w* de horario|sobrepost\w*|no mesmo horario)\b", t) and \
+                re.search(r"\b(agenda|horario|compromissos?|reunio\w*|eventos?)\b", t):
+            return _cmd(raw, "secondbrain.conflicts")
+        # exportação e backup (arquivos novos; nada é sobrescrito)
+        if re.search(r"\bexport\w*\b", t) and re.search(r"\b(memoria|tarefas|registros|notas|ideias|compromissos|"
+                                                       r"agenda|segundo cerebro|second brain|dados|tudo)\b", t):
+            return _cmd(raw, "secondbrain.export", format="csv" if re.search(r"\b(csv|planilha|excel)\b", t) else "json")
+        if re.search(r"\b(backup|copia de seguranca)\b", t) and not re.search(r"\brestaur\w*\b", t):
+            return _cmd(raw, "memory.backup")
         if re.search(r"\b(abr\w*|mostr\w*)\b.*\b(central de )?notificacoes\b", t):
             return _intent("control", raw, args={"open_view": "second_brain", "section": "notifications"})
         # adiar lembrete: "adie o lembrete por 15 minutos", "soneca de 10 minutos"
@@ -361,7 +372,8 @@ class IntentEngine:
         return None
 
     def _system_rules(self, raw, t):
-        if re.search(r"\b(saude|health)\b|como voce esta|status do ultron|diagnostico (do ultron|interno)", t):
+        if re.search(r"\b(saude|health)\b|como voce esta|status do (jarvis|ultron)|"
+                     r"diagnostico (do (jarvis|ultron)|interno)", t):
             return _cmd(raw, "diagnostics.health")
         if re.search(r"relatorio do (sistema|computador)|uso de (cpu|memoria|processador)|desempenho do (pc|computador)|"
                      r"como esta o (computador|pc)", t):

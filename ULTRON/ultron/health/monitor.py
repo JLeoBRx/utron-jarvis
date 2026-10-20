@@ -125,6 +125,7 @@ class HealthMonitor:
         self.last: dict[str, Any] = {}
         self.history: list[dict] = []           # (instante, geral) — para tendência
         self._previous_overall = ""
+        self._previous_signature: tuple = ()
 
     def register(self, name: str, probe: Callable[[], dict]) -> None:
         with self._lock:
@@ -196,15 +197,19 @@ class HealthMonitor:
             del self.history[:-120]
         if self._state is not None:
             self._state.update(_source="health", health=report)
+        problems = {k: v["detail"] for k, v in checks.items() if v["status"] in ("WARN", "FAIL")}
+        # "mudou" = o estado geral OU o conjunto de verificações com problema mudou; a verificação
+        # de rotina que só confirma o mesmo quadro não é tratada como novidade pelos hubs
+        signature = (overall, tuple(sorted((k, checks[k]["status"]) for k in problems)))
         if self._bus is not None:
             self._bus.publish(EventType.HEALTH_UPDATED, {"overall": overall,
-                                                         "changed": overall != self._previous_overall,
-                                                         "problems": {k: v["detail"] for k, v in checks.items()
-                                                                      if v["status"] in ("WARN", "FAIL")}},
+                                                         "changed": signature != self._previous_signature,
+                                                         "problems": problems},
                               source="health")
         if overall != self._previous_overall and self._previous_overall:
             log.info("saúde geral: %s → %s", self._previous_overall, overall)
         self._previous_overall = overall
+        self._previous_signature = signature
         return report
 
 

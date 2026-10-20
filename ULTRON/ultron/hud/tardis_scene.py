@@ -124,6 +124,7 @@ class TardisScene:
         self.set_particle_budget(max_particles)
         self.panel_fraction = 0.0        # fração da largura ocupada pelo painel lateral (0 = fechado)
         self.events = 0
+        self.data_version = 0            # muda quando os dados do banco mudam (invalida a camada estrutural)
 
     # ------------------------------------------------------------ dados reais
     def set_particle_budget(self, count: int) -> None:
@@ -146,6 +147,7 @@ class TardisScene:
             region.alert = bool(info.get("alert"))
             region.items = list(info.get("items") or [])[:14]
         self.today = dict(data.get("today") or {})
+        self.data_version += 1
 
     def on_event(self, kind: str, payload: dict) -> None:
         """Só eventos reais geram movimento: o pulso vai do núcleo à região do registro (ou volta)."""
@@ -197,10 +199,14 @@ class TardisScene:
     def step(self, dt: float) -> None:
         dt = max(0.0, min(0.1, dt))
         self.camera.step(dt)
-        self.camera.orbit = (self.camera.orbit + dt * (0.05 + 0.10 * self.activity_level())) % math.tau
+        level = self.activity_level()
+        self.camera.orbit = (self.camera.orbit + dt * (0.05 + 0.10 * level)) % math.tau
+        # repouso: o fluxo de dados desacelera (discreto, e suave mesmo na cadência ociosa);
+        # com o núcleo ativo, as partículas correm mais rápido para a câmara
+        flow = 0.25 + 0.9 * level
         for particle in self.particles:
-            particle.angle = (particle.angle + particle.speed * dt) % math.tau
-            particle.radius -= 6.0 * dt * (1 + self.activity_level())
+            particle.angle = (particle.angle + particle.speed * flow * dt) % math.tau
+            particle.radius -= 6.0 * dt * (0.5 + 1.5 * level)
             if particle.radius < 40:                         # chegou à câmara: renasce na borda
                 particle.radius = self._rng.uniform(560, 740)
         decay = math.exp(-dt / 1.6)

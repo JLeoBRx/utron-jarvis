@@ -80,7 +80,9 @@ LEFT_REGIONS = {"prefrontal", "frontal", "broca", "motor"}
 MODULE_SHIFT = 0.13
 
 # giro livre (rad/s) por estado; estados de foco viram a região para o observador
-SPIN = {"IDLE": 0.12, "DREAMING": 0.06, "THINKING": 0.30, "PLANNING": 0.26, "RECOVERY": 0.28,
+# giro livre por estado (rad/s). Repouso: lento e discreto — a cadência ociosa (10–24 quadros/s)
+# move cada ponto ~1–2 px por quadro, sem degraus visíveis
+SPIN = {"IDLE": 0.07, "DREAMING": 0.05, "THINKING": 0.30, "PLANNING": 0.26, "RECOVERY": 0.28,
         "IMAGINING": 0.20, "SIMULATING": 0.16, "BOOTING": 0.45, "ERROR": 0.0, "SHUTDOWN": 0.0,
         "CONTEXT": 0.24, "DECIDING": 0.30}
 FACING = {"LISTENING": "auditory", "SPEAKING": "broca", "EXECUTING": "motor", "VERIFYING": "motor",
@@ -116,6 +118,8 @@ EVENT_SUBSYSTEM = {
     "GOAL_FAILED": ("OBJETIVOS", 0.8), "RECORD_CREATED": ("AGENDA", 0.9), "RECORD_UPDATED": ("AGENDA", 0.6),
     "RECORD_DELETED": ("AGENDA", 0.5), "REMINDER_DUE": ("AGENDA", 1.0), "NETWORK_INVENTORY_UPDATED": ("REDE", 0.7),
 }
+GROW_THRESHOLD = 0.12          # atividade mínima para a sinapse de um subsistema crescer até o anel
+ROUTINE_TOUCH = 0.08           # sinais de rotina (ex.: verificação de saúde sem mudança): brilho, sem crescer
 CATEGORY_SUBSYSTEM = {"development": "CÓDIGO", "browser": "WEB", "automation": "AUTOMAÇÃO", "applications": "WINDOWS",
                       "windows": "WINDOWS", "system": "WINDOWS", "audio": "WINDOWS", "devices": "WINDOWS",
                       "filesystem": "ARQUIVOS", "network": "REDE", "vision": "VISÃO", "memory": "MEMÓRIA",
@@ -505,6 +509,10 @@ class NeuralScene:
         now = self.clock()
         region = EVENT_REGION.get(kind)
         target = EVENT_SUBSYSTEM.get(kind)
+        if kind == "HEALTH_UPDATED" and not p.get("changed"):
+            # verificação de rotina sem mudança: só um brilho no anel, abaixo do limiar que faz a
+            # sinapse crescer (antes, a cada 15 s, ~4 s de animação no teto de quadros em repouso)
+            target = ("TELEMETRIA", ROUTINE_TOUCH)
         if target is not None and not (kind == "DEVICE_DETECTED" and p.get("origin") == "peripheral"):
             self.touch_subsystem(*target)
         if kind in ("ACTION_STARTED", "ACTION_FINISHED"):
@@ -905,7 +913,7 @@ class NeuralScene:
         sub_decay = math.exp(-dt / 2.2)
         for sub in self.subsystems.values():
             sub.activity = sub.activity * sub_decay if sub.activity > 0.002 else 0.0
-            target = 1.0 if sub.activity > 0.12 and sub.status not in ("fail", "off") else 0.0
+            target = 1.0 if sub.activity > GROW_THRESHOLD and sub.status not in ("fail", "off") else 0.0
             before = sub.grow
             rate = 1.6 if target > sub.grow else 0.5
             sub.grow += max(-rate * dt, min(rate * dt, target - sub.grow))
@@ -966,7 +974,8 @@ class NeuralScene:
             return True
         if abs(self.suspense - self._suspense_target) > 0.01 or abs(self.dim - self._dim_target) > 0.01:
             return True
-        if any(0.0 < s.grow < 1.0 or (s.grow > 0.5 and s.activity > 0.12) for s in self.subsystems.values()):
+        if any(0.0 < s.grow < 1.0 or (s.grow > 0.5 and s.activity > GROW_THRESHOLD)
+               for s in self.subsystems.values()):
             return True                                   # sinapse crescendo ou sinal percorrendo
         if any(0.02 < m.alpha < 0.98 for m in self.modules.values()):
             return True

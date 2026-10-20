@@ -7,11 +7,13 @@ são automáticas; a exclusão DEFINITIVA é irreversível e exige autorização
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from ...secondbrain import timeutil
 from ...secondbrain.capture import confirmation_text
 from ...secondbrain.models import KINDS, RELATIONS, STATUSES
 from ...secondbrain.queries import answer
-from ...secondbrain.service import NeedsClarification, SecondBrainError, describe_record
+from ...secondbrain.service import EXPORT_FORMATS, NeedsClarification, SecondBrainError, brief, describe_record
 from ..base import Risk, Skill, SkillResult, VerificationResult, check, schema, string
 
 CATEGORY = "second_brain"
@@ -84,9 +86,11 @@ class Capture(_SBSkill):
         record = result.records[0]
         reminders = _service(ctx).store.reminders_for(record.id)
         return SkillResult(True, confirmation_text(result, now=_service(ctx).now_wall()),
-                           [f"{record.label.lower()} {record.id}"] + [f"lembrete {r.at_local}" for r in reminders],
+                           [f"{record.label.lower()} {record.id}"] + [f"lembrete {r.at_local}" for r in reminders]
+                           + [f"conflito com {c.id}" for c in result.conflicts],
                            {"id": record.id, "record": record.to_dict(),
-                            "reminders": [r.to_dict() for r in reminders]})
+                            "reminders": [r.to_dict() for r in reminders],
+                            "conflicts": [brief(c) for c in result.conflicts]})
 
     def checks(self, service, record, args, result):
         checks = [check("persisted", record is not None and not record.deleted_at, "registro lido de volta do banco")]
@@ -173,9 +177,16 @@ class Update(_Target):
             record = _service(ctx).update(record.id, origin=(ctx.extras or {}).get("origin", "user"), **kwargs, **changes)
         except Exception as exc:
             return _fail(exc)
-        return SkillResult(True, f"Atualizado: {describe_record(record, now=_service(ctx).now_wall())}.", [record.id],
-                           {"id": record.id, "expected": {k: v for k, v in changes.items() if k in ("title", "status",
-                                                                                                   "priority", "kind")}})
+        service = _service(ctx)
+        text = f"Atualizado: {describe_record(record, now=service.now_wall())}."
+        conflicts = service.conflicts(record) if fields.get("when") or changes.get("status") else []
+        if conflicts:
+            text += " Atenção: conflita com " + "; ".join(describe_record(c, now=service.now_wall())
+                                                          for c in conflicts[:3]) + "."
+        return SkillResult(True, text, [record.id],
+                           {"id": record.id, "conflicts": [brief(c) for c in conflicts],
+                            "expected": {k: v for k, v in changes.items() if k in ("title", "status", "priority",
+                                                                                   "kind")}})
 
     def checks(self, service, record, args, result):
         if record is None:
@@ -397,4 +408,108 @@ class EmptyTrash(_SBSkill):
         return VerificationResult.from_checks([check("trash_empty", left == 0, f"{left} item(ns) na lixeira")])
 
 
-SKILLS = (Capture, Query, Complete, Update, Snooze, Delete, Restore, Archive, Relate, Dismiss, EmptyTrash)
+class Conflicts(_SBSkill):
+    name = "secondbrain.conflicts"
+    description = "Verificar compromissos que se sobrepõem na agenda (de hoje até os próximos dias)."
+    inputs = schema({"days": {"type": "integer", "minimum": 1, "maximum": 90}})
+    risk = Risk.NONE
+
+    def execute(self, ctx, days: int = 14) -> SkillResult:
+        service = _service(ctx)
+        pairs = service.agenda_conflicts(days=int(days))
+        now = service.now_wall()
+        if not pairs:
+            return SkillResult(True, f"Nenhum conflito de horário na agenda dos próximos {days} dias.", [],
+                               {"conflicts": []})
+        lines = [f"{describe_record(a, now=now)} × {describe_record(b, now=now)}" for a, b in pairs[:6]]
+        more = f" (e mais {len(pairs) - 6})" if len(pairs) > 6 else ""
+        return SkillResult(True, f"{len(pairs)} conflito(s) de horário: " + "; ".join(lines) + more + ".",
+                           [f"{a.id}×{b.id}" for a, b in pairs],
+                           {"conflicts": [[brief(a), brief(b)] for a, b in pairs]})
+
+
+def _export_target(path: str | None, fmt: str) -> Path:
+    """Destino da exportação: um arquivo NOVO, .json/.csv, dentro da pasta pessoal do usuário ou da
+    pasta de dados do JARVIS (um caminho vindo de texto da tela ou de documento não sai dali)."""
+    import time
+
+    from ...config import paths
+    if not path:
+        return paths.data_dir() / "exports" / f"jarvis-memoria-{time.strftime('%Y%m%d-%H%M%S')}.{fmt}"
+    target = Path(path).expanduser()
+    if target.suffix.lower() != f".{fmt}":
+        target = target.with_suffix(f".{fmt}")
+    resolved = target.resolve()
+    allowed = [Path.home().resolve(), paths.data_dir().resolve()]
+    if not any(resolved == root or root in resolved.parents for root in allowed):
+        raise SecondBrainError("exporto apenas para a sua pasta pessoal ou para a pasta de dados do JARVIS")
+    return resolved
+
+
+class Export(_SBSkill):
+    name = "secondbrain.export"
+    description = ("Exportar a memória pessoal (tarefas, compromissos, ideias, notas...) para um arquivo novo "
+                   "JSON (completo) ou CSV (planilha).")
+    inputs = schema({"format": string(8, enum=list(EXPORT_FORMATS)), "path": string(400),
+                     "include_deleted": {"type": "boolean"}})
+
+    def describe_action(self, args):
+        return f"exportar a memória pessoal em {str(args.get('format') or 'json').upper()}"
+
+    def execute(self, ctx, format: str = "json", path: str | None = None, include_deleted: bool = False) -> SkillResult:
+        service = _service(ctx)
+        try:
+            target = _export_target(path, format)
+            info = service.export(target, fmt=format, include_deleted=include_deleted)
+        except Exception as exc:
+            return _fail(exc)
+        return SkillResult(True, f"Exportei {info['count']} registro(s) em {info['format'].upper()}: {info['path']}",
+                           [info["path"]], {"export": info})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        import json
+        info = result.data.get("export") or {}
+        path = Path(info.get("path", ""))
+        ok = path.is_file() and path.stat().st_size > 0
+        detail = "arquivo criado"
+        if ok and info.get("format") == "json":
+            try:
+                ok = json.loads(path.read_text(encoding="utf-8")).get("count") == info.get("count")
+                detail = "arquivo relido: contagem confere"
+            except ValueError:
+                ok, detail = False, "JSON ilegível"
+        return VerificationResult.from_checks([check("export_file", ok, detail)])
+
+
+class Backup(_SBSkill):
+    name = "memory.backup"
+    description = ("Fazer agora um backup do banco do JARVIS (memórias, Second Brain, lembretes, grafo e "
+                   "inventário da rede).")
+    inputs = schema({})
+
+    def describe_action(self, args):
+        return "criar um backup do banco do JARVIS"
+
+    def execute(self, ctx, **_) -> SkillResult:
+        from ...memory import backup
+        service = _service(ctx)
+        settings = ctx.settings() if callable(ctx.settings) else ctx.settings
+        keep = int(getattr(settings, "backup_keep", 10) or 10)
+        try:
+            path = backup.create_backup(service.db, reason="manual", keep=keep)
+        except Exception as exc:
+            return SkillResult(False, error=f"backup falhou: {exc}", error_kind="UNKNOWN_ERROR")
+        return SkillResult(True, f"Backup criado: {path}", [str(path)], {"backup": str(path)})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        from ...memory.store import verify_database_file
+        ok, detail = verify_database_file(result.data.get("backup", ""))
+        return VerificationResult.from_checks([check("backup_integrity", ok, detail)])
+
+
+SKILLS = (Capture, Query, Complete, Update, Snooze, Delete, Restore, Archive, Relate, Dismiss, EmptyTrash, Conflicts,
+          Export, Backup)

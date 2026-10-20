@@ -34,6 +34,8 @@ log = logging.getLogger("ultron.secondbrain")
 EDITABLE = ("title", "body", "kind", "status", "priority", "due_local", "all_day", "end_local", "recurrence",
             "project_id", "tags", "confirmed", "data")
 GRAPH_TYPES = {"idea": "IDEA", "project": "PROJECT", "note": "MEMORY", "person": "CONCEPT", "study": "CONCEPT"}
+DEFAULT_EVENT_MINUTES = 60      # compromisso sem horário de término ocupa 1 h na checagem de conflitos
+EXPORT_FORMATS = ("json", "csv")
 
 
 CONTEXT_PROJECT_RE = re.compile(r"(?:(?:esse|este|desse|deste|nesse|neste|aquele|o|meu|do|no)\s+)?projeto|"
@@ -161,8 +163,9 @@ class SecondBrainService:
         if self.reminders is not None and due_at is not None and (remind or (remind is None and kind == "event")):
             leads = remind if isinstance(remind, list) else self._default_leads(kind, all_day)
             reminder = self.reminders.schedule(record, leads=leads)
+        conflicts = [brief(r) for r in self.conflicts(record)] if kind == "event" else []
         self._emit(EventType.RECORD_CREATED, record=record.to_dict(), change="created",
-                   reminder=reminder.to_dict() if reminder else None)
+                   reminder=reminder.to_dict() if reminder else None, conflicts=conflicts)
         self.publish_summary()
         return record
 
@@ -238,7 +241,10 @@ class SecondBrainService:
             self.reminders.reschedule_record(record)
         if "status" in diff and record.status in ("done", "cancelled") and self.reminders is not None:
             self.reminders.finish_record(record)
-        self._emit(EventType.RECORD_UPDATED, record=record.to_dict(), change="edited", fields=sorted(diff))
+        conflicts = [brief(r) for r in self.conflicts(record)] \
+            if record.kind == "event" and {"due_local", "due_at", "end_local", "status"} & set(diff) else []
+        self._emit(EventType.RECORD_UPDATED, record=record.to_dict(), change="edited", fields=sorted(diff),
+                   conflicts=conflicts)
         self.publish_summary()
         return record
 
@@ -492,6 +498,103 @@ class SecondBrainService:
         end = timeutil.to_epoch(dt.datetime.combine(sunday + dt.timedelta(days=1), dt.time(0, 0)), self.tz)
         return self.list(kinds=kinds, status=("open", "in_progress", "waiting"), due_before=end)
 
+    # ================================================================ conflitos de agenda
+    def span(self, record: Record) -> tuple[float, float] | None:
+        """(início, fim) de um compromisso com horário; None para dia inteiro ou sem data."""
+        if record.due_at is None or record.all_day:
+            return None
+        start = float(record.due_at)
+        if record.end_local:
+            try:
+                end = timeutil.to_epoch(timeutil.parse_wall(record.end_local), record.tz or self.tz)
+            except ValueError:
+                end = 0.0
+            if end > start:
+                return start, end
+        return start, start + DEFAULT_EVENT_MINUTES * 60
+
+    def conflicts(self, record: Record | str) -> list[Record]:
+        """Compromissos abertos que se sobrepõem a este. Só compromissos com horário ocupam a agenda:
+        tarefas e prazos não conflitam, e um dia inteiro não conflita com horários. Nada é bloqueado —
+        o conflito é informado para o usuário decidir."""
+        if isinstance(record, str):
+            record = self._require(record)
+        if record.kind != "event" or record.status not in ("open", "in_progress", "waiting") \
+                or record.deleted_at or record.archived_at:
+            return []
+        span = self.span(record)
+        if span is None:
+            return []
+        start, end = span
+        out = []
+        for other in self.list(kinds=("event",), status=("open", "in_progress", "waiting"),
+                               due_after=start - 24 * 3600, due_before=end, limit=500):
+            other_span = self.span(other)
+            if other.id != record.id and other_span is not None and other_span[0] < end and start < other_span[1]:
+                out.append(other)
+        return out
+
+    def agenda_conflicts(self, *, days: int = 14) -> list[tuple[Record, Record]]:
+        """Pares de compromissos sobrepostos de hoje até ``days`` dias (cada par uma única vez)."""
+        start, end = self._day_bounds()[0], self._day_bounds(max(0, days - 1))[1]
+        events = [r for r in self.list(kinds=("event",), status=("open", "in_progress", "waiting"),
+                                       due_after=start, due_before=end, limit=2000) if self.span(r) is not None]
+        events.sort(key=lambda r: r.due_at)
+        pairs = []
+        for i, first in enumerate(events):
+            first_end = self.span(first)[1]
+            for second in events[i + 1:]:
+                if self.span(second)[0] >= first_end:
+                    break                                    # ordenados pelo início: nada depois sobrepõe
+                pairs.append((first, second))
+        return pairs
+
+    # ================================================================ exportação
+    def export(self, destination, *, fmt: str = "json", include_deleted: bool = False) -> dict[str, Any]:
+        """Exporta registros (e lembretes, no JSON) para um arquivo NOVO — nada é sobrescrito.
+        JSON: completo (para guardar ou migrar). CSV: planilha (Excel/LibreOffice), UTF-8 com BOM."""
+        import csv
+        import json
+        from pathlib import Path
+
+        fmt = str(fmt or "json").lower()
+        if fmt not in EXPORT_FORMATS:
+            raise SecondBrainError(f"formato de exportação desconhecido: {fmt} (use json ou csv)")
+        path = Path(destination)
+        if path.exists():
+            raise SecondBrainError(f"o arquivo já existe: {path.name} — escolha outro nome")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        where = [] if include_deleted else ["deleted_at IS NULL"]
+        records = self.store.select(where, order="created_at", limit=1_000_000)
+        partial = path.with_name(path.name + ".partial")
+        if fmt == "json":
+            reminders = [r.to_dict() for record in records for r in self.store.reminders_for(record.id,
+                                                                                               active_only=False)]
+            relations = [rel for record in records for rel in self.store.relations(record.id)
+                         if rel.get("src") == record.id]
+            payload = {"app": "JARVIS", "kind": "second_brain_export", "version": 1, "timezone": self.tz,
+                       "exported_at": self.now_wall().isoformat(timespec="seconds"), "count": len(records),
+                       "records": [r.to_dict() for r in records], "reminders": reminders, "relations": relations}
+            partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        else:
+            columns = ("id", "kind", "title", "body", "status", "priority", "due_local", "all_day", "end_local",
+                       "recurrence", "project_id", "tags", "confirmed", "created_at", "updated_at", "completed_at")
+            with partial.open("w", encoding="utf-8-sig", newline="") as handle:
+                writer = csv.writer(handle, delimiter=";")
+                writer.writerow(columns)
+                for record in records:
+                    row = record.to_dict()
+                    row["kind"] = KINDS.get(record.kind, record.kind)
+                    row["tags"] = ", ".join(record.tags)
+                    for key in ("created_at", "updated_at", "completed_at"):
+                        if row.get(key):
+                            row[key] = timeutil.format_wall(timeutil.from_epoch(float(row[key]), self.tz))
+                    writer.writerow(["" if row.get(c) is None else ("sim" if row[c] else "não")
+                                     if isinstance(row.get(c), bool) else row[c] for c in columns])
+        partial.replace(path)
+        self.db.audit("second_brain", "export", f"{fmt} {len(records)} registro(s)", True)
+        return {"path": str(path), "format": fmt, "count": len(records), "bytes": path.stat().st_size}
+
     def today(self) -> dict[str, Any]:
         start, end = self._day_bounds()
         overdue = self.overdue(limit=50)
@@ -648,6 +751,12 @@ class SecondBrainService:
                 self._graph.connect(f"sb:{record.project_id}", node.id, "RELATED", delta=0.1)
         except (ValueError, KeyError):
             pass
+
+
+def brief(record: Record) -> dict[str, Any]:
+    """Identificação curta de um registro (eventos, avisos de conflito)."""
+    return {"id": record.id, "title": record.title, "kind": record.kind, "due_local": record.due_local,
+            "end_local": record.end_local}
 
 
 def describe_record(record: Record, *, now: dt.datetime | None = None) -> str:

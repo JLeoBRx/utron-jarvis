@@ -1,4 +1,4 @@
-"""Benchmark reproduzível do ULTRON (HUB e núcleo), para comparar versões nas mesmas condições.
+"""Benchmark reproduzível do JARVIS (os dois HUBs e o núcleo), para comparar versões nas mesmas condições.
 
     python tools/benchmark.py                       mede esta árvore
     python tools/benchmark.py --root CAMINHO        mede outra cópia do projeto (ex.: versão anterior)
@@ -10,8 +10,10 @@ Tudo roda isolado: pasta de dados temporária, Ollama simulado por HTTP local
 Requer PySide6 (renderização offscreen). Mede:
 
 * ``render``: custo por quadro da cena + desenho do cérebro (1320×820) em cenários fixos;
+* ``tardis``: custo por quadro do TARDIS (memória espacial) em cenários fixos e por perfil;
 * ``ui``: atraso do laço de eventos da interface, quadros por segundo, CPU e tempo gasto na
-  thread da interface com o Core real em repouso e em atividade;
+  thread da interface com o Core real em repouso, em atividade, com o TARDIS aberto, em cada
+  perfil de qualidade e recolhido no orbe;
 * ``core``: cópia do estado central, snapshot do grafo e latência de resposta (com o tempo
   de inferência simulado separado).
 """
@@ -126,16 +128,80 @@ def bench_render(frames: int) -> dict:
     return results
 
 
+# ------------------------------------------------------------------ cenários do TARDIS
+def _tardis_data(items: int, seed: int = 9) -> dict:
+    from ultron.hud.tardis_scene import REGIONS
+
+    rng = random.Random(seed)
+    regions = {}
+    for key in REGIONS:
+        regions[key] = {"count": items * 3, "detail": f"{items} item(ns) de teste", "alert": key in ("tasks", "review"),
+                        "items": [{"id": f"{key}{i}", "title": f"{key} {i}", "kind": "task",
+                                   "status": rng.choice(("open", "open", "done")), "priority": rng.randint(1, 4),
+                                   "overdue": rng.random() < 0.2, "confirmed": rng.random() > 0.1}
+                                  for i in range(items)]}
+    return {"regions": regions, "today": {"priorities": 3, "events": 2, "overdue": 1, "date": "2026-10-19"}}
+
+
+def bench_tardis(frames: int) -> dict:
+    try:
+        from ultron.hud import quality
+        from ultron.hud.tardis import TardisView
+        from ultron.hud.tardis_scene import REGIONS, TardisScene
+    except ImportError:
+        return {"skipped": "esta versão não tem o TARDIS"}
+    from PySide6 import QtGui, QtWidgets
+
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    results = {}
+    regions = list(REGIONS)
+    scenarios = {                                   # (perfil, itens por região, atividade, roteiro)
+        "idle_empty": ("balanced", 0, "IDLE", None),
+        "idle_data": ("balanced", 14, "IDLE", None),
+        "events": ("balanced", 14, "EXECUTING", "events"),
+        "camera_travel": ("balanced", 14, "IDLE", "travel"),
+    }
+    for name in quality.NAMES:
+        scenarios[f"profile_{name}"] = (name, 14, "IDLE", None)
+    for name, (profile_name, items, activity, script) in scenarios.items():
+        profile = quality.get(profile_name)
+        clock = [1000.0]
+        scene = TardisScene(clock=lambda: clock[0], max_particles=profile.max_particles)
+        scene.apply_data(_tardis_data(items))
+        scene.set_activity(activity)
+        view = TardisView(scene)
+        view.resize(1360, 760)
+        image = QtGui.QImage(view.size(), QtGui.QImage.Format_ARGB32_Premultiplied)
+        times = []
+        for frame in range(frames + 30):
+            clock[0] += 1 / 60
+            if script == "events" and frame % 12 == 0:
+                kind = ("task", "idea", "event", "note", "project")[(frame // 12) % 5]
+                scene.on_event("RECORD_CREATED", {"record": {"kind": kind, "confirmed": True}})
+            if script == "travel" and frame % 60 == 0:
+                target = (regions + [None])[(frame // 60) % (len(regions) + 1)]
+                scene.focus_region(target)
+            started = time.perf_counter()
+            scene.step(1 / 60)
+            view.render(image)
+            if frame >= 30:
+                times.append(time.perf_counter() - started)
+        results[name] = _ms(_stats(times))
+        results[name]["over_16ms"] = sum(1 for t in times if t > 1 / 60)
+    return results
+
+
 # ------------------------------------------------------------------ interface com o Core real
-def _timed(cls, name: str, sink: dict) -> None:
+def _timed(cls, name: str, sink: dict, key: str | None = None) -> None:
     original = getattr(cls, name)
+    key = key or name
 
     def wrapper(self, *args, **kwargs):
         started = time.perf_counter()
         try:
             return original(self, *args, **kwargs)
         finally:
-            sink.setdefault(name, []).append(time.perf_counter() - started)
+            sink.setdefault(key, []).append(time.perf_counter() - started)
 
     wrapper.__name__ = name
     setattr(cls, name, wrapper)
@@ -157,6 +223,14 @@ def bench_ui(seconds: float) -> dict:
         if hasattr(controller_module.HudController, name):
             _timed(controller_module.HudController, name, ui_time)
     _timed(BrainView, "paintEvent", ui_time)
+    try:                                               # o TARDIS e o orbe (versões que os têm)
+        from ultron.hud.tardis import TardisView, TardisWindow
+        _timed(TardisView, "paintEvent", ui_time, "tardis.paintEvent")
+        _timed(TardisWindow, "_tick", ui_time, "tardis._tick")
+    except ImportError:
+        TardisView = None
+    from ultron.hud.orb import OrbWindow
+    _timed(OrbWindow, "paintEvent", ui_time, "orb.paintEvent")
 
     def responder(payload):
         time.sleep(0.25)                             # inferência simulada fixa (separada no relatório)
@@ -201,28 +275,33 @@ def bench_ui(seconds: float) -> dict:
             cpu = proc.cpu_percent(None)
             timer.stop()
             busy = {k: round(sum(v) / elapsed * 1000, 2) for k, v in ui_time.items()}       # ms por segundo
-            return {"event_loop_lag": _ms(_stats(lags)), "cpu_percent": round(cpu, 1),
-                    "rss_mb": round(proc.memory_info().rss / 2 ** 20, 1),
-                    "ticks_per_s": round((len(ui_time.get("_tick", [])) - ticks_before) / elapsed, 1),
-                    "paints_per_s": round(len(ui_time.get("paintEvent", [])) / elapsed, 1),
-                    "paint_ms": _ms(_stats(ui_time.get("paintEvent", []))),
-                    "ui_busy_ms_per_s": busy,
-                    "threads": threading.active_count()}
+            result = {"event_loop_lag": _ms(_stats(lags)), "cpu_percent": round(cpu, 1),
+                      "rss_mb": round(proc.memory_info().rss / 2 ** 20, 1),
+                      "ticks_per_s": round((len(ui_time.get("_tick", [])) - ticks_before) / elapsed, 1),
+                      "paints_per_s": round(len(ui_time.get("paintEvent", [])) / elapsed, 1),
+                      "paint_ms": _ms(_stats(ui_time.get("paintEvent", []))),
+                      "ui_busy_ms_per_s": busy,
+                      "threads": threading.active_count()}
+            for key, label in (("tardis.paintEvent", "tardis"), ("orb.paintEvent", "orb")):
+                if ui_time.get(key):
+                    result[f"{label}_paints_per_s"] = round(len(ui_time[key]) / elapsed, 1)
+                    result[f"{label}_paint_ms"] = _ms(_stats(ui_time[key]))
+            return result
+
+        def settle(duration: float) -> None:
+            started = time.perf_counter()
+            while time.perf_counter() - started < duration:
+                app.processEvents()
+                time.sleep(0.005)
 
         threading.Thread(target=core.boot, daemon=True).start()
         deadline = time.time() + 30
         while not core.booted and time.time() < deadline:
             app.processEvents()
             time.sleep(0.01)
-        settle = time.perf_counter()
-        while time.perf_counter() - settle < 3.0:      # fim da sequência de inicialização
-            app.processEvents()
-            time.sleep(0.005)
+        settle(3.0)                                    # fim da sequência de inicialização
         out["idle"] = pump(seconds)
-        settle = time.perf_counter()
-        while time.perf_counter() - settle < 8.0:      # repouso estável (sem a acomodação pós-boot)
-            app.processEvents()
-            time.sleep(0.005)
+        settle(8.0)                                    # repouso estável (sem a acomodação pós-boot)
         out["idle_steady"] = pump(seconds)
 
         latencies: list[float] = []
@@ -254,6 +333,40 @@ def bench_ui(seconds: float) -> dict:
         worker.join(30)
         out["response_latency"] = _ms(_stats(latencies))
         out["simulated_inference_ms"] = 250.0
+
+        # TARDIS aberto e em foco, com registros reais no banco (o CORE continua visível atrás)
+        service = getattr(core, "second_brain", None)
+        if TardisView is not None and service is not None and hasattr(ctrl, "open_tardis"):
+            import datetime as dt
+            base = service.now_wall().replace(hour=9, minute=0) + dt.timedelta(days=1)
+            for i in range(60):
+                kind = ("task", "event", "idea", "note", "project", "study")[i % 6]
+                when = base + dt.timedelta(days=i % 10, hours=i % 7) if kind in ("task", "event", "study") else None
+                service.create(kind, f"{kind} de teste {i}", when=when, priority=1 + i % 4, remind=False)
+            settle(1.0)
+            ctrl.open_tardis()
+            settle(3.0)
+            out["tardis_open"] = {"active": bool(ctrl.second.isActiveWindow())}
+            out["tardis_idle"] = pump(seconds)
+            ctrl.second.open_region("tasks")
+            settle(2.0)
+            out["tardis_region"] = pump(seconds / 2)
+            ctrl.return_to_core()
+            settle(2.0)
+
+        # perfis de qualidade (CORE em repouso)
+        from ultron.hud import quality
+        names = list(getattr(quality, "NAMES", None) or quality.PROFILES)
+        for name in names:
+            ctrl.set_profile(name)
+            settle(2.0)
+            out[f"profile_{name}"] = pump(seconds / 2)
+        ctrl.set_profile(getattr(quality, "DEFAULT", "balanced"))
+        # recolhido no orbe
+        ctrl.collapse()
+        settle(2.0)
+        out["orb"] = pump(seconds / 2)
+        ctrl.expand()
         threads_before_shutdown = threading.active_count()
         ctrl.quit() if hasattr(ctrl, "quit") else None
         core.shutdown()
@@ -312,19 +425,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=str(Path(__file__).resolve().parent.parent))
     parser.add_argument("--out", default="")
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("--only", choices=("render", "ui", "core"), action="append")
+    parser.add_argument("--only", choices=("render", "tardis", "ui", "core"), action="append")
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
     _setup_paths(root)
     import logging
     logging.basicConfig(level=logging.ERROR)
     from ultron import __version__
-    parts = args.only or ["render", "core", "ui"]
+    parts = args.only or ["render", "tardis", "core", "ui"]
     report = {"root": str(root), "version": __version__, "python": platform.python_version(),
               "platform": f"{platform.system()} {platform.release()}", "cpus": os.cpu_count(),
               "when": time.strftime("%Y-%m-%d %H:%M:%S")}
     if "render" in parts:
         report["render"] = bench_render(120 if args.quick else 600)
+    if "tardis" in parts:
+        report["tardis"] = bench_tardis(120 if args.quick else 600)
     if "core" in parts:
         report["core"] = bench_core(50 if args.quick else 400)
     if "ui" in parts:

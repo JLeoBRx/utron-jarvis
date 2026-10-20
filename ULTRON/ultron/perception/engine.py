@@ -26,6 +26,13 @@ from .windows import WindowSensor
 
 log = logging.getLogger("ultron.perception")
 
+# Intervalos adaptativos: com o usuário ausente (sem teclado/mouse por ``AWAY_AFTER`` s, medido
+# pelo próprio Windows), os sensores de contexto passam a observar com menos frequência; ao
+# primeiro sinal de retorno, voltam ao intervalo configurado. Microfone, lembretes e rede não mudam.
+AWAY_AFTER = 300.0
+AWAY_FACTOR = {"windows": 3.0, "processes": 3.0, "system": 2.5, "vision": 4.0, "screen": 3.0,
+               "filesystem": 2.0}
+
 
 class PerceptionEngine:
     name = "perception"
@@ -64,6 +71,8 @@ class PerceptionEngine:
         self.network_sensor = NetworkSensor(network, s.network_interval) if network is not None else None
         self.device_sensor = DeviceSensor(s.device_interval, on_change=self._on_device_change)
         self.fusion = PerceptionFusion(memory_probe=self._memory_probe)
+        self.away = False                                # usuário ausente: intervalos relaxados
+        self._base_intervals = {sensor.name: sensor.interval for sensor in self.sensors}
 
     # ------------------------------------------------------------ ciclo de vida
     @property
@@ -101,8 +110,26 @@ class PerceptionEngine:
                    "devices": settings.device_interval, "audio": settings.device_interval}
         for sensor in self.sensors:
             if sensor.name in mapping:
-                sensor.interval = mapping[sensor.name]
+                self._base_intervals[sensor.name] = mapping[sensor.name]
+                sensor.interval = mapping[sensor.name] * (AWAY_FACTOR.get(sensor.name, 1.0) if self.away else 1.0)
                 self.runtime.scheduler.set_interval(f"sense:{sensor.name}", sensor.interval)
+
+    def adapt_to_presence(self, idle_seconds: Any) -> bool:
+        """Relaxa (ou restaura) os intervalos conforme a presença do usuário. True se mudou."""
+        away = isinstance(idle_seconds, (int, float)) and idle_seconds >= AWAY_AFTER
+        if away == self.away:
+            return False
+        self.away = away
+        for sensor in self.sensors:
+            factor = AWAY_FACTOR.get(sensor.name)
+            if factor is None:
+                continue
+            base = self._base_intervals.get(sensor.name, sensor.interval)
+            sensor.interval = base * (factor if away else 1.0)
+            self.runtime.scheduler.set_interval(f"sense:{sensor.name}", sensor.interval)
+        log.info("percepção %s: usuário %s", "relaxada" if away else "restaurada",
+                 f"ausente há {idle_seconds:.0f}s" if away else "de volta")
+        return True
 
     # ------------------------------------------------------------ execução de sensores
     def run_sensor(self, sensor: Sensor) -> Percept | None:
@@ -125,6 +152,7 @@ class PerceptionEngine:
         data = percept.data
         source = percept.source
         if source == "window":
+            self.adapt_to_presence(data.get("idle_seconds"))
             fg = data.get("foreground") or {}
             self.foreground = fg
             self.state.update(_source="perception", current_application=fg.get("application", ""),

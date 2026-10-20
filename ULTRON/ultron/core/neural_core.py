@@ -275,6 +275,22 @@ class NeuralCore:
         sched.every("discovery", s.discovery_interval, self._discover_network, worker="network", initial_delay=90.0)
         sched.every("dream", 60.0, self._maybe_dream, worker="imagination", initial_delay=120.0)
         sched.every("suggestion_expiry", 5.0, self._expire_suggestion, worker="perception", initial_delay=5.0)
+        sched.every("backup", 3600.0, self._auto_backup, worker="memory", initial_delay=180.0)
+
+    def _auto_backup(self) -> None:
+        """Backup diário do banco único (só se o último passou do intervalo configurado)."""
+        s = self.settings()
+        if not getattr(s, "auto_backup", True):
+            return
+        from ..memory import backup
+        try:
+            path = backup.backup_if_due(self.memory.db, interval_hours=float(getattr(s, "backup_interval_hours", 24.0)),
+                                        keep=int(getattr(s, "backup_keep", 10)))
+        except Exception as exc:                       # registrado; o próximo ciclo tenta de novo
+            log.warning("backup automático falhou: %s", exc)
+            return
+        if path is not None:
+            self.memory.db.audit("backup", "auto", path.name, True)
 
     # ================================================================ modelos
     def _start_models(self) -> None:
@@ -487,7 +503,9 @@ class NeuralCore:
                 return Response("Interface gráfica indisponível nesta execução.", "error", success=False)
             self.bus.publish(EventType.UI_REQUEST, {"view": args["open_view"], "section": args.get("section", "")},
                              source="core")
-            return Response("Abrindo o Second Brain.", "info")
+            label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz",
+                     "network": "a rede local"}.get(args["open_view"], "o TARDIS")
+            return Response(f"Abrindo {label}.", "info")
         return Response("Ajuste não reconhecido.", "error")
 
     def _imagine(self, intent: Intent, cancel) -> Response:

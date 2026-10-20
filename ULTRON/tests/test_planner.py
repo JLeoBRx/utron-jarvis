@@ -25,12 +25,22 @@ class IntentTest(unittest.TestCase):
             "aumente o volume": ("command", "audio.volume"),
             "pode parar": ("cancel", None),
             "fale mais devagar": ("control", None),
+            "Jarvis, anote uma ideia: horta vertical": ("command", "secondbrain.capture"),
+            "tenho algum conflito de horário na agenda?": ("command", "secondbrain.conflicts"),
+            "exporte minhas tarefas em planilha": ("command", "secondbrain.export"),
+            "faça um backup da memória": ("command", "memory.backup"),
+            "abra o TARDIS": ("control", None),
+            "status do jarvis": ("command", "diagnostics.health"),
         }
         for text, (kind, skill) in cases.items():
             intent = self.engine.classify(text)
             self.assertEqual(intent.kind, kind, text)
             if skill:
                 self.assertEqual(intent.skill, skill, text)
+        self.assertEqual(self.engine.classify("exporte minhas tarefas em planilha").args.get("format"), "csv")
+        self.assertEqual(self.engine.classify("abra o TARDIS").args.get("open_view"), "tardis")
+        self.assertNotEqual(self.engine.classify("restaure o backup de ontem").skill, "memory.backup",
+                            "restaurar só pela linha de comando, com o JARVIS fechado")
 
     def test_goals_and_templates(self):
         intent = self.engine.classify("Jarvis, prepare meu projeto Atlas")

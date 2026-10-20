@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 _STOP = {"o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "em", "no", "na", "nos", "nas", "um",
-         "uma", "para", "por", "com", "que", "se", "meu", "minha", "eu", "voce", "ultron", "senhor", "qual",
+         "uma", "para", "por", "com", "que", "se", "meu", "minha", "eu", "voce", "jarvis", "ultron", "senhor", "qual",
          "quais", "como", "onde", "quando", "isso", "isto", "esse", "essa", "sobre", "lembra", "lembrar"}
 
 

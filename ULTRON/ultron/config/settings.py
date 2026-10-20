@@ -119,6 +119,9 @@ class Settings:
     notifications_muted: bool = False
     quiet_hours: str = ""                     # "22:00-07:00": sem som, voz ou pop-up (fica na central)
     timezone: str = ""                        # vazio = fuso do sistema; ou IANA (ex.: America/Sao_Paulo)
+    auto_backup: bool = True                  # backup diário do banco (memórias, Second Brain, lembretes, rede)
+    backup_interval_hours: float = 24.0
+    backup_keep: int = 10                     # backups automáticos/manuais guardados (os mais antigos saem)
     # ------------------------------------------------------------ interface e som
     theme: str = "jarvis-blue"
     performance_profile: str = "balanced"     # economy | balanced | high | cinematic (custo visual)
@@ -151,6 +154,7 @@ class Settings:
         "authorization_timeout": (5.0, 300.0), "dream_idle_minutes": (1.0, 1440.0),
         "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
         "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
+        "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,

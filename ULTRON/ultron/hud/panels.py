@@ -659,13 +659,20 @@ class TimelinePage(Page):
         service = self.service
 
         def work():
-            return {"items": service.timeline(days=14), "now": service.now_wall(), "tz": service.tz}
+            pairs = service.agenda_conflicts(days=14)
+            clash: dict[str, list[str]] = {}
+            for a, b in pairs:
+                clash.setdefault(a.id, []).append(b.title)
+                clash.setdefault(b.id, []).append(a.title)
+            return {"items": service.timeline(days=14), "now": service.now_wall(), "tz": service.tz,
+                    "conflicts": clash, "pairs": len(pairs)}
         return work
 
     def apply(self, data: dict) -> None:
         self.tree.clear()
         days: dict[str, QtWidgets.QTreeWidgetItem] = {}
         now = data["now"]
+        clash = data.get("conflicts") or {}
         for item in data["items"]:
             wall = timeutil.from_epoch(item["at"], data["tz"]) if item.get("at") else None
             if wall is None:
@@ -683,14 +690,21 @@ class TimelinePage(Page):
                                                    record["title"], KINDS.get(record["kind"], "")])
                 if not record.get("confirmed", True):
                     child.setForeground(1, QtGui.QColor(196, 178, 140))
+                if record.get("id") in clash:                  # compromissos sobrepostos: avisado, não bloqueado
+                    child.setText(1, f"⚠ {record['title']}")
+                    child.setForeground(1, theme.ALERT)
+                    child.setToolTip(1, "Conflita com: " + "; ".join(clash[record["id"]]))
             else:
                 rem = item["reminder"]
                 child = QtWidgets.QTreeWidgetItem([f"{wall:%H:%M}", f"lembrete: {rem['title']}", "Lembrete"])
                 child.setForeground(1, theme.ALERT)
             days[day_key].addChild(child)
         self.tree.expandAll()
-        self.status.setText(f"{len(data['items'])} item(ns) nos próximos 14 dias." if data["items"] else
-                            "Nada agendado nos próximos 14 dias.")
+        text = f"{len(data['items'])} item(ns) nos próximos 14 dias." if data["items"] else \
+            "Nada agendado nos próximos 14 dias."
+        if data.get("pairs"):
+            text += f" ⚠ {data['pairs']} conflito(s) de horário (passe o mouse para ver com o quê)."
+        self.status.setText(text)
 
 
 class TasksPage(RecordsPage):
@@ -700,36 +714,48 @@ class TasksPage(RecordsPage):
         super().__init__(hub)
         self.scope = QtWidgets.QComboBox()
         for key, label in (("open", "Abertas"), ("overdue", "Atrasadas"), ("today", "Hoje"), ("week", "Até domingo"),
-                           ("done", "Concluídas"), ("all", "Todas")):
+                           ("month", "Próximos 30 dias"), ("undated", "Sem data"), ("done", "Concluídas"),
+                           ("all", "Todas")):
             self.scope.addItem(label, key)
         self.kind = QtWidgets.QComboBox()
         self.kind.addItem("Todos os tipos", "")
         for key in ACTIONABLE:
             self.kind.addItem(KINDS[key], key)
-        for combo in (self.scope, self.kind):
+        self.priority = QtWidgets.QComboBox()
+        for value, label in ((0, "Qualquer prioridade"), (4, "Só urgentes"), (3, "Alta ou urgente"),
+                             (2, "Normal ou acima")):
+            self.priority.addItem(label, value)
+        for combo in (self.scope, self.kind, self.priority):
             combo.currentIndexChanged.connect(lambda *_: self.hub.reload(self.key))
             self.filters.addWidget(combo)
         self.filters.addStretch(1)
 
     def fetch(self):
         service, scope, kind = self.service, self.scope.currentData(), self.kind.currentData()
+        minimum = int(self.priority.currentData() or 0)
         kinds = (kind,) if kind else ACTIONABLE
 
         def work():
+            return rows_of(service, [r for r in records() if r.priority >= minimum])
+
+        def records():
             if scope == "overdue":
-                records = [r for r in service.overdue(limit=300) if r.kind in kinds]
-            elif scope == "today":
+                return [r for r in service.overdue(limit=300) if r.kind in kinds]
+            if scope == "today":
                 start, end = service._day_bounds()
-                records = service.due_between(start, end, kinds=kinds)
-            elif scope == "week":
-                records = service.week_open(kinds=kinds)
-            elif scope == "done":
-                records = service.list(kinds=kinds, status=("done", "cancelled"), order="recent", limit=300)
-            elif scope == "all":
-                records = service.list(kinds=kinds, limit=500)
-            else:
-                records = service.list(kinds=kinds, status=OPEN, limit=500)
-            return rows_of(service, records)
+                return service.due_between(start, end, kinds=kinds)
+            if scope == "week":
+                return service.week_open(kinds=kinds)
+            if scope == "month":
+                start, end = service._day_bounds()[0], service._day_bounds(29)[1]
+                return service.due_between(start, end, kinds=kinds)
+            if scope == "undated":
+                return [r for r in service.list(kinds=kinds, status=OPEN, limit=500) if not r.due_local]
+            if scope == "done":
+                return service.list(kinds=kinds, status=("done", "cancelled"), order="recent", limit=300)
+            if scope == "all":
+                return service.list(kinds=kinds, limit=500)
+            return service.list(kinds=kinds, status=OPEN, limit=500)
         return work
 
     def apply(self, rows) -> None:

@@ -8,6 +8,10 @@
     python main.py --list-mics     lista os microfones
     python main.py --mic 2         escolhe o microfone (número da lista ou parte do nome) e sai
     python main.py --say "texto"   executa um pedido sem interface e sai
+    python main.py --backup        cria um backup do banco (memórias, lembretes, rede) e sai
+    python main.py --list-backups  lista os backups
+    python main.py --restore-backup ARQUIVO   restaura um backup (com o JARVIS FECHADO; guarda o atual)
+    python main.py --export ARQUIVO.json|.csv exporta a memória pessoal para um arquivo novo
 
 Registra em ``<dados>/logs/ultron.log`` (também quando iniciado por ``pythonw``, sem console).
 O nome interno do pacote (``ultron``) e a pasta de dados foram mantidos para preservar os
@@ -36,6 +40,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--list-mics", action="store_true", help="lista os microfones e sai")
     parser.add_argument("--mic", metavar="DISPOSITIVO", help="escolhe o microfone (número ou parte do nome) e sai")
     parser.add_argument("--say", metavar="TEXTO", help="executa um pedido e sai")
+    parser.add_argument("--backup", action="store_true", help="cria um backup do banco e sai")
+    parser.add_argument("--list-backups", action="store_true", help="lista os backups e sai")
+    parser.add_argument("--restore-backup", metavar="ARQUIVO", help="restaura um backup (JARVIS fechado) e sai")
+    parser.add_argument("--export", metavar="ARQUIVO", help="exporta a memória pessoal (.json ou .csv) e sai")
     parser.add_argument("--profile", help="perfil de configuração (default, performance, privacy, silent, developer)")
     parser.add_argument("--no-voice", action="store_true", help="sem microfone e sem fala")
     parser.add_argument("--no-perception", action="store_true", help="sem sensores de percepção")
@@ -207,6 +215,49 @@ def run_headless(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_data_command(args: argparse.Namespace) -> int:
+    """Backup, restauração e exportação pela linha de comando — sem iniciar o núcleo."""
+    from .memory import backup
+    from .memory.store import Database
+
+    if args.list_backups:
+        items = backup.list_backups()
+        if not items:
+            print(f"Nenhum backup em {backup.backups_dir()}")
+        for item in items:
+            stamp = time.strftime("%d/%m/%Y %H:%M", time.localtime(item["created"]))
+            print(f"{stamp}  {item['size'] / 2 ** 20:7.2f} MB  {item['path']}")
+        return 0
+    if args.restore_backup:
+        try:
+            result = backup.restore_backup(args.restore_backup)
+        except (OSError, ValueError) as exc:
+            print(f"Restauração recusada: {exc}")
+            return 1
+        print(f"Banco restaurado de {result['restored_from']} ({result['check']}).")
+        if result["previous"]:
+            print(f"O banco anterior foi guardado em {result['previous']}")
+        return 0
+    db = Database(paths.database_path())
+    try:
+        if args.backup:
+            path = backup.create_backup(db, reason="manual")
+            print(f"Backup criado: {path}")
+            return 0
+        from .secondbrain.service import SecondBrainError, SecondBrainService
+        target = args.export
+        fmt = "csv" if str(target).lower().endswith(".csv") else "json"
+        try:
+            info = SecondBrainService(db).export(target, fmt=fmt)
+        except SecondBrainError as exc:
+            print(f"Exportação recusada: {exc}")
+            return 1
+        print(f"{info['count']} registro(s) exportado(s) em {info['format'].upper()}: {info['path']}")
+        return 0
+    finally:
+        db.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     setup_logging(args.debug)
@@ -215,6 +266,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_mics or args.mic:
         return run_microphones(args)
     from .platform import single_instance
+    if args.backup or args.list_backups or args.restore_backup or args.export:
+        if args.restore_backup and not single_instance.acquire():
+            print("Feche o JARVIS antes de restaurar um backup (bandeja > Sair).")
+            return 2
+        try:
+            return run_data_command(args)
+        finally:
+            single_instance.release()
     if args.diagnose or args.voice_test:
         if not single_instance.acquire():
             print("O JARVIS já está em execução: feche-o (bandeja > Sair) para diagnosticar sem disputar o "

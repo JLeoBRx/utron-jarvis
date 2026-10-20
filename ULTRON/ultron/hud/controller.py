@@ -15,8 +15,9 @@ Os hubs leem o MESMO estado central (JARVIS_STATE) e os MESMOS eventos:
 * Estado: ``STATE_CHANGED`` informa os campos alterados; a interface copia só esses campos
   (leitura incremental) num cache compartilhado pelos dois hubs.
 * Relógio: ritmo de quadros adaptativo. No teto do perfil só enquanto há movimento real; em
-  repouso, a cadência econômica; e nunca acima da carga que a pintura pode ocupar da thread
-  da interface (o desenho do PySide6 não libera o GIL: pintar demais atrasa o núcleo inteiro).
+  repouso, a cadência econômica; o hub que fica atrás do outro (em foco) cai para a cadência
+  de fundo; e nunca acima da carga que a pintura pode ocupar da thread da interface (o
+  desenho do PySide6 não libera o GIL: pintar demais atrasa o núcleo inteiro).
 * Trabalho pesado (snapshot do grafo, consultas do Second Brain) roda fora da thread da
   interface; o resultado volta por sinal.
 """
@@ -259,7 +260,8 @@ class HudController(QtCore.QObject):
             wanted = self.profile.hidden_interval_ms      # nada visível: a cena segue coerente, sem desenho
             self.target_fps = 0
         else:
-            fps = quality.effective_fps(self.profile, self._hud_fps(), active=self.scene.in_motion())
+            fps = quality.effective_fps(self.profile, self._hud_fps(), active=self.scene.in_motion(),
+                                        background=self._tardis_in_front())
             if self.view.paint_count != self._painted and self.view.frame_times:   # custo real da pintura
                 self._painted = self.view.paint_count
                 last = self.view.frame_times[-1]
@@ -278,6 +280,13 @@ class HudController(QtCore.QObject):
             self._frame.setInterval(wanted)
         if len(self._tick_times) >= 30:
             self.frame_rate = len(self._tick_times) / max(1e-6, sum(self._tick_times))
+
+    def _tardis_in_front(self) -> bool:
+        """O usuário está no TARDIS (janela ativa) e o CORE ficou atrás: o CORE segue o estado real
+        na cadência de fundo do perfil. O orbe e o CORE em foco nunca são reduzidos."""
+        second = self.second
+        return bool(second is not None and second.isVisible() and second.isActiveWindow()
+                    and not self.window.isActiveWindow())
 
     def _heartbeat(self) -> None:
         """Atraso do laço de eventos da interface: o quanto um temporizador de 200 ms atrasou."""

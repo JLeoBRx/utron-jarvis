@@ -15,8 +15,9 @@ projetos, compromissos, tarefas, ideias e memórias — e dois satélites (lembr
 * Som ambiente discreto e opcional (desligado por padrão).
 
 Desempenho: fundo e trajetórias em cache; partículas limitadas pelo perfil; cadência
-econômica em repouso e teto do perfil só durante transições e pulsos; relógio parado com a
-janela oculta ou minimizada; nenhuma consulta na thread da interface.
+econômica em repouso, cadência de fundo quando o CORE está em foco e teto do perfil só durante
+transições e pulsos; relógio parado com a janela oculta ou minimizada; nenhuma consulta na
+thread da interface.
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ from .window import app_icon
 
 log = logging.getLogger("ultron.tardis")
 
-QPointF, QRectF, QLineF = QtCore.QPointF, QtCore.QRectF, QtCore.QLineF
+QPointF = QtCore.QPointF
 PLUS = QtGui.QPainter.CompositionMode_Plus
 OVER = QtGui.QPainter.CompositionMode_SourceOver
 RINGS = ((170.0, 0.10, 36), (245.0, -0.07, 48), (335.0, 0.05, 60), (470.0, -0.035, 72), (640.0, 0.02, 90))
@@ -47,6 +48,13 @@ PANEL_FRACTION = 0.46
 PAINT_BUDGET = 0.35                  # fração máxima da thread da interface gasta pintando o TARDIS
 REGION_LABEL = {key: label for key, (label, *_rest) in REGIONS.items()}
 REGION_LABEL[CORE_KEY] = "HOJE"
+
+
+def _thin(color: QtGui.QColor, alpha: float) -> QtGui.QPen:
+    """Traço cosmético de 1 px: o caminho rápido de linhas e curvas do QPainter."""
+    pen = QtGui.QPen(theme.with_alpha(color, alpha), 1.0)
+    pen.setCosmetic(True)
+    return pen
 
 
 def fetch_regions(service) -> dict:
@@ -81,15 +89,18 @@ def fetch_regions(service) -> dict:
     trash = len(service.trash(limit=500))
     wall = service.now_wall()
     first_event = events[0] if events else None
+    clashing = {r.id for pair in service.agenda_conflicts(days=14) for r in pair}
     regions = {
         "projects": {"count": len(projects), "items": [item(service.store.get(p["record"]["id"])) for p in projects[:14]
                                                        if service.store.get(p["record"]["id"]) is not None],
                      "detail": f"{sum(p['open'] for p in projects)} item(ns) aberto(s)" if projects else "nenhum projeto"},
         "agenda": {"count": count(open_ + ["kind = 'event'", "due_at >= ?", "due_at < ?"], (start, end)),
-                   "items": [item(r) for r in events],
-                   "detail": (f"próximo: {first_event.title} · " + timeutil.describe(
-                       timeutil.parse_wall(first_event.due_local), all_day=first_event.all_day, now=wall))
-                   if first_event else "nada nos próximos 14 dias"},
+                   "items": [{**item(r), "overdue": item(r)["overdue"] or r.id in clashing} for r in events],
+                   "alert": bool(clashing),
+                   "detail": (f"⚠ {len(clashing)} compromisso(s) em conflito de horário" if clashing else
+                              (f"próximo: {first_event.title} · " + timeutil.describe(
+                                  timeutil.parse_wall(first_event.due_local), all_day=first_event.all_day, now=wall))
+                              if first_event else "nada nos próximos 14 dias")},
         "tasks": {"count": tasks_open, "items": [item(r) for r in task_items], "alert": bool(overdue),
                   "detail": f"{len(overdue)} atrasada(s)" if overdue else "nada atrasado"},
         "ideas": {"count": count(alive + ["kind = 'idea'"]), "items": [item(r) for r in ideas],
@@ -110,6 +121,15 @@ def fetch_regions(service) -> dict:
 
 
 class TardisView(QtWidgets.QWidget):
+    """Desenho do TARDIS em duas camadas:
+
+    * **estrutura** (em cache): fundo, anéis, corredores, portais com rótulos e contagens, títulos.
+      Só é refeita quando algo dela muda — câmera, tamanho, dados do banco, foco, cursor sobre um
+      portal ou estado de atividade. Com a câmera parada (quase sempre), custa um único blit;
+    * **movimento** (a cada quadro): marcas girando nos anéis, corredores e portais acesos por
+      eventos reais, pulsos, partículas, câmara central e os registros orbitando cada portal.
+    """
+
     region_clicked = QtCore.Signal(str)
 
     def __init__(self, scene: TardisScene, parent=None):
@@ -119,6 +139,9 @@ class TardisView(QtWidgets.QWidget):
         self.setMinimumSize(480, 360)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
         self._background: QtGui.QPixmap | None = None
+        self._structure: QtGui.QPixmap | None = None
+        self._structure_key: tuple | None = None
+        self.structure_renders = 0
         self._corridors: dict[str, QtGui.QPainterPath] = {}
         self._ring_path = QtGui.QPainterPath()
         self._ring_path.addEllipse(QPointF(0, 0), 1.0, RING_RATIO)
@@ -127,6 +150,16 @@ class TardisView(QtWidgets.QWidget):
         self.frame_times: deque = deque(maxlen=300)
         self.paint_count = 0
         self._build_corridors()
+        # marcas de cada anel num círculo unitário: a cada quadro só giram (transformação do QPainter)
+        self._tick_paths: list[QtGui.QPainterPath] = []
+        for i, (_radius, _speed, ticks) in enumerate(RINGS):
+            path = QtGui.QPainterPath()
+            outer = 1.02 if i % 2 else 1.035
+            for angle in np.linspace(0, math.tau, ticks, endpoint=False):
+                c, s = math.cos(angle), math.sin(angle)
+                path.moveTo(c * 0.985, s * 0.985)
+                path.lineTo(c * outer, s * outer)
+            self._tick_paths.append(path)
 
     # ------------------------------------------------------------ caches
     def _build_corridors(self) -> None:
@@ -135,12 +168,10 @@ class TardisView(QtWidgets.QWidget):
             path.quadTo(QPointF(x * 0.35, y * 0.05 - 60), QPointF(x, y))
             self._corridors[key] = path
 
-    def _ensure_background(self) -> None:
-        w, h = self.width(), self.height()
-        dpr = self.devicePixelRatioF()
+    def _ensure_background(self, w: int, h: int, dpr: float) -> QtGui.QPixmap:
         bg = self._background
         if bg is not None and bg.width() == int(w * dpr) and bg.height() == int(h * dpr):
-            return
+            return bg
         pix = QtGui.QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
         pix.setDevicePixelRatio(dpr)
         p = QtGui.QPainter(pix)
@@ -155,6 +186,39 @@ class TardisView(QtWidgets.QWidget):
             p.drawPoint(QPointF(float(x), float(y)))
         p.end()
         self._background = pix
+        return pix
+
+    def structure_key(self) -> tuple:
+        scene, cam = self.scene, self.scene.camera
+        return (self.width(), self.height(), round(self.devicePixelRatioF(), 2), round(cam.x, 1), round(cam.y, 1),
+                round(cam.zoom, 4), self._hover, scene.focus, scene.data_version, scene.activity, scene.panel_fraction)
+
+    def _ensure_structure(self) -> QtGui.QPixmap:
+        key = self.structure_key()
+        if self._structure is not None and key == self._structure_key:
+            return self._structure
+        w, h, dpr = self.width(), self.height(), self.devicePixelRatioF()
+        pix = self._structure
+        if pix is None or pix.width() != int(w * dpr) or pix.height() != int(h * dpr):
+            pix = QtGui.QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
+            pix.setDevicePixelRatio(dpr)
+        p = QtGui.QPainter(pix)
+        self._paint_structure(p)
+        p.end()
+        self._structure, self._structure_key = pix, key
+        self.structure_renders += 1
+        return pix
+
+    def _paint_structure(self, p: QtGui.QPainter) -> None:
+        w, h = self.width(), self.height()
+        p.drawPixmap(0, 0, self._ensure_background(w, h, self.devicePixelRatioF()))
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        self._draw_ring_ellipses(p, float(w), float(h))
+        self._draw_corridors(p, float(w), float(h))
+        for region in self.scene.regions.values():
+            self._draw_portal(p, region, float(w), float(h))
+        self._draw_core_labels(p, float(w), float(h))
+        self._draw_overlay(p, float(w), float(h))
 
     def _text(self, text: str, font: QtGui.QFont) -> QtGui.QStaticText:
         key = (text, font.pointSizeF(), font.weight(), font.letterSpacing())
@@ -178,49 +242,42 @@ class TardisView(QtWidgets.QWidget):
         started = time.perf_counter()
         scene = self.scene
         w, h = float(self.width()), float(self.height())
-        self._ensure_background()
-        p = QtGui.QPainter(self)
-        p.drawPixmap(0, 0, self._background)
+        if scene.camera.moving():
+            # viagem da câmera: a estrutura muda a cada quadro — desenhada direto, sem a cópia extra
+            p = QtGui.QPainter(self)
+            self._paint_structure(p)
+            self._structure_key = None
+            self.structure_renders += 1
+        else:
+            structure = self._ensure_structure()
+            p = QtGui.QPainter(self)
+            p.drawPixmap(0, 0, structure)
         p.setRenderHint(QtGui.QPainter.Antialiasing, True)
         now = scene.clock()
-        self._draw_rings(p, w, h)
-        self._draw_corridors(p, w, h, now)
+        self._draw_ring_ticks(p, w, h)
+        self._draw_energy(p, w, h, now)
         self._draw_particles(p, w, h)
         self._draw_core(p, w, h, now)
-        for region in scene.regions.values():
-            self._draw_portal(p, region, w, h, now)
-        self._draw_overlay(p, w, h)
+        self._draw_items(p, w, h)
         p.end()
         self.paint_count += 1
         self.frame_times.append(time.perf_counter() - started)
 
-    def _draw_rings(self, p: QtGui.QPainter, w: float, h: float) -> None:
+    # ---- estrutura (camada em cache)
+    def _draw_ring_ellipses(self, p: QtGui.QPainter, w: float, h: float) -> None:
         scene = self.scene
         state = theme.state_color(scene.activity)
         cx, cy = scene.world_to_screen(0.0, 0.0, w, h, parallax=0.7)
         scale = scene.screen_scale(w, h, 0.7)
-        orbit = scene.camera.orbit
-        lines = []
-        for i, (radius, speed, ticks) in enumerate(RINGS):
+        p.setBrush(QtCore.Qt.NoBrush)
+        for i, (radius, _speed, _ticks) in enumerate(RINGS):
             r = radius * scale
-            pen = QtGui.QPen(theme.with_alpha(theme.mix(theme.PRIMARY_DIM, state, 0.35), 0.28 - 0.035 * i), 1.0)
-            pen.setCosmetic(True)
-            p.setPen(pen)
-            p.setBrush(QtCore.Qt.NoBrush)
+            p.setPen(_thin(theme.mix(theme.PRIMARY_DIM, state, 0.35), 0.28 - 0.035 * i))
             p.save()
             p.translate(cx, cy)
             p.scale(r, r)
             p.drawPath(self._ring_path)
             p.restore()
-            angles = np.linspace(0, math.tau, ticks, endpoint=False) + orbit * speed * 10
-            cos, sin = np.cos(angles), np.sin(angles)
-            inner, outer = r * 0.985, r * (1.02 if i % 2 else 1.035)
-            for c, s in zip(cos, sin):
-                lines.append(QLineF(cx + c * inner, cy + s * inner * RING_RATIO, cx + c * outer, cy + s * outer * RING_RATIO))
-        pen = QtGui.QPen(theme.with_alpha(theme.PRIMARY, 0.22), 1.0)
-        pen.setCosmetic(True)
-        p.setPen(pen)
-        p.drawLines(lines)
 
     def _world_transform(self, w: float, h: float) -> QtGui.QTransform:
         scene = self.scene
@@ -231,25 +288,126 @@ class TardisView(QtWidgets.QWidget):
         t.scale(scale, scale)
         return t
 
-    def _draw_corridors(self, p: QtGui.QPainter, w: float, h: float, now: float) -> None:
+    def _draw_corridors(self, p: QtGui.QPainter, w: float, h: float) -> None:
         scene = self.scene
         p.save()
         p.setTransform(self._world_transform(w, h), True)
         for key, path in self._corridors.items():
             region = scene.regions[key]
-            alpha = 0.10 + 0.35 * region.energy + (0.12 if key == self._hover or key == scene.focus else 0.0)
-            pen = QtGui.QPen(theme.with_alpha(theme.TONES.get(region.tone, theme.PRIMARY), alpha), 1.2)
-            pen.setCosmetic(True)
-            p.setPen(pen)
+            alpha = 0.12 + (0.14 if key == self._hover or key == scene.focus else 0.0)
+            p.setPen(_thin(theme.TONES.get(region.tone, theme.PRIMARY), alpha))
             p.drawPath(path)
         p.restore()
+
+    def _draw_portal(self, p: QtGui.QPainter, region, w: float, h: float) -> None:
+        scene = self.scene
+        px, py = scene.world_to_screen(*region.pos, w, h)
+        scale = scene.screen_scale(w, h) * region.scale
+        r = 92 * scale
+        hovered = self._hover == region.key
+        focused = scene.focus == region.key
+        base = theme.TONES.get(region.tone, theme.PRIMARY)
+        energy = 0.35 if hovered or focused else 0.0
+        dpr = self.devicePixelRatioF()
         p.setCompositionMode(PLUS)
+        halo = theme.sprite_px("soft", "alert" if region.alert else region.tone, theme.quantize_radius(r * 1.5), dpr)
+        p.setOpacity(min(1.0, 0.18 + 0.45 * energy))
+        p.drawPixmap(QPointF(px - halo.width() / dpr / 2, py - halo.height() / dpr / 2), halo)
+        p.setOpacity(1.0)
+        p.setCompositionMode(OVER)
+        # o vidro do portal: preenchimento sem antisserrilhado (a borda é coberta pelo traço) e traços
+        # cosméticos de 1 px — o caminho rápido do QPainter (≈5× mais barato que um traço de 1,6 px)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, False)
+        p.setPen(QtCore.Qt.NoPen)
+        p.setBrush(theme.with_alpha(theme.BG2, 0.55))
+        p.drawEllipse(QPointF(px, py), r, r * 0.62)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        p.setBrush(QtCore.Qt.NoBrush)
+        rim = theme.ALERT if region.alert else base
+        for factor, alpha, color in ((1.0, 0.85, rim), (1.014, 0.35, rim), (0.82, 0.35, base)):
+            p.setPen(_thin(color, min(1.0, alpha + 0.25 * energy)))
+            p.drawEllipse(QPointF(px, py), r * factor, r * factor * 0.62)
+        title_font = theme.font(9.5 if region.key not in SATELLITES else 8, weight=600, spacing=3)
+        self._centered(p, region.label, title_font, theme.with_alpha(theme.TEXT_BRIGHT, 0.95 if hovered else 0.82),
+                       px, py - 14)
+        self._centered(p, str(region.count), theme.font(15 if region.key not in SATELLITES else 11, weight=300),
+                       theme.with_alpha(theme.ALERT if region.alert else base, 0.95), px, py + 2)
+        if region.detail and (hovered or focused or region.key not in SATELLITES):
+            self._centered(p, region.detail[:46], theme.font(7, spacing=1),
+                           theme.with_alpha(theme.TEXT_DIM, 0.9), px, py + r * 0.62 + 6)
+
+    def _draw_core_labels(self, p: QtGui.QPainter, w: float, h: float) -> None:
+        scene = self.scene
+        cx, cy = scene.world_to_screen(0.0, 0.0, w, h)
+        scale = scene.screen_scale(w, h)
+        hovered = self._hover == CORE_KEY
+        today = scene.today
+        self._centered(p, "HOJE", theme.font(9 if not hovered else 10, weight=600, spacing=4),
+                       theme.with_alpha(theme.TEXT_BRIGHT, 0.92), cx, cy + 62 * scale)
+        if today:
+            line = f"{today.get('priorities', 0)} prioridade(s) · {today.get('events', 0)} compromisso(s)"
+            if today.get("overdue"):
+                line += f" · {today['overdue']} atrasado(s)"
+            self._centered(p, line, theme.font(7.5, spacing=1.5),
+                           theme.with_alpha(theme.ALERT if today.get("overdue") else theme.TEXT_DIM, 0.9),
+                           cx, cy + 62 * scale + 18)
+
+    def _draw_overlay(self, p: QtGui.QPainter, w: float, h: float) -> None:
+        p.setFont(theme.font(15, weight=600, spacing=8))
+        p.setPen(theme.TEXT_BRIGHT)
+        p.drawText(QPointF(26, 40), "JARVIS")
+        p.setFont(theme.font(8, weight=600, spacing=5))
+        p.setPen(theme.PRIMARY)
+        p.drawText(QPointF(28, 58), "TARDIS · MEMÓRIA ESPACIAL")
+        label = theme.state_label(self.scene.activity)
+        p.setFont(theme.font(8, weight=600, spacing=3))
+        p.setPen(theme.with_alpha(theme.state_color(self.scene.activity) if self.scene.activity != "IDLE"
+                                  else theme.TEXT_DIM, 0.95))
+        width = QtGui.QFontMetricsF(p.font()).horizontalAdvance(f"● {label}")
+        p.drawText(QPointF(w * (1 - self.scene.panel_fraction) - width - 24, 40), f"● {label}")
+
+    # ---- movimento (cada quadro)
+    def _draw_ring_ticks(self, p: QtGui.QPainter, w: float, h: float) -> None:
+        scene = self.scene
+        cx, cy = scene.world_to_screen(0.0, 0.0, w, h, parallax=0.7)
+        scale = scene.screen_scale(w, h, 0.7)
+        p.setPen(_thin(theme.PRIMARY, 0.22))
+        for (radius, speed, _ticks), path in zip(RINGS, self._tick_paths):
+            r = radius * scale
+            p.save()
+            p.translate(cx, cy)
+            p.scale(r, r * RING_RATIO)                  # elipse em perspectiva...
+            p.rotate(math.degrees(scene.camera.orbit * speed * 10))   # ...girando no plano do anel
+            p.drawPath(path)
+            p.restore()
+
+    def _draw_energy(self, p: QtGui.QPainter, w: float, h: float, now: float) -> None:
+        """Corredores e portais acesos por eventos reais (o brilho decai) e pulsos em trânsito."""
+        scene = self.scene
+        lit = [region for region in scene.regions.values() if region.energy > 0.02]
+        transform = self._world_transform(w, h)
+        dpr = self.devicePixelRatioF()
+        if lit:
+            p.save()
+            p.setTransform(transform, True)
+            for region in lit:
+                p.setPen(_thin(theme.TONES.get(region.tone, theme.PRIMARY), 0.35 * region.energy))
+                p.drawPath(self._corridors[region.key])
+            p.restore()
+        p.setCompositionMode(PLUS)
+        scale = scene.screen_scale(w, h)
+        for region in lit:
+            px, py = scene.world_to_screen(*region.pos, w, h)
+            halo = theme.sprite_px("soft", "alert" if region.alert else region.tone,
+                                   theme.quantize_radius(92 * scale * region.scale * 1.5), dpr)
+            p.setOpacity(min(1.0, 0.45 * region.energy))
+            p.drawPixmap(QPointF(px - halo.width() / dpr / 2, py - halo.height() / dpr / 2), halo)
         for pulse in scene.pulses:                               # dados reais percorrendo o corredor
             t = min(1.0, (now - pulse.born) / pulse.duration)
             t = 1.0 - t if pulse.inbound else t
             point = self._corridors[pulse.region].pointAtPercent(max(0.0, min(1.0, t)))
-            sx, sy = self._world_transform(w, h).map(point.x(), point.y())
-            pix = theme.sprite_px("glow", pulse.tone, 9, self.devicePixelRatioF())
+            sx, sy = transform.map(point.x(), point.y())
+            pix = theme.sprite_px("glow", pulse.tone, 9, dpr)
             p.setOpacity(0.9 * (1.0 - abs(0.5 - t) * 0.6))
             p.drawPixmap(QPointF(sx - 9, sy - 9), pix)
         p.setOpacity(1.0)
@@ -268,16 +426,22 @@ class TardisView(QtWidgets.QWidget):
         dpr = self.devicePixelRatioF()
         p.setCompositionMode(PLUS)
         rgb = theme.PRIMARY.getRgb()[:3]
+        levels = (near * 3).astype(np.int32).clip(0, 2)
         for level in (0, 1, 2):
-            sel = (near * 3).astype(int).clip(0, 2) == level
+            sel = levels == level
             if not sel.any():
                 continue
             radius = (0.9, 1.3, 1.8)[level]
+            size = theme.dot_size(radius)
+            half = size // 2
             p.setOpacity((0.25, 0.45, 0.7)[level])
-            for x, y in zip(xs[sel], ys[sel]):
-                qx, qy = int((x % 1) * 4) % 4, int((y % 1) * 4) % 4
-                size = theme.dot_size(radius)
-                p.drawPixmap(int(x) - size // 2, int(y) - size // 2, theme.dot_px(rgb, radius, qx, qy, dpr))
+            fx, fy = xs[sel], ys[sel]
+            ix, iy = np.floor(fx), np.floor(fy)
+            sprites = [[theme.dot_px(rgb, radius, a, b, dpr) for b in range(4)] for a in range(4)]
+            draw = p.drawPixmap
+            for x, y, a, b in zip((ix - half).astype(np.int32).tolist(), (iy - half).astype(np.int32).tolist(),
+                                  ((fx - ix) * 4).astype(np.int32).tolist(), ((fy - iy) * 4).astype(np.int32).tolist()):
+                draw(x, y, sprites[a][b])
         p.setOpacity(1.0)
         p.setCompositionMode(OVER)
 
@@ -300,82 +464,28 @@ class TardisView(QtWidgets.QWidget):
         p.setOpacity(1.0)
         p.setCompositionMode(OVER)
         # rotor: anéis verticais que sobem e descem com a atividade (só desenho de linhas)
+        p.setBrush(QtCore.Qt.NoBrush)
         for i in range(4):
             phase = (now * (0.35 + 0.5 * glow) + i * 0.25) % 1.0
             ry = (18 + 70 * phase) * scale
             rx = (58 - 30 * phase) * scale
-            pen = QtGui.QPen(theme.with_alpha(color if scene.activity != "IDLE" else theme.PRIMARY, 0.45 * (1 - phase)),
-                             1.2)
-            p.setPen(pen)
-            p.setBrush(QtCore.Qt.NoBrush)
+            p.setPen(_thin(color if scene.activity != "IDLE" else theme.PRIMARY, 0.45 * (1 - phase)))
             p.drawEllipse(QPointF(cx, cy - ry * 0.6), rx, rx * 0.28)
-        hovered = self._hover == CORE_KEY
-        today = scene.today
-        self._centered(p, "HOJE", theme.font(9 if not hovered else 10, weight=600, spacing=4),
-                       theme.with_alpha(theme.TEXT_BRIGHT, 0.92), cx, cy + 62 * scale)
-        if today:
-            line = f"{today.get('priorities', 0)} prioridade(s) · {today.get('events', 0)} compromisso(s)"
-            if today.get("overdue"):
-                line += f" · {today['overdue']} atrasado(s)"
-            self._centered(p, line, theme.font(7.5, spacing=1.5),
-                           theme.with_alpha(theme.ALERT if today.get("overdue") else theme.TEXT_DIM, 0.9),
-                           cx, cy + 62 * scale + 18)
 
-    def _draw_portal(self, p: QtGui.QPainter, region, w: float, h: float, now: float) -> None:
+    def _draw_items(self, p: QtGui.QPainter, w: float, h: float) -> None:
+        """Registros reais orbitando cada portal (posição estável por índice, giro lento)."""
         scene = self.scene
-        px, py = scene.world_to_screen(*region.pos, w, h)
-        scale = scene.screen_scale(w, h) * region.scale
-        r = 92 * scale
-        hovered = self._hover == region.key
-        focused = scene.focus == region.key
-        base = theme.TONES.get(region.tone, theme.PRIMARY)
-        energy = region.energy + (0.35 if hovered or focused else 0.0)
-        p.setCompositionMode(PLUS)
-        halo = theme.sprite_px("soft", "alert" if region.alert else region.tone, theme.quantize_radius(r * 1.5),
-                               self.devicePixelRatioF())
-        p.setOpacity(min(1.0, 0.18 + 0.45 * energy))
-        p.drawPixmap(QPointF(px - halo.width() / self.devicePixelRatioF() / 2,
-                             py - halo.height() / self.devicePixelRatioF() / 2), halo)
-        p.setOpacity(1.0)
-        p.setCompositionMode(OVER)
-        for k, (factor, alpha) in enumerate(((1.0, 0.75), (0.82, 0.35))):
-            pen = QtGui.QPen(theme.with_alpha(theme.ALERT if region.alert and k == 0 else base,
-                                              min(1.0, alpha + 0.25 * energy)), 1.6 if k == 0 else 1.0)
-            p.setPen(pen)
-            p.setBrush(theme.with_alpha(theme.BG2, 0.55) if k == 0 else QtCore.Qt.NoBrush)
-            p.drawEllipse(QPointF(px, py), r * factor, r * factor * 0.62)
-        # itens reais orbitando o portal
         dpr = self.devicePixelRatioF()
-        for i, item in enumerate(region.items):
-            ix, iy = scene.item_position(region, i, w, h)
-            tone = "alert" if item.get("overdue") else ("dim" if item.get("status") in ("done", "cancelled") else
-                                                        ("ice" if not item.get("confirmed", True) else region.tone))
-            radius = 1.6 + 0.55 * int(item.get("priority", 2))
-            rgb = theme.TONES.get(tone, base).getRgb()[:3]
-            size = theme.dot_size(radius)
-            p.drawPixmap(int(ix) - size // 2, int(iy) - size // 2, theme.dot_px(rgb, radius, 0, 0, dpr))
-        title_font = theme.font(9.5 if region.key not in SATELLITES else 8, weight=600, spacing=3)
-        self._centered(p, region.label, title_font, theme.with_alpha(theme.TEXT_BRIGHT, 0.95 if hovered else 0.82),
-                       px, py - 14)
-        self._centered(p, str(region.count), theme.font(15 if region.key not in SATELLITES else 11, weight=300),
-                       theme.with_alpha(theme.ALERT if region.alert else base, 0.95), px, py + 2)
-        if region.detail and (hovered or focused or region.key not in SATELLITES):
-            self._centered(p, region.detail[:46], theme.font(7, spacing=1),
-                           theme.with_alpha(theme.TEXT_DIM, 0.9), px, py + r * 0.62 + 6)
-
-    def _draw_overlay(self, p: QtGui.QPainter, w: float, h: float) -> None:
-        p.setFont(theme.font(15, weight=600, spacing=8))
-        p.setPen(theme.TEXT_BRIGHT)
-        p.drawText(QPointF(26, 40), "JARVIS")
-        p.setFont(theme.font(8, weight=600, spacing=5))
-        p.setPen(theme.PRIMARY)
-        p.drawText(QPointF(28, 58), "TARDIS · MEMÓRIA ESPACIAL")
-        label = theme.state_label(self.scene.activity)
-        p.setFont(theme.font(8, weight=600, spacing=3))
-        p.setPen(theme.with_alpha(theme.state_color(self.scene.activity) if self.scene.activity != "IDLE"
-                                  else theme.TEXT_DIM, 0.95))
-        width = QtGui.QFontMetricsF(p.font()).horizontalAdvance(f"● {label}")
-        p.drawText(QPointF(w * (1 - self.scene.panel_fraction) - width - 24, 40), f"● {label}")
+        for region in scene.regions.values():
+            base = theme.TONES.get(region.tone, theme.PRIMARY)
+            for i, item in enumerate(region.items):
+                ix, iy = scene.item_position(region, i, w, h)
+                tone = "alert" if item.get("overdue") else ("dim" if item.get("status") in ("done", "cancelled") else
+                                                            ("ice" if not item.get("confirmed", True) else region.tone))
+                radius = 1.6 + 0.55 * int(item.get("priority", 2))
+                rgb = theme.TONES.get(tone, base).getRgb()[:3]
+                size = theme.dot_size(radius)
+                p.drawPixmap(int(ix) - size // 2, int(iy) - size // 2, theme.dot_px(rgb, radius, 0, 0, dpr))
 
     # ------------------------------------------------------------ interação
     def mouseMoveEvent(self, event) -> None:  # noqa: N802 (Qt)
@@ -452,7 +562,16 @@ class TardisWindow(PageHost):
         self.sound.setCheckable(True)
         self.sound.setChecked(bool(getattr(core.settings(), "ambient_sound", False)))
         self.sound.toggled.connect(self._toggle_sound)
+        export = _button("EXPORTAR", "Exportar a memória pessoal para um arquivo novo (JSON completo ou CSV/planilha)")
+        export_menu = QtWidgets.QMenu(export)
+        export_menu.addAction("JSON (completo)", lambda: self._export("json"))
+        export_menu.addAction("CSV (planilha)", lambda: self._export("csv"))
+        export.setMenu(export_menu)
+        backup = _button("BACKUP", "Cópia de segurança do banco do JARVIS agora (memórias, lembretes, rede)")
+        backup.clicked.connect(lambda: self.run_action("Backup do banco", "memory.backup", {}))
         top.addStretch(1)
+        top.addWidget(export)
+        top.addWidget(backup)
         top.addWidget(self.sound)
         top.addWidget(back)
         # captura rápida (mesma camada de serviço de voz e texto)
@@ -619,7 +738,8 @@ class TardisWindow(PageHost):
             last = self.view.frame_times[-1]
             self._paint_ema = last if not self._paint_ema else self._paint_ema * 0.85 + last * 0.15
         hud_fps = int(getattr(self.core.settings(), "hud_fps", 60))
-        fps = quality.effective_fps(self.profile, hud_fps, active=self.scene.in_motion())
+        fps = quality.effective_fps(self.profile, hud_fps, active=self.scene.in_motion(),
+                                    background=self._core_in_front())
         if self._paint_ema > 0:
             fps = min(fps, max(self.profile.idle_fps, int(PAINT_BUDGET / self._paint_ema)))
         self.target_fps = fps
@@ -627,6 +747,12 @@ class TardisWindow(PageHost):
         if self._clock.interval() != interval:
             self._clock.setInterval(interval)
         self.view.update()
+
+    def _core_in_front(self) -> bool:
+        """Outra janela do JARVIS (o CORE) está em foco e o TARDIS ficou atrás: cadência de fundo.
+        Com o foco em outro programa, o TARDIS mantém a cadência normal de repouso."""
+        active = QtWidgets.QApplication.activeWindow()
+        return active is not None and active is not self.window() and not self.isActiveWindow()
 
     # ------------------------------------------------------------ captura e som
     def _capture(self) -> None:
@@ -645,6 +771,17 @@ class TardisWindow(PageHost):
         if kind:
             args["kind"] = kind
         self.run_action(f"Registrar: {text[:40]}", "secondbrain.capture", args)
+
+    def _export(self, fmt: str) -> None:
+        import time
+        from pathlib import Path
+        suggested = str(Path.home() / f"jarvis-memoria-{time.strftime('%Y%m%d')}.{fmt}")
+        filters = "JSON (*.json)" if fmt == "json" else "CSV (*.csv)"
+        # nunca sobrescreve: se o arquivo existir, a exportação recusa e pede outro nome
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Exportar memória pessoal", suggested, filters,
+                                                        options=QtWidgets.QFileDialog.DontConfirmOverwrite)
+        if path:
+            self.run_action(f"Exportar ({fmt.upper()})", "secondbrain.export", {"format": fmt, "path": path})
 
     def _toggle_sound(self, on: bool) -> None:
         try:

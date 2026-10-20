@@ -1,0 +1,482 @@
+{
+  "root": "árvore da Fase D (cadência adaptativa, camada estrutural do TARDIS, traços cosméticos)",
+  "version": "1.0.0",
+  "python": "3.13.16",
+  "platform": "Linux 6.18.44-fc-v139",
+  "cpus": 4,
+  "when": "2026-10-20 00:13:58",
+  "render": {
+    "idle_young": {
+      "n": 600,
+      "mean": 5.31,
+      "p50": 4.502,
+      "p95": 8.171,
+      "p99": 9.506,
+      "max": 17.721,
+      "over_16ms": 1
+    },
+    "idle_mature": {
+      "n": 600,
+      "mean": 6.279,
+      "p50": 4.581,
+      "p95": 11.414,
+      "p99": 13.517,
+      "max": 16.644,
+      "over_16ms": 0
+    },
+    "active_mature": {
+      "n": 600,
+      "mean": 13.289,
+      "p50": 10.845,
+      "p95": 20.981,
+      "p99": 26.155,
+      "max": 39.697,
+      "over_16ms": 173
+    },
+    "camera_moves": {
+      "n": 600,
+      "mean": 10.032,
+      "p50": 11.427,
+      "p95": 14.951,
+      "p99": 19.152,
+      "max": 20.957,
+      "over_16ms": 16
+    }
+  },
+  "tardis": {
+    "idle_empty": {
+      "n": 600,
+      "mean": 2.257,
+      "p50": 2.011,
+      "p95": 3.502,
+      "p99": 4.25,
+      "max": 6.235,
+      "over_16ms": 0
+    },
+    "idle_data": {
+      "n": 600,
+      "mean": 2.477,
+      "p50": 2.414,
+      "p95": 2.892,
+      "p99": 3.567,
+      "max": 20.418,
+      "over_16ms": 1
+    },
+    "events": {
+      "n": 600,
+      "mean": 4.093,
+      "p50": 3.93,
+      "p95": 5.464,
+      "p99": 6.637,
+      "max": 7.879,
+      "over_16ms": 0
+    },
+    "camera_travel": {
+      "n": 600,
+      "mean": 7.884,
+      "p50": 7.62,
+      "p95": 10.548,
+      "p99": 12.371,
+      "max": 14.864,
+      "over_16ms": 0
+    },
+    "profile_economy": {
+      "n": 600,
+      "mean": 2.644,
+      "p50": 2.588,
+      "p95": 3.708,
+      "p99": 4.283,
+      "max": 9.135,
+      "over_16ms": 0
+    },
+    "profile_balanced": {
+      "n": 600,
+      "mean": 2.446,
+      "p50": 2.382,
+      "p95": 3.078,
+      "p99": 3.795,
+      "max": 5.932,
+      "over_16ms": 0
+    },
+    "profile_high": {
+      "n": 600,
+      "mean": 2.451,
+      "p50": 2.286,
+      "p95": 3.241,
+      "p99": 4.451,
+      "max": 7.649,
+      "over_16ms": 0
+    },
+    "profile_cinematic": {
+      "n": 600,
+      "mean": 2.733,
+      "p50": 2.65,
+      "p95": 3.472,
+      "p99": 4.005,
+      "max": 5.171,
+      "over_16ms": 0
+    }
+  },
+  "core": {
+    "state_as_dict": {
+      "n": 400,
+      "mean": 0.206,
+      "p50": 0.189,
+      "p95": 0.306,
+      "p99": 0.36,
+      "max": 0.716
+    },
+    "graph_snapshot_800": {
+      "n": 20,
+      "mean": 6.458,
+      "p50": 5.688,
+      "p95": 7.588,
+      "p99": 18.296,
+      "max": 18.296
+    }
+  },
+  "ui": {
+    "idle": {
+      "event_loop_lag": {
+        "n": 1870,
+        "mean": 1.648,
+        "p50": 0.523,
+        "p95": 10.519,
+        "p99": 14.364,
+        "max": 22.967
+      },
+      "cpu_percent": 31.5,
+      "rss_mb": 162.6,
+      "ticks_per_s": 23.7,
+      "paints_per_s": 25.6,
+      "paint_ms": {
+        "n": 307,
+        "mean": 9.337,
+        "p50": 9.61,
+        "p95": 15.221,
+        "p99": 18.285,
+        "max": 21.382
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 238.85,
+        "_tick": 5.66,
+        "_pull_telemetry": 1.23,
+        "_pull_state": 0.28
+      },
+      "threads": 14
+    },
+    "idle_steady": {
+      "event_loop_lag": {
+        "n": 1971,
+        "mean": 1.284,
+        "p50": 0.0,
+        "p95": 10.346,
+        "p99": 14.263,
+        "max": 23.44
+      },
+      "cpu_percent": 25.3,
+      "rss_mb": 162.6,
+      "ticks_per_s": 15.2,
+      "paints_per_s": 17.2,
+      "paint_ms": {
+        "n": 206,
+        "mean": 10.365,
+        "p50": 10.11,
+        "p95": 16.013,
+        "p99": 19.143,
+        "max": 22.831
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 177.92,
+        "_tick": 4.06,
+        "_pull_telemetry": 1.16,
+        "_pull_state": 0.31
+      },
+      "threads": 14
+    },
+    "busy": {
+      "event_loop_lag": {
+        "n": 1469,
+        "mean": 3.374,
+        "p50": 0.593,
+        "p95": 20.799,
+        "p99": 31.498,
+        "max": 41.999
+      },
+      "cpu_percent": 49.0,
+      "rss_mb": 163.5,
+      "ticks_per_s": 23.6,
+      "paints_per_s": 25.3,
+      "paint_ms": {
+        "n": 304,
+        "mean": 15.717,
+        "p50": 14.423,
+        "p95": 32.027,
+        "p99": 39.95,
+        "max": 43.195
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 398.16,
+        "_tick": 7.04,
+        "_pull_telemetry": 1.06,
+        "_pull_state": 0.46
+      },
+      "threads": 14
+    },
+    "response_latency": {
+      "n": 5,
+      "mean": 188.368,
+      "p50": 266.048,
+      "p95": 294.457,
+      "p99": 294.457,
+      "max": 294.457
+    },
+    "simulated_inference_ms": 250.0,
+    "tardis_open": {
+      "active": true
+    },
+    "tardis_idle": {
+      "event_loop_lag": {
+        "n": 2130,
+        "mean": 0.927,
+        "p50": 0.0,
+        "p95": 4.972,
+        "p99": 15.226,
+        "max": 30.666
+      },
+      "cpu_percent": 23.8,
+      "rss_mb": 189.9,
+      "ticks_per_s": 8.0,
+      "paints_per_s": 8.0,
+      "paint_ms": {
+        "n": 96,
+        "mean": 13.435,
+        "p50": 12.744,
+        "p95": 18.596,
+        "p99": 20.406,
+        "max": 23.965
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 107.47,
+        "_tick": 2.33,
+        "_pull_telemetry": 1.15,
+        "_pull_state": 0.31,
+        "tardis._tick": 3.42,
+        "tardis.paintEvent": 58.45
+      },
+      "threads": 15,
+      "tardis_paints_per_s": 15.2,
+      "tardis_paint_ms": {
+        "n": 182,
+        "mean": 3.854,
+        "p50": 3.536,
+        "p95": 5.283,
+        "p99": 7.488,
+        "max": 10.513
+      }
+    },
+    "tardis_region": {
+      "event_loop_lag": {
+        "n": 1031,
+        "mean": 1.134,
+        "p50": 0.0,
+        "p95": 7.084,
+        "p99": 12.378,
+        "max": 29.935
+      },
+      "cpu_percent": 28.7,
+      "rss_mb": 190.0,
+      "ticks_per_s": 8.0,
+      "paints_per_s": 8.0,
+      "paint_ms": {
+        "n": 48,
+        "mean": 12.225,
+        "p50": 10.871,
+        "p95": 20.147,
+        "p99": 30.577,
+        "max": 30.577
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 97.78,
+        "_tick": 2.23,
+        "_pull_telemetry": 1.14,
+        "_pull_state": 0.32,
+        "tardis._tick": 5.36,
+        "tardis.paintEvent": 113.84
+      },
+      "threads": 15,
+      "tardis_paints_per_s": 25.2,
+      "tardis_paint_ms": {
+        "n": 151,
+        "mean": 4.524,
+        "p50": 4.821,
+        "p95": 7.72,
+        "p99": 9.527,
+        "max": 12.021
+      }
+    },
+    "profile_economy": {
+      "event_loop_lag": {
+        "n": 1072,
+        "mean": 0.831,
+        "p50": 0.0,
+        "p95": 6.203,
+        "p99": 12.338,
+        "max": 18.01
+      },
+      "cpu_percent": 17.8,
+      "rss_mb": 189.6,
+      "ticks_per_s": 10.0,
+      "paints_per_s": 12.0,
+      "paint_ms": {
+        "n": 72,
+        "mean": 8.872,
+        "p50": 9.026,
+        "p95": 13.906,
+        "p99": 14.304,
+        "max": 17.476
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 106.45,
+        "_tick": 2.83,
+        "_pull_telemetry": 0.73,
+        "_pull_state": 0.24,
+        "tardis._tick": 0.0,
+        "tardis.paintEvent": 0.0
+      },
+      "threads": 15
+    },
+    "profile_balanced": {
+      "event_loop_lag": {
+        "n": 964,
+        "mean": 1.427,
+        "p50": 0.0,
+        "p95": 11.523,
+        "p99": 16.468,
+        "max": 20.699
+      },
+      "cpu_percent": 27.2,
+      "rss_mb": 189.6,
+      "ticks_per_s": 15.2,
+      "paints_per_s": 17.2,
+      "paint_ms": {
+        "n": 103,
+        "mean": 11.375,
+        "p50": 10.819,
+        "p95": 17.986,
+        "p99": 20.509,
+        "max": 20.83
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 195.24,
+        "_tick": 4.26,
+        "_pull_telemetry": 1.23,
+        "_pull_state": 0.47,
+        "tardis._tick": 0.0,
+        "tardis.paintEvent": 0.0
+      },
+      "threads": 15
+    },
+    "profile_high": {
+      "event_loop_lag": {
+        "n": 846,
+        "mean": 2.268,
+        "p50": 0.59,
+        "p95": 11.92,
+        "p99": 17.866,
+        "max": 24.126
+      },
+      "cpu_percent": 36.7,
+      "rss_mb": 189.7,
+      "ticks_per_s": 24.3,
+      "paints_per_s": 26.2,
+      "paint_ms": {
+        "n": 157,
+        "mean": 11.352,
+        "p50": 10.861,
+        "p95": 17.768,
+        "p99": 18.65,
+        "max": 24.138
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 296.99,
+        "_tick": 6.13,
+        "_pull_telemetry": 1.27,
+        "_pull_state": 0.27,
+        "tardis._tick": 0.0,
+        "tardis.paintEvent": 0.0
+      },
+      "threads": 15
+    },
+    "profile_cinematic": {
+      "event_loop_lag": {
+        "n": 624,
+        "mean": 4.707,
+        "p50": 0.838,
+        "p95": 14.977,
+        "p99": 19.502,
+        "max": 24.58
+      },
+      "cpu_percent": 58.5,
+      "rss_mb": 189.7,
+      "ticks_per_s": 40.1,
+      "paints_per_s": 42.1,
+      "paint_ms": {
+        "n": 253,
+        "mean": 12.018,
+        "p50": 11.126,
+        "p95": 17.305,
+        "p99": 22.671,
+        "max": 24.557
+      },
+      "ui_busy_ms_per_s": {
+        "paintEvent": 505.42,
+        "_tick": 10.4,
+        "_pull_telemetry": 1.37,
+        "_pull_state": 0.29,
+        "tardis._tick": 0.0,
+        "tardis.paintEvent": 0.0
+      },
+      "threads": 15
+    },
+    "orb": {
+      "event_loop_lag": {
+        "n": 1171,
+        "mean": 0.44,
+        "p50": 0.0,
+        "p95": 1.704,
+        "p99": 5.497,
+        "max": 7.627
+      },
+      "cpu_percent": 14.8,
+      "rss_mb": 189.7,
+      "ticks_per_s": 15.2,
+      "paints_per_s": 0.0,
+      "paint_ms": {},
+      "ui_busy_ms_per_s": {
+        "paintEvent": 0.0,
+        "_tick": 4.37,
+        "_pull_telemetry": 1.29,
+        "_pull_state": 0.42,
+        "tardis._tick": 0.0,
+        "tardis.paintEvent": 0.0,
+        "orb.paintEvent": 70.57
+      },
+      "threads": 15,
+      "orb_paints_per_s": 15.2,
+      "orb_paint_ms": {
+        "n": 91,
+        "mean": 4.654,
+        "p50": 4.218,
+        "p95": 6.588,
+        "p99": 7.896,
+        "max": 8.981
+      }
+    },
+    "threads_before_shutdown": 15,
+    "threads_after_shutdown": 2,
+    "threads_left": [
+      "Thread-1 (serve_forever)"
+    ]
+  }
+}
