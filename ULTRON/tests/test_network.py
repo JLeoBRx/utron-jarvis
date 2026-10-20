@@ -156,6 +156,46 @@ class InventoryTest(unittest.TestCase):
         self.assertIn("não identifica quem o usa", md)
         db.close()
 
+    def test_observation_categories_gateway_and_administration(self):
+        import time as _time
+        from unittest import mock
+
+        from ultron.network import inventory as inventory_module
+
+        db = Database(helpers.temp_dir() / "net.sqlite3")
+        inventory = NetworkInventory(db)
+        inventory.merge_scan({"network": "192.168.0.0/24", "interface": "Wi-Fi", "hosts": [
+            {"ip": "192.168.0.1", "mac": "A4:2B:B0:11:22:33", "alive": True, "methods": ["icmp", "arp"]},
+            {"ip": "192.168.0.12", "mac": "", "alive": True, "methods": ["self"]},
+            {"ip": "192.168.0.20", "mac": "B8:27:EB:AA:BB:CC", "alive": True, "methods": ["icmp", "arp"]},
+            {"ip": "192.168.0.60", "mac": "", "alive": True, "methods": ["ssdp"],
+             "extra": {"friendly_name": "TV da sala"}}]}, gateway="192.168.0.1", own_ip="192.168.0.12")
+        by_ip = {d.ip: d.to_dict() for d in inventory.devices()}
+        self.assertEqual(by_ip["192.168.0.12"]["observation"], "self")
+        self.assertEqual(by_ip["192.168.0.20"]["observation"], "recent")
+        self.assertEqual(by_ip["192.168.0.60"]["observation"], "inferred", "só anúncio SSDP: presença inferida")
+        self.assertIn("MAC", by_ip["192.168.0.60"]["missing"])
+        self.assertTrue(by_ip["192.168.0.1"]["is_gateway"])
+        self.assertFalse(by_ip["192.168.0.20"]["is_gateway"])
+        self.assertEqual(by_ip["192.168.0.20"]["interface"], "Wi-Fi")
+        self.assertIn("SUAS credenciais", by_ip["192.168.0.1"]["administration"])
+        self.assertIn("não acessa, não controla", by_ip["192.168.0.20"]["administration"])
+        self.assertIn("Windows", by_ip["192.168.0.12"]["administration"])
+        # 20 minutos sem nova observação: deixa de ser "respondeu recentemente"
+        later = _time.time() + 20 * 60
+        with mock.patch.object(inventory_module.time, "time", return_value=later):
+            stale = inventory.find("192.168.0.20").to_dict()
+        self.assertEqual(stale["observation"], "known")
+        for _ in range(2):                                   # duas varreduras completas sem resposta
+            inventory.merge_scan({"network": "192.168.0.0/24", "hosts": [
+                {"ip": "192.168.0.1", "mac": "A4:2B:B0:11:22:33", "alive": True, "methods": ["icmp", "arp"]}]},
+                gateway="192.168.0.1")
+        self.assertEqual(inventory.find("192.168.0.20").to_dict()["observation"], "no_response")
+        md = inventory.export("md")
+        self.assertIn("Descobrir não é administrar", md)
+        self.assertIn("desconhecido", md, "o que não se sabe aparece como desconhecido")
+        db.close()
+
     def test_vendor_lookup(self):
         self.assertEqual(oui.vendor("B8:27:EB:00:00:01"), "Raspberry Pi")
         self.assertTrue(oui.is_locally_administered("DA:A1:19:00:00:01"))

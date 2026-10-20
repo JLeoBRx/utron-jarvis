@@ -804,7 +804,7 @@ class NeuralScene:
         if self.runtime_state == "NETWORK" and net:
             lines = [f"{net.get('interface', '')} {net.get('ipv4', '')}".strip(),
                      f"gateway {net.get('gateway') or '—'}",
-                     f"{net.get('devices_online', 0)} online · {net.get('devices_known', 0)} conhecidos"]
+                     f"{net.get('devices_online', 0)} presente(s) · {net.get('devices_known', 0)} conhecido(s)"]
             self._module("network", "NETWORK MESH", "parietal", lines, ttl=12.0, priority=25)
 
     def on_telemetry(self, telemetry: dict) -> None:

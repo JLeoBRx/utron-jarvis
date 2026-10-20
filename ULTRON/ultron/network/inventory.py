@@ -34,6 +34,15 @@ KIND_NAMES = {"router": "Roteador", "this_computer": "Este computador", "printer
               "raspberry_pi": "Raspberry Pi", "unknown": "Desconhecido"}
 METHOD_NAMES = {"icmp": "ping", "arp": "tabela ARP", "ndp": "vizinhos IPv6", "self": "este computador",
                 "rdns": "DNS reverso", "ssdp": "anúncio SSDP/UPnP"}
+RECENT_SECONDS = 15 * 60       # "respondeu recentemente": observado diretamente nos últimos 15 min
+# Classificação honesta do que se SABE de cada aparelho (derivada dos estados observados acima)
+OBSERVATIONS = {
+    "self": "informação do próprio computador",
+    "recent": "respondeu recentemente",
+    "inferred": "presença inferida — dados incompletos",
+    "known": "conhecido anteriormente — não confirmado agora",
+    "no_response": "sem resposta no momento",
+}
 
 _KIND_HINTS = (
     (re.compile(r"printer|impressora|epson|brother|canon|hp[-_ ]?(?:laser|office|deskjet)|kyocera|xerox", re.I), "printer"),
@@ -84,11 +93,48 @@ class Device:
     def state_label(self) -> str:
         return STATES.get(self.status, self.status)
 
+    @property
+    def is_gateway(self) -> bool:
+        return bool(self.extra.get("gateway")) or (self.kind == "router" and "self" not in self.methods
+                                                   and self.extra.get("gateway") is None)
+
+    def observation(self, now: float | None = None) -> str:
+        """O que se sabe AGORA: medido diretamente há pouco, inferido, visto antes ou sem resposta."""
+        now = time.time() if now is None else now
+        methods = set(self.methods)
+        if "self" in methods or self.kind == "this_computer":
+            return "self"
+        if self.status == "online" and now - (self.last_seen or 0) <= RECENT_SECONDS:
+            direct = bool(methods & {"icmp", "arp", "ndp"})
+            return "recent" if direct and self.confidence >= 0.7 else "inferred"
+        if self.status == "absent":
+            return "no_response"
+        return "known"
+
+    def missing(self) -> list[str]:
+        return [label for value, label in ((self.mac, "MAC"), (self.hostname or self.extra.get("friendly_name"),
+                                                                "nome na rede"), (self.vendor, "fabricante"))
+                if not value]
+
+    def administration(self) -> str:
+        """Descobrir não é administrar: o que o JARVIS pode (e não pode) fazer com este aparelho."""
+        if self.observation() == "self":
+            return "Este computador: administrado pela sua própria conta do Windows."
+        if self.is_gateway:
+            return ("Gateway/roteador: a administração é só pela página oficial dele, aberta por você e com as SUAS "
+                    "credenciais — o JARVIS não guarda, não testa e não adivinha senhas.")
+        return "Descoberto, não administrado: o JARVIS não acessa, não controla e não altera este aparelho."
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
+        observation = self.observation()
         data.update(label=self.label(), name=self.name, state_label=self.state_label,
                     kind_label=KIND_NAMES.get(self.kind, self.kind),
-                    method_labels=[METHOD_NAMES.get(m, m) for m in self.methods])
+                    method_labels=[METHOD_NAMES.get(m, m) for m in self.methods],
+                    observation=observation, observation_label=OBSERVATIONS[observation],
+                    missing=self.missing(), administration=self.administration(), is_gateway=self.is_gateway,
+                    reliability_label=("alta" if self.confidence >= 0.9 else "média" if self.confidence >= 0.7
+                                       else "baixa" if self.confidence > 0 else "sem medição"))
         return data
 
 
@@ -191,6 +237,8 @@ class NetworkInventory:
             seen_keys.add(key)
             methods = set(host.get("methods") or ())
             extra = {**(previous.extra if previous else {}), **(host.get("extra") or {})}
+            if gateway:
+                extra["gateway"] = ip == gateway                     # o gateway informado pelo sistema
             vendor, source = "", ""
             if mac:
                 vendor = oui.vendor(mac)
@@ -345,8 +393,8 @@ class NetworkInventory:
 
     # ------------------------------------------------------------ relatório
     EXPORT_FIELDS = ("name", "alias", "ip", "ipv6", "mac", "vendor", "vendor_source", "hostname", "kind_label",
-                     "state_label", "confidence", "method_labels", "trusted", "interface", "segment", "first_seen",
-                     "last_seen", "notes")
+                     "state_label", "observation_label", "is_gateway", "confidence", "method_labels", "trusted",
+                     "interface", "segment", "first_seen", "last_seen", "administration", "notes")
 
     def export(self, fmt: str = "md", *, meta: dict | None = None) -> str:
         devices = [d.to_dict() for d in self.devices()]
@@ -363,7 +411,8 @@ class NetworkInventory:
         for d in devices:
             rows.append({k: (", ".join(d[k]) if isinstance(d.get(k), list) else
                              when(d[k]) if k in ("first_seen", "last_seen") else
-                             ("sim" if d[k] else "não") if k == "trusted" else d.get(k, "")) for k in self.EXPORT_FIELDS})
+                             ("sim" if d[k] else "não") if k in ("trusted", "is_gateway") else d.get(k, ""))
+                         for k in self.EXPORT_FIELDS})
         if fmt == "csv":
             buffer = io.StringIO()
             writer = csv.DictWriter(buffer, fieldnames=list(self.EXPORT_FIELDS))
@@ -376,11 +425,16 @@ class NetworkInventory:
         lines += ["", "> Estados são observações: *presente* = visto na última varredura; *desconhecido* = não visto "
                       "uma vez ou visto em outra rede; *ausente* = não visto em varreduras seguidas. A presença de um "
                       "aparelho não identifica quem o usa. O inventário pode estar incompleto.", "",
-                  "| Nome | IP | MAC | Fabricante | Tipo | Estado | Confiança | Métodos | Confiável | Última vez |",
-                  "|---|---|---|---|---|---|---|---|---|---|"]
+                  "> **Descobrir não é administrar.** Estar nesta lista não dá ao JARVIS nem a ninguém permissão para "
+                  "acessar ou controlar um aparelho; o JARVIS não acessa, não controla e não altera dispositivos de "
+                  "terceiros.", "",
+                  "| Nome | IP | MAC | Fabricante | Tipo | Observação | Gateway | Confiança | Origem | Primeira vez "
+                  "| Última vez |",
+                  "|---|---|---|---|---|---|---|---|---|---|---|"]
         for r in rows:
-            cells = [r["name"], r["ip"] + (f" / {r['ipv6']}" if r["ipv6"] else ""), r["mac"] or "—",
-                     r["vendor"] or "—", r["kind_label"], r["state_label"], f"{float(r['confidence']):.0%}",
-                     r["method_labels"] or "—", r["trusted"], r["last_seen"]]
+            cells = [r["name"], r["ip"] + (f" / {r['ipv6']}" if r["ipv6"] else ""), r["mac"] or "desconhecido",
+                     r["vendor"] or "desconhecido", r["kind_label"], r["observation_label"], r["is_gateway"],
+                     f"{float(r['confidence']):.0%}", r["method_labels"] or "desconhecida", r["first_seen"],
+                     r["last_seen"]]
             lines.append("| " + " | ".join(str(c).replace("|", "/") for c in cells) + " |")
         return "\n".join(lines) + "\n"

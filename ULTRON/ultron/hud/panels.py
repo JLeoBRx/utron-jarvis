@@ -197,8 +197,10 @@ class RecordModel(QtCore.QAbstractTableModel):
 
 
 class DeviceModel(QtCore.QAbstractTableModel):
-    HEADERS = ("NOME", "IP", "MAC", "FABRICANTE", "TIPO", "ESTADO", "CONFIANÇA", "ÚLTIMA VEZ", "CONHECIDO")
+    HEADERS = ("NOME", "IP", "MAC", "FABRICANTE", "TIPO", "OBSERVAÇÃO", "CONFIABILIDADE", "ORIGEM", "INTERFACE",
+               "PRIMEIRA VEZ", "ÚLTIMA VEZ", "CONHECIDO")
     SORT_ROLE = QtCore.Qt.UserRole + 1
+    UNKNOWN = "desconhecido"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -220,23 +222,35 @@ class DeviceModel(QtCore.QAbstractTableModel):
             return self.HEADERS[section]
         return None
 
+    @staticmethod
+    def _when(ts) -> str:
+        return time.strftime("%d/%m %H:%M", time.localtime(ts)) if ts else DeviceModel.UNKNOWN
+
     def _cell(self, d: dict, column: int):
+        unknown = self.UNKNOWN
         if column == 0:
-            return d.get("name", "")
+            return d.get("name", "") + ("  · gateway" if d.get("is_gateway") else "")
         if column == 1:
             return d.get("ip", "") + (f"  (+{len(d['ipv6'])} IPv6)" if d.get("ipv6") else "")
         if column == 2:
-            return d.get("mac") or "—"
+            return d.get("mac") or unknown
         if column == 3:
-            return d.get("vendor") or "—"
+            return d.get("vendor") or unknown
         if column == 4:
-            return d.get("kind_label", "")
+            return d.get("kind_label", "") or unknown
         if column == 5:
-            return d.get("state_label", "")
+            return d.get("observation_label", "") or d.get("state_label", "")
         if column == 6:
-            return f"{float(d.get('confidence') or 0):.0%}"
+            confidence = float(d.get("confidence") or 0)
+            return f"{d.get('reliability_label', '')} ({confidence:.0%})" if confidence else unknown
         if column == 7:
-            return time.strftime("%d/%m %H:%M", time.localtime(d["last_seen"])) if d.get("last_seen") else "—"
+            return " + ".join(d.get("method_labels") or []) or unknown
+        if column == 8:
+            return d.get("interface") or unknown
+        if column == 9:
+            return self._when(d.get("first_seen"))
+        if column == 10:
+            return self._when(d.get("last_seen"))
         return "sim" if d.get("trusted") else "não"
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
@@ -253,24 +267,29 @@ class DeviceModel(QtCore.QAbstractTableModel):
                     return (999,)
             if index.column() == 6:
                 return float(d.get("confidence") or 0)
-            if index.column() == 7:
-                return float(d.get("last_seen") or 0)
+            if index.column() in (9, 10):
+                return float(d.get("first_seen" if index.column() == 9 else "last_seen") or 0)
             return str(self._cell(d, index.column())).casefold()
         if role == QtCore.Qt.ForegroundRole:
-            if d.get("status") == "absent":
+            observation = d.get("observation")
+            if observation in ("no_response", "known"):
                 return theme.TEXT_DIM
-            if d.get("status") == "online" and not d.get("trusted"):
-                return theme.ALERT
+            if observation == "recent" and not d.get("trusted"):
+                return theme.ALERT                        # presente agora e não marcado como conhecido
+            if observation == "self":
+                return theme.PRIMARY
             return None
         if role == QtCore.Qt.ToolTipRole:
-            parts = [f"Métodos: {', '.join(d.get('method_labels') or []) or '—'}"]
+            parts = [d.get("administration", "")]
+            if d.get("missing"):
+                parts.append("Dados ausentes: " + ", ".join(d["missing"]))
             if d.get("ipv6"):
                 parts.append("IPv6: " + ", ".join(d["ipv6"]))
             if d.get("vendor_source"):
                 parts.append(f"Fabricante via: {d['vendor_source']}")
             if d.get("notes"):
                 parts.append(f"Notas: {d['notes']}")
-            return "\n".join(parts)
+            return "\n".join(p for p in parts if p)
         if role == QtCore.Qt.UserRole:
             return d
         return None
@@ -1088,8 +1107,10 @@ class NetworkPage(Page):
         self.layout_.addWidget(self.summary)
         filters = QtWidgets.QHBoxLayout()
         self.scope = QtWidgets.QComboBox()
-        for key, label in (("all", "Todos"), ("online", "Presentes"), ("unknown", "Desconhecidos"),
-                           ("absent", "Ausentes"), ("untrusted", "Não marcados como conhecidos")):
+        for key, label in (("all", "Todos"), ("recent", "Responderam recentemente"),
+                           ("known", "Conhecidos anteriormente"), ("no_response", "Sem resposta no momento"),
+                           ("inferred", "Inferidos / incompletos"), ("self", "Este computador"),
+                           ("gateway", "Gateway"), ("untrusted", "Não marcados como conhecidos")):
             self.scope.addItem(label, key)
         self.scope.currentIndexChanged.connect(lambda *_: self.hub.reload(self.key))
         self.search = QtWidgets.QLineEdit()
@@ -1134,10 +1155,17 @@ class NetworkPage(Page):
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 1)
         self.layout_.addWidget(split, 1)
-        self.layout_.addWidget(_label("A presença de um aparelho na rede não identifica a pessoa que o usa. O inventário "
-                                      "pode estar incompleto: aparelhos que bloqueiam ping e estão ociosos podem não "
-                                      "aparecer.", "H2Dim"))
+        boundary = _label("DESCOBRIR ≠ ADMINISTRAR — o JARVIS lista aparelhos que aparecem na sua rede (tabela de "
+                          "vizinhos do sistema, ping de um pacote, DNS reverso e, se você ativar, anúncios SSDP). "
+                          "Estar na lista não dá permissão de acesso: ele não entra, não controla e não altera nenhum "
+                          "aparelho. A presença de um aparelho não identifica quem o usa, e aparelhos que bloqueiam "
+                          "ping ou dormem podem não aparecer.", "H2Dim")
+        boundary.setWordWrap(True)
+        self.layout_.addWidget(boundary)
         self.layout_.addWidget(self.status)
+        refresh = _button("ATUALIZAR LISTA", "Reler o inventário salvo (sem varrer a rede)")
+        refresh.clicked.connect(lambda: self.hub.reload(self.key))
+        self.toolbar.addWidget(refresh)
         scan = _button("VARRER AGORA", "Varredura da sub-rede privada deste computador")
         scan.clicked.connect(lambda: self.run("Varredura da rede", "network.scan"))
         export = _button("EXPORTAR")
@@ -1155,11 +1183,17 @@ class NetworkPage(Page):
 
         def work():
             inventory = net.inventory
+            devices = [d.to_dict() for d in inventory.devices()]
+            observed: dict[str, int] = {}
+            for d in devices:
+                observed[d["observation"]] = observed.get(d["observation"], 0) + 1
             if scope == "untrusted":
-                devices = inventory.devices(trusted=False)
-            else:
-                devices = inventory.devices(status=None if scope == "all" else scope)
-            return {"devices": [d.to_dict() for d in devices], "counts": inventory.counts(),
+                devices = [d for d in devices if not d["trusted"]]
+            elif scope == "gateway":
+                devices = [d for d in devices if d["is_gateway"]]
+            elif scope != "all":
+                devices = [d for d in devices if d["observation"] == scope]
+            return {"devices": devices, "counts": inventory.counts(), "observed": observed,
                     "last_scan": dict(net.last_scan), "last_passive": net.last_passive}
         return work
 
@@ -1170,9 +1204,13 @@ class NetworkPage(Page):
         when = time.strftime("%d/%m %H:%M", time.localtime(scan["timestamp"])) if scan.get("timestamp") else "nenhuma nesta sessão"
         enabled = bool(getattr(self.hub.core.settings(), "network_discovery", True))
         state = "INDISPONÍVEL — " + scan["error"] if scan.get("error") else ("ativa" if enabled else "DESLIGADA nas configurações")
-        self.summary.setText(f"{counts['online']} presente(s) · {counts['unknown']} desconhecido(s) · {counts['absent']} "
-                             f"ausente(s) · {counts['trusted']} conhecido(s) · última varredura: {when} · descoberta: {state}"
-                             + (f" · rede {scan.get('network')}" if scan.get("network") else ""))
+        observed = data.get("observed") or {}
+        self.summary.setText(f"{observed.get('recent', 0)} responderam recentemente · {observed.get('inferred', 0)} "
+                             f"inferido(s) · {observed.get('known', 0)} conhecido(s) antes · "
+                             f"{observed.get('no_response', 0)} sem resposta · {counts['trusted']} marcado(s) como "
+                             f"conhecido(s) · última varredura: {when} · descoberta: {state}"
+                             + (f" · rede {scan.get('network')}" if scan.get("network") else "")
+                             + (f" · interface {scan.get('interface')}" if scan.get("interface") else ""))
         limits = scan.get("limitations") or []
         self.status.setText(("Limitações: " + "; ".join(limits) + ".") if limits else
                             "Fontes: tabela de vizinhos, ping de um pacote e DNS reverso — apenas na sub-rede autorizada.")
@@ -1191,16 +1229,25 @@ class NetworkPage(Page):
         if not d:
             return
         check = d.get("last_check") or {}
+        when = DeviceModel._when
         lines = [f"{d['name']} — {d['ip']}" + (f" · {d['mac']}" if d.get("mac") else " · MAC desconhecido"),
-                 f"{d.get('kind_label', '')} · {d.get('state_label', '')} · confiança {float(d.get('confidence') or 0):.0%}",
-                 "Métodos: " + (", ".join(d.get("method_labels") or []) or "—"),
+                 f"{d.get('kind_label', '')} · {d.get('observation_label', '')}"
+                 + (" · GATEWAY desta rede" if d.get("is_gateway") else ""),
+                 f"Origem: {' + '.join(d.get('method_labels') or []) or 'desconhecida'} · confiabilidade "
+                 f"{d.get('reliability_label', '')} ({float(d.get('confidence') or 0):.0%})",
                  "Fabricante: " + (d.get("vendor") or "desconhecido") + (f" (via {d['vendor_source']})" if d.get("vendor_source") else ""),
-                 "Nome na rede: " + (d.get("hostname") or "desconhecido")]
+                 "Nome na rede: " + (d.get("hostname") or "desconhecido"),
+                 f"Interface: {d.get('interface') or 'desconhecida'}" + (f" · rede {d['segment']}" if d.get("segment") else ""),
+                 f"Primeira vez: {when(d.get('first_seen'))} · última vez: {when(d.get('last_seen'))}"]
+        if d.get("missing"):
+            lines.append("Dados ausentes (não inventados): " + ", ".join(d["missing"]))
         if d.get("ipv6"):
             lines.append("IPv6: " + ", ".join(d["ipv6"]))
         if check:
             lines.append(f"Última verificação: {check.get('verdict', '')}")
+        lines.append("Administração: " + d.get("administration", ""))
         self.detail.setText("\n".join(lines))
+        self.detail.setWordWrap(True)
         self.alias.setText(d.get("alias", ""))
         self.notes.setPlainText(d.get("notes", ""))
         self.trusted.setChecked(bool(d.get("trusted")))
