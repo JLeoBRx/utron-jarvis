@@ -70,5 +70,53 @@ class NetworkFailureTest(unittest.TestCase):
         db.close()
 
 
+class ProcessControlTest(unittest.TestCase):
+    """--stop pede a saída normal: um processo de teste que segue o protocolo encerra sozinho."""
+
+    def test_stop_request_is_honoured_and_pid_cleared(self):
+        import os
+        import subprocess
+        import sys
+        import time
+
+        from ultron.platform import control
+
+        folder = helpers.temp_dir("control-")
+        script = folder / "main.py"                       # o nome conta: só processos do JARVIS são considerados
+        script.write_text(
+            "import os, sys, time\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "os.environ['JARVIS_DATA_DIR'] = sys.argv[2]\n"
+            "from ultron.platform import control\n"
+            "control.register()\n"
+            "end = time.time() + 20\n"
+            "while time.time() < end and not control.stop_requested():\n"
+            "    time.sleep(0.05)\n"
+            "control.clear_stop_request()\n"
+            "control.unregister()\n", encoding="utf-8")
+        data = os.environ.get("JARVIS_DATA_DIR") or os.environ["ULTRON_DATA_DIR"]
+        process = subprocess.Popen([sys.executable, str(script), str(helpers.ROOT), data])
+        try:
+            deadline = time.time() + 10
+            while control.running_pid() is None and time.time() < deadline:
+                time.sleep(0.05)
+            self.assertEqual(control.running_pid(), process.pid, "a instância registrou o PID")
+            ok, message = control.stop(timeout=10)
+            self.assertTrue(ok, message)
+            self.assertEqual(process.wait(timeout=10), 0, "saiu normalmente, sem ser morto")
+            self.assertIsNone(control.running_pid())
+            self.assertFalse(control.stop_requested(), "pedido de parada consumido")
+        finally:
+            if process.poll() is None:
+                process.kill()
+
+    def test_nothing_running(self):
+        from ultron.platform import control
+        control.unregister()
+        ok, message = control.stop(timeout=1)
+        self.assertTrue(ok)
+        self.assertIn("não está em execução", message)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,16 +1,18 @@
-# ULTRON — dependências (Python 3.11 recomendado, Windows 10/11 64 bits)
-# Instale com INSTALL_ULTRON.bat ou: python -m pip install -r requirements.txt
+# JARVIS — dependências (Python 3.11 recomendado, Windows 10/11 64 bits)
+# Instale com INSTALL_JARVIS.bat ou: python -m pip install -r requirements.txt
 
 # Núcleo
 numpy>=1.24
 psutil>=5.9
+tzdata>=2024.1; sys_platform == "win32"         # fusos IANA (ex.: America/Sao_Paulo) no Windows
 
-# ULTRON NEURAL HUB (sem ela o ULTRON roda em modo console)
+# Interface (JARVIS CORE e TARDIS; sem ela o JARVIS roda em modo console)
 PySide6-Essentials>=6.6
 
 # Voz: reconhecimento offline, microfone/saída de áudio e voz neural
 vosk>=0.3.45
-PyAudio>=0.2.14
+sounddevice>=0.4.6                              # microfone e saída (PortAudio embutido) — funciona sem PyAudio
+PyAudio>=0.2.14                                 # alternativa; se não houver pacote para o seu Python, o sounddevice basta
 piper-tts>=1.2
 pyttsx3>=2.90                                   # voz alternativa (SAPI) se a voz neural faltar
 

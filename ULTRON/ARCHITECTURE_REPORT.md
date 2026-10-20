@@ -1,3 +1,6 @@
+> **Documento histórico**: auditoria da transformação anterior (JARVIS legado → ULTRON). A
+> arquitetura atual está em [`ARCHITECTURE_JARVIS.md`](ARCHITECTURE_JARVIS.md).
+
 # ULTRON — ARCHITECTURE REPORT (Fase 1: Auditoria)
 
 Este documento registra a auditoria completa do projeto legado **J.A.R.V.I.S.** (pasta `JARVIS/`,

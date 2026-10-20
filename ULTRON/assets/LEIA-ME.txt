@@ -1,0 +1,18 @@
+MODELOS LOCAIS DO JARVIS (não incluídos no pacote JARVIS_FINAL.zip)
+
+O pacote não traz modelos grandes de IA. Se você já usa o JARVIS/ULTRON, os seus modelos
+continuam nesta pasta: a atualização não apaga nada. Numa instalação nova, o
+INSTALL_JARVIS.bat oferece copiá-los da pasta da instalação anterior (só os que faltam).
+
+Reconhecimento de fala (Vosk, português) — pelo menos um:
+  assets\stt\vosk-model-small-pt-0.3\final.mdl                       (~50 MB)
+  assets\stt\vosk-model-pt-fb-v0.1.1-20220516_2113\am\final.mdl      (mais preciso; precisa de mais RAM)
+  Fonte oficial: https://alphacephei.com/vosk/models
+
+Voz neural (Piper):
+  assets\voices\pt_BR-faber-medium.onnx
+  assets\voices\pt_BR-faber-medium.onnx.json
+  Fonte oficial: https://huggingface.co/rhasspy/piper-voices  (pasta pt/pt_BR/faber/medium)
+
+Sem o modelo de fala, o JARVIS funciona por texto. Sem a voz neural, ele usa a voz do
+Windows (SAPI). Verifique com DIAGNOSTICO_JARVIS.bat.

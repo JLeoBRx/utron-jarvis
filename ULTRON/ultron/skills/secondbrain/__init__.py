@@ -22,7 +22,7 @@ CATEGORY = "second_brain"
 def _service(ctx):
     service = (ctx.extras or {}).get("second_brain")
     if service is None:
-        raise SecondBrainError("Second Brain indisponível nesta execução")
+        raise SecondBrainError("memória pessoal indisponível nesta execução")
     return service
 
 
@@ -56,7 +56,7 @@ class _SBSkill(Skill):
 
 class Capture(_SBSkill):
     name = "secondbrain.capture"
-    description = ("Registrar no Second Brain uma tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina "
+    description = ("Registrar na memória pessoal uma tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina "
                    "ou prazo, com data/hora em português e lembrete opcional.")
     inputs = schema({"text": string(600), "kind": string(20, enum=sorted(KINDS)), "title": string(200),
                      "when": string(120), "priority": {"type": "integer", "minimum": 1, "maximum": 4},
@@ -65,14 +65,14 @@ class Capture(_SBSkill):
                      "body": string(4000)}, ("text",))
 
     def describe_action(self, args):
-        return f"registrar no Second Brain: {args.get('title') or args.get('text', '')[:80]}"
+        return f"registrar na memória pessoal: {args.get('title') or args.get('text', '')[:80]}"
 
     def execute(self, ctx, text: str, kind: str | None = None, title: str | None = None, when: str | None = None,
                 priority: int | None = None, project: str | None = None, remind: bool | None = None,
                 leads: list | None = None, record: str | None = None, body: str = "") -> SkillResult:
         capture = (ctx.extras or {}).get("capture")
         if capture is None:
-            return SkillResult(False, error="Second Brain indisponível nesta execução", error_kind="UNSUPPORTED")
+            return SkillResult(False, error="memória pessoal indisponível nesta execução", error_kind="UNSUPPORTED")
         try:
             result = capture.explicit(text, kind=kind, title=title, when=when, priority=priority, project=project,
                                       origin=(ctx.extras or {}).get("origin", "user"), remind=remind,
@@ -254,7 +254,7 @@ class Delete(_Target):
 
     def describe_action(self, args):
         if args.get("permanent"):
-            return "EXCLUIR DEFINITIVAMENTE do Second Brain (sem recuperação)"
+            return "EXCLUIR DEFINITIVAMENTE da memória pessoal (sem recuperação)"
         return "mandar para a lixeira"
 
     def describe_resource(self, ctx, args):
@@ -382,7 +382,7 @@ class Dismiss(_SBSkill):
 
 class EmptyTrash(_SBSkill):
     name = "secondbrain.empty_trash"
-    description = "Esvaziar a lixeira do Second Brain (exclusão definitiva de tudo que está nela)."
+    description = "Esvaziar a lixeira da memória pessoal (exclusão definitiva de tudo que está nela)."
     inputs = schema({})
     risk = Risk.CRITICAL
     reversible = False
@@ -390,7 +390,7 @@ class EmptyTrash(_SBSkill):
     expose_to_llm = False
 
     def describe_action(self, args):
-        return "ESVAZIAR A LIXEIRA do Second Brain (exclusão definitiva, sem recuperação)"
+        return "ESVAZIAR A LIXEIRA da memória pessoal (exclusão definitiva, sem recuperação)"
 
     def describe_resource(self, ctx, args):
         return f"{len(_service(ctx).trash())} registro(s) na lixeira"
@@ -485,7 +485,7 @@ class Export(_SBSkill):
 
 class Backup(_SBSkill):
     name = "memory.backup"
-    description = ("Fazer agora um backup do banco do JARVIS (memórias, Second Brain, lembretes, grafo e "
+    description = ("Fazer agora um backup do banco do JARVIS (memórias, memória pessoal, lembretes, grafo e "
                    "inventário da rede).")
     inputs = schema({})
 

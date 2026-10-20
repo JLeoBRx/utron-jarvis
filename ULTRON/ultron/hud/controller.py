@@ -505,6 +505,12 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     app.setWindowIcon(app_icon())
     controller = HudController(core)
     controller.show(minimized=minimized)
+    from ..platform import control
+    control.clear_stop_request()
+    stop_watch = QtCore.QTimer(controller)                 # --stop pela linha de comando: saída normal
+    stop_watch.timeout.connect(lambda: (control.clear_stop_request(), controller.quit())
+                               if control.stop_requested() else None)
+    stop_watch.start(1500)
     if boot:
         threading.Thread(target=core.boot, name="ultron-boot", daemon=True).start()
     app.aboutToQuit.connect(core.shutdown)

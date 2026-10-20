@@ -12,6 +12,8 @@
     python main.py --list-backups  lista os backups
     python main.py --restore-backup ARQUIVO   restaura um backup (com o JARVIS FECHADO; guarda o atual)
     python main.py --export ARQUIVO.json|.csv exporta a memória pessoal para um arquivo novo
+    python main.py --status        diz se o JARVIS está em execução (e o processo)
+    python main.py --stop          pede à instância em execução que encerre normalmente
 
 Registra em ``<dados>/logs/ultron.log`` (também quando iniciado por ``pythonw``, sem console).
 O nome interno do pacote (``ultron``) e a pasta de dados foram mantidos para preservar os
@@ -23,6 +25,7 @@ import argparse
 import importlib.util
 import logging
 import logging.handlers
+import os
 import sys
 import threading
 import time
@@ -44,6 +47,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--list-backups", action="store_true", help="lista os backups e sai")
     parser.add_argument("--restore-backup", metavar="ARQUIVO", help="restaura um backup (JARVIS fechado) e sai")
     parser.add_argument("--export", metavar="ARQUIVO", help="exporta a memória pessoal (.json ou .csv) e sai")
+    parser.add_argument("--status", action="store_true", help="diz se o JARVIS está em execução e sai")
+    parser.add_argument("--stop", action="store_true", help="encerra a instância em execução (normalmente) e sai")
     parser.add_argument("--profile", help="perfil de configuração (default, performance, privacy, silent, developer)")
     parser.add_argument("--no-voice", action="store_true", help="sem microfone e sem fala")
     parser.add_argument("--no-perception", action="store_true", help="sem sensores de percepção")
@@ -193,6 +198,20 @@ def run_headless(args: argparse.Namespace) -> int:
                        lambda e: print(f"[autorização] {e.payload.get('description')} — responda sim/não", flush=True),
                        name="console.auth")
     core.boot()
+    if not args.say:
+        from .platform import control
+
+        def watch_stop() -> None:                   # --stop: encerra normalmente, mesmo esperando entrada
+            while core.booted:
+                if control.stop_requested():
+                    control.clear_stop_request()
+                    print("\nEncerrando a pedido (--stop)…", flush=True)
+                    core.shutdown()
+                    control.unregister()
+                    os._exit(0)
+                time.sleep(1.5)
+
+        threading.Thread(target=watch_stop, name="ultron-stop-watch", daemon=True).start()
     if args.say:
         done.clear()
         core.submit(args.say, source="text")
@@ -265,7 +284,15 @@ def main(argv: list[str] | None = None) -> int:
     log.info("JARVIS %s iniciando (%s)", __version__, " ".join(sys.argv[1:]) or "HUB")
     if args.list_mics or args.mic:
         return run_microphones(args)
-    from .platform import single_instance
+    from .platform import control, single_instance
+    if args.status:
+        pid = control.running_pid()
+        print(f"JARVIS em execução (processo {pid})." if pid else "O JARVIS não está em execução.")
+        return 0
+    if args.stop:
+        ok, message = control.stop()
+        print(message)
+        return 0 if ok else 1
     if args.backup or args.list_backups or args.restore_backup or args.export:
         if args.restore_backup and not single_instance.acquire():
             print("Feche o JARVIS antes de restaurar um backup (bandeja > Sair).")
@@ -277,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.diagnose or args.voice_test:
         if not single_instance.acquire():
             print("O JARVIS já está em execução: feche-o (bandeja > Sair) para diagnosticar sem disputar o "
-                  "microfone, ou use HUB > Voz > Diagnóstico.")
+                  "microfone (START_JARVIS.bat --stop), ou use Sistemas > VOZ > TESTAR na interface.")
             return 2
         try:
             return run_voice_test(args) if args.voice_test else run_diagnose(args)
@@ -286,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     if not single_instance.acquire():
         print("O JARVIS já está em execução.")
         return 0
+    control.register()
     try:
         if args.headless or args.say:
             return run_headless(args)
@@ -301,4 +329,5 @@ def main(argv: list[str] | None = None) -> int:
         minimized = args.boot or bool(getattr(core.settings(), "hud_start_minimized", False))
         return run_hud(core, minimized=minimized)
     finally:
+        control.unregister()
         single_instance.release()

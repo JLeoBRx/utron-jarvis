@@ -655,7 +655,7 @@ class TodayPage(Page):
         self._fill("activity", [(f"{time.strftime('%d/%m %H:%M', time.localtime(a['at']))}  "
                                  f"{names.get(a['action'], a['action'])} · {a.get('title') or '(excluído)'}", None, False)
                                 for a in data["activity"]], "Sem atividade ainda.")
-        self.status.setText("Dados do Second Brain local. Dê dois cliques num item para abrir em Tarefas.")
+        self.status.setText("Dados da sua memória pessoal (banco local). Dê dois cliques num item para abrir em Tarefas.")
 
     def _open(self, item) -> None:
         record = item.data(QtCore.Qt.UserRole)
@@ -1488,7 +1488,7 @@ class SystemPage(Page):
                 ("Exceções registradas", str(m.get("exceptions", "—"))),
                 ("Eventos visuais descartados", str(gauges.get("ui.events_dropped", 0))),
                 ("Fila do barramento", str((m.get("bus") or {}).get("queued", "—"))),
-                ("Leituras do HUB 2", str(data["hub_loads"]))]
+                ("Leituras dos painéis (TARDIS/Sistemas)", str(data["hub_loads"]))]
         for name in sorted(k for k in series if k.startswith("perception.")):
             rows.append((f"Percepção {name.split('.', 1)[1]} p95", ms(name)))
         self.metrics.clear()

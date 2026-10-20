@@ -1,8 +1,11 @@
-"""ULTRON — ponto de entrada.
+"""JARVIS — ponto de entrada.
 
-    python main.py              HUB neural
+    python main.py              HUB principal (JARVIS CORE; TARDIS sob demanda)
     python main.py --headless   console de texto
-    python main.py --diagnose   relatório de saúde
+    python main.py --diagnose   saúde completa + voz (8 etapas)
+    python main.py --help       todos os comandos (voz, backup, exportação, --status/--stop)
+
+O pacote interno continua se chamando ``ultron`` para preservar dados e configurações.
 """
 import os
 import sys

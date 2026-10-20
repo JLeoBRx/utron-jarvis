@@ -647,7 +647,7 @@ class NeuralScene:
                      "deadline": "Prazo"}.get(str(record.get("kind") or p.get("kind") or ""), "Registro")
             if p.get("change") == "completed":
                 verb = "concluída" if label in ("Tarefa", "Ideia", "Nota", "Rotina") else "concluído"
-            self._module("secondbrain", "SECOND BRAIN", "hippocampus", [f"{label} {verb}", title],
+            self._module("secondbrain", "MEMÓRIA PESSOAL", "hippocampus", [f"{label} {verb}", title],
                          ttl=6.0, priority=45)
         elif kind == "HEALTH_UPDATED":
             problems = p.get("problems") or {}

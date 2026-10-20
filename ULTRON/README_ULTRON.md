@@ -1,3 +1,6 @@
+> **Documento histórico** da identidade ULTRON (anterior ao JARVIS). A documentação atual é
+> [`README_JARVIS.md`](README_JARVIS.md); comandos, voz ("Jarvis"), tema e hubs mudaram.
+
 # ULTRON — Neural Core
 
 ULTRON é uma inteligência computacional que vive no seu computador: percebe a tela, as

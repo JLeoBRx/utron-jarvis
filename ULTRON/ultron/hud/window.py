@@ -85,7 +85,8 @@ class InputBar(QtWidgets.QWidget):
         self.voice.toggled.connect(self.voice_toggled)
         self.orb = self._button("ORBE", "Recolher para o orbe compacto (Esc)")
         self.orb.clicked.connect(self.collapse)
-        self.sys = self._button("SISTEMAS", "Voz (diagnóstico e microfone), rede local, desempenho e saúde (F3)")
+        self.sys = self._button("SISTEMAS", "Voz (diagnóstico e microfone), rede local, autonomia, desempenho e "
+                                            "saúde (F3)")
         self.sys.clicked.connect(self.systems)
         self.brain = self._button("TARDIS", "Memória pessoal: compromissos, tarefas, projetos, ideias, lembretes (F2)")
         self.brain.clicked.connect(self.second_brain)

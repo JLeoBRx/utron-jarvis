@@ -3,9 +3,6 @@
 # OCR da tela (requer também o Tesseract OCR: https://github.com/UB-Mannheim/tesseract/wiki)
 pytesseract>=0.3.10
 
-# Saída de áudio alternativa ao PyAudio
-sounddevice>=0.4.6
-
 # Geração de imagens LOCAL (pesado: vários GB; GPU NVIDIA recomendada).
 # Alternativa leve: rodar o Stable Diffusion WebUI local em http://127.0.0.1:7860 com --api.
 # diffusers>=0.27
