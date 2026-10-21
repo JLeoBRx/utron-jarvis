@@ -91,7 +91,7 @@ class Power(_WindowsOnly):
     inputs = schema({"action": string(20, enum=["shutdown", "restart", "sleep", "logoff", "cancel"])}, ("action",))
     risk = Risk.CRITICAL
     reversible = False
-    expose_to_llm = False
+    expose_to_llm = True       # JARVIS original: power_control era ferramenta do agente; risco crítico = sempre pede
 
     def risk_for(self, args):
         return Risk.LOW if args.get("action") == "cancel" else Risk.CRITICAL

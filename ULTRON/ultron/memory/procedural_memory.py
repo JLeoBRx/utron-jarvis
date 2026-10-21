@@ -138,8 +138,10 @@ class ProceduralMemory:
         row = self.db.one("SELECT * FROM automations WHERE enabled=1 AND trigger_text=?", (normalized,))
         if not row:
             return None
+        from .legacy_import import legacy_automation_names
         return {"name": row["name"], "trigger": row["trigger_text"], "skill": row["tool_name"],
-                "arguments": loads(row["arguments"], {})}
+                "arguments": loads(row["arguments"], {}),
+                "legacy": row["name"].lower() in legacy_automation_names(self.db)}
 
     def automations(self) -> list[dict]:
         return [{"name": r["name"], "trigger": r["trigger_text"], "skill": r["tool_name"],

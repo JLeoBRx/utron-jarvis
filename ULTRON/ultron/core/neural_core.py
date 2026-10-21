@@ -116,6 +116,10 @@ class NeuralCore:
         self._suggestion: dict | None = None
         self._last_interaction = time.time()
         self._memory_check = (0.0, {"status": "UNKNOWN", "detail": ""})
+        self.observer_paused = False        # Observador pausado (capturas suspensas; análises em voo descartadas)
+        self.privacy_shield = False         # modo privacidade: microfone fechado e observação suspensa
+        self._shield_since = 0.0
+        self._shield_restore_mic = True
         self._build(audio_output, ollama_client, memory_db)
 
     # ================================================================ montagem
@@ -135,6 +139,9 @@ class NeuralCore:
                                                     local_only=lambda: self.privacy.local_mode)
         self.client.metrics = self.metrics
         self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy)
+        from ..models.openai_provider import OpenAIProvider
+        self.openai = OpenAIProvider(s, privacy=self.privacy)
+        self.router.register_provider("openai", self.openai)
         self.network = NetworkIntelligence(db=self.memory.db, settings_getter=s, bus=self.bus, state=self.state,
                                            world=self.world, graph=self.memory.graph, privacy=self.privacy)
         # SECOND BRAIN — memória pessoal, lembretes e captura (HUB 2, voz e texto usam esta mesma camada)
@@ -157,12 +164,13 @@ class NeuralCore:
                                     wake_words=lambda: tuple(s().wake_words), recent_topic=self._recent_topic)
         self.voice = VoicePipeline(bus=self.bus, state=self.state, settings_getter=s, speaker=self.speaker,
                                    on_command=self._on_voice_command, command_check=self._looks_like_command)
+        self.voice.privacy_guard = lambda: self.privacy_shield
         self.neural_audio = NeuralAudio(self.audio_out, bus=self.bus, state=self.state, settings_getter=s)
         # percepção
         self.perception = PerceptionEngine(settings_getter=s, runtime=self.runtime, bus=self.bus, state=self.state,
                                            world=self.world, memory=self.memory, router=self.router,
-                                           network=self.network, hud_probe=self.hud_probe,
-                                           mic_probe=self.voice.mic_probe)
+                                           network=self.network, hud_probe=lambda: self.hud_probe(),
+                                           mic_probe=self.voice.mic_probe, observation_block=self.observation_block)
         self.perception.metrics = self.metrics
         # agente e cognição
         self.executor = ExecutionEngine(self.registry, autonomy=self.autonomy, authorizations=self.authorizations,
@@ -237,8 +245,11 @@ class NeuralCore:
             if on_progress:
                 on_progress(name, status)
 
+        self._apply_start_policy()
         statuses = self.lifecycle.start_all(on_progress=progress)
         self._schedule()
+        if getattr(self.settings(), "privacy_shield_on_start", False):
+            self.set_privacy_shield(True, by="inicialização")
         seconds = round(time.perf_counter() - started, 2)
         failed = [n for n, st in statuses.items() if st == "FAILED"]
         self.booted = True
@@ -499,10 +510,12 @@ class NeuralCore:
             value = round(max(0.1, min(1.0, s.volume + float(args["voice_volume_delta"]))), 2)
             self.settings_manager.update(volume=value)
             return Response(f"Volume da voz: {value:.0%}.", "info")
+        if "observer" in args:
+            return self.set_observer(str(args["observer"]))
         if "screen_observation" in args:
-            self.settings_manager.update(screen_observation=bool(args["screen_observation"]))
-            return Response("Observação da tela " + ("ativada." if args["screen_observation"] else "desativada."),
-                            "info")
+            return self.set_observer("on" if args["screen_observation"] else "off")
+        if "privacy_shield" in args:
+            return self.set_privacy_shield(bool(args["privacy_shield"]), by="pedido")
         if "privacy_mode" in args:
             self.settings_manager.update(privacy_mode=str(args["privacy_mode"]))
             self.privacy.refresh()
@@ -516,6 +529,95 @@ class NeuralCore:
                      "autonomy": "o painel de autonomia"}.get(args["open_view"], "o TARDIS")
             return Response(f"Abrindo {label}.", "info")
         return Response("Ajuste não reconhecido.", "error")
+
+    # ================================================================ Observador e modo privacidade
+    def _apply_start_policy(self) -> None:
+        """Como no JARVIS original, o Observador sempre começa DESLIGADO (a não ser que o usuário peça
+        para restaurar o último modo). ``screen_observation`` acompanha o modo (compatibilidade)."""
+        try:
+            from ..memory.legacy_import import import_copilot_settings
+            legacy = paths.legacy_jarvis_database()
+            found = import_copilot_settings(self.memory.db, legacy.with_name("copilot.json") if legacy else None)
+            if found.get("excluded"):
+                merged = tuple(dict.fromkeys(tuple(self.settings().excluded_apps) + tuple(found["excluded"])))
+                self.settings_manager.update(excluded_apps=merged)
+                log.info("exclusões do Observador original importadas: %d", len(found["excluded"]))
+        except Exception as exc:                      # dados legados nunca impedem o boot
+            log.warning("exclusões do Observador original não importadas: %s", exc)
+        s = self.settings()
+        if not getattr(s, "observer_restore_on_start", False):
+            self.settings_manager.update(observer_mode="off", screen_observation=False)
+        else:
+            self.settings_manager.update(screen_observation=s.observer_mode != "off")
+        self._publish_observer()
+
+    def observation_block(self) -> str:
+        """Motivo pelo qual a tela NÃO deve ser observada agora ("" = pode observar)."""
+        if self.privacy_shield:
+            return "modo privacidade ativo"
+        if getattr(self.settings(), "observer_mode", "off") == "off":
+            return "Observador desligado"
+        if self.observer_paused:
+            return "Observador pausado"
+        return ""
+
+    def _publish_observer(self) -> None:
+        s = self.settings()
+        self.state.update(_source="core",
+                          observer={"mode": getattr(s, "observer_mode", "off"), "paused": self.observer_paused,
+                                    "block": self.observation_block()},
+                          privacy_shield={"active": self.privacy_shield,
+                                          "microphone": "fechado" if self.privacy_shield else "livre",
+                                          "since": self._shield_since if self.privacy_shield else 0.0})
+
+    def set_observer(self, action: str) -> Response:
+        """Observador: on/observer (observa e fala quando útil), assistant (só sugere), off, pause, resume."""
+        s = self.settings()
+        mode = getattr(s, "observer_mode", "off")
+        if action in ("pause", "resume"):
+            if mode == "off":
+                return Response("O Observador está desligado, senhor.", "info")
+            self.observer_paused = action == "pause"
+            self._publish_observer()
+            return Response("Observador pausado, senhor." if self.observer_paused else "Observador retomado, senhor.",
+                            "info")
+        new_mode = {"on": "observer", "observer": "observer", "assistant": "assistant", "off": "off"}.get(action)
+        if new_mode is None:
+            return Response("Modo do Observador não reconhecido.", "error", success=False)
+        self.observer_paused = False
+        self.settings_manager.update(observer_mode=new_mode, screen_observation=new_mode != "off")
+        self._publish_observer()
+        if new_mode == "off":
+            return Response("Observador desativado, senhor.", "info")
+        note = " O modo privacidade está ativo: a observação começa quando ele for desligado." \
+            if self.privacy_shield else ""
+        if new_mode == "assistant":
+            return Response("Observador em modo assistente: sugestões na tela, sem falar." + note, "info")
+        return Response("Observador ativado, senhor. Vou acompanhar o contexto e só intervir quando houver algo "
+                        "realmente útil." + note, "info")
+
+    def set_privacy_shield(self, active: bool, *, by: str = "") -> Response:
+        """Modo privacidade: FECHA o microfone (o dispositivo é liberado), suspende a observação da tela e
+        mostra o estado. Por voz só é possível entrar; sair exige teclado/mouse (o microfone está fechado)."""
+        if active == self.privacy_shield:
+            return Response("O modo privacidade já está " + ("ativo." if active else "desligado."), "info")
+        if self.enable_voice and active:
+            self._shield_restore_mic = self.voice.mic_enabled
+        self.privacy_shield = active
+        self._shield_since = time.time() if active else 0.0
+        if self.enable_voice:
+            if active:
+                self.voice.toggle_mic(False)
+            elif self._shield_restore_mic and getattr(self.settings(), "voice_enabled", True):
+                self.voice.toggle_mic(True)
+        self._publish_observer()
+        self.bus.publish(EventType.PRIVACY_UPDATED, {"shield": active, "by": by,
+                                                     "microphone": "fechado" if active else "liberado"},
+                         source="core")
+        if active:
+            return Response("Modo privacidade ativo. Microfone fechado e observação da tela suspensa. Para sair, "
+                            "use o botão PRIVACIDADE ou digite: sair do modo privacidade.", "info")
+        return Response("Modo privacidade desligado. Microfone liberado.", "info")
 
     def _imagine(self, intent: Intent, cancel) -> Response:
         result = self.imagination.handle(intent, cancel)
@@ -773,8 +875,9 @@ class NeuralCore:
 
     def _vision_health(self) -> dict:
         selection = self.router.status().selections.get("vision")
-        if not getattr(self.settings(), "screen_observation", True):
-            return {"status": "WARN", "detail": "observação da tela desativada"}
+        blocked = self.observation_block()
+        if blocked:
+            return {"status": "OK", "detail": f"observação da tela inativa: {blocked}"}
         if selection is None or not selection.available:
             return {"status": "UNAVAILABLE", "detail": getattr(selection, "reason", "modelo de visão não verificado")}
         sensor = getattr(self.perception, "vision_sensor", None)

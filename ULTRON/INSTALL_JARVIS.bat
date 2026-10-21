@@ -62,12 +62,9 @@ echo         para COPIAR os modelos (apenas arquivos que faltam; nada e sobrescr
 set "OLD="
 set /p OLD="Pasta da instalacao anterior (Enter para pular): "
 if defined OLD (
-    if exist "!OLD!\assets" (
-        robocopy "!OLD!\assets" "assets" /E /XC /XN /XO /NFL /NDL /NJH /NJS >nul
-        echo Modelos copiados de "!OLD!\assets"
-    ) else (
-        echo [AVISO] "!OLD!\assets" nao existe.
-    )
+    rem procura em assets\ (ULTRON/JARVIS atual) e em voices\ e vosk-model-* (JARVIS original);
+    rem copia so o que falta, confere cada arquivo e informa o que ainda falta
+    "%VPY%" main.py --import-models "!OLD!"
 )
 if not exist "assets\stt\vosk-model-small-pt-0.3\final.mdl" if not exist "assets\stt\vosk-model-pt-fb-v0.1.1-20220516_2113\am\final.mdl" (
     echo.

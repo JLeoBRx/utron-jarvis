@@ -196,11 +196,13 @@ class Screenshot(Skill):
     category = "vision"
     inputs = schema({})
     risk = Risk.LOW
-    expose_to_llm = False
+    expose_to_llm = True               # JARVIS original: take_screenshot estava entre as ferramentas do agente
 
     def execute(self, ctx, **_) -> SkillResult:
         try:
-            image, _meta = ctx.perception.screen_sensor.capture_now()
+            # pedido explícito: a interface do JARVIS na frente não impede (como no original);
+            # aplicativos excluídos e janelas sensíveis continuam impedindo
+            image, _meta = ctx.perception.screen_sensor.capture_now(explicit=True)
         except PermissionError as exc:
             return SkillResult(False, error=str(exc), error_kind="PERMISSION_ERROR")
         except Exception as exc:

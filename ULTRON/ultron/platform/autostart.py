@@ -1,6 +1,6 @@
 """Inicialização automática opcional com o Windows (HKCU\\...\\Run, sem administrador).
 
-Uso:  python -m ultron.platform.autostart on | off | status
+Uso:  python -m ultron.platform.autostart on | off | status | check
 """
 from __future__ import annotations
 
@@ -44,10 +44,38 @@ def legacy_entries() -> list[str]:
     return [name for name in LEGACY_NAMES if main in _value(name).lower()]
 
 
+def points_here(value: str) -> bool:
+    return str(paths.project_root() / "main.py").lower() in str(value or "").lower()
+
+
 def is_enabled() -> bool:
+    """Ativado = a entrada "JARVIS" (ou a antiga "ULTRON") aponta para ESTA instalação. Uma entrada "JARVIS"
+    do JARVIS original (jarvis_hud.py) não conta."""
     if not supported():
         return False
-    return bool(_value(NAME)) or bool(legacy_entries())
+    return points_here(_value(NAME)) or bool(legacy_entries())
+
+
+def check() -> dict:
+    """Diagnóstico da entrada de início automático (o original tinha `autostart.py check`). Só leitura."""
+    if not supported():
+        return {"status": "UNAVAILABLE", "text": "Início automático: disponível apenas no Windows."}
+    value = _value(NAME)
+    if not value and not legacy_entries():
+        return {"status": "OFF", "text": "Início automático: DESATIVADO."}
+    if points_here(value):
+        if value.strip().lower() == command().lower():
+            return {"status": "OK", "text": f"Início automático: ATIVADO para esta instalação ({value})."}
+        return {"status": "STALE", "text": "Início automático: ATIVADO, mas com outro Python ou opções antigas. "
+                                           f"Registrado: {value} | esperado: {command()}. Desative e ative de novo."}
+    if legacy_entries():
+        return {"status": "LEGACY", "text": "Início automático: entrada antiga 'ULTRON' desta instalação; ao ativar "
+                                            "de novo ela vira 'JARVIS'."}
+    if "jarvis_hud.py" in value.lower():
+        return {"status": "ORIGINAL", "text": "A entrada 'JARVIS' aponta para o JARVIS original (jarvis_hud.py): "
+                                              "esta instalação NÃO inicia com o Windows. Ao ativar aqui, a entrada "
+                                              f"é substituída. Registrado: {value}"}
+    return {"status": "OTHER", "text": f"A entrada 'JARVIS' aponta para outro programa: {value}"}
 
 
 def enable() -> str:
@@ -87,6 +115,8 @@ def main(argv: list[str]) -> int:
         print("Inicialização automática ATIVADA:", enable())
     elif action == "off":
         print("Inicialização automática DESATIVADA." if disable() else "Já estava desativada.")
+    elif action == "check":
+        print(check()["text"])
     else:
         print("ATIVADA" if is_enabled() else "DESATIVADA", "|", command())
     return 0

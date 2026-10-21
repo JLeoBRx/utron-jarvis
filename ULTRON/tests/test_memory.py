@@ -95,7 +95,7 @@ class LegacyImportTest(unittest.TestCase):
             CREATE TABLE automations(name TEXT, trigger_text TEXT, tool_name TEXT, arguments TEXT, enabled INTEGER);
             INSERT INTO memories VALUES ('servidor', 'IP 192.168.0.10'), ('banco', 'senha: 1234');
             INSERT INTO preferences VALUES ('city', 'Recife');
-            INSERT INTO automations VALUES ('foco', 'modo foco', 'app.open', '{"name": "spotify"}', 1);
+            INSERT INTO automations VALUES ('foco', 'modo foco', 'open_app', '{"name": "spotify"}', 1);
         """)
         con.commit()
         con.close()
@@ -104,6 +104,8 @@ class LegacyImportTest(unittest.TestCase):
         self.assertEqual(report["facts"], 1)
         self.assertEqual(report["skipped"], 1)
         self.assertEqual(report["automations"], 1)
+        self.assertEqual(db.one("SELECT tool_name FROM automations")[0], "app.open",
+                         "nome da ferramenta do original convertido para a skill atual")
         again = import_jarvis(db, legacy)
         self.assertEqual(again["facts"], 0, "importação acontece uma única vez")
         db.close()

@@ -103,11 +103,13 @@ class VisionSensor(Sensor):
     worker = "vision"
 
     def __init__(self, screen: ScreenSensor, router, *, interval: float = 20.0,
-                 enabled: Callable[[], bool] | None = None, timeout: float = 90.0):
+                 enabled: Callable[[], bool] | None = None, timeout: float = 90.0,
+                 blocked: Callable[[], str] | None = None):
         super().__init__(interval)
         self.screen = screen
         self.router = router
         self._enabled = enabled or (lambda: True)
+        self._blocked = blocked or (lambda: "")
         self.timeout = timeout
         self._times: deque[float] = deque()
         self._last = 0.0
@@ -116,6 +118,9 @@ class VisionSensor(Sensor):
         self.model = ""
 
     def available(self) -> tuple[bool, str]:
+        reason = self._blocked()
+        if reason:
+            return False, reason
         if not self._enabled():
             return False, "observação de tela desativada"
         if time.time() < self._block_until:
@@ -155,6 +160,10 @@ class VisionSensor(Sensor):
             raise RuntimeError(f"análise visual falhou ({exc.kind}): {exc}") from exc
         finally:
             del b64
+        reason = self._blocked()
+        if reason:                       # pausado/desligado durante a análise: o resultado em voo é descartado
+            return Percept("vision", "visual", {"discarded": True, "reason": reason,
+                                                "context": meta.get("context", "")}, 1.0)
         raw = parse_json(result.content)
         if raw is None:
             self._fail()

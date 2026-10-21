@@ -15,6 +15,8 @@ sounddevice>=0.4.6                              # microfone e saída (PortAudio 
 PyAudio>=0.2.14                                 # alternativa; se não houver pacote para o seu Python, o sounddevice basta
 piper-tts>=1.2
 pyttsx3>=2.90                                   # voz alternativa (SAPI) se a voz neural faltar
+pywin32>=306; sys_platform == "win32"           # COM na thread da voz SAPI (como no JARVIS original)
+keyring>=24; sys_platform == "win32"            # chave da OpenAI no Gerenciador de Credenciais (nunca em arquivo)
 
 # Percepção e controle do Windows (cada skill informa quando a sua dependência falta)
 mss>=9.0                                        # captura de tela

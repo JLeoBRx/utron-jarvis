@@ -73,6 +73,8 @@ class JarvisState:
     health: dict = field(default_factory=dict)
     telemetry: dict = field(default_factory=dict)
     privacy: dict = field(default_factory=dict)
+    observer: dict = field(default_factory=dict)          # Observador: modo, pausa, motivo de não observar
+    privacy_shield: dict = field(default_factory=dict)    # modo privacidade: ativo, microfone fechado, desde quando
     models: dict = field(default_factory=dict)
     pending_authorization: dict | None = None
     second_brain: dict = field(default_factory=dict)      # resumo: abertos, atrasados, próximos lembretes

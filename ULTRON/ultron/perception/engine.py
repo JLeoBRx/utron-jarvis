@@ -39,7 +39,7 @@ class PerceptionEngine:
 
     def __init__(self, *, settings_getter: Callable[[], Any], runtime, bus, state, world, memory=None,
                  router=None, network=None, hud_probe: Callable[[], bool] | None = None,
-                 mic_probe: Callable[[], dict] | None = None):
+                 mic_probe: Callable[[], dict] | None = None, observation_block: Callable[[], str] | None = None):
         s = settings_getter()
         self._settings = settings_getter
         self.runtime = runtime
@@ -58,12 +58,14 @@ class PerceptionEngine:
         self.process_sensor = ProcessSensor(s.process_interval, on_ended=self._on_process_ended,
                                             extra_important=self._known_processes)
         self.system_sensor = SystemSensor(s.system_interval, world=world)
+        blocked = observation_block or (lambda: "" if self._settings().screen_observation
+                                         else "observação de tela desativada nas configurações")
         self.screen_sensor = ScreenSensor(3.0, foreground=lambda: dict(self.foreground),
                                           hud_covering=hud_probe or (lambda: False),
                                           excluded=lambda: tuple(self._settings().excluded_apps),
-                                          enabled=lambda: bool(self._settings().screen_observation))
+                                          blocked=blocked)
         self.vision_sensor = VisionSensor(self.screen_sensor, router, interval=s.vision_interval,
-                                          enabled=lambda: bool(self._settings().screen_observation)) if router else None
+                                          blocked=blocked) if router else None
         self.ocr_sensor = OCRSensor(self.screen_sensor.capture_now)
         self.audio_sensor = AudioSensor(s.device_interval)
         self.microphone_sensor = MicrophoneSensor(mic_probe or (lambda: {}), 1.0)
@@ -174,7 +176,8 @@ class PerceptionEngine:
         elif source == "system":
             self.state.update(_source="perception", telemetry={k: data.get(k) for k in
                                                                ("cpu", "ram", "ram_used_gb", "ram_total_gb", "gpu",
-                                                                "battery", "uptime_s", "disks")})
+                                                                "battery", "uptime_s", "disks", "net_rx_bps",
+                                                                "net_tx_bps")})
         elif source == "screen":
             if data.get("captured") and data.get("changed") and time.time() - self._last_screen_event > 2.0:
                 self._last_screen_event = time.time()

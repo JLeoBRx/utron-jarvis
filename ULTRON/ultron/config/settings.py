@@ -41,6 +41,12 @@ PRIVACY_MODES = ("local", "standard")
 THEMES = ("jarvis-blue",)
 STT_ENGINES = ("auto", "vosk-large", "vosk-small")
 MIC_BACKENDS = ("auto", "pyaudio", "sounddevice")
+OBSERVER_MODES = ("off", "assistant", "observer")
+AI_PROVIDERS = ("ollama", "openai")
+START_PAGES = ("jarvis", "tardis", "noctario", "atividades", "configuracoes", "diagnosticos")
+NOCTARIO_TRANSPORTS = ("rfcomm", "serial", "simulator")
+PERMISSION_CATEGORIES = ("consultar", "configurar", "executar_programas", "robo", "arquivos", "apagar_dados")
+PERMISSION_MODES = ("permitir", "confirmar", "bloquear")
 SETTINGS_VERSION = 2                                   # 2 = identidade JARVIS
 
 DEFAULT_WAKE_VARIANTS = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
@@ -98,12 +104,24 @@ class Settings:
     network_ssdp: bool = False             # anúncios SSDP/UPnP (opcional): nomes de TVs, impressoras, roteadores
     discovery_interval: float = 600.0
     discovery_max_hosts: int = 256
+    # ------------------------------------------------------------ Observador (como no JARVIS original:
+    # sempre começa DESLIGADO; a observação da tela só roda com o Observador ligado)
+    observer_mode: str = "off"                # off | assistant (sugere na tela) | observer (sugere e fala)
+    observer_restore_on_start: bool = False   # True = volta ao último modo ao iniciar
     # ------------------------------------------------------------ privacidade e autonomia
     privacy_mode: str = "local"
+    privacy_shield_on_start: bool = False     # modo privacidade (microfone fechado) já ao iniciar
     allow_external_models: bool = False
     autonomy_level: str = "balanced"
     proactive: bool = True
     authorization_timeout: float = 30.0
+    permission_policy: tuple = ()             # "categoria=permitir|confirmar|bloquear"; vazio = padrões
+    # ------------------------------------------------------------ inteligência externa opcional (JARVIS original:
+    # JARVIS_AI_PROVIDER, JARVIS_OPENAI_MODEL, JARVIS_OPENAI_WEB_SEARCH; a chave OPENAI_API_KEY nunca fica aqui)
+    ai_provider: str = "ollama"               # ollama | openai
+    openai_model: str = "gpt-5.6-sol"
+    openai_web_search: bool = True
+    openai_base_url: str = "https://api.openai.com/v1"
     # ------------------------------------------------------------ imaginação
     image_provider: str = "auto"
     dream_mode: bool = True
@@ -131,6 +149,22 @@ class Settings:
     hud_auto_expand: bool = True
     sound_effects: bool = True
     sfx_volume: float = 0.35
+    start_page: str = "jarvis"                # página aberta ao iniciar
+    avatar_mode: str = "face"                 # face (rosto holográfico) | neural (núcleo neural)
+    captions: bool = True                     # legendas sincronizadas com a fala
+    heavy_effects: bool = True                # brilho, partículas e varredura (desligue em máquinas modestas)
+    render_backend: str = "cpu"               # cpu (padrão, roda em qualquer máquina) | gpu (OpenGL, opcional)
+    orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
+    audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)
+    audio_output_index: int = -1
+    # ------------------------------------------------------------ Noctário (robô seguidor de linha, ESP32)
+    noctario_transport: str = "rfcomm"        # rfcomm (Bluetooth direto) | serial (porta COM) | simulator
+    noctario_address: str = ""                # endereço Bluetooth do ESP32 (RFCOMM)
+    noctario_channel: int = 1
+    noctario_port: str = ""                   # porta COM do Bluetooth (serial), ex.: COM5
+    noctario_autoconnect: bool = False        # conectar ao iniciar (nunca dá partida sozinho)
+    noctario_heartbeat_ms: int = 500          # batimento do PC → robô enquanto conectado
+    noctario_telemetry_hz: int = 20
     # ------------------------------------------------------------ plugins
     plugins: bool = True
     plugins_enabled: tuple = ()          # plugins desativados por padrão que o usuário ativou
@@ -155,11 +189,16 @@ class Settings:
         "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
         "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
         "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
+        "audio_output_index": (-1, 64), "noctario_channel": (1, 30), "noctario_heartbeat_ms": (0, 5000),
+        "noctario_telemetry_hz": (1, 50),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,
         "theme": THEMES, "stt_engine": STT_ENGINES, "performance_profile": PERFORMANCE_PROFILES,
         "mic_backend": MIC_BACKENDS, "voice_profile": ("jarvis", "neutral"),
+        "observer_mode": OBSERVER_MODES, "ai_provider": AI_PROVIDERS, "start_page": START_PAGES,
+        "avatar_mode": ("face", "neural"), "render_backend": ("cpu", "gpu"),
+        "noctario_transport": NOCTARIO_TRANSPORTS,
     }
 
     # ------------------------------------------------------------ utilidades
@@ -228,6 +267,19 @@ class Settings:
             from ..secondbrain import timeutil
             if timeutil.zone(str(value)) is None:
                 raise ValueError(f"fuso horário desconhecido: {value}")
+        if key == "permission_policy":
+            clean = []
+            for item in value:
+                category, _, mode = str(item).partition("=")
+                if category.strip() in PERMISSION_CATEGORIES and mode.strip() in PERMISSION_MODES:
+                    clean.append(f"{category.strip()}={mode.strip()}")
+            value = tuple(dict.fromkeys(clean))
+        if key == "openai_base_url" and not str(value).startswith(("https://", "http://127.0.0.1", "http://localhost")):
+            raise ValueError("a API externa só é aceita por https:// (ou servidor local de teste)")
+        if key == "noctario_address" and value and not re.fullmatch(r"(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}", value):
+            raise ValueError("endereço Bluetooth no formato AA:BB:CC:DD:EE:FF")
+        if key == "orb_position":
+            value = tuple(str(int(float(x))) for x in value[:2]) if len(value) >= 2 else ()
         return value
 
 
@@ -357,6 +409,35 @@ class SettingsManager:
     def on_change(self, callback) -> None:
         with self._lock:
             self._listeners.append(callback)
+
+    # Preferências de hardware e a calibração da voz: "restaurar padrões" não as apaga.
+    KEEP_ON_RESET = ("mic_name", "mic_index", "mic_backend", "wake_variants", "wake_weak_variants", "wake_names",
+                     "audio_output_name", "audio_output_index", "noctario_address", "noctario_port",
+                     "noctario_channel", "noctario_transport", "timezone")
+
+    def reset_to_defaults(self, *, keep: tuple = KEEP_ON_RESET) -> Path | None:
+        """Restaura os padrões. Antes, o arquivo atual é copiado para ``settings.backup-AAAAMMDD-HHMMSS.json``
+        (devolvido). Microfone, saída de áudio, calibração da voz e endereço do robô são mantidos."""
+        import time as _time
+        backup = None
+        with self._lock:
+            if self.path.is_file():
+                backup = self.path.with_name(f"settings.backup-{_time.strftime('%Y%m%d-%H%M%S')}.json")
+                backup.write_text(self.path.read_text(encoding="utf-8"), encoding="utf-8")
+            kept = {name: getattr(self.settings, name) for name in keep if hasattr(self.settings, name)}
+            old = self.settings.to_dict()
+            fresh = Settings()
+            fresh.apply(kept, source="mantido")
+            self.settings = fresh
+            self.save()
+            changed = [k for k, v in fresh.to_dict().items() if old.get(k) != v]
+            listeners = list(self._listeners)
+        for listener in listeners:
+            try:
+                listener(changed, self.settings)
+            except Exception:
+                log.exception("ouvinte de configuração falhou")
+        return backup
 
 
 _manager: SettingsManager | None = None

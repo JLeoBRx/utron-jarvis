@@ -47,6 +47,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--list-backups", action="store_true", help="lista os backups e sai")
     parser.add_argument("--restore-backup", metavar="ARQUIVO", help="restaura um backup (JARVIS fechado) e sai")
     parser.add_argument("--export", metavar="ARQUIVO", help="exporta a memória pessoal (.json ou .csv) e sai")
+    parser.add_argument("--import-models", metavar="PASTA",
+                        help="copia modelos de fala/voz de uma instalação anterior (só o que falta) e sai")
+    parser.add_argument("--set-openai-key", action="store_true",
+                        help="guarda a chave da OpenAI no cofre do sistema (Gerenciador de Credenciais) e sai")
+    parser.add_argument("--use-openai", action="store_true",
+                        help="usa a OpenAI como cérebro (pede confirmação: os dados saem do computador) e sai")
+    parser.add_argument("--use-ollama", action="store_true", help="volta ao cérebro local (Ollama) e sai")
+    parser.add_argument("--test-openai", action="store_true", help="testa a conexão com a OpenAI e sai")
+    parser.add_argument("--autostart-check", action="store_true",
+                        help="confere a entrada de início automático com o Windows e sai")
     parser.add_argument("--status", action="store_true", help="diz se o JARVIS está em execução e sai")
     parser.add_argument("--stop", action="store_true", help="encerra a instância em execução (normalmente) e sai")
     parser.add_argument("--profile", help="perfil de configuração (default, performance, privacy, silent, developer)")
@@ -234,6 +244,52 @@ def run_headless(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_openai_command(args: argparse.Namespace, *, ask=input, secret_prompt=None) -> int:
+    """Configuração da OpenAI pela linha de comando (o JARVIS original tinha configurar_openai.bat)."""
+    from .config import settings as settings_module
+    from .platform import credentials
+    manager = settings_module.manager()
+    manager.load()
+    if args.set_openai_key:
+        import getpass
+        key = (secret_prompt or getpass.getpass)("Chave da OpenAI (não aparece na tela): ").strip()
+        if not key:
+            print("Nenhuma chave informada.")
+            return 1
+        try:
+            where = credentials.set_secret("openai_api_key", key)
+        except (RuntimeError, ValueError) as exc:
+            print(f"Não foi possível guardar: {exc}")
+            return 1
+        print(f"Chave {credentials.mask(key)} guardada no {where}. Ela nunca é gravada no settings.json.")
+    if args.use_openai:
+        print("Usar a OpenAI significa que o conteúdo das conversas (e imagens da tela, quando o Observador ou\n"
+              "uma análise visual for usada) sai deste computador para a API da OpenAI, com cobrança própria.\n"
+              "As ferramentas continuam sendo executadas localmente. Para voltar: --use-ollama.")
+        if ask("Digite SIM para confirmar: ").strip().upper() != "SIM":
+            print("Nada foi alterado.")
+            return 1
+        manager.update(ai_provider="openai", privacy_mode="standard", allow_external_models=True)
+        print(f"Provedor: OpenAI ({manager.settings.openai_model}). LOCAL MODE desligado.")
+    if args.use_ollama:
+        manager.update(ai_provider="ollama", privacy_mode="local", allow_external_models=False)
+        print("Provedor: Ollama local. LOCAL MODE ligado: nenhuma chamada de IA sai do computador.")
+    if args.test_openai:
+        from .models.openai_provider import OpenAIProvider, ProviderError
+        provider = OpenAIProvider(lambda: manager.settings)
+        blocked = provider.blocked_reason()
+        if blocked:
+            print(f"OpenAI indisponível: {blocked}")
+            return 1
+        try:
+            result = provider.chat([{"role": "user", "content": "Responda apenas: OK"}], timeout=30)
+        except ProviderError as exc:
+            print(f"Falha ({exc.kind}): {exc}")
+            return 1
+        print(f"OpenAI respondeu ({result.model}, {result.seconds:.1f} s): {result.content[:80]}")
+    return 0
+
+
 def run_data_command(args: argparse.Namespace) -> int:
     """Backup, restauração e exportação pela linha de comando — sem iniciar o núcleo."""
     from .memory import backup
@@ -285,6 +341,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_mics or args.mic:
         return run_microphones(args)
     from .platform import control, single_instance
+    if args.import_models:
+        from .platform.models_import import import_models
+        report = import_models(args.import_models)
+        print(report.summary())
+        return 0 if not report.failed else 1
+    if args.set_openai_key or args.use_openai or args.use_ollama or args.test_openai:
+        return run_openai_command(args)
+    if args.autostart_check:
+        from .platform import autostart
+        print(autostart.check()["text"])
+        return 0
     if args.status:
         pid = control.running_pid()
         print(f"JARVIS em execução (processo {pid})." if pid else "O JARVIS não está em execução.")
@@ -311,7 +378,13 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             single_instance.release()
     if not single_instance.acquire():
-        print("O JARVIS já está em execução.")
+        if single_instance.blocked_by_legacy:
+            print("O JARVIS original (versão anterior, jarvis_hud.py) está aberto. Feche-o antes: os dois "
+                  "disputariam o microfone.")
+            log.warning("JARVIS original em execução (mutex %s); esta instância não foi iniciada",
+                        single_instance.LEGACY_NAME)
+        else:
+            print("O JARVIS já está em execução.")
         return 0
     control.register()
     try:

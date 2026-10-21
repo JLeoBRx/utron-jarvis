@@ -16,6 +16,7 @@ import io
 import logging
 import os
 import queue
+import sys
 import tempfile
 import threading
 import time
@@ -104,6 +105,27 @@ class SapiSynth:
         if abs(length_scale - 1.0) > 0.02:
             samples = dsp.resample(samples, length_scale)
         return samples, rate
+
+
+def com_initialize() -> Callable[[], None]:
+    """Inicializa o COM nesta thread (Windows) — a voz SAPI (pyttsx3) depende dele, como o JARVIS original
+    fazia na thread de fala. Devolve a função que desfaz a inicialização (nada a fazer fora do Windows)."""
+    if sys.platform != "win32":
+        return lambda: None
+    try:
+        import pythoncom                                  # pywin32
+        pythoncom.CoInitialize()
+        return pythoncom.CoUninitialize
+    except Exception:
+        pass
+    try:
+        import ctypes
+        ole32 = ctypes.windll.ole32
+        if ole32.CoInitializeEx(None, 0x2) in (0, 1):    # COINIT_APARTMENTTHREADED; 1 = já inicializado
+            return ole32.CoUninitialize
+    except Exception as exc:
+        log.warning("COM não pôde ser inicializado na thread de voz: %s", exc)
+    return lambda: None
 
 
 def load_synth(voice_name: str, profile: VoiceProfile) -> tuple[Any | None, str]:
@@ -223,6 +245,13 @@ class Speaker:
             self._bus.publish(kind, payload, source="voice")
 
     def _loop(self) -> None:
+        uninit = com_initialize()
+        try:
+            self._run()
+        finally:
+            uninit()
+
+    def _run(self) -> None:
         try:
             if self._loader is not None:
                 self.synth, self.reason = self._loader()

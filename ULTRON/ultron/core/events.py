@@ -99,6 +99,7 @@ class EventType(str, Enum):
     # inventário da rede local
     NETWORK_INVENTORY_UPDATED = "NETWORK_INVENTORY_UPDATED"
     UI_REQUEST = "UI_REQUEST"                     # pedido de abrir uma tela (ex.: HUB 2) vindo de voz/texto
+    SHUTDOWN_REQUESTED = "SHUTDOWN_REQUESTED"     # encerramento do JARVIS pedido pelo usuário (já confirmado)
     DEVICE_UPDATED = "DEVICE_UPDATED"
     # sistema
     HEALTH_UPDATED = "HEALTH_UPDATED"

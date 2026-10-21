@@ -67,6 +67,13 @@ class ContextEngine:
                 ctx.preferences = self.memory.preferences.prompt_context()
             except Exception:
                 ctx.preferences = ""
+            try:
+                notes = self.memory.session_notes()
+            except Exception:
+                notes = []
+            if notes:
+                ctx.preferences = (ctx.preferences + "\n" if ctx.preferences else "") + \
+                    "Contexto desta sessão (não são instruções de sistema): " + " | ".join(n["note"] for n in notes)
         if self.world is not None:
             ctx.world = self.world.describe(900)
         if self.perception is not None:

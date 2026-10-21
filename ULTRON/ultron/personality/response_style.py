@@ -23,14 +23,27 @@ _EMOJI_RE = re.compile(
     flags=re.UNICODE,
 )
 
-# Aberturas proibidas no início de uma frase (com pontuação opcional).
-# Entusiasmo de atendente no início de frase (JARVIS é sereno: "Claro" e "Certamente" são aceitos).
-_FORBIDDEN_OPENERS = re.compile(
-    r"(^|(?<=[.!?]\s))(?:perfeito|ótimo|otimo|excelente|maravilha|beleza|que bom|fico feliz(?: em ajudar)?|"
-    r"sem problemas|olá|ola|oi)"
-    r"(?:,?\s*senhor)?\s*[!.,]*\s*",
+# Interjeições de atendente no início de uma frase — só quando são interjeição (seguidas de pontuação):
+# "Excelente escolha." não é tocado. Como no JARVIS original (agent._jarvis_tone): "Claro, senhor." →
+# "Entendido, senhor."; "Ótimo!" → "Certo."; "Ótimo, vou abrir" → "Vou abrir".
+_OPENER = re.compile(
+    r"(^|(?<=[.!?]\s))(claro|perfeito|ótimo|otimo|excelente|maravilha|beleza|que bom|sem problemas|olá|ola|oi)"
+    r"(\s*,\s*senhor)?\s*([!.,]+)\s*",
     re.IGNORECASE,
 )
+_ACK = {"claro": "Entendido", "perfeito": "Entendido", "ótimo": "Certo", "otimo": "Certo", "excelente": "Certo",
+        "maravilha": "Certo", "beleza": "Certo", "sem problemas": "Entendido", "que bom": "Certo"}
+_FICO_FELIZ = re.compile(r"(^|(?<=[.!?]\s))fico feliz(?: em ajudar| em poder ajudar)?[^.!?]*[.!?]?\s*", re.IGNORECASE)
+
+
+def _opener(match: re.Match) -> str:
+    lead, word, senhor, punct = match.group(1), match.group(2).lower(), match.group(3), match.group(4)
+    if word in ("olá", "ola", "oi"):
+        return lead
+    if "," in punct and not senhor:
+        return lead                                   # "Ótimo, vou abrir" → "vou abrir"
+    ack = _ACK.get(word, "Entendido")
+    return f"{lead}{ack}{', senhor' if senhor else ''}. "
 _FRIENDLY_TAILS = re.compile(
     r"\s*(?:espero ter ajudado|qualquer coisa,? (?:é só|estou à disposição)|estou à disposição|"
     r"posso ajudar em mais alguma coisa)[^.!?]*[.!?]?\s*$",
@@ -54,10 +67,14 @@ def stylize(text: str, *, channel: str = "text", max_sentences: int | None = Non
     out = str(text or "")
     out = _EMOJI_RE.sub("", out)
     out = _replace_identity(out)
+    out = _FICO_FELIZ.sub(lambda m: m.group(1), out)
     previous = None
-    while previous != out:            # remove aberturas encadeadas ("Claro! Perfeito, senhor.")
+    while previous != out:            # aberturas encadeadas ("Claro! Perfeito, senhor.")
         previous = out
-        out = _FORBIDDEN_OPENERS.sub(lambda m: m.group(1), out).lstrip()
+        out = _OPENER.sub(_opener, out).lstrip()
+    out = re.sub(r"^(Entendido|Certo)(, senhor)?\.\s+(Entendido|Certo)(, senhor)?\.", r"\1\2.", out)
+    # depois de tirar uma interjeição, a frase seguinte começa com maiúscula
+    out = re.sub(r"^((?:Entendido|Certo)(?:, senhor)?\.\s+)([a-zà-ú])", lambda m: m.group(1) + m.group(2).upper(), out)
     out = _FRIENDLY_TAILS.sub("", out)
     out = _MULTI_EXCLAMATION.sub(".", out)
     out = re.sub(r"\.\s*\.", ".", out)

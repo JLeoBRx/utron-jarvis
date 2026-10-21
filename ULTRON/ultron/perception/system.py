@@ -83,6 +83,7 @@ class SystemSensor(Sensor):
         self._world = world
         self._static: dict | None = None
         self._gpu_checked = 0.0
+        self._net_last: tuple[float, int, int] | None = None     # (instante, bytes recebidos, bytes enviados)
 
     def available(self) -> tuple[bool, str]:
         return (True, "") if psutil is not None else (False, "psutil não instalado")
@@ -117,6 +118,23 @@ class SystemSensor(Sensor):
             self._static["gpu_name"] = gpus[0]["name"] if gpus else ""
         return self._static
 
+    def net_rate(self, *, now: float | None = None, counters=None) -> dict:
+        """Taxa real de download/upload (bytes/s) entre duas leituras — como a telemetria do JARVIS original.
+        Sem leitura anterior (ou sem suporte), devolve None: nunca um valor inventado."""
+        try:
+            io = counters if counters is not None else psutil.net_io_counters()
+        except Exception:
+            io = None
+        now = time.monotonic() if now is None else now
+        if io is None:
+            return {"net_rx_bps": None, "net_tx_bps": None}
+        rx, tx = int(io.bytes_recv), int(io.bytes_sent)
+        last, self._net_last = self._net_last, (now, rx, tx)
+        if last is None or now - last[0] <= 0 or rx < last[1] or tx < last[2]:
+            return {"net_rx_bps": None, "net_tx_bps": None}
+        dt = now - last[0]
+        return {"net_rx_bps": round((rx - last[1]) / dt), "net_tx_bps": round((tx - last[2]) / dt)}
+
     def sense(self) -> Percept:
         if psutil is None:
             raise SensorUnavailable("psutil não instalado")
@@ -150,6 +168,7 @@ class SystemSensor(Sensor):
             if status and status["has_battery"]:
                 battery = {"percent": status["percent"], "plugged": status["plugged"]}
         data["battery"] = battery
+        data.update(self.net_rate())
         if self._world is not None:
             # Somente dados estáveis vão ao World Model (carga instantânea fica no estado/telemetria).
             disks = [{"mount": d["mount"], "used": round(d["used"], 2), "free_gb": round(d["free_gb"])}

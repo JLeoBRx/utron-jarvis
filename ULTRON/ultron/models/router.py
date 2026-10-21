@@ -153,6 +153,27 @@ class ModelRouter:
 
     # ------------------------------------------------------------ seleção
     def _select(self, task: str, *, publish: bool) -> Selection:
+        """Provedor escolhido pelo usuário (OpenAI, como no JARVIS original) quando permitido; senão o
+        Ollama local. O motivo de não usar a OpenAI escolhida aparece na própria seleção."""
+        openai = self._providers.get("openai")
+        note = ""
+        if openai is not None and getattr(openai, "chosen", lambda: False)():
+            blocked = openai.blocked_reason() if hasattr(openai, "blocked_reason") else ""
+            if not blocked and task in getattr(openai, "tasks", ("text",)):
+                selection = Selection(task, f"openai:{openai.model}", True, "OpenAI (escolhida nas configurações)",
+                                      provider="openai")
+                if publish:
+                    self._announce(task, selection)
+                return selection
+            note = f"OpenAI escolhida, mas {blocked or 'tarefa não suportada'}; usando o Ollama local"
+        selection = self._select_ollama(task, publish=False)
+        if note:
+            selection.reason = f"{selection.reason} ({note})" if selection.reason else note
+        if publish:
+            self._announce(task, selection)
+        return selection
+
+    def _select_ollama(self, task: str, *, publish: bool) -> Selection:
         with self._lock:
             models = list(self._models)
             alive = self._status.ollama_alive
@@ -202,6 +223,8 @@ class ModelRouter:
         if not self._external_allowed():
             return selection
         for name, provider in self._providers.items():
+            if name == "openai":
+                continue                              # a OpenAI é escolha explícita, não plano B automático
             try:
                 if provider.available() and task in getattr(provider, "tasks", ("text",)):
                     return Selection(task, getattr(provider, "model", name), True,
@@ -258,6 +281,22 @@ class ModelRouter:
         selection = self.select(task)
         if not selection.available or not selection.model:
             raise ModelUnavailable(selection)
+        if selection.provider == "openai":
+            from .openai_provider import ProviderError
+            try:
+                return self._providers["openai"].chat(messages, **kwargs)
+            except ProviderError as exc:
+                if exc.kind == "CANCELLED":
+                    raise
+                log.warning("OpenAI falhou (%s); usando o Ollama local nesta chamada", exc.kind)
+                if self._bus is not None:
+                    self._bus.publish(EventType.MODEL_UNAVAILABLE, {"task": task, "provider": "openai",
+                                                                    "kind": exc.kind, "reason": str(exc),
+                                                                    "fallback": "ollama"}, source="router")
+                selection = self._select_ollama(task, publish=False)
+                if not selection.available or not selection.model or selection.provider != "ollama":
+                    raise ModelUnavailable(Selection(task, None, False, f"OpenAI: {exc}; e o Ollama local também "
+                                                     f"está indisponível ({selection.reason})")) from exc
         if selection.provider != "ollama":
             provider = self._providers[selection.provider]
             return provider.chat(messages, **kwargs)
@@ -267,7 +306,7 @@ class ModelRouter:
             if exc.kind != "MODEL_MISSING":
                 raise
             self.refresh(force=True)                 # o modelo pode ter sido removido
-            retry = self._select(task, publish=True)
+            retry = self._select_ollama(task, publish=True)
             if not retry.available or not retry.model or retry.model == selection.model:
                 raise ModelUnavailable(retry) from exc
             return self.client.chat(retry.model, messages, **kwargs)

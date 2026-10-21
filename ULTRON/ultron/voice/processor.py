@@ -182,6 +182,7 @@ class VoicePipeline:
         self.silence_warning = ""
         self._silent_run = 0
         self.diagnostic_tap: Callable[[str, dict], None] | None = None   # só durante um teste pedido
+        self.privacy_guard: Callable[[], bool] = lambda: False           # True = modo privacidade ativo
 
     # ------------------------------------------------------------ ciclo de vida
     def start(self) -> None:
@@ -224,7 +225,10 @@ class VoicePipeline:
 
     # ------------------------------------------------------------ controle externo
     def toggle_mic(self, enabled: bool | None = None) -> bool:
-        self._mic_enabled = (not self._mic_enabled) if enabled is None else bool(enabled)
+        wanted = (not self._mic_enabled) if enabled is None else bool(enabled)
+        if wanted and self.privacy_guard():
+            wanted = False                       # modo privacidade: o microfone só reabre quando ele for desligado
+        self._mic_enabled = wanted
         if not self._mic_enabled:
             self._stop_listening()
             self.detector.close_followup()

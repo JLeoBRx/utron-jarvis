@@ -28,8 +28,12 @@ _TENS = {"vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50, "sessenta":
          "oitenta": 80, "noventa": 90}
 
 CANCEL_WORDS = {"cancelar", "cancela", "cancele", "pare", "parar", "para", "para tudo", "pare tudo", "abortar",
-                "aborta", "esquece", "silencio", "chega", "interromper", "interrompa", "pode parar", "pode cancelar",
-                "pare agora", "para agora", "chega disso"}
+                "aborta", "esquece", "esqueca", "silencio", "chega", "interromper", "interrompa", "pode parar",
+                "pode cancelar", "pare agora", "para agora", "chega disso"}
+
+# Teclas e atalhos aceitos sem verbo (lista do JARVIS original, commands.py KEYS/HOTKEYS).
+BARE_KEYS = {"enter", "esc", "escape", "tab", "espaco", "backspace", "retrocesso", "ctrl+c", "control+c", "ctrl+v",
+             "control+v", "ctrl+a", "control+a", "alt+tab", "win+d", "windows+d"}
 
 CONNECTORS_RE = re.compile(r"\b(e depois|depois disso|em seguida|e entao|e logo apos|primeiro\b.*\bdepois)\b")
 GOAL_VERBS_RE = re.compile(r"\b(prepare|prepara|configure|configura|organize|organiza|investigue|investiga|"
@@ -102,6 +106,9 @@ class IntentEngine:
         if self._automations is not None:
             found = self._automations(body)
             if found:
+                builtin = self._rules(body, t) if found.get("legacy") else None
+                if builtin is not None:       # no JARVIS original o comando embutido tinha prioridade
+                    return builtin
                 return _intent("command", body, skill=found["skill"], args=found["arguments"], source="automation",
                                entities={"automation": found["name"]})
         if CONNECTORS_RE.search(t):
@@ -136,12 +143,39 @@ class IntentEngine:
         return None
 
     def _control_rules(self, raw, t):
-        if re.search(r"\b(ativ\w*|lig\w*|habilit\w*)\b.*\b(observa\w*|visao da tela|monitoramento da tela)\b", t):
-            return _intent("control", raw, args={"screen_observation": True})
-        if re.search(r"\b(desativ\w*|deslig\w*|desabilit\w*|pare de)\b.*\b(observa\w*|visao da tela|monitoramento da tela|olhar a tela)\b", t):
-            return _intent("control", raw, args={"screen_observation": False})
-        if re.search(r"\b(ativ\w*|lig\w*|entr\w*)\b.*\bmodo (local|privado|privacidade)\b", t):
+        # Observador (frases do JARVIS original, commands.py): pausar/retomar/desativar/ativar
+        if re.search(r"\b(pausar|pause|pausa)\b.*\bobservador\b", t):
+            return _intent("control", raw, args={"observer": "pause"})
+        if re.search(r"\b(retomar|retome|retoma|continue|continuar)\b.*\bobservador\b", t):
+            return _intent("control", raw, args={"observer": "resume"})
+        if re.search(r"\b(desativar|desativa|desative|desligar|desliga|desligue|parar|pare)\b.*\bobservador\b", t) or \
+                re.search(r"\b(desativ\w*|deslig\w*|desabilit\w*|pare de)\b.*\b(observa\w*|visao da tela|"
+                          r"monitoramento da tela|olhar a tela)\b", t):
+            return _intent("control", raw, args={"observer": "off"})
+        if re.search(r"\b(ativar|ativa|ative|ligar|liga|ligue)\b.*\bobservador\b", t) or \
+                t in ("observador", "modo observador") or \
+                re.search(r"\b(ativ\w*|lig\w*|habilit\w*)\b.*\b(observa\w*|visao da tela|monitoramento da tela)\b", t):
+            return _intent("control", raw, args={"observer": "on"})
+        if len(t.split()) <= 8 and re.search(
+                r"\b(acompanhe|acompanhar|observe|observar|fique\b.*\bacompanhando|me auxilie|me ajude)\b.*"
+                r"\b(computador|pc|tela|o que eu fizer|tudo que eu fizer|programa|codigo)\b", t):
+            return _intent("control", raw, args={"observer": "on"})
+        # Modo privacidade: fecha o microfone e suspende a observação da tela (sair só por teclado/mouse)
+        if re.search(r"\b(ativ\w*|lig\w*|entr\w*|modo)\b.*\b(modo )?(de )?privacidade( total)?\b", t) and \
+                not re.search(r"\b(desativ\w*|deslig\w*|sai\w*)\b", t):
+            return _intent("control", raw, args={"privacy_shield": True})
+        if re.search(r"\b(desativ\w*|deslig\w*|sai\w*)\b.*\b(modo )?(de )?privacidade\b", t):
+            return _intent("control", raw, args={"privacy_shield": False})
+        if re.search(r"\b(ativ\w*|lig\w*|entr\w*)\b.*\bmodo (local|privado)\b", t):
             return _intent("control", raw, args={"privacy_mode": "local"})
+        # Encerrar o próprio JARVIS (no original só respondia "Encerrando, senhor.")
+        if t in ("desligar assistente", "desligue o assistente", "encerrar jarvis", "encerre o jarvis",
+                 "encerrar o jarvis", "desligar jarvis", "desligue o jarvis", "feche o jarvis", "fechar o jarvis",
+                 "sair do jarvis", "encerrar o assistente"):
+            return _cmd(raw, "jarvis.shutdown")
+        if t in ("desligar", "desliga", "desligue"):
+            return _intent("response", raw, response="Desligar o quê, senhor: o computador ou o JARVIS?",
+                           reason="pedido ambíguo")
         if re.search(r"\bmodo (sonho|sonhar)\b|\bcomece a sonhar\b|\bsonhe\b", t):
             return _intent("dream", raw)
         if re.search(r"\bfal\w* (mais )?(devagar|lento|pausadamente)\b|\bmais devagar\b", t):
@@ -450,6 +484,14 @@ class IntentEngine:
         delete = re.match(r"^(?:remova|remover|apague|apagar|exclua|excluir) a automacao\s+(.+)$", t)
         if delete:
             return _cmd(raw, "automation.delete", name=delete.group(1)[:60])
+        pause = re.match(r"^(?:pause|pausar|pausa|desative|desativar|desligue|desligar|suspenda|suspender)\s+"
+                         r"a automacao\s+(.+)$", t)
+        if pause:
+            return _cmd(raw, "automation.set_enabled", name=pause.group(1)[:60], enabled=False)
+        resume = re.match(r"^(?:reative|reativar|ative|ativar|ligue|ligar|retome|retomar|religue)\s+"
+                          r"a automacao\s+(.+)$", t)
+        if resume:
+            return _cmd(raw, "automation.set_enabled", name=resume.group(1)[:60], enabled=True)
         return None
 
     def _vision_rules(self, raw, t):
@@ -507,6 +549,9 @@ class IntentEngine:
 
     def _web_rules(self, raw, t):
         r = raw.strip()
+        if t in ("google", "google.com", "youtube", "youtube.com"):
+            return _cmd(raw, "web.open_url", url="https://www.youtube.com" if t.startswith("youtube")
+                        else "https://www.google.com")
         m = re.match(r"^(?:abrir|abre|abra)\s+(?:o\s+|a\s+)?site\s+(.+)$", r, re.I)
         if m:
             return _cmd(raw, "web.open_url", url=m.group(1).strip())
@@ -571,8 +616,9 @@ class IntentEngine:
             return _cmd(raw, "audio.media", action="next")
         if re.search(r"(musica|faixa) anterior|voltar (a )?(musica|faixa)", t):
             return _cmd(raw, "audio.media", action="previous")
-        if re.search(r"\b(pausar|pause|pausa)\b( a)? (musica|video|reproducao)|tocar musica|continuar (a )?(musica|reproducao)|"
-                     r"^(pausar|pause|play|tocar)$", t):
+        if re.search(r"\b(pausar|pause|pausa)\b( a)? (musica|video|reproducao)|tocar musica|"
+                     r"(continuar|retomar|retome|continue) (a )?(musica|reproducao|video)|"
+                     r"^(pausar|pause|pausa|play|tocar|continuar|retomar)$", t):
             return _cmd(raw, "audio.media", action="play_pause")
         return None
 
@@ -584,7 +630,8 @@ class IntentEngine:
             return _cmd(raw, "input.click", button="double")
         if re.search(r"clique (?:com )?(?:o )?botao direito|clique direito|clicar com (o )?botao direito", t):
             return _cmd(raw, "input.click", button="right")
-        if re.fullmatch(r"(clicar|clique|clica|clique esquerdo)", t):
+        if re.fullmatch(r"(clicar|clique|clica|clique esquerdo)", t) or \
+                re.search(r"\bclicar com (o )?botao esquerdo\b|\bclique com (o )?botao esquerdo\b", t):
             return _cmd(raw, "input.click", button="left")
         if re.search(r"rol\w* (a pagina )?(para )?baixo|descer a pagina", t):
             return _cmd(raw, "input.scroll", direction="down", amount=3)
@@ -596,4 +643,12 @@ class IntentEngine:
         m = re.match(r"^(?:apertar|aperte|aperta|pressionar|pressione|tecle)\s+(?:a tecla\s+)?(.+)$", t)
         if m:
             return _cmd(raw, "input.press_key", key=m.group(1).replace(" mais ", "+").replace(" ", ""))
+        # teclas e atalhos ditos sem verbo (JARVIS original: KEYS/HOTKEYS) e "apagar"/"excluir" = Delete
+        bare = t.replace(" mais ", "+").replace(" + ", "+")
+        if bare in ("tecla windows", "tecla win", "windows"):
+            return _cmd(raw, "input.press_key", key="windows")
+        if bare in ("delete", "apagar", "excluir"):
+            return _cmd(raw, "input.press_key", key="delete")
+        if bare in BARE_KEYS:
+            return _cmd(raw, "input.press_key", key=bare.replace(" ", ""))
         return None

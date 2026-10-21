@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from ..config import paths
@@ -11,7 +12,7 @@ from ..graph.concepts import extract
 from ..graph.neural_graph import NeuralGraph
 from .consolidation import Consolidator
 from .episodic_memory import EpisodicMemory
-from .legacy_import import import_jarvis
+from .legacy_import import import_jarvis, repair_automations
 from .preference_memory import PreferenceMemory
 from .procedural_memory import ProceduralMemory
 from .retrieval import Recall, Retriever
@@ -48,6 +49,10 @@ class MemorySystem:
                 self.legacy_report = import_jarvis(self.db, paths.legacy_jarvis_database())
             except Exception as exc:          # dados legados nunca impedem o boot
                 log.warning("importação do JARVIS falhou: %s", exc)
+        try:
+            repair_automations(self.db)       # automações importadas antes da correção dos nomes
+        except Exception as exc:
+            log.warning("conversão das automações do JARVIS original falhou: %s", exc)
         self.publish_state()
 
     def stop(self) -> None:
@@ -93,6 +98,28 @@ class MemorySystem:
                        kinds=sorted({r.kind for r in results}))
         return results
 
+    # ------------------------------------------------------------ notas de sessão (JARVIS original: add_session_note)
+    SESSION_NOTES_LIMIT = 8
+
+    def add_session_note(self, note: str) -> str:
+        """Anota contexto da sessão de trabalho (entra no prompt como contexto, nunca como instrução).
+        Segredos são recusados, como em toda gravação."""
+        from .store import looks_secret
+        text = " ".join(str(note or "").split())[:300]
+        if not text:
+            raise ValueError("nota vazia")
+        if looks_secret(text):
+            raise ValueError("a nota parece conter dado sensível e não foi guardada")
+        self.db.execute("INSERT INTO session_notes(note, created_at) VALUES(?, ?)", (text, time.time()))
+        self.db.execute("DELETE FROM session_notes WHERE id NOT IN "
+                        "(SELECT id FROM session_notes ORDER BY id DESC LIMIT 200)")
+        return text
+
+    def session_notes(self, limit: int | None = None) -> list[dict]:
+        rows = self.db.query("SELECT note, created_at FROM session_notes ORDER BY id DESC LIMIT ?",
+                             (int(limit or self.SESSION_NOTES_LIMIT),))
+        return [{"note": r["note"], "created_at": r["created_at"]} for r in reversed(rows)]
+
     def record_episode(self, kind: str, summary: str, **kwargs: Any) -> int | None:
         episode_id = self.episodic.record(kind, summary, **kwargs)
         if episode_id:
@@ -107,8 +134,10 @@ class MemorySystem:
 
     def stats(self) -> dict[str, Any]:
         graph = self.graph.stats()
+        automations = self.db.one("SELECT COUNT(*) FROM automations")
         return {"facts": self.semantic.count(), "episodes": self.episodic.count(),
                 "procedures": self.procedural.count(), "working": len(self.working),
+                "automations": int(automations[0]) if automations else 0,
                 "graph_nodes": graph["nodes"], "graph_edges": graph["edges"],
                 "db_bytes": self.db.size_bytes()}
 

@@ -84,12 +84,14 @@ class ScreenSensor(Sensor):
 
     def __init__(self, interval: float = 3.0, *, foreground: Callable[[], dict] | None = None,
                  hud_covering: Callable[[], bool] | None = None, excluded: Callable[[], tuple] | None = None,
-                 enabled: Callable[[], bool] | None = None, capture: Callable[[], Any] | None = None):
+                 enabled: Callable[[], bool] | None = None, capture: Callable[[], Any] | None = None,
+                 blocked: Callable[[], str] | None = None):
         super().__init__(interval)
         self._foreground = foreground or (lambda: {})
         self._hud_covering = hud_covering or (lambda: False)
         self._excluded = excluded or (lambda: ())
         self._enabled = enabled or (lambda: True)
+        self._blocked = blocked or (lambda: "")            # Observador desligado/pausado, modo privacidade
         self._capture = capture or capture_image
         self._lock = threading.Lock()
         self._image = None
@@ -100,6 +102,9 @@ class ScreenSensor(Sensor):
         self.sensitive_until: dict[str, float] = {}
 
     def available(self) -> tuple[bool, str]:
+        reason = self._blocked()
+        if reason:
+            return False, reason
         if not self._enabled():
             return False, "observação de tela desativada nas configurações"
         return True, ""
@@ -109,10 +114,13 @@ class ScreenSensor(Sensor):
         title = re.sub(r"\d+", "#", _norm(fg.get("title") or ""))[:60]
         return f"{(fg.get('process') or '?').lower()}|{title}"
 
-    def privacy_block(self, fg: dict) -> str:
-        if self._hud_covering():
+    def privacy_block(self, fg: dict, *, explicit: bool = False) -> str:
+        """Motivo para não capturar ("" = pode). ``explicit``: pedido direto do usuário (ex.: "tire um
+        print"): a própria interface do JARVIS na frente não impede, como no original; aplicativos
+        excluídos e janelas sensíveis continuam impedindo."""
+        if not explicit and self._hud_covering():
             return "HUD cobrindo a tela"
-        if fg.get("pid") == os.getpid():
+        if not explicit and fg.get("pid") == os.getpid():
             return "JARVIS em foco"
         haystack = _norm(f"{fg.get('process', '')} {fg.get('title', '')}")
         for item in tuple(DEFAULT_EXCLUDED) + tuple(self._excluded() or ()):
@@ -163,10 +171,10 @@ class ScreenSensor(Sensor):
     def mark_sensitive(self, context: str, seconds: float = 600.0) -> None:
         self.sensitive_until[context] = time.time() + seconds
 
-    def capture_now(self) -> tuple[Any, dict]:
-        """Captura imediata sob pedido explícito (respeita as mesmas regras de privacidade)."""
+    def capture_now(self, *, explicit: bool = False) -> tuple[Any, dict]:
+        """Captura imediata sob pedido (respeita as regras de privacidade; ver ``privacy_block``)."""
         fg = self._foreground() or {}
-        blocked = self.privacy_block(fg)
+        blocked = self.privacy_block(fg, explicit=explicit)
         if blocked:
             raise PermissionError(f"captura recusada: {blocked}")
         return self._capture(), {"foreground": fg, "context": self.context_key(fg), "timestamp": time.time()}

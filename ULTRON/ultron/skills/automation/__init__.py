@@ -23,6 +23,10 @@ HOTKEYS = {"ctrl+c": ("ctrl", "c"), "ctrl+v": ("ctrl", "v"), "ctrl+a": ("ctrl", 
            "ctrl+s": ("ctrl", "s"), "ctrl+f": ("ctrl", "f"), "ctrl+t": ("ctrl", "t"), "ctrl+w": ("ctrl", "w"),
            "ctrl+shift+t": ("ctrl", "shift", "t"), "alt+tab": ("alt", "tab"), "win+d": ("win", "d"),
            "win+e": ("win", "e"), "ctrl+l": ("ctrl", "l")}
+# Apelidos do JARVIS original (commands.py HOTKEYS): "control+c", "windows+d".
+KEY_ALIASES = {"control+c": "ctrl+c", "control+v": "ctrl+v", "control+a": "ctrl+a", "control+z": "ctrl+z",
+               "control+s": "ctrl+s", "control+f": "ctrl+f", "control+l": "ctrl+l", "windows+d": "win+d",
+               "windows+e": "win+e", "tecla windows": "windows", "tecla win": "win"}
 TERMINAL_HINTS = ("powershell", "prompt de comando", "command prompt", "cmd.exe", "windows terminal", "terminal",
                   "git bash", "bash", "wsl", "windowsterminal")
 
@@ -84,6 +88,7 @@ class PressKey(_InputSkill):
 
     def risk_for(self, args):
         key = norm(args.get("key", ""))
+        key = KEY_ALIASES.get(key, key)
         if key == "delete" or key in ("ctrl+w",):
             return Risk.HIGH
         if key == "enter" and terminal_active():
@@ -92,7 +97,9 @@ class PressKey(_InputSkill):
 
     def validate(self, args):
         args = super().validate(args)
-        key = norm(args["key"]).replace(" ", "")
+        key = norm(args["key"])
+        key = KEY_ALIASES.get(key, key).replace(" ", "")
+        key = KEY_ALIASES.get(key, key)
         if key not in KEYS and key not in HOTKEYS:
             raise ValueError(f"tecla fora da lista permitida: {args['key']}")
         return {"key": key}
@@ -157,7 +164,7 @@ class Scroll(_InputSkill):
 
 # ---------------------------------------------------------------- automações do usuário
 SAFE_AUTOMATION_SKILLS = {"app.open", "web.search", "web.open_url", "audio.volume", "audio.media",
-                          "fs.search", "network.status", "diagnostics.system_report"}
+                          "fs.search", "network.status", "diagnostics.system_report", "vision.screenshot"}
 
 
 class CreateAutomation(Skill):
@@ -227,4 +234,27 @@ class DeleteAutomation(Skill):
         return VerificationResult.from_checks([check("removed", gone, "removida" if gone else "ainda presente")])
 
 
-SKILLS = (TypeText, PressKey, MoveMouse, Click, Scroll, CreateAutomation, ListAutomations, DeleteAutomation)
+class SetAutomationEnabled(Skill):
+    name = "automation.set_enabled"
+    description = "Pausar (enabled=false) ou reativar (enabled=true) uma automação do usuário, sem apagá-la."
+    category = "automation"
+    inputs = schema({"name": string(60), "enabled": {"type": "boolean"}}, ("name", "enabled"))
+    risk = Risk.LOW
+
+    def execute(self, ctx, name: str, enabled: bool) -> SkillResult:
+        if not ctx.memory.procedural.set_automation_enabled(name, bool(enabled)):
+            return SkillResult(False, error=f"automação {name} não encontrada", error_kind="NOT_FOUND")
+        return SkillResult(True, f"Automação {name} {'reativada' if enabled else 'pausada'}.", [],
+                           {"name": name, "enabled": bool(enabled)})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        state = {a["name"].lower(): a["enabled"] for a in ctx.memory.procedural.automations()}
+        ok = state.get(result.data["name"].lower()) == result.data["enabled"]
+        return VerificationResult.from_checks([check("state", ok, "estado gravado" if ok else
+                                                     "o estado lido de volta não confere")])
+
+
+SKILLS = (TypeText, PressKey, MoveMouse, Click, Scroll, CreateAutomation, ListAutomations, DeleteAutomation,
+          SetAutomationEnabled)
