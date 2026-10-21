@@ -235,6 +235,22 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         "UPDATE network_devices SET status='absent' WHERE status='offline'",
         "CREATE INDEX IF NOT EXISTS idx_net_status ON network_devices(status)",
     ]),
+    # v4 — HISTÓRICO DE ATIVIDADES (JARVIS ULTIMATE): o ciclo de vida estruturado de cada pedido, ação,
+    # confirmação, consulta à TARDIS e comando ao Noctário. A tabela ``audit`` continua como trilha de
+    # auditoria de baixo nível (só acrescenta texto); aqui o MESMO registro muda de estado
+    # (recebido → executando → concluído/falhou), com origem, entrada, resultado, erro e duração.
+    (4, [
+        """CREATE TABLE IF NOT EXISTS activity (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL, origin TEXT NOT NULL, title TEXT NOT NULL,
+            input TEXT NOT NULL DEFAULT '', state TEXT NOT NULL,
+            result TEXT NOT NULL DEFAULT '', error TEXT NOT NULL DEFAULT '',
+            parent TEXT NOT NULL DEFAULT '', ref TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '{}',
+            started_at REAL NOT NULL, updated_at REAL NOT NULL, finished_at REAL)""",
+        "CREATE INDEX IF NOT EXISTS idx_activity_started ON activity(started_at)",
+        "CREATE INDEX IF NOT EXISTS idx_activity_ref ON activity(ref)",
+    ]),
 ]
 
 

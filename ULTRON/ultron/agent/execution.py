@@ -94,9 +94,11 @@ def classify_exception(exc: BaseException) -> str:
 class ExecutionEngine:
     def __init__(self, registry: SkillRegistry, *, autonomy: AutonomyPolicy, authorizations: AuthorizationManager,
                  context_factory: Callable[[Any], SkillContext], bus=None, state=None, audit=None,
-                 personality_say: Callable[..., str] | None = None):
+                 personality_say: Callable[..., str] | None = None, permissions=None, activity=None):
         self.registry = registry
         self.autonomy = autonomy
+        self.permissions = permissions          # agent.permissions.PermissionPolicy (None = só o risco decide)
+        self.activity = activity                # core.activity.ActivityLog (None = sem histórico)
         self.authorizations = authorizations
         self._ctx = context_factory
         self._bus = bus
@@ -110,6 +112,15 @@ class ExecutionEngine:
 
     def context(self, cancel=None) -> SkillContext:
         return self._ctx(cancel)
+
+    def _track(self, method: str, *args: Any, **kwargs: Any) -> None:
+        """Histórico de atividades: nunca interfere na execução."""
+        if self.activity is None:
+            return
+        try:
+            getattr(self.activity, method)(*args, **kwargs)
+        except Exception:
+            log.debug("histórico de atividades: %s falhou", method, exc_info=True)
 
     def execute(self, action: Action, *, cancel=None, on_authorization: Callable[[str], None] | None = None
                 ) -> ExecutionRecord:
@@ -138,6 +149,8 @@ class ExecutionEngine:
         risk = skill.risk_for(args)
         sensitive = skill.sensitive_for(args)
         decision = self.autonomy.decide(risk, reversible=skill.reversible, origin=action.origin, sensitive=sensitive)
+        if self.permissions is not None:
+            decision = self.permissions.apply(decision, skill, args)
         record = ExecutionRecord(action, "pending", SkillResult(False), risk.value, started=started)
         if decision.action == "refuse":
             record.status, record.result = "refused", SkillResult(False, error=decision.reason, error_kind="REFUSED")
@@ -151,9 +164,12 @@ class ExecutionEngine:
                 resource = ""
             if resource:
                 description = f"{description} — {resource}"
+            self._track("action_waiting", action, description, risk=risk.value, permission=decision.permission,
+                        category=sensitive)
             req = self.authorizations.request(description, skill=skill.name, risk=risk.value,
                                               args={k: str(v)[:80] for k, v in args.items()}, category=sensitive,
-                                              reversible=skill.reversible, origin=action.origin)
+                                              reversible=skill.reversible, origin=action.origin,
+                                              permission=decision.permission)
             if req.status == "pending":                        # pré-aprovado (sugestão aceita) não pergunta de novo
                 if self._state is not None:
                     self._state.set_runtime_state("AWAITING_AUTHORIZATION", description, source="execution")
@@ -176,6 +192,7 @@ class ExecutionEngine:
                    description=action.description or skill.describe_action(args), origin=action.origin,
                    category=skill.category)
         self._emit(EventType.SKILL_ACTIVATED, skill=skill.name, category=skill.category)
+        self._track("action_started", action, action.description or skill.describe_action(args), risk=risk.value)
         if self._state is not None:
             self._state.update(_source="execution", current_action={
                 "id": action.id, "skill": skill.name, "args": {k: str(v)[:60] for k, v in args.items()},
@@ -205,6 +222,7 @@ class ExecutionEngine:
 
     def _finish(self, record: ExecutionRecord) -> ExecutionRecord:
         record.finished = time.time()
+        self._track("action_finished", record)
         if self._state is not None:
             self._state.update(_source="execution", last_action=record.to_dict()["action"],
                                last_result={"status": record.status, "success": record.result.success,

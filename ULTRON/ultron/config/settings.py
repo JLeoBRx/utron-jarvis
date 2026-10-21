@@ -140,6 +140,8 @@ class Settings:
     auto_backup: bool = True                  # backup diário do banco (memórias, Second Brain, lembretes, rede)
     backup_interval_hours: float = 24.0
     backup_keep: int = 10                     # backups automáticos/manuais guardados (os mais antigos saem)
+    activity_history: bool = True             # histórico de atividades (pedidos, ações, confirmações, erros)
+    activity_keep: int = 5000                 # registros guardados (os mais antigos saem primeiro)
     # ------------------------------------------------------------ interface e som
     theme: str = "jarvis-blue"
     performance_profile: str = "balanced"     # economy | balanced | high | cinematic (custo visual)
@@ -190,7 +192,7 @@ class Settings:
         "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
         "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
         "audio_output_index": (-1, 64), "noctario_channel": (1, 30), "noctario_heartbeat_ms": (0, 5000),
-        "noctario_telemetry_hz": (1, 50),
+        "noctario_telemetry_hz": (1, 50), "activity_keep": (100, 100000),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,

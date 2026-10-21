@@ -50,6 +50,8 @@ SENSITIVE = {
     "data_egress": "envio de dados para fora do computador",
     "credentials": "acesso a credenciais ou informação sensível",
     "third_party": "ação irreversível ou que afeta terceiros",
+    "robot_motion": "movimento do robô Noctário",
+    "robot_config": "alteração de parâmetros do robô Noctário",
 }
 
 
@@ -58,6 +60,7 @@ class AutonomyDecision:
     action: str                 # execute | authorize | refuse
     reason: str
     risk: str
+    permission: str = ""        # categoria de permissão que impôs a decisão (agent.permissions)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -139,6 +142,7 @@ class AuthorizationRequest:
     category: str = ""                 # categoria sensível (SENSITIVE) — escopo exibido ao usuário
     reversible: bool = True
     origin: str = ""
+    permission: str = ""               # categoria em "confirmar sempre" (agent.permissions): sem "sim, sempre"
     id: int = field(default_factory=lambda: next(_ids))
     created: float = field(default_factory=time.time)
     expires: float = 0.0
@@ -147,13 +151,15 @@ class AuthorizationRequest:
     _event: threading.Event = field(default_factory=threading.Event, repr=False)
 
     def standing_allowed(self) -> bool:
-        """Pode virar autorização permanente escopada? Nunca: sensível, alto/crítico, irreversível, proativo."""
-        return (not self.category and self.risk in STANDING_RISKS and self.reversible
+        """Pode virar autorização permanente escopada? Nunca: sensível, alto/crítico, irreversível, proativo,
+        ou categoria que o usuário pôs em "confirmar sempre"."""
+        return (not self.category and not self.permission and self.risk in STANDING_RISKS and self.reversible
                 and self.origin != "proactive")
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "description": self.description, "skill": self.skill, "risk": self.risk,
                 "category": self.category, "category_label": SENSITIVE.get(self.category, ""),
+                "permission": self.permission,
                 "args": dict(self.args), "created": self.created, "expires": self.expires, "status": self.status,
                 "resolved_by": self.resolved_by, "standing_allowed": self.standing_allowed(),
                 "seconds_left": max(0.0, round(self.expires - time.time(), 1)) if self.status == "pending" else 0.0}
@@ -257,8 +263,9 @@ class AuthorizationManager:
 
     def request(self, description: str, *, skill: str, risk: str, args: dict | None = None,
                 timeout: float | None = None, category: str = "", reversible: bool = True,
-                origin: str = "") -> AuthorizationRequest:
-        req = AuthorizationRequest(description, skill, risk, dict(args or {}), category, reversible, origin)
+                origin: str = "", permission: str = "") -> AuthorizationRequest:
+        req = AuthorizationRequest(description, skill, risk, dict(args or {}), category, reversible, origin,
+                                   permission)
         req.expires = time.time() + float(timeout if timeout is not None else self._timeout())
         with self._lock:
             pre, self._preapproved = self._preapproved, None

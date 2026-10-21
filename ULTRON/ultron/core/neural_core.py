@@ -24,8 +24,10 @@ from typing import Any, Callable
 from .. import __version__
 from ..agent.autonomy import AuthorizationManager, AutonomyPolicy, classify_reply
 from ..agent.execution import Action, ExecutionEngine
+from ..agent.permissions import PermissionPolicy
 from ..agent.recovery import RecoveryEngine
 from ..agent.verification import VerificationEngine
+from .activity import ActivityLog
 from ..audio.neural_audio import NeuralAudio
 from ..cognition.context_engine import ContextEngine
 from ..cognition.decision_engine import DecisionEngine
@@ -155,6 +157,10 @@ class NeuralCore:
                                                    timeout_getter=lambda: s().authorization_timeout,
                                                    store_path=paths.data_file("autorizacoes_permanentes.json"))
         self.autonomy = AutonomyPolicy(s)
+        self.permissions = PermissionPolicy(s)
+        # histórico de atividades (mesmo banco SQLite): pedidos, ações, verificações, lembretes e falhas
+        self.activity = ActivityLog(self.memory.db, bus=self.bus, settings_getter=s)
+        self.activity.attach()
         self.imagination = ImaginationCore(router=self.router, memory=self.memory, bus=self.bus, state=self.state,
                                            privacy=self.privacy, settings_getter=s)
         # voz
@@ -175,7 +181,8 @@ class NeuralCore:
         # agente e cognição
         self.executor = ExecutionEngine(self.registry, autonomy=self.autonomy, authorizations=self.authorizations,
                                         context_factory=self._skill_context, bus=self.bus, state=self.state,
-                                        audit=self.memory.db.audit)
+                                        audit=self.memory.db.audit, permissions=self.permissions,
+                                        activity=self.activity)
         self.verifier = VerificationEngine(self.registry, bus=self.bus, state=self.state)
         self.recovery = RecoveryEngine(bus=self.bus, state=self.state)
         self.goals = GoalManager(self.memory.db, bus=self.bus, state=self.state)
@@ -389,11 +396,14 @@ class NeuralCore:
         if self._dream_token is not None:
             self._dream_token.cancel("interação do usuário")
         self.bus.publish(EventType.USER_INPUT, {"text": text[:500], "source": source, **(meta or {})}, source="core")
+        text_in = text
         intent = self.intents.classify(text)
         if intent.kind == "cancel":
             was_speaking = bool(self.speaker.speaking)
             cancelled = self.cancel("cancelado pelo usuário")
             text = dialogue.say("cancelled") if cancelled or was_speaking else "Não há nada em andamento."
+            self.activity.record("pedido", text_in, origin=source, input=text_in,
+                                 state="cancelado" if cancelled or was_speaking else "concluido", result=text)
             self._emit_response(Response(text, "info"), source, speak=False)
             return True
         if self.authorizations.pending() is not None:
@@ -419,7 +429,10 @@ class NeuralCore:
                 self._emit_response(Response("Certo. Nada foi registrado.", "info"), source)
                 return True
             if intent.kind == "unknown":                 # resposta ao esclarecimento ("às 15", "da tarde"...)
-                self.runtime.submit("ai", self._answer_pending, pending, text, source, name="esclarecimento")
+                activity = self.activity.begin("pedido", text, origin=source, input=text,
+                                               detail={"esclarecimento": True})
+                self.runtime.submit("ai", self._answer_pending, pending, text, source, activity,
+                                    name="esclarecimento")
                 return True
         if intent.kind == "unknown":
             self._topic = (text, time.time())
@@ -428,7 +441,8 @@ class NeuralCore:
         busy = self._token is not None
         if busy:
             self._emit_response(Response(dialogue.say("busy"), "info"), source, partial=True)
-        self.runtime.submit("ai", self._process, text, source, name=f"pedido:{text[:30]}")
+        activity = self.activity.begin("pedido", text, origin=source, input=text)
+        self.runtime.submit("ai", self._process, text, source, activity, name=f"pedido:{text[:30]}")
         return True
 
     def cancel(self, reason: str = "cancelado pelo usuário") -> bool:
@@ -446,13 +460,16 @@ class NeuralCore:
         self.speaker.interrupt()
         return cancelled
 
-    def _process(self, text: str, source: str) -> None:
+    def _process(self, text: str, source: str, activity: str = "") -> None:
         started = time.perf_counter()
         token = CancellationToken()
         with self._lock:
             self._token = token
+        if activity:
+            self.activity.update(activity, state="executando")
         try:
-            response = self.orchestrator.handle(Command(text, source=source), token)
+            with self.activity.scope(activity):
+                response = self.orchestrator.handle(Command(text, source=source), token)
         except CancelledError:
             response = Response(dialogue.say("cancelled"), "info", success=False)
         except Exception as exc:  # o JARVIS nunca cai por causa de um pedido
@@ -468,6 +485,7 @@ class NeuralCore:
         clarify = (response.data or {}).get("clarify") or {}
         if clarify.get("skill") == "secondbrain.capture" and clarify.get("pending"):
             self._pending_capture = {"pending": clarify["pending"], "expires": time.time() + PENDING_TTL}
+        self.activity.finish_request(activity, response, cancelled=token.cancelled)
         self._emit_response(response, source)
         self.metrics.record("request", time.perf_counter() - started)
 
@@ -611,6 +629,8 @@ class NeuralCore:
             elif self._shield_restore_mic and getattr(self.settings(), "voice_enabled", True):
                 self.voice.toggle_mic(True)
         self._publish_observer()
+        self.activity.record("sistema", "Modo privacidade " + ("ativado" if active else "desligado"),
+                             origin=by or "user", result="microfone " + ("fechado" if active else "liberado"))
         self.bus.publish(EventType.PRIVACY_UPDATED, {"shield": active, "by": by,
                                                      "microphone": "fechado" if active else "liberado"},
                          source="core")
@@ -640,22 +660,27 @@ class NeuralCore:
             return True
         action = suggestion["suggestion"]
         if "command" in action:
-            self.runtime.submit("ai", self._process, action["command"], by, name="sugestão")
+            activity = self.activity.begin("pedido", action["command"], origin=by, input=action["command"],
+                                           detail={"sugestao_aceita": True})
+            self.runtime.submit("ai", self._process, action["command"], by, activity, name="sugestão")
             return True
         skill, args = action.get("skill"), dict(action.get("args") or {})
         if suggestion.get("action") == "authorize":
             # o texto aceito descrevia exatamente esta ação e suas consequências
             self.authorizations.pre_approve(skill, args, ttl=60.0, by=by)
         intent = Intent("command", suggestion.get("text", skill), skill=skill, args=args, confidence=0.9)
-        self.runtime.submit("ai", self._run_suggested, intent, by, name="sugestão")
+        activity = self.activity.begin("pedido", f"Sugestão aceita: {intent.text}", origin=by,
+                                       detail={"sugestao_aceita": True, "skill": skill})
+        self.runtime.submit("ai", self._run_suggested, intent, by, activity, name="sugestão")
         return True
 
-    def _run_suggested(self, intent: Intent, source: str) -> None:
+    def _run_suggested(self, intent: Intent, source: str, activity: str = "") -> None:
         token = CancellationToken()
         with self._lock:
             self._token = token
         try:
-            response = self.orchestrator.run_goal(intent, token, source="user")
+            with self.activity.scope(activity):
+                response = self.orchestrator.run_goal(intent, token, source="user")
         except Exception as exc:
             log.exception("sugestão falhou")
             response = Response(f"A ação sugerida falhou ({type(exc).__name__}).", "error", success=False)
@@ -663,6 +688,7 @@ class NeuralCore:
             with self._lock:
                 self._token = None
         self._finish_state()
+        self.activity.finish_request(activity, response, cancelled=token.cancelled)
         self._emit_response(response, source)
 
     def _expire_suggestion(self) -> None:
@@ -716,23 +742,26 @@ class NeuralCore:
             self._emit_response(Response(text, "info", data={"record": record.to_dict(), "inferred": True}),
                                 "second_brain", partial=True, speak=False)
 
-    def _answer_pending(self, pending: dict, text: str, source: str) -> None:
+    def _answer_pending(self, pending: dict, text: str, source: str, activity: str = "") -> None:
+        with self.activity.scope(activity):
+            response = self._pending_response(pending, text)
+        self.activity.finish_request(activity, response)
+        self._emit_response(response, source)
+
+    def _pending_response(self, pending: dict, text: str) -> Response:
         try:
             answer = self.capture.answer(pending["pending"], text)
         except Exception as exc:
-            self._emit_response(Response(f"Nada foi registrado: {exc}", "error", success=False), source)
-            return
+            return Response(f"Nada foi registrado: {exc}", "error", success=False)
         if isinstance(answer, CaptureResult):
             self._pending_capture = {"pending": answer.pending, "expires": time.time() + PENDING_TTL}
-            self._emit_response(Response(answer.question, "question"), source)
-            return
+            return Response(answer.question, "question")
         outcome = self.run_skill("secondbrain.capture", answer, origin="user")
         if outcome["success"] and outcome["data"].get("clarify"):
             self._pending_capture = {"pending": outcome["data"].get("pending") or {},
                                      "expires": time.time() + PENDING_TTL}
-            self._emit_response(Response(outcome["text"], "question"), source)
-            return
-        self._emit_response(self._outcome_response(outcome), source)
+            return Response(outcome["text"], "question")
+        return self._outcome_response(outcome)
 
     def _outcome_response(self, outcome: dict) -> Response:
         """Resposta honesta para uma execução direta: sucesso só com verificação."""

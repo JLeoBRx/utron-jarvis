@@ -106,6 +106,7 @@ class EventType(str, Enum):
     PRIVACY_UPDATED = "PRIVACY_UPDATED"
     WORLD_MODEL_UPDATED = "WORLD_MODEL_UPDATED"
     LOG = "LOG"
+    ACTIVITY_UPDATED = "ACTIVITY_UPDATED"         # registro do histórico de atividades criado/atualizado
 
 
 _ids = itertools.count(1)

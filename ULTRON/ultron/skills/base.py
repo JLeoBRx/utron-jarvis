@@ -116,6 +116,8 @@ class Skill:
     risk: Risk = Risk.LOW
     reversible: bool = True
     sensitive: str = ""              # categoria que SEMPRE exige autorização específica (agent.autonomy.SENSITIVE)
+    permission: str = ""             # categoria de permissão (agent.permissions); vazio = deduzida
+    emergency: bool = False          # parada de emergência: nunca bloqueada nem condicionada a confirmação
     timeout: float = 30.0
     expose_to_llm: bool = True        # pode ser escolhida pelo modelo em passos agênticos
 
@@ -189,6 +191,10 @@ class Skill:
         """Categoria sensível desta chamada ('' = nenhuma): exclusão definitiva, rede, credenciais..."""
         return self.sensitive
 
+    def permission_for(self, args: dict) -> str:
+        """Categoria de permissão desta chamada ('' = deduzida por agent.permissions.category_for)."""
+        return self.permission
+
     def precheck(self, ctx: "SkillContext", args: dict) -> str | None:
         """Devolve um motivo quando a ação é desnecessária (nada a fazer). Evita pedir autorização à toa."""
         return None
@@ -219,7 +225,7 @@ class Skill:
         return {"name": self.name, "description": self.description, "category": self.category,
                 "inputs": self.inputs, "outputs": self.outputs, "requirements": self.requirements,
                 "risk": self.risk.value, "reversible": self.reversible, "sensitive": self.sensitive,
-                "available": ok, "reason": reason}
+                "permission": self.permission, "emergency": self.emergency, "available": ok, "reason": reason}
 
 
 def check(name: str, passed: bool | None, detail: str = "") -> dict:
