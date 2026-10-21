@@ -86,15 +86,18 @@ class PlatformTest(unittest.TestCase):
             self.assertTrue(page.isVisible(), key)
             created[key] = page
         tardis = self.controller.open_page("tardis")
-        tardis.open_region("tasks")
+        tardis.open_region("tasks")                      # abre o ARQUIVO (memória espacial) na região
         self.pump(0.3)
+        self.assertEqual(tardis.mode, "arquivo")
         self.controller.open_page("atividades")
         self.pump(0.1)
         self.assertFalse(tardis.isVisible())
-        self.assertFalse(tardis._clock.isActive(), "TARDIS fora da tela: nenhum quadro")
+        self.assertFalse(tardis.archive._clock.isActive(), "TARDIS fora da tela: nenhum quadro")
+        self.assertFalse(tardis.room._clock.isActive(), "sala de controle fora da tela: nenhum quadro")
         again = self.controller.open_page("tardis")
         self.assertIs(again, created["tardis"], "a página não é recriada")
-        self.assertEqual(again._region, "tasks", "a região aberta continua como estava")
+        self.assertEqual(again.mode, "arquivo", "volta como estava")
+        self.assertEqual(again.archive._region, "tasks", "a região aberta continua como estava")
         for key in NAV_KEYS:
             self.assertIs(self.window.page(key), created[key])
 

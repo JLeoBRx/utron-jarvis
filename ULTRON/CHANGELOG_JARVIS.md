@@ -151,3 +151,40 @@ finais em `PERFORMANCE_REPORT.md`.
 * Testes: `test_avatar.py` (12) e `test_lipsync.py` (8, inclusive com a voz Piper real quando
   instalada).
 
+
+## Fase 5 — TARDIS: segundo cérebro, sala de controle 3D e rotor ligado ao estado real
+* `tardis/`: módulo lógico com protocolo de tarefas (`id`, entrada, estado, resultado, erros, tempos,
+  origem, cadeia, registro de operações e modelo usado), fila e thread próprias, prazo por tipo,
+  cancelamento imediato, análise travada abandonada com TIMEOUT sem parar a fila, tarefas
+  interrompidas marcadas na abertura seguinte. Cadeia de delegação verificada na entrada: no máximo
+  2 saltos, nenhum repetido, a TARDIS nunca devolve tarefas ao JARVIS.
+* Persistência no **mesmo banco** (migração v5: `tardis_tasks` e `project_notes`); textos que parecem
+  segredo redigidos; a memória de projeto recusa senhas e tokens. Cada tarefa entra no histórico de
+  atividades, ligada à ação e ao pedido que a originaram (o executor agora leva o vínculo do histórico
+  para a thread da skill).
+* Analisadores: consulta contextual com fontes (segue os registros de um projeto encontrado; nunca usa o
+  próprio pedido como fonte), planejamento (exige o modelo), organização, rotinas, telemetria do
+  Noctário (tempo, RMS do erro, oscilação por cruzamentos e FFT, saturação, perdas, cruzamentos,
+  comparação entre voltas; voltas do simulador rotuladas e nunca viram comando), diagnóstico e
+  coordenação. Sem dado → FAILED com o motivo. Linguagem natural com o **mesmo modelo do JARVIS**,
+  identificado em cada resultado; sem modelo, "sem modelo: análise determinística".
+* A TARDIS só **propõe** ações. Pelo JARVIS, a proposta vira sugestão ("sim"/"não"); comandos ao robô e
+  apagar dados não são pré-aprovados — o executor pede a confirmação da categoria.
+* Skills `tardis.consult` e `tardis.note`; intenções "consulte/pergunte à TARDIS…", "TARDIS, organize/
+  planeje/diagnostique…", "anote na TARDIS…", "memória de projeto…"; "abra a TARDIS" (sala) e "abra o
+  segundo cérebro" (ARQUIVO). "Cancelar" para as consultas do JARVIS à TARDIS.
+* Núcleo: TARDIS no ciclo de vida e no monitor de saúde; backups, exportações e escritas acendem o modo
+  OPERAÇÃO do rotor (o backup automático também).
+* `hud/tardis_room/`: sala de controle 3D em QPainter — console hexagonal com seis painéis clicáveis,
+  rotor de vidro que sobe e desce pelo modo REAL (repouso, processando, consulta do JARVIS com o feixe
+  JARVIS ⇄ TARDIS, operação, falha com anel no piso), paredes com círculos, piso, colunas, telas
+  flutuantes com a fila e o último resultado. Painéis laterais por tipo de análise, resultado com fontes
+  (texto do modelo sempre escapado), **APLICAR** pelo executor, **CANCELAR**, lista de tarefas.
+* Página TARDIS = sala de controle + ARQUIVO (a memória espacial anterior, intacta; "← SALA DE
+  CONTROLE"). Cada vista preserva o próprio estado; Esc solta o painel ou fecha a região.
+* Desempenho medido (contêiner Linux, Qt offscreen, CPU; medianas): câmera parada 7,7–11,0 ms por
+  quadro a 1280×720 e 8,9–14,4 ms a 1920×1080; volta da câmera até um painel 23,5–36,1 ms (só durante
+  ~1 s); ida e volta de uma tarefa no motor 0,8 ms. A sala anima a no máximo 24 quadros/s e usa no máximo 25% da
+  thread da interface. `tools/benchmark_tardis_room.py` e `docs/benchmarks/tardis_room_fase5.json`.
+* Testes: `test_tardis_logic.py` (33) e `test_tardis_room.py` (12); `test_tardis.py` e
+  `test_platform.py` atualizados para o ARQUIVO dentro da página TARDIS.

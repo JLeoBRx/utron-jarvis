@@ -251,6 +251,24 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         "CREATE INDEX IF NOT EXISTS idx_activity_started ON activity(started_at)",
         "CREATE INDEX IF NOT EXISTS idx_activity_ref ON activity(ref)",
     ]),
+    # v5 — TARDIS: as tarefas do protocolo (entrada, estado, resultado, erro, tempos, registro, modelo) e a
+    # memória de projeto (decisões, notas e histórico de parâmetros).
+    (5, [
+        """CREATE TABLE IF NOT EXISTS tardis_tasks (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL, origin TEXT NOT NULL, input TEXT NOT NULL DEFAULT '{}',
+            chain TEXT NOT NULL DEFAULT '[]', state TEXT NOT NULL,
+            result TEXT, error TEXT,
+            created REAL NOT NULL, started REAL, finished REAL, duration_ms INTEGER,
+            log TEXT NOT NULL DEFAULT '[]', model TEXT NOT NULL DEFAULT '')""",
+        "CREATE INDEX IF NOT EXISTS idx_tardis_created ON tardis_tasks(created)",
+        """CREATE TABLE IF NOT EXISTS project_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT 'nota',
+            text TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}',
+            created REAL NOT NULL, source TEXT NOT NULL DEFAULT 'usuario')""",
+        "CREATE INDEX IF NOT EXISTS idx_project_notes ON project_notes(project, created)",
+    ]),
 ]
 
 

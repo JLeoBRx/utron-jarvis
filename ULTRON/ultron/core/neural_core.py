@@ -10,7 +10,10 @@ Responsabilidades:
 * agendar a manutenção: saúde, consolidação da memória, decaimento do grafo, varredura da
   rede local, privacidade e Dream Mode (só em repouso);
 * ligar o SECOND BRAIN (registros, lembretes, captura automática e esclarecimentos) ao mesmo
-  caminho de execução usado por voz, texto e HUB 2 (``run_skill``).
+  caminho de execução usado por voz, texto e HUB 2 (``run_skill``);
+* ligar a TARDIS (segundo cérebro: fila e analisadores próprios, o MESMO modelo de linguagem): o
+  JARVIS consulta pela skill ``tardis.consult`` e as ações que ela propõe viram sugestões que só
+  rodam com "sim", pelo executor.
 
 Toda inferência roda no worker ``ai``; a interface nunca espera por nada daqui.
 """
@@ -54,6 +57,9 @@ from ..proactive.intelligence import ProactiveIntelligence
 from ..secondbrain import Capture, CaptureResult, ReminderScheduler, SecondBrainService, confirmation_text
 from ..skills.base import SkillContext
 from ..skills.registry import SkillRegistry, load_builtin
+from ..tardis.analyzers import TardisContext
+from ..tardis.engine import OPERATION_SKILLS, TardisEngine
+from ..tardis.store import TardisStore
 from ..voice.audio import AudioOutput
 from ..voice.processor import VoicePipeline
 from ..voice.tts import Speaker
@@ -200,10 +206,19 @@ class NeuralCore:
         self.proactive = ProactiveIntelligence(bus=self.bus, state=self.state, decisions=self.decisions,
                                                settings_getter=s)
         self.health = HealthMonitor(bus=self.bus, state=self.state, model_probe=self._running_models)
+        # TARDIS — segundo cérebro: módulo lógico com fila própria; usa o MESMO modelo do JARVIS (router)
+        self.tardis = TardisEngine(TardisStore(self.memory.db), TardisContext(
+            second_brain=self.second_brain, memory=self.memory, activity=self.activity, health=self.health,
+            router=self.router, voice_probe=self.voice.mic_probe if self.enable_voice else None, state=self.state,
+            lifecycle=self.lifecycle, runtime=self.runtime, registry=self.registry,
+            noctario=getattr(self, "noctario", None)), bus=self.bus, activity=self.activity)
         self.plugins = PluginManager(context_factory=self._plugin_context, settings_getter=s)
         self._register_health_probes()
         self._register_components()
         self.bus.subscribe(EventType.INSIGHT, self._on_insight, name="core.insight")
+        self.bus.subscribe(EventType.TARDIS_TASK_FINISHED, self._on_tardis_finished, name="core.tardis")
+        self.bus.subscribe(EventType.ACTION_STARTED, self._on_action_operation, name="core.tardis.ops")
+        self.bus.subscribe(EventType.ACTION_FINISHED, self._on_action_operation, name="core.tardis.ops.end")
         self.bus.subscribe(EventType.WAKE_WORD, self._on_wake, name="core.wake")
         self.settings_manager.on_change(self._on_settings_changed)
 
@@ -217,6 +232,7 @@ class NeuralCore:
         L.register(self.goals, depends_on=("memory",))
         L.register(self.second_brain, depends_on=("memory",))
         L.register(self.reminders, depends_on=("second_brain",))
+        L.register(self.tardis, depends_on=("memory", "second_brain"))
         L.register(self.network, depends_on=("memory", "world_model", "privacy"))
         L.register(Service("skills", health=lambda: {"status": "OK", "detail": f"{len(self.registry.available())}"
                                                                             f"/{len(self.registry)} disponíveis"}))
@@ -304,9 +320,17 @@ class NeuralCore:
         if not getattr(s, "auto_backup", True):
             return
         from ..memory import backup
+        interval = float(getattr(s, "backup_interval_hours", 24.0))
         try:
-            path = backup.backup_if_due(self.memory.db, interval_hours=float(getattr(s, "backup_interval_hours", 24.0)),
-                                        keep=int(getattr(s, "backup_keep", 10)))
+            last = float(self.memory.db.get_meta(backup.META_KEY, "0") or 0)
+        except (TypeError, ValueError):
+            last = 0.0
+        if time.time() - last < max(1.0, interval) * 3600:
+            return
+        try:
+            with self.tardis.operation("backup automático do banco"):      # o rotor mostra a operação real
+                path = backup.backup_if_due(self.memory.db, interval_hours=interval,
+                                            keep=int(getattr(s, "backup_keep", 10)))
         except Exception as exc:                       # registrado; o próximo ciclo tenta de novo
             log.warning("backup automático falhou: %s", exc)
             return
@@ -464,6 +488,8 @@ class NeuralCore:
             cancelled = True
         self.authorizations.cancel_all()
         self.speaker.interrupt()
+        if self.tardis.cancel_all(reason, origin="jarvis"):   # consultas do JARVIS à TARDIS também param
+            cancelled = True
         return cancelled
 
     def _process(self, text: str, source: str, activity: str = "") -> None:
@@ -552,7 +578,9 @@ class NeuralCore:
             label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz", "network": "a rede local",
                      "autonomy": "o painel de autonomia", "configuracoes": "as configurações do JARVIS",
                      "atividades": "o histórico de atividades", "diagnosticos": "os diagnósticos",
-                     "noctario": "o painel do Noctário", "jarvis": "a conversa"}.get(args["open_view"], "o TARDIS")
+                     "noctario": "o painel do Noctário", "jarvis": "a conversa",
+                     "second_brain": "o arquivo da TARDIS (memória espacial)",
+                     "tardis": "a sala de controle da TARDIS"}.get(args["open_view"], "a TARDIS")
             return Response(f"Abrindo {label}.", "info")
         return Response("Ajuste não reconhecido.", "error")
 
@@ -698,6 +726,39 @@ class NeuralCore:
         self._finish_state()
         self.activity.finish_request(activity, response, cancelled=token.cancelled)
         self._emit_response(response, source)
+
+    # ================================================================ TARDIS
+    def _on_tardis_finished(self, event) -> None:
+        """Tarefa pedida pelo JARVIS terminou com ação proposta: vira sugestão ("sim"/"não"). Categorias que
+        exigem confirmação própria (robô, apagar dados) NÃO são pré-aprovadas: o executor pergunta de novo."""
+        payload = event.payload
+        if payload.get("origin") != "jarvis" or not payload.get("actions"):
+            return
+        task = self.tardis.get(str(payload.get("id")))
+        if task is None or task.result is None:
+            return
+        action = next((a for a in task.result.actions if a.skill in self.registry), None)
+        if action is None:
+            return
+        from ..agent.permissions import category_for
+        skill = self.registry.get(action.skill)
+        category = category_for(skill, dict(action.args)) if skill is not None else ""
+        self._suggestion = {"text": f"Proposta da TARDIS: {action.description}.",
+                            "suggestion": {"skill": action.skill, "args": dict(action.args)},
+                            "action": "" if category in ("robo", "apagar_dados") else "authorize",
+                            "source": "tardis", "task": task.id, "reason": action.reason,
+                            "expires": time.time() + SUGGESTION_TTL}
+
+    def _on_action_operation(self, event) -> None:
+        """Backups, exportações e escritas que o JARVIS executa acendem o modo "operação" do rotor."""
+        payload = event.payload
+        if payload.get("skill") not in OPERATION_SKILLS:
+            return
+        key = f"acao:{payload.get('id')}"
+        if event.type == EventType.ACTION_STARTED:
+            self.tardis.begin_operation(key, str(payload.get("description") or payload.get("skill")))
+        else:
+            self.tardis.end_operation(key)
 
     def _expire_suggestion(self) -> None:
         if self._suggestion is not None and time.time() > self._suggestion["expires"]:
@@ -888,7 +949,8 @@ class NeuralCore:
                             imagination=self.imagination, voice=self.voice, cancel=cancel,
                             emit=lambda kind, **payload: self.bus.publish(kind, payload, source="skill"),
                             extras={"registry": self.registry, "goals": self.goals, "core": self,
-                                    "second_brain": self.second_brain, "capture": self.capture})
+                                    "second_brain": self.second_brain, "capture": self.capture,
+                                    "tardis": self.tardis})
 
     def _plugin_context(self, plugin) -> PluginContext:
         return PluginContext(plugin=plugin, bus=self.bus, state=self.state, settings=self.settings,
@@ -905,6 +967,7 @@ class NeuralCore:
         h.register("NETWORK", self.network.health)
         h.register("MEMORY", self._memory_health)
         h.register("SECOND_BRAIN", self._second_brain_health)
+        h.register("TARDIS", self.tardis.health)
         h.register("HUD", lambda: self.hud_health() if self.hud_health else
                    {"status": "UNAVAILABLE", "detail": "modo sem interface gráfica"})
 

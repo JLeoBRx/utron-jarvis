@@ -107,6 +107,14 @@ class EventType(str, Enum):
     WORLD_MODEL_UPDATED = "WORLD_MODEL_UPDATED"
     LOG = "LOG"
     ACTIVITY_UPDATED = "ACTIVITY_UPDATED"         # registro do histórico de atividades criado/atualizado
+    # TARDIS (segundo cérebro): tarefas do protocolo e o modo do rotor
+    TARDIS_TASK_QUEUED = "TARDIS_TASK_QUEUED"
+    TARDIS_TASK_STARTED = "TARDIS_TASK_STARTED"
+    TARDIS_TASK_FINISHED = "TARDIS_TASK_FINISHED"
+    TARDIS_TASK_FAILED = "TARDIS_TASK_FAILED"
+    TARDIS_TASK_REJECTED = "TARDIS_TASK_REJECTED"
+    TARDIS_TASK_CANCELLED = "TARDIS_TASK_CANCELLED"
+    TARDIS_STATE = "TARDIS_STATE"                 # modo do rotor: repouso, processando, operacao, jarvis, falha
 
 
 _ids = itertools.count(1)

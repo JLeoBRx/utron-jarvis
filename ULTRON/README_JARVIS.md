@@ -99,17 +99,17 @@ filtros, rolagem e textos digitados ficam como estavam.
 | Atalho | Efeito |
 |---|---|
 | F1 | JARVIS (núcleo e conversa) |
-| F2 | TARDIS (memória pessoal) |
+| F2 | TARDIS (sala de controle e ARQUIVO da memória pessoal) |
 | F4 | NOCTÁRIO (robô) |
 | F5 | ATIVIDADES (histórico) |
 | F6 | CONFIGURAÇÕES |
 | F3 ou F7 | DIAGNÓSTICOS (voz, rede, autonomia, desempenho, eventos, log, serviços e GPU) |
 | F11 | tela cheia |
-| Esc | como no original: interrompe a fala; senão cancela o pedido ou a autorização pendente; senão sai da tela cheia. Nunca minimiza. No TARDIS, fecha a região aberta |
+| Esc | como no original: interrompe a fala; senão cancela o pedido ou a autorização pendente; senão sai da tela cheia. Nunca minimiza. Na TARDIS, solta o painel da sala ou fecha a região aberta do ARQUIVO |
 | Ctrl+M | microfone |
 | Ctrl+L | limpa a conversa da tela |
 
-Por voz: *"abra o TARDIS"*, *"abra as configurações do JARVIS"* (sem "do JARVIS", abre as
+Por voz: *"abra a TARDIS"*, *"abra o segundo cérebro"* (o ARQUIVO), *"abra as configurações do JARVIS"* (sem "do JARVIS", abre as
 configurações do Windows, como no original), *"mostre o histórico de atividades"*, *"abra o
 console de eventos"*, *"abra o log do JARVIS"*, *"abra o noctário"*, *"volte para o JARVIS"*,
 *"o que você fez hoje?"*.
@@ -240,10 +240,90 @@ nunca ficam abaixo de *confirmar*; a parada de emergência do robô nunca é blo
 
 ---
 
-## 4. TARDIS (memória espacial)
+## 4. TARDIS — o segundo cérebro (sala de controle e ARQUIVO)
 
-Abra pelo botão TARDIS, por **F2** ou dizendo *"abra o TARDIS"*. No centro, a **câmara de
-energia** (HOJE: prioridades, compromissos, atrasados); em volta, portais para as regiões:
+A TARDIS é um **módulo lógico** do JARVIS com fila, protocolo, analisadores e memória de projeto
+próprios. **Não é um segundo modelo de IA**: quando precisa de linguagem natural, usa o **mesmo
+modelo do JARVIS** com instruções próprias — e cada resultado diz qual modelo usou (*"qwen2.5:3b (o
+mesmo do JARVIS)"*) ou *"sem modelo: análise determinística"*. A TARDIS **nunca executa ações**:
+devolve **ações propostas**, que só rodam com a sua confirmação, pelo mesmo executor do JARVIS
+(permissões, risco, autorização e verificação).
+
+Abra por **F2**, pelo botão TARDIS ou dizendo *"abra a TARDIS"*. A página tem duas vistas, e cada uma
+guarda o próprio estado quando você troca de módulo:
+
+### Sala de controle
+
+Um console hexagonal com seis painéis em volta do **rotor** de vidro. Clique num painel (no console
+3D ou nas abas à direita) e a câmera gira até ele; **Esc** solta o painel (sem painel, o Esc faz o que
+faz no resto da plataforma).
+
+| Painel | O que faz |
+|---|---|
+| ANÁLISE | consulta contextual na memória pessoal, fatos, notas de projeto e histórico — **com a fonte de cada item**; e a memória de projeto (gravar e ler notas, decisões e parâmetros) |
+| PLANEJAMENTO | decompõe um objetivo em etapas verificáveis e aponta riscos (exige o modelo; sem ele, falha com o motivo). Nenhuma etapa é executada |
+| ARQUIVO | organização da memória pessoal (atrasados, conflitos, duplicados, tarefas sem data, registros aguardando revisão) e a entrada da memória espacial |
+| ROTINAS | lembretes futuros, registros recorrentes e automações |
+| TELEMETRIA | métricas das voltas gravadas do Noctário (tempo, erro RMS, oscilação, saturação do PWM, perdas de linha, intervalos entre cruzamentos, comparação entre voltas) e hipóteses de ajuste explicadas |
+| DIAGNÓSTICO | saúde, componentes, workers, voz e Noctário, com gravidade e fonte (diagnóstico); e a fotografia do estado de cada módulo agora (coordenação) |
+
+O **rotor** mostra o estado REAL do motor da TARDIS:
+
+| Modo | Quando |
+|---|---|
+| REPOUSO | fila vazia — respiração lenta, âmbar escuro |
+| PROCESSANDO | uma análise roda ou espera na fila — o rotor sobe e desce, âmbar |
+| CONSULTA DO JARVIS | a análise em execução foi pedida pelo JARVIS — ciano, com o feixe **JARVIS ⇄ TARDIS** (e o rosto do JARVIS mostra "CONSULTANDO A TARDIS") |
+| OPERAÇÃO | o JARVIS está gravando ou exportando dados (backup, exportação, escrita de arquivos) — verde-água |
+| FALHA | uma análise falhou há menos de 8 s — vermelho, anel no piso e o motivo no canto |
+
+Cada painel acende enquanto uma tarefa REAL do seu tipo roda e pulsa ao terminar (vermelho se falhou).
+As telas flutuantes mostram a fila e o último resultado. Sem evento, a sala fica em repouso.
+
+O lado direito mostra o **RESULTADO** da tarefa escolhida: resumo, itens com a fonte de cada um,
+modelo usado, o registro de operações e as **ações propostas** com o botão **APLICAR** (executa pelo
+JARVIS, que pede confirmação quando a categoria exige — comandos ao robô e apagar dados sempre pedem).
+**CANCELAR** interrompe uma análise na fila ou em execução. **TAREFAS** lista as desta sessão e as
+anteriores (lidas do banco).
+
+### Pelo JARVIS (voz ou texto)
+
+*"Jarvis, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o Kd do
+Noctário"*, *"TARDIS, organize minha memória"*, *"peça à TARDIS um plano para montar a pista"*,
+*"TARDIS, diagnostique o sistema"*, *"peça à TARDIS para analisar a telemetria do Noctário"*,
+*"TARDIS, quais são minhas rotinas?"*, *"TARDIS, estado dos módulos"*, *"anote na TARDIS uma
+decisão: usar pista de 3 metros"*, *"mostre a memória de projeto do Noctário"*.
+
+A resposta diz qual análise rodou, o modelo e as fontes. Se a TARDIS propõe uma ação, o JARVIS
+pergunta: diga **"sim"** para executar ou **"não"** para descartar (a proposta expira em 90 s). Para
+comandos ao robô, o "sim" ainda passa pela confirmação própria da categoria. **"Cancelar"** para as
+consultas que o JARVIS fez à TARDIS (as análises pedidas na sala continuam).
+
+### Protocolo e garantias
+
+Toda tarefa tem `id`, entrada, estado (`QUEUED → RUNNING → DONE | FAILED | REJECTED | CANCELLED`),
+resultado (resumo, itens, fontes, ações propostas), erro (código e mensagem), tempos (criada,
+iniciada, terminada, duração), origem (JARVIS, usuário, TARDIS, agendador), cadeia de delegação,
+registro de operações e o modelo usado. Tudo fica no **mesmo banco** do JARVIS e no histórico de
+atividades (pedido → ação → tarefa da TARDIS, ligados).
+
+* **Sem ciclos**: no máximo 2 saltos na cadeia, nenhum salto repetido, e a TARDIS nunca devolve
+  tarefas ao JARVIS — o que violar isso é **recusado** na entrada.
+* **Prazos por tipo** (consulta 60 s, planejamento 120 s, organização 20 s, rotinas 10 s,
+  telemetria 20 s, diagnóstico 30 s, coordenação 5 s, memória de projeto 10 s); uma análise que
+  trava é abandonada com TIMEOUT e a fila segue.
+* **Sem dado, sem resultado**: nada encontrado → FAILED com o motivo (`NO_DATA`); sem modelo para
+  planejar → `NO_MODEL`. Telemetria sem voltas gravadas do Noctário diz que não há o que analisar;
+  voltas do simulador são rotuladas e nunca viram comando ao robô. Nenhuma sugestão promete tempo de volta.
+* A memória de projeto **recusa senhas, tokens e dados sensíveis**; textos que parecem segredo são
+  redigidos antes de gravar.
+* Tarefas que estavam na fila quando o JARVIS fechou viram CANCELLED (`INTERRUPTED`) na próxima abertura.
+
+### ARQUIVO (memória espacial)
+
+Pelo painel ARQUIVO (**ABRIR MEMÓRIA ESPACIAL**), pelo botão de memória da barra inferior ou dizendo
+*"abra o segundo cérebro"* / *"abra a memória espacial"*. No centro, a **câmara de energia** (HOJE:
+prioridades, compromissos, atrasados); em volta, portais para as regiões:
 
 | Região | O que mostra |
 |---|---|
@@ -259,12 +339,26 @@ Os pontos em volta de cada portal são registros reais (passe o mouse para ver o
 Clique num portal: a câmera viaja até ele e o painel lateral abre para consultar, criar
 (**+ NOVO**), editar, concluir, arquivar ou mandar para a lixeira. **Esc** volta à visão
 geral; **Ctrl+N** vai para a captura rápida ("reunião com a equipe quarta às 14h",
-"ideia: …", "o que está atrasado?"). **← JARVIS CORE** volta ao hub principal sem perder
+"ideia: …", "o que está atrasado?"). **← SALA DE CONTROLE** volta à sala sem perder
 câmera, região ou filtros. **EXPORTAR** (JSON/CSV) e **BACKUP** ficam na barra superior;
 **SOM AMBIENTE** é opcional (desligado por padrão).
 
 Pulsos percorrem os corredores só quando algo real acontece (registro criado, editado,
 concluído, lembrete disparado).
+
+### Desempenho da sala
+
+Paredes, piso, colunas e console ficam em imagens em cache, refeitas só quando a câmera gira até um
+painel; com a câmera parada, cada quadro desenha só o rotor, as luzes dos painéis, as telas, os
+rótulos e as partículas. Com animação a sala desenha no máximo 24 quadros/s e nunca ocupa mais de 25%
+da thread da interface (a pintura segura o GIL e atrasaria as análises); em repouso cai para a cadência
+econômica do perfil e, fora da tela, não desenha nada.
+
+Medido num contêiner Linux (Qt offscreen, CPU, 4 núcleos — não é uma máquina Windows real): câmera
+parada 7,7–11,0 ms por quadro (mediana) a 1280×720 e 8,9–14,4 ms a 1920×1080, em qualquer perfil e modo
+do rotor; a volta da câmera até um painel custa 23,5–36,1 ms por quadro durante ~1 s; ida e volta de uma
+tarefa no motor, 0,8 ms (mediana). Números completos em `docs/benchmarks/tardis_room_fase5.json`
+(`python tools/benchmark_tardis_room.py` mede na sua máquina).
 
 ---
 
@@ -281,7 +375,7 @@ Exemplos: *"o que tenho para hoje?"*, *"lembre-me de pagar a conta amanhã às 9
 *"anote uma ideia: horta vertical"*, *"tenho conflito de horário na agenda?"*,
 *"exporte minhas tarefas em planilha"*, *"faça um backup da memória"*, *"quais dispositivos
 estão na rede?"*, *"diagnóstico de voz"*, *"revogue as autorizações"*, *"prepare meu projeto
-Atlas"*, *"o que está na tela?"*.
+Atlas"*, *"o que está na tela?"*, *"consulte a TARDIS sobre o projeto Atlas"*.
 
 Quando falta informação essencial, ele faz **uma** pergunta objetiva; quando há evidência
 suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.

@@ -122,7 +122,8 @@ class IntentEngine:
 
     # ------------------------------------------------------------ regras
     def _rules(self, raw: str, t: str) -> Intent | None:
-        for rule in (self._secondbrain_rules, self._time_rules, self._control_rules, self._voice_rules,
+        for rule in (self._tardis_rules, self._secondbrain_rules, self._time_rules, self._control_rules,
+                     self._voice_rules,
                      self._power_rules, self._network_rules,
                      self._system_rules, self._project_rules, self._imagination_rules, self._memory_rules,
                      self._vision_rules, self._file_rules, self._web_rules, self._window_rules, self._app_rules,
@@ -131,6 +132,78 @@ class IntentEngine:
             if intent is not None:
                 return intent
         return None
+
+    # ------------------------------------------------------------ TARDIS (segundo cérebro)
+    def _tardis_rules(self, raw, t):
+        """"JARVIS, consulte a TARDIS sobre X", "TARDIS, organize/planeje/diagnostique...", "anote na TARDIS
+        que..." e a navegação ("abra a TARDIS" → sala de controle; "segundo cérebro"/"memória espacial" →
+        o ARQUIVO). Pedidos de consulta vêm antes das palavras de tipo: "pergunte à TARDIS como organizar
+        meu estudo" é uma pergunta, não uma organização."""
+        if "tardis" not in t and "memoria de projeto" not in t:
+            return None
+        opening = re.search(r"^(abr\w*|mostr\w*|exib\w*|v\w+ para|ir para|leve\w* (me )?para)\b", t)
+        if opening and re.search(r"\b(arquivo|memoria espacial|segundo cerebro)\b", t):
+            return _intent("control", raw, args={"open_view": "second_brain"})
+        if opening and re.search(r"\btardis\b", t) and not re.search(r"\b(sobre|para (organizar|planejar))\b", t):
+            return _intent("control", raw, args={"open_view": "tardis"})
+        if re.search(r"^(anot\w*|registr\w*|grav\w*|guard\w*|salv\w*)\b.*\b(na|no) (tardis|memoria de projeto)\b",
+                     t):
+            kind = "decisao" if re.search(r"\bdecis\w*|\bdecid\w*", t) else \
+                "parametro" if re.search(r"\bparametro", t) else "nota"
+            project = re.search(r"(?i)\b(?:do|no|para o) projeto\s+([\w.\-]+)", raw)
+            content = re.search(r"(?i)\b(?:tardis|mem[oó]ria de projeto)\b(?:\s+(?:do|no|para o) projeto\s+[\w.\-]+)?"
+                                r"\s*(?:que\b|:|,|-)?\s*(?:(?:a |uma )?(?:decis[aã]o|nota|par[aâ]metro)\s*(?:de que|que|de|:)?\s*)?"
+                                r"(.+)$", raw.strip())
+            text = (content.group(1) if content else "").strip(" .:")
+            if not text:
+                return _intent("response", raw, response="Anotar o quê na memória de projeto, senhor?",
+                               reason="nota vazia")
+            args = {"text": text[:600], "kind": kind}
+            if project:
+                args["project"] = project.group(1)[:80]
+            return _cmd(raw, "tardis.note", **args)
+        addressed = re.search(r"\b(consult\w*|pergunt\w*|pe[cç]\w*|pede|mand\w*|verifiqu\w*|cheque|segundo|"
+                              r"de acordo com)\b.{0,12}\btardis\b", t) or t.startswith("tardis")
+        if not addressed and "memoria de projeto" not in t:
+            return None
+
+        def remainder() -> str:
+            text = re.sub(r"(?i)^\s*(?:(?:consult\w*|pergunt\w*|pe[çc]\w*|pede|mand\w*|verifiqu\w*|cheque)\s+"
+                          r"(?:a|à|com a|para a)?\s*)?tardis\b[\s,:;-]*", "", raw.strip())
+            text = re.sub(r"(?i)[\s,]*(?:segundo|de acordo com)\s+a\s+tardis\b.*$", "", text)
+            text = re.sub(r"(?i)^(?:sobre|a respeito de|acerca de|se|para|pra|que)\s+", "", text.strip())
+            return text.strip(" ?.!:,")
+
+        if re.search(r"\b(consult\w*|pergunt\w*|segundo|de acordo com)\b.{0,12}\btardis\b", t):
+            question = remainder()
+            if not question:
+                return _intent("response", raw, response="Consultar a TARDIS sobre o quê, senhor?",
+                               reason="consulta vazia")
+            return _cmd(raw, "tardis.consult", kind="consulta", question=question[:400])
+        if re.search(r"\bmemoria de projeto\b|\b(notas|decisoes|parametros) do projeto\b", t):
+            project = re.search(r"(?i)\bprojeto\s+(?:(?:do|da|de)\s+)?([\w.\-]+)", raw)
+            name = project.group(1) if project and norm(project.group(1)) not in ("da", "do", "de") else ""
+            return _cmd(raw, "tardis.consult", kind="projeto", **({"project": name[:80]} if name else {}))
+        if re.search(r"\b(planej\w*|plano|decompo\w*)\b", t):
+            goal = re.search(r"(?i)\b(?:planej\w*|um plano|plano|decomp\w*)\s+(?:(?:para|pra|de)\s+)?(.+)$", raw)
+            text = (goal.group(1) if goal else "").strip(" ?.!:,")
+            if not text:
+                return _intent("response", raw, response="Planejar o quê, senhor?", reason="objetivo vazio")
+            return _cmd(raw, "tardis.consult", kind="planejamento", goal=text[:400])
+        if re.search(r"\b(organiz\w*|arrum\w*|faxina|duplicad\w*|atrasad\w*)\b", t):
+            return _cmd(raw, "tardis.consult", kind="organizacao")
+        if re.search(r"\b(rotinas?|lembretes|automac\w*|recorren\w*)\b", t):
+            return _cmd(raw, "tardis.consult", kind="rotinas")
+        if re.search(r"\b(telemetria|voltas?|noctario|robo|kp|kd)\b", t):
+            return _cmd(raw, "tardis.consult", kind="telemetria")
+        if re.search(r"\b(diagnost\w*|problemas?|falhas?)\b", t):
+            return _cmd(raw, "tardis.consult", kind="diagnostico")
+        if re.search(r"\b(coorden\w*|modulos|status|estado)\b", t):
+            return _cmd(raw, "tardis.consult", kind="coordenacao")
+        question = remainder()
+        if not question:
+            return _intent("response", raw, response="Pois não? O que a TARDIS deve analisar?", reason="vazio")
+        return _cmd(raw, "tardis.consult", kind="consulta", question=question[:400])
 
     def _time_rules(self, raw, t):
         if re.search(r"\bque horas\b|\bhora atual\b", t):
@@ -206,8 +279,8 @@ class IntentEngine:
     def _secondbrain_rules(self, raw, t):
         r = raw.strip().rstrip(".!")
         if re.search(r"\b(abr\w*|mostr\w*|exib\w*|v\w+ para)\b.*\b(segundo cerebro|second brain|hub 2|hub dois|"
-                     r"tardis|memoria espacial)\b", t):
-            return _intent("control", raw, args={"open_view": "tardis"})
+                     r"memoria espacial)\b", t):
+            return _intent("control", raw, args={"open_view": "second_brain"})
         # agenda: conflitos de horário (só leitura)
         if re.search(r"\b(conflit\w*|choque\w* de horario|sobrepost\w*|no mesmo horario)\b", t) and \
                 re.search(r"\b(agenda|horario|compromissos?|reunio\w*|eventos?)\b", t):

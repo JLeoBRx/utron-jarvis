@@ -113,6 +113,22 @@ class ExecutionEngine:
     def context(self, cancel=None) -> SkillContext:
         return self._ctx(cancel)
 
+    def _activity_scope(self, action: Action) -> str:
+        """Registro desta ação no histórico (ou o pedido em curso): a skill roda numa thread auxiliar e o
+        que ela registrar (ex.: uma tarefa da TARDIS) fica ligado a esta ação."""
+        if self.activity is None:
+            return ""
+        try:
+            return self.activity.action_record(action.id) or self.activity.current()
+        except Exception:
+            return ""
+
+    def _call(self, skill: Skill, ctx: SkillContext, args: dict, scope: str) -> SkillResult:
+        if self.activity is None or not scope:
+            return skill.execute(ctx, **args)
+        with self.activity.scope(scope):
+            return skill.execute(ctx, **args)
+
     def _track(self, method: str, *args: Any, **kwargs: Any) -> None:
         """Histórico de atividades: nunca interfere na execução."""
         if self.activity is None:
@@ -199,9 +215,10 @@ class ExecutionEngine:
                 "description": action.description, "risk": risk.value, "started": time.time()},
                 active_skills=[skill.name])
         ctx = self._ctx(cancel)
+        scope = self._activity_scope(action)
         call_started = time.perf_counter()
         try:
-            result = run_with_timeout(lambda: skill.execute(ctx, **args), skill.timeout)
+            result = run_with_timeout(lambda: self._call(skill, ctx, args, scope), skill.timeout)
             if not isinstance(result, SkillResult):
                 result = SkillResult(False, error="a skill não devolveu um resultado estruturado",
                                      error_kind="UNKNOWN_ERROR")

@@ -21,7 +21,7 @@ FORBIDDEN = frozenset({"run_shell", "shell", "powershell", "cmd", "bash", "pytho
 
 SKILL_PACKAGES = ("windows", "applications", "automation", "filesystem", "browser", "vision", "network",
                   "devices", "diagnostics", "development", "audio", "memory", "imagination", "system", "secondbrain",
-                  "assistant")
+                  "assistant", "tardis")
 
 
 class SkillRegistry:

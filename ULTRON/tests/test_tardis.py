@@ -1,9 +1,9 @@
 """Os dois hubs com o núcleo real (Qt offscreen, Ollama simulado, banco temporário).
 
-Cobre: abrir e fechar o JARVIS CORE e o TARDIS, regiões com dados REAIS do banco, comunicação
-pelos eventos do núcleo (registro criado → TARDIS e CORE reagem), voltar ao CORE sem perder o
-estado do TARDIS, ações pelo núcleo (nunca direto no banco), perfis de qualidade e encerramento
-sem threads penduradas. Não é teste de GPU nem de janela real do Windows.
+Cobre: abrir e fechar o JARVIS CORE e o ARQUIVO da TARDIS (a memória espacial, dentro da página TARDIS),
+regiões com dados REAIS do banco, comunicação pelos eventos do núcleo (registro criado → ARQUIVO e CORE
+reagem), voltar ao CORE sem perder o estado do ARQUIVO, ações pelo núcleo (nunca direto no banco),
+perfis de qualidade e encerramento sem threads penduradas. Não é teste de GPU nem de janela real do Windows.
 """
 import datetime as dt
 import threading
@@ -77,7 +77,7 @@ class HubsIntegrationTest(unittest.TestCase):
         sb.create("event", "Reunião de equipe", when=tomorrow + dt.timedelta(hours=4), remind=False)
         sb.create("event", "Dentista", when=tomorrow + dt.timedelta(hours=4, minutes=30), remind=False)
         sb.create("note", "Livro recomendado: Pense de novo")
-        self.controller.open_tardis()
+        self.controller.open_archive()
         tardis = self.controller.second
         self.assertTrue(self.pump_until(lambda: "tardis" in tardis.loaded_once, 10), "regiões lidas do banco")
         regions = tardis.scene.regions
@@ -92,7 +92,7 @@ class HubsIntegrationTest(unittest.TestCase):
         self.assertTrue(tardis.isVisible())
 
     def test_2_real_event_reaches_both_hubs(self):
-        tardis = self.controller.second or self.controller.open_tardis() or self.controller.second
+        tardis = self.controller.second or self.controller.open_archive()
         tardis.scene.pulses.clear()
         before_core = len(self.controller.scene.modules)
         self.core.second_brain.create("task", "Comprar cabos")
@@ -105,7 +105,7 @@ class HubsIntegrationTest(unittest.TestCase):
                         "a contagem da região é relida do banco")
 
     def test_3_return_to_core_preserves_tardis_state(self):
-        self.controller.open_tardis()
+        self.controller.open_archive()
         tardis = self.controller.second
         tardis.open_region("tasks")
         self.pump(0.5)
@@ -115,7 +115,7 @@ class HubsIntegrationTest(unittest.TestCase):
         self.assertTrue(self.controller.window.isVisible())
         self.assertEqual(tardis._region, "tasks", "a região aberta continua guardada")
         self.assertFalse(tardis._clock.isActive(), "oculto: o relógio do TARDIS para (nenhum quadro)")
-        self.controller.open_tardis()
+        self.controller.open_tardis()                  # F2: a TARDIS volta como estava (no ARQUIVO)
         self.pump(0.4)
         self.assertEqual(tardis._region, "tasks")
         self.assertTrue(tardis.isVisible())
@@ -175,7 +175,8 @@ class ShutdownTest(unittest.TestCase):
             controller = HudController(core)
             controller.show()
             core.boot()
-            controller.open_tardis()
+            controller.open_tardis()                   # sala de controle (relógio próprio)
+            controller.open_archive()                  # ARQUIVO (memória espacial)
             controller.open_systems()
             end = time.time() + 1.0
             while time.time() < end:

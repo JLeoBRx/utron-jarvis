@@ -322,6 +322,11 @@ class ActivityLog:
                 self._actions[action.id] = activity_id
         return activity_id
 
+    def action_record(self, action_id: str) -> str:
+        """Id do registro de uma ação em andamento ("" se não há)."""
+        with self._lock:
+            return self._actions.get(action_id, "")
+
     def action_started(self, action, description: str, *, risk: str) -> str:
         with self._lock:
             activity_id = self._actions.get(action.id, "")

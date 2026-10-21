@@ -6,7 +6,8 @@ Atividades, Configurações) nascem na primeira visita e nunca são destruídas:
 preserva câmera, região, filtros e textos.
 
 * **JARVIS** (``BrainView`` + conversa): percepção, decisão, planejamento, execução, verificação, voz.
-* **TARDIS** (``TardisWindow`` embutida): a memória pessoal como espaço navegável.
+* **TARDIS** (``TardisPage``): a SALA DE CONTROLE (console 3D, rotor ligado ao motor da TARDIS e os
+  painéis de análise) e o ARQUIVO (``TardisWindow``, a memória pessoal como espaço navegável).
 * **DIAGNÓSTICOS** (o Painel de Sistemas embutido + eventos, log, serviços e GPU).
 
 Todas as páginas leem o MESMO estado central (JARVIS_STATE) e os MESMOS eventos:
@@ -74,7 +75,8 @@ class HudController(QtCore.QObject):
         (self.view if face else self.avatar).setParent(self.window.jarvis_page)
         (self.view if face else self.avatar).hide()
         self.orb = OrbWindow(self.scene)
-        self.second = None                          # TARDIS (criado na primeira visita)
+        self.second = None                          # ARQUIVO da TARDIS: memória espacial (sob demanda)
+        self.tardis_page = None                     # página TARDIS: sala de controle + ARQUIVO
         self.systems = None                         # Diagnósticos / Painel de Sistemas (idem)
         self.activity_page = None
         self.settings_page = None
@@ -172,6 +174,8 @@ class HudController(QtCore.QObject):
             self.window.jarvis_page.set_central(self.avatar if face else self.view)
         if {"performance_profile", "heavy_effects"} & set(changed):
             self.avatar.set_profile(self.profile.name, effects=self._effects_enabled())
+            if self.tardis_page is not None:
+                self.tardis_page.on_profile(self.profile)
         if "captions" in changed:
             self.avatar.captions_enabled = bool(getattr(settings, "captions", True))
 
@@ -181,11 +185,22 @@ class HudController(QtCore.QObject):
 
     # ================================================================ páginas (criadas sob demanda)
     def _make_tardis(self):
+        from .tardis_room.page import TardisPage
+        self.tardis_page = TardisPage(self.core, archive_factory=self._make_archive, profile=self.profile,
+                                      effects=self._effects_enabled)
+        self.tardis_page.mode_changed.connect(lambda _mode: self.window.refresh_layout())
+        self.tardis_page.escape_unhandled.connect(self.escape)
+        return self.tardis_page
+
+    def _make_archive(self):
+        """O ARQUIVO da TARDIS (memória espacial), criado na primeira visita."""
         from .tardis import TardisWindow
         self.second = TardisWindow(self.core, state=self.state_cache, profile=self.profile)
         self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="tardis"))
         self.second.authorization_always.connect(lambda: self._authorize_always("tardis"))
-        self.second.return_requested.connect(self.return_to_core)
+        self.second.return_requested.connect(lambda: self.tardis_page.show_room())
+        self.second.back_button.setText("← SALA DE CONTROLE")
+        self.second.back_button.setToolTip("Voltar à sala de controle da TARDIS (o arquivo fica como está)")
         return self.second
 
     def _make_diagnostics(self):
@@ -221,13 +236,13 @@ class HudController(QtCore.QObject):
         w.input.submitted.connect(lambda text: self.core.submit(text, source="text"))
         w.input.mic_toggled.connect(self._toggle_mic)
         w.input.voice_toggled.connect(self._toggle_voice)
-        w.input.second_brain.connect(lambda: self.open_tardis())
+        w.input.second_brain.connect(lambda: self.open_archive())
         w.input.systems.connect(lambda: self.open_systems())
         w.authorization.decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="hud"))
         w.authorization.always.connect(lambda: self._authorize_always("hud"))
         w.suggestion.decided.connect(lambda ok: self.core.accept_suggestion(ok, by="hud"))
         w.collapse_requested.connect(self.collapse)
-        w.second_brain_requested.connect(lambda: self.open_tardis())
+        w.second_brain_requested.connect(lambda: self.open_archive())
         w.systems_requested.connect(lambda: self.open_systems())
         w.closing.connect(self._closed_to_tray)
         w.interrupt_requested.connect(self.escape)
@@ -296,7 +311,9 @@ class HudController(QtCore.QObject):
     def _ui_request(self, payload: dict) -> None:
         view = payload.get("view")
         section = payload.get("section") or None
-        if view in ("second_brain", "tardis"):
+        if view == "second_brain":
+            self.open_archive(section)
+        elif view == "tardis":
             self.open_tardis(section)
         elif view in ("systems", "voice", "network", "autonomy", "diagnosticos", "diagnostics"):
             self.open_systems(section or (view if view in ("voice", "network", "autonomy") else None))
@@ -380,7 +397,7 @@ class HudController(QtCore.QObject):
         self.scene.profile = self.profile
         self._state_timer.setInterval(self.profile.state_ms)
         self._telemetry_timer.setInterval(self.profile.telemetry_ms)
-        for hub in (self.second, self.systems):
+        for hub in (self.second, self.systems, self.tardis_page):
             if hub is not None:
                 hub.on_profile(self.profile)
 
@@ -458,6 +475,13 @@ class HudController(QtCore.QObject):
             metrics.gauge("ui.tardis_fps", self.second.target_fps)
             for value in list(self.second.view.frame_times)[-5:]:
                 metrics.record("ui.tardis_frame", value)
+        room = self.tardis_page.room if self.tardis_page is not None else None
+        room_open = bool(room is not None and room.isVisible())
+        metrics.gauge("ui.tardis_room_open", room_open)
+        if room_open:
+            metrics.gauge("ui.tardis_room_fps", room.target_fps)
+            for value in list(room.view.frame_times)[-5:]:
+                metrics.record("ui.tardis_room_frame", value)
 
     def health(self) -> dict:
         visible = self.window.isVisible() or self.orb.isVisible()
@@ -525,13 +549,19 @@ class HudController(QtCore.QObject):
             page.show_section(section)
         return page
 
-    def open_tardis(self, section: str | None = None) -> None:
-        """Abre o TARDIS. Voltar ao JARVIS só troca de página: câmera, região e filtros ficam."""
-        self.open_page("tardis", section)
-        if self.second is not None:
-            self.second.raise_()
+    def open_tardis(self, section: str | None = None):
+        """Abre a TARDIS como estava (sala ou ARQUIVO); com seção, vai ao painel da sala ou à região do
+        ARQUIVO. Voltar ao JARVIS só troca de página: câmera, painel, região e filtros ficam."""
+        return self.open_page("tardis", section)
 
-    open_second_brain = open_tardis                 # nome antigo (compatibilidade)
+    def open_archive(self, section: str | None = None):
+        """O ARQUIVO da TARDIS: a memória pessoal como espaço navegável (o antigo HUB 2)."""
+        page = self.open_page("tardis")
+        if page is not None and hasattr(page, "show_archive"):
+            page.show_archive(section)
+        return self.second
+
+    open_second_brain = open_archive                # nome antigo (compatibilidade)
 
     def return_to_core(self) -> None:
         self.window.navigate("jarvis")

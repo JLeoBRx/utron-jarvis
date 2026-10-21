@@ -10,8 +10,8 @@ projetos, compromissos, tarefas, ideias e memórias — e dois satélites (lembr
   com autorização) — tudo pelo Neural Core.
 * Pulsos percorrem os corredores só quando algo REAL acontece (registro criado/alterado,
   lembrete disparado). A câmara central segue o estado de atividade do núcleo.
-* "← JARVIS CORE" volta ao HUB principal; a janela só se esconde — câmera, região aberta e
-  filtros continuam como estavam.
+* "← JARVIS CORE" volta ao HUB principal (na plataforma, "← SALA DE CONTROLE" volta à sala da
+  TARDIS); a janela só se esconde — câmera, região aberta e filtros continuam como estavam.
 * Som ambiente discreto e opcional (desligado por padrão).
 
 Desempenho: fundo e trajetórias em cache; partículas limitadas pelo perfil; cadência
@@ -558,6 +558,7 @@ class TardisWindow(PageHost):
         top.setContentsMargins(20, 12, 20, 0)
         back = _button("← JARVIS CORE", "Voltar ao HUB principal (o TARDIS fica como está)", primary=True)
         back.clicked.connect(self.return_requested)
+        self.back_button = back                     # na plataforma, volta para a sala de controle
         self.sound = _button("SOM AMBIENTE", "Som ambiente discreto do TARDIS")
         self.sound.setCheckable(True)
         self.sound.setChecked(bool(getattr(core.settings(), "ambient_sound", False)))
