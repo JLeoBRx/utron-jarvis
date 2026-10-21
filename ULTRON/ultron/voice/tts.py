@@ -9,6 +9,11 @@ Motores, em ordem:
 ``Speaker`` roda em thread própria: fila de falas, interrupção imediata (barge-in), pausa,
 retomada, volume e velocidade. Publica ``VOICE_STARTED``/``VOICE_FINISHED``. Sem
 dispositivo de saída, informa claramente e não finge ter falado.
+
+Boca e legenda: cada fala ganha uma trilha labial (``voice.lipsync``) feita do áudio FINAL; o
+avatar lê ``mouth()`` e ``caption()``, calculados pela posição REAL de reprodução informada pelo
+mixer (amostras entregues ao dispositivo, descontada a latência de saída). Pausa ou interrupção:
+a boca fecha no mesmo quadro.
 """
 from __future__ import annotations
 
@@ -30,6 +35,7 @@ from ..config import paths
 from ..core.events import EventType
 from ..personality.voice_profile import VoiceProfile
 from . import dsp
+from .lipsync import CLOSED, LipSyncTrack, Segment, mouth_dict
 from .profile import effective_profile
 
 log = logging.getLogger("ultron.tts")
@@ -54,6 +60,34 @@ class PiperSynth:
         from piper import PiperVoice
         self.voice = PiperVoice.load(voice_path)
         self.voice_path = voice_path
+
+    def synthesize_segments(self, text: str, *, length_scale: float = 1.0
+                            ) -> tuple[np.ndarray, int, list[Segment] | None]:
+        """Áudio + trechos por frase com os fonemas (e o alinhamento, se o modelo de voz o exportar)."""
+        if not hasattr(self.voice, "synthesize_wav"):                      # piper-tts 1.2: só o áudio
+            samples, rate = self.synthesize(text, length_scale=length_scale)
+            return samples, rate, None
+        from piper import SynthesisConfig
+        config = SynthesisConfig(length_scale=length_scale)
+        try:
+            chunks = list(self.voice.synthesize(text, syn_config=config, include_alignments=True))
+        except TypeError:                                                  # sem alinhamento nesta versão
+            chunks = list(self.voice.synthesize(text, syn_config=config))
+        parts: list[np.ndarray] = []
+        segments: list[Segment] = []
+        position, rate = 0, 0
+        for chunk in chunks:
+            audio = np.asarray(chunk.audio_float_array, dtype=np.float32).reshape(-1)
+            rate = rate or int(chunk.sample_rate)
+            alignment = None
+            if getattr(chunk, "phoneme_alignments", None):
+                alignment = [(str(a.phoneme), int(a.num_samples)) for a in chunk.phoneme_alignments]
+            segments.append(Segment(position, position + len(audio), list(chunk.phonemes or []), alignment))
+            parts.append(audio)
+            position += len(audio)
+        if not parts:
+            return np.zeros(0, dtype=np.float32), rate or 22050, []
+        return np.concatenate(parts), rate, segments
 
     def synthesize(self, text: str, *, length_scale: float = 1.0) -> tuple[np.ndarray, int]:
         buffer = io.BytesIO()
@@ -149,6 +183,8 @@ class Speaker:
     """Fila de fala com interrupção, pausa e retomada."""
 
     name = "speaker"
+    OUTPUT_LATENCY = 0.05                 # bloco do mixer + buffer do dispositivo (s)
+    CAPTION_HOLD = 1.6                    # a legenda fica na tela depois da fala (s)
 
     def __init__(self, output, *, bus=None, state=None, settings_getter: Callable[[], Any] | None = None,
                  synth_loader: Callable[[], tuple] | None = None):
@@ -169,6 +205,11 @@ class Speaker:
         self.muted = False
         self._ready = threading.Event()
         self._recent: deque = deque(maxlen=6)          # (instante, texto) — base do filtro de eco
+        self._track: LipSyncTrack | None = None        # boca da fala atual
+        self._utterance = None
+        self._play_started = 0.0
+        self._caption = {"text": "", "until": 0.0, "progress": 0.0}
+        self.lipsync_method = ""
 
     MAX_PAUSE_SECONDS = 60.0              # uma fala pausada e esquecida é descartada
 
@@ -208,6 +249,7 @@ class Speaker:
     def interrupt(self) -> None:
         """Interrompe a fala atual e descarta a fila (barge-in / 'pare')."""
         self._interrupt.set()
+        self._track = None                       # a boca fecha já no próximo quadro
         while True:
             try:
                 self._queue.get_nowait()
@@ -231,6 +273,48 @@ class Speaker:
     @property
     def paused(self) -> bool:
         return bool(self.output is not None and self.output.paused and self.speaking)
+
+    # ------------------------------------------------------------ boca e legenda (lidos pelo avatar)
+    def playback_seconds(self) -> float | None:
+        """Instante da fala que está SAINDO no alto-falante agora (None = nada tocando)."""
+        utterance, track = self._utterance, self._track
+        if utterance is None or track is None or not self.speaking:
+            return None
+        if self.output is not None and getattr(self.output, "backend", "") in ("pyaudio", "sounddevice"):
+            position = int(getattr(utterance, "pos", 0))
+            if position <= 0:
+                return 0.0
+            return max(0.0, position / float(self.output.rate) - self.OUTPUT_LATENCY)
+        return max(0.0, time.monotonic() - self._play_started)      # winsound: sem posição do dispositivo
+
+    def audible(self) -> bool:
+        """Há fala saindo agora (posição real > 0 e antes do fim; pausada não conta)."""
+        seconds = self.playback_seconds()
+        track = self._track
+        return bool(seconds is not None and track is not None and 0.0 < seconds < track.duration
+                    and not self.paused)
+
+    def mouth(self) -> dict:
+        """Forma da boca agora (abertura, largura, arredondamento, pressão, dentes, energia)."""
+        track = self._track
+        seconds = self.playback_seconds()
+        if track is None or seconds is None or self.paused:
+            return dict(CLOSED)
+        params, energy, _word = track.at(seconds)
+        return mouth_dict(params, energy)
+
+    def caption(self) -> dict:
+        """Legenda sincronizada: o texto da fala e a fração das palavras já ditas."""
+        track = self._track
+        seconds = self.playback_seconds()
+        if track is not None and seconds is not None and self.current_text:
+            progress = track.word_progress(seconds)
+            self._caption = {"text": self.current_text, "until": time.monotonic() + self.CAPTION_HOLD,
+                             "progress": progress}
+            return {"text": self.current_text, "progress": progress, "active": True}
+        if self._caption["text"] and time.monotonic() < self._caption["until"]:
+            return {"text": self._caption["text"], "progress": self._caption["progress"], "active": False}
+        return {"text": "", "progress": 0.0, "active": False}
 
     def recent_text(self, window: float = 15.0) -> str:
         """Texto falado agora e nos últimos ``window`` segundos (o microfone pode captá-lo)."""
@@ -280,10 +364,20 @@ class Speaker:
             return
         try:
             started = time.perf_counter()
-            samples, rate = self.synth.synthesize(text, length_scale=dsp.length_scale_for(profile))
+            segments = None
+            length_scale = dsp.length_scale_for(profile)
+            if hasattr(self.synth, "synthesize_segments"):
+                samples, rate, segments = self.synth.synthesize_segments(text, length_scale=length_scale)
+            else:
+                samples, rate = self.synth.synthesize(text, length_scale=length_scale)
             samples = dsp.process(samples, rate, profile)
             if rate != self.output.rate:
                 samples = dsp.resample(samples, self.output.rate / rate)
+            scale = dsp.time_scale(profile) * (self.output.rate / rate)
+            for segment in segments or ():
+                segment.start, segment.end = int(segment.start * scale), int(segment.end * scale)
+                segment.scale = scale
+            track = LipSyncTrack(samples, self.output.rate, segments)
         except Exception as exc:
             log.warning("síntese falhou: %s", exc)
             self._publish(EventType.VOICE_FINISHED, text=text[:200], spoken=False, reason=f"síntese falhou: {exc}")
@@ -297,9 +391,13 @@ class Speaker:
             self._state.merge("voice_state", {"speaking": True, "text": text[:200]}, _source="voice")
             if self._state.runtime_state in ("IDLE", "LISTENING"):
                 self._state.set_runtime_state("SPEAKING", text[:80], source="voice")
+        self.lipsync_method = track.method
         self._publish(EventType.VOICE_STARTED, text=text[:200], seconds=round(len(samples) / self.output.rate, 2),
-                      synth_ms=round((time.perf_counter() - started) * 1000))
+                      synth_ms=round((time.perf_counter() - started) * 1000), lipsync=track.method)
+        self._track = track
+        self._play_started = time.monotonic()
         utterance = self.output.play_voice(samples)
+        self._utterance = utterance
         paused_since = 0.0
         while not utterance.done.wait(0.05):
             if self._interrupt.is_set() or not self._running:
@@ -315,6 +413,7 @@ class Speaker:
                 paused_since = 0.0
         interrupted = self._interrupt.is_set()
         self.last_spoken_at = time.time()
+        self._track, self._utterance = None, None
         self.speaking, self.current_text = False, ""
         if self._state is not None:
             self._state.merge("voice_state", {"speaking": False}, _source="voice")

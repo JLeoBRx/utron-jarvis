@@ -66,8 +66,13 @@ class HudController(QtCore.QObject):
         self.profile = quality.get(getattr(settings, "performance_profile", quality.DEFAULT))
         self.scene = scene or NeuralScene(profile=self.profile)
         self.scene.profile = self.profile
-        self.view = BrainView(self.scene)
-        self.window = PlatformWindow(self.view, core=core, effects=self._effects_enabled)
+        self.view = BrainView(self.scene)                       # núcleo neural (vista alternativa)
+        self.avatar_reason = ""
+        self.avatar = self._make_avatar(getattr(settings, "render_backend", "cpu"))
+        face = getattr(settings, "avatar_mode", "face") == "face"
+        self.window = PlatformWindow(self.avatar if face else self.view, core=core, effects=self._effects_enabled)
+        (self.view if face else self.avatar).setParent(self.window.jarvis_page)
+        (self.view if face else self.avatar).hide()
         self.orb = OrbWindow(self.scene)
         self.second = None                          # TARDIS (criado na primeira visita)
         self.systems = None                         # Diagnósticos / Painel de Sistemas (idem)
@@ -123,6 +128,52 @@ class HudController(QtCore.QObject):
 
     def _hud_fps(self) -> int:
         return int(getattr(self.core.settings(), "hud_fps", 60))
+
+    # ================================================================ avatar
+    def _make_avatar(self, backend: str):
+        """Rosto holográfico: GPU (OpenGL) quando pedido e disponível; senão CPU — e diz por quê."""
+        from .avatar.view import AvatarView, create_gl_view
+        speaker = self.core.speaker
+        sources = {"mouth": speaker.mouth, "caption": speaker.caption, "audible": speaker.audible}
+        view = None
+        if backend == "gpu":
+            try:
+                view = create_gl_view(**sources)
+                self.avatar_reason = "GPU (OpenGL)"
+            except Exception as exc:                          # sem OpenGL: a CPU desenha o mesmo rosto
+                self.avatar_reason = f"CPU — OpenGL indisponível: {exc}"
+                log.warning("avatar: %s", self.avatar_reason)
+        if view is None:
+            view = AvatarView(**sources)
+            self.avatar_reason = self.avatar_reason or "CPU"
+        view.face_clicked.connect(lambda: self.window.input.mic.toggle())
+        view.set_profile(self.profile.name, effects=self._effects_enabled())
+        view.captions_enabled = bool(getattr(self.core.settings(), "captions", True))
+        view.on_state(self.core.state.as_dict())
+        return view
+
+    def central(self):
+        """A vista em uso na página JARVIS (rosto ou núcleo neural)."""
+        return self.window.jarvis_page.central
+
+    def _apply_avatar_settings(self, changed: list) -> None:
+        settings = self.core.settings()
+        if "render_backend" in changed:
+            old = self.avatar
+            self.avatar_reason = ""
+            self.avatar = self._make_avatar(getattr(settings, "render_backend", "cpu"))
+            self.avatar.on_state(self.state_cache)
+            if self.central() is old:
+                self.window.jarvis_page.set_central(self.avatar)
+            old.setParent(None)
+            old.deleteLater()
+        if "avatar_mode" in changed:
+            face = getattr(settings, "avatar_mode", "face") == "face"
+            self.window.jarvis_page.set_central(self.avatar if face else self.view)
+        if {"performance_profile", "heavy_effects"} & set(changed):
+            self.avatar.set_profile(self.profile.name, effects=self._effects_enabled())
+        if "captions" in changed:
+            self.avatar.captions_enabled = bool(getattr(settings, "captions", True))
 
     def _effects_enabled(self) -> bool:
         """Transições holográficas e animações da barra: só com "efeitos pesados" e fora do perfil econômico."""
@@ -219,6 +270,7 @@ class HudController(QtCore.QObject):
                 metrics.record("ui.event_delay", max(0.0, now - stamp))
             try:
                 self.scene.on_event(kind, payload)
+                self.avatar.on_event(kind, payload)
                 self.window.on_event(kind, payload, stamp)
                 for hub in (self.second, self.systems):
                     if hub is not None:
@@ -261,6 +313,7 @@ class HudController(QtCore.QObject):
             return
         self.state_cache.update(self.core.state.subset(names))
         self.scene.on_state(self.state_cache)
+        self.avatar.on_state(self.state_cache)
         self.window.on_state(self.state_cache, names)
         for hub in (self.second, self.systems):
             if hub is not None:
@@ -287,7 +340,9 @@ class HudController(QtCore.QObject):
             telemetry["mic_state"] = "MIC ON"
         else:
             telemetry["mic_state"] = "MIC —"
+        telemetry["recognizing"] = bool(mic.get("recognizing"))
         self.scene.on_telemetry(telemetry)
+        self.avatar.on_telemetry(telemetry)
         self.window.on_telemetry(telemetry)
         suggestion = telemetry.get("suggestion")
         if bool(suggestion) != self.window.suggestion.isVisible():
@@ -315,6 +370,7 @@ class HudController(QtCore.QObject):
     def _apply_settings(self, changed: list) -> None:
         if "performance_profile" in changed or "hud_fps" in changed:
             self.set_profile(getattr(self.core.settings(), "performance_profile", quality.DEFAULT))
+        self._apply_avatar_settings(changed)
         if self.settings_page is not None:
             self.settings_page.on_settings_changed(changed)
         self.window.refresh_chips()
@@ -335,17 +391,26 @@ class HudController(QtCore.QObject):
         self._last_tick = now
         self.scene.step(dt)
         self._tick_times.append(dt)
-        hub1 = self.window.isVisible() and not self.window.isMinimized() and self.view.isVisible()
+        central = self.central()
+        hub1 = self.window.isVisible() and not self.window.isMinimized() and central.isVisible()
+        if central is self.avatar and hub1:
+            self.avatar.step(dt)
+        else:
+            self.avatar.update_state()                    # o estado vale mesmo com outra página à frente
+        from .avatar.states import SHORT
+        resolved = self.avatar.resolved
+        self.window.top.state_chip.set_display(SHORT.get(resolved.key, resolved.label), resolved.style.rgb)
         orb = self.orb.isVisible()
         if not (hub1 or orb):
             wanted = self.profile.hidden_interval_ms      # nada visível: a cena segue coerente, sem desenho
             self.target_fps = 0
         else:
-            fps = quality.effective_fps(self.profile, self._hud_fps(), active=self.scene.in_motion(),
+            moving = self.avatar.in_motion() if central is self.avatar else self.scene.in_motion()
+            fps = quality.effective_fps(self.profile, self._hud_fps(), active=moving,
                                         background=self._tardis_in_front())
-            if self.view.paint_count != self._painted and self.view.frame_times:   # custo real da pintura
-                self._painted = self.view.paint_count
-                last = self.view.frame_times[-1]
+            if central.paint_count != self._painted and central.frame_times:   # custo real da pintura
+                self._painted = central.paint_count
+                last = central.frame_times[-1]
                 self._paint_ema = last if not self._paint_ema else self._paint_ema * 0.85 + last * 0.15
             cpu = (self.state_cache.get("telemetry") or {}).get("cpu")
             budget = PAINT_BUDGET_LOADED if isinstance(cpu, (int, float)) and cpu > 85 else PAINT_BUDGET
@@ -354,7 +419,7 @@ class HudController(QtCore.QObject):
             self.target_fps = fps
             wanted = max(7, int(1000 / fps))
             if hub1:
-                self.view.update()
+                central.update()
             if orb:
                 self.orb.update()
         if self._frame.interval() != wanted:
@@ -378,7 +443,7 @@ class HudController(QtCore.QObject):
         if metrics is None:
             return
         metrics.record("ui.lag", lag)
-        frames = list(self.view.frame_times)[-30:]
+        frames = list(self.central().frame_times)[-30:]
         for value in frames[-min(len(frames), max(1, int(self.target_fps * 0.2) or 1)):]:
             metrics.record("ui.frame", value)
         metrics.gauge("ui.fps", round(self.frame_rate, 1))
@@ -399,8 +464,9 @@ class HudController(QtCore.QObject):
         if not self.frame_rate:
             return {"status": "OK", "detail": "medindo taxa de quadros"}
         paint = self._paint_ema * 1000
+        view = "rosto holográfico" if self.central() is self.avatar else "núcleo neural"
         detail = f"{self.frame_rate:.0f} quadros/s (alvo {self.target_fps}) · pintura {paint:.1f} ms · " \
-                 f"perfil {self.profile.name} · página {self.window.current_key}"
+                 f"perfil {self.profile.name} · página {self.window.current_key} · {view} ({self.avatar_reason})"
         lag = getattr(self.core, "metrics", None)
         lag_stats = lag.stats("ui.lag") if lag is not None else {}
         slow = lag_stats.get("n", 0) >= 10 and lag_stats.get("p95", 0) > 0.25

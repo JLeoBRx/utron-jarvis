@@ -399,9 +399,19 @@ class StateChip(QtWidgets.QWidget):
 
     def set_state(self, activity: str) -> None:
         activity = str(activity or "IDLE")
-        label = "INICIALIZANDO" if activity == "BOOTING" else palette.state_label(activity)
-        if (activity, label) != (self.activity, self.label):
-            self.activity, self.label = activity, label
+        if activity != self.activity:
+            self.activity = activity
+            if getattr(self, "_override", None) is None:          # sem avatar: o estado do núcleo
+                self.label = "INICIALIZANDO" if activity == "BOOTING" else palette.state_label(activity)
+                self.setToolTip(f"Estado do JARVIS: {self.label}")
+            self.update()
+
+    def set_display(self, label: str, rgb: tuple | None = None) -> None:
+        """Estado resolvido (os 12 estados do avatar) — o mesmo que o rosto mostra."""
+        color = QtGui.QColor(*[int(c) for c in rgb]) if rgb else None
+        if label != self.label or (color is not None and color != getattr(self, "_override", None)):
+            self.label = label
+            self._override = color
             self.setToolTip(f"Estado do JARVIS: {label}")
             self.update()
 
@@ -417,11 +427,15 @@ class StateChip(QtWidgets.QWidget):
         color = theme.state_color(self.activity) if self.activity != "BOOTING" else theme.PRIMARY
         if self.activity == "IDLE":
             color = theme.PRIMARY_DIM
+        override = getattr(self, "_override", None)
+        if override is not None:
+            color = override
         rect = QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         p.setPen(QtGui.QPen(theme.with_alpha(color, 0.55), 1))
         p.setBrush(theme.with_alpha(theme.BG2, 0.85))
         p.drawRoundedRect(rect, 4, 4)
-        pulse = 0.65 + 0.35 * math.sin(time.monotonic() * 4.0) if self.activity not in ("IDLE",) else 0.8
+        pulse = 0.65 + 0.35 * math.sin(time.monotonic() * 4.0) if self.label not in ("EM ESPERA", "REPOUSO") \
+            else 0.8
         p.setPen(QtCore.Qt.NoPen)
         p.setBrush(theme.with_alpha(color, pulse))
         p.drawEllipse(QtCore.QPointF(13, rect.center().y()), 4, 4)
@@ -1023,7 +1037,7 @@ class PlatformWindow(QtWidgets.QWidget):
         elif self.top.sweep:
             self.top.sweep = 0.0
             self.top.update()
-        if self.top.state_chip.isVisible() and self.top.state_chip.activity not in ("IDLE",):
+        if self.top.state_chip.isVisible() and self.top.state_chip.label not in ("EM ESPERA", "REPOUSO"):
             self.top.state_chip.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt)

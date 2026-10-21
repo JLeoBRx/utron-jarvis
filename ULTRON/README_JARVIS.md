@@ -139,6 +139,46 @@ tela?") continuam funcionando.
 **Modo privacidade**, **Observador** (modos, pausar/retomar), **Iniciar com o Windows** (só por
 clique; se o Registro recusar, a marcação volta), qualidade visual, diagnóstico e Sair.
 
+### O rosto holográfico (página JARVIS)
+
+Um rosto robótico 3D renderizado **em tempo real** (não é imagem nem vídeo): malha esculpida com
+iluminação, olhos com íris, sobrancelhas, nariz, orelhas, colar com reator, plataforma de projeção,
+anéis de dados, partículas e varredura. CONFIGURAÇÕES > APARÊNCIA troca para o núcleo neural
+anterior ("Vista do JARVIS") e escolhe CPU ou GPU (OpenGL; se não abrir, volta para a CPU e
+DIAGNÓSTICOS > SERVIÇOS E GPU diz por quê). Clique no rosto liga/desliga o microfone.
+
+**A boca acompanha o áudio real da fala**: a voz Piper informa os fonemas de cada frase; os visemas
+são distribuídos só pelos trechos sonoros do áudio (as pausas caem nos silêncios reais) e a abertura
+é a energia real do som. Se o modelo de voz exportar o tempo de cada fonema, ele é usado; com a voz
+do Windows (sem fonemas) a forma vem do espectro do áudio. No silêncio a boca fecha; interrompida a
+fala (Esc, "pare", PARAR), fecha no mesmo quadro. **Legendas** sincronizadas destacam as palavras já
+ditas (desligue em CONFIGURAÇÕES > VOZ E ÁUDIO).
+
+**Os 12 estados** (o mesmo estado aparece no indicador da barra superior), do mais prioritário:
+
+| Estado | Sinal real | Visual |
+|---|---|---|
+| Privacidade | modo privacidade ativo | viseira de linhas sobre os olhos, brilho baixo |
+| Erro de integração | componente falhou, modelo indisponível, link do Noctário perdido sem pedido (8 s) | tom coral e leve "falha" de projeção |
+| Aguardando confirmação | autorização pendente | âmbar, sobrancelhas erguidas, olhar direto |
+| Falando | áudio saindo agora (posição real de reprodução) | boca sincronizada, acenos nas sílabas fortes, anéis pela saída real |
+| Alerta | lembrete devido, alerta do Noctário (6 s) | âmbar, atenção súbita; tinge os estados abaixo |
+| Reconhecendo | parciais do reconhecimento com a escuta aberta | olhos focados, micro-movimentos |
+| Escutando | escuta aberta | atenção, cabeça inclinada, halo pelo nível real do microfone |
+| Consultando a TARDIS | tarefa da TARDIS pedida pelo JARVIS | olhar para o lado, íris âmbar |
+| Executando | execução, verificação, recuperação | expressão firme, varredura rápida |
+| Pensando | contexto, decisão, planejamento | olhar que varre, sobrancelhas franzidas |
+| Inicializando | progresso real do boot | o rosto se monta por um plano de varredura; olhos abrem ao fim |
+| Em espera | nenhum dos anteriores | respiração lenta, piscadas naturais |
+
+Desempenho medido (`tools/benchmark_avatar.py`, CPU, Qt offscreen, no contêiner de
+desenvolvimento — numa máquina Windows os números serão outros): 1280×720 equilibrado ≈ 12–16 ms
+por quadro; 1920×1080 equilibrado ≈ 16–19 ms; econômico ≈ 8–13 ms. A interface limita sozinha os
+quadros por segundo pelo custo medido para não roubar tempo do núcleo. Resultados completos em
+`docs/benchmarks/avatar_fase4.json`.
+
+### O núcleo neural (vista alternativa)
+
 Cada estado tem um visual próprio, sempre ligado a um sinal real:
 
 | Estado | Visual |

@@ -133,3 +133,21 @@ finais em `PERFORMANCE_REPORT.md`.
   exceções não tratadas vão para o log.
 * Testes: 263 aprovados em Python 3.13 e 3.11 (novos: permissões, histórico, plataforma).
 
+## Fase 4 — Rosto holográfico, boca sincronizada, 12 estados e legendas
+* `hud/avatar/`: geometria esculpida (NumPy; normais em repouso calculadas uma vez, só a parte de
+  baixo recalculada quando a mandíbula abre), os 12 estados por sinais reais (função pura, prioridade
+  da arquitetura), animador (cabeça, olhar, piscadas, expressões, montagem pelo progresso real do
+  boot, pulsos de conexão/desconexão), renderização por camadas com QPainter (fundo em cache, grade
+  3D, anéis de dados, partículas, varredura, brilho em NumPy) e widget CPU ou GPU (QOpenGLWidget com
+  o mesmo desenho; volta para a CPU com o motivo).
+* `voice/lipsync.py`: visemas pelos fonemas do Piper sobre os trechos sonoros do áudio real
+  (alinhamento do modelo quando existir; espectro quando não há fonemas); abertura pela energia real.
+* `Speaker`: síntese por frase com fonemas; `mouth()`, `caption()` e `audible()` pela posição real de
+  reprodução; interromper fecha a boca no mesmo quadro. Indicador "reconhecendo" na voz.
+* Indicador de estado da barra superior = estado resolvido do avatar.
+* Otimização medida: traços longos com caneta de 1 px (o caminho rápido do QPainter) — 21–29 ms →
+  11–15 ms por quadro no perfil equilibrado a 1280×760.
+* `tools/benchmark_avatar.py` e `docs/benchmarks/avatar_fase4.json`.
+* Testes: `test_avatar.py` (12) e `test_lipsync.py` (8, inclusive com a voz Piper real quando
+  instalada).
+

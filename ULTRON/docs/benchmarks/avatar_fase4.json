@@ -1,0 +1,203 @@
+{
+  "machine": {
+    "python": "3.13.16",
+    "system": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "cpus": 4,
+    "qt_platform": "offscreen"
+  },
+  "frames_per_case": 60,
+  "render": {
+    "1280x720": {
+      "economy": {
+        "em_espera": {
+          "mean_ms": 7.6,
+          "p50_ms": 7.34,
+          "p95_ms": 8.8,
+          "max_fps_if_alone": 131.5,
+          "draw_calls": 35
+        },
+        "falando": {
+          "mean_ms": 9.81,
+          "p50_ms": 9.62,
+          "p95_ms": 12.87,
+          "max_fps_if_alone": 101.9,
+          "draw_calls": 45
+        },
+        "escutando": {
+          "mean_ms": 8.01,
+          "p50_ms": 8.11,
+          "p95_ms": 9.57,
+          "max_fps_if_alone": 124.8,
+          "draw_calls": 39
+        }
+      },
+      "balanced": {
+        "em_espera": {
+          "mean_ms": 12.4,
+          "p50_ms": 11.94,
+          "p95_ms": 16.71,
+          "max_fps_if_alone": 80.6,
+          "draw_calls": 44
+        },
+        "falando": {
+          "mean_ms": 16.16,
+          "p50_ms": 15.42,
+          "p95_ms": 21.18,
+          "max_fps_if_alone": 61.9,
+          "draw_calls": 54
+        },
+        "escutando": {
+          "mean_ms": 13.95,
+          "p50_ms": 13.06,
+          "p95_ms": 20.07,
+          "max_fps_if_alone": 71.7,
+          "draw_calls": 47
+        }
+      },
+      "high": {
+        "em_espera": {
+          "mean_ms": 13.5,
+          "p50_ms": 12.31,
+          "p95_ms": 19.77,
+          "max_fps_if_alone": 74.1,
+          "draw_calls": 48
+        },
+        "falando": {
+          "mean_ms": 16.41,
+          "p50_ms": 15.21,
+          "p95_ms": 21.5,
+          "max_fps_if_alone": 61.0,
+          "draw_calls": 59
+        },
+        "escutando": {
+          "mean_ms": 14.34,
+          "p50_ms": 14.02,
+          "p95_ms": 19.9,
+          "max_fps_if_alone": 69.7,
+          "draw_calls": 51
+        }
+      },
+      "cinematic": {
+        "em_espera": {
+          "mean_ms": 15.29,
+          "p50_ms": 14.52,
+          "p95_ms": 20.06,
+          "max_fps_if_alone": 65.4,
+          "draw_calls": 48
+        },
+        "falando": {
+          "mean_ms": 16.44,
+          "p50_ms": 15.96,
+          "p95_ms": 21.11,
+          "max_fps_if_alone": 60.8,
+          "draw_calls": 59
+        },
+        "escutando": {
+          "mean_ms": 15.95,
+          "p50_ms": 15.06,
+          "p95_ms": 20.67,
+          "max_fps_if_alone": 62.7,
+          "draw_calls": 52
+        }
+      }
+    },
+    "1920x1080": {
+      "economy": {
+        "em_espera": {
+          "mean_ms": 10.6,
+          "p50_ms": 10.66,
+          "p95_ms": 12.8,
+          "max_fps_if_alone": 94.4,
+          "draw_calls": 35
+        },
+        "falando": {
+          "mean_ms": 12.43,
+          "p50_ms": 12.56,
+          "p95_ms": 13.87,
+          "max_fps_if_alone": 80.5,
+          "draw_calls": 45
+        },
+        "escutando": {
+          "mean_ms": 13.06,
+          "p50_ms": 12.08,
+          "p95_ms": 17.54,
+          "max_fps_if_alone": 76.6,
+          "draw_calls": 39
+        }
+      },
+      "balanced": {
+        "em_espera": {
+          "mean_ms": 16.36,
+          "p50_ms": 15.73,
+          "p95_ms": 21.73,
+          "max_fps_if_alone": 61.1,
+          "draw_calls": 44
+        },
+        "falando": {
+          "mean_ms": 18.85,
+          "p50_ms": 18.52,
+          "p95_ms": 25.6,
+          "max_fps_if_alone": 53.0,
+          "draw_calls": 54
+        },
+        "escutando": {
+          "mean_ms": 18.28,
+          "p50_ms": 17.72,
+          "p95_ms": 25.61,
+          "max_fps_if_alone": 54.7,
+          "draw_calls": 47
+        }
+      },
+      "high": {
+        "em_espera": {
+          "mean_ms": 17.92,
+          "p50_ms": 17.46,
+          "p95_ms": 23.14,
+          "max_fps_if_alone": 55.8,
+          "draw_calls": 48
+        },
+        "falando": {
+          "mean_ms": 22.58,
+          "p50_ms": 21.73,
+          "p95_ms": 28.03,
+          "max_fps_if_alone": 44.3,
+          "draw_calls": 59
+        },
+        "escutando": {
+          "mean_ms": 19.59,
+          "p50_ms": 19.06,
+          "p95_ms": 26.0,
+          "max_fps_if_alone": 51.0,
+          "draw_calls": 51
+        }
+      },
+      "cinematic": {
+        "em_espera": {
+          "mean_ms": 18.65,
+          "p50_ms": 18.22,
+          "p95_ms": 24.68,
+          "max_fps_if_alone": 53.6,
+          "draw_calls": 48
+        },
+        "falando": {
+          "mean_ms": 19.64,
+          "p50_ms": 19.66,
+          "p95_ms": 23.17,
+          "max_fps_if_alone": 50.9,
+          "draw_calls": 59
+        },
+        "escutando": {
+          "mean_ms": 20.37,
+          "p50_ms": 19.4,
+          "p95_ms": 26.94,
+          "max_fps_if_alone": 49.1,
+          "draw_calls": 52
+        }
+      }
+    }
+  },
+  "lipsync": {
+    "track_3s_ms": 1.08
+  }
+}

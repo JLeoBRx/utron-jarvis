@@ -102,12 +102,17 @@ def room(signal: np.ndarray, amount: float, rate: int) -> np.ndarray:
     return out
 
 
+def time_scale(profile: VoiceProfile) -> float:
+    """Quanto ``process`` estica o tempo (a sala só acrescenta cauda no fim: não desloca nada)."""
+    return 1.0 / max(0.5, min(1.5, profile.pitch))
+
+
 def process(samples: np.ndarray, rate: int, profile: VoiceProfile) -> np.ndarray:
     """Aplica o perfil de voz (JARVIS por padrão). ``samples`` em float32 [-1, 1]. Devolve float32."""
     x = samples.astype(np.float32, copy=True)
     if len(x) == 0:
         return x
-    x = resample(x, 1.0 / max(0.5, min(1.5, profile.pitch)))  # tocado na mesma taxa → mais grave
+    x = resample(x, time_scale(profile))                      # tocado na mesma taxa → mais grave
     x = low_shelf(x, profile.depth_db, 170.0, rate)
     x = lowpass(x, profile.air_cut_hz, rate)
     x = rasp(x, profile.rasp, rate)

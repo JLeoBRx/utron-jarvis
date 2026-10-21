@@ -272,6 +272,7 @@ class VoicePipeline:
         return {
             "capturing": self.capturing, "enabled": self._mic_enabled, "device": self.device,
             "level": round(self.level, 3), "listening": self.listening, "conversation": self.conversation,
+            "recognizing": bool(self.listening and time.monotonic() - self._last_speech_at < 0.8),
             "followup": round(self.detector.followup_remaining(), 1), "stt": getattr(self.stt, "label", None),
             "reason": self.reason or self.stt_reason or self.silence_warning, "commands": self.commands,
         }
