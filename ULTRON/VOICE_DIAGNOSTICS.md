@@ -7,7 +7,7 @@
 | 1 | A palavra de ativação procurada era "ultron", mas o usuário diz **"Jarvis"**. | Fala sintetizada "Jarvis, …" (Piper pt-BR) transcrita pelos dois modelos Vosk: pequeno → "aviso que horas são", "e já vi…"; grande → "aves", "davis abra o navegador". Gramática restrita `["jarvis","[unk]"]`: 22/22 falsos positivos no modelo grande, 0/14 aceitos no pequeno — descartada. | Formas **fortes** de "jarvis" (aceitas sozinhas) e **fracas** (confusões comuns, só aceitas seguidas de um comando reconhecido), formas antigas do ULTRON migradas, e **calibração com a voz real do usuário** (`CALIBRAR`). |
 | 2 | Captura só por PyAudio, sem alternativa. Em Python 3.13/3.14 no Windows o PyAudio pode não ter pacote pronto: sem ele, nem microfone nem saída. | Histórico com `cpython-313/314`; `sounddevice` era opcional e só para saída. | Entrada e saída por **PyAudio → sounddevice** (automático, ou forçado em `mic_backend`); se o dispositivo recusa 16 kHz, abre na taxa nativa e **reamostra** (filtro FIR) para 16 kHz. `sounddevice` passa a ser dependência obrigatória. |
 | 3 | `--diagnose` relatava antes de o modelo de fala carregar ("STT —"). | Execução isolada de `main.py --diagnose`. | Diagnóstico em **8 etapas** que espera o carregamento (com prazo) e mostra evidência de cada etapa. |
-| 4 | Microfone só escolhível editando `settings.json`. | — | Lista e escolha na interface (Sistemas > VOZ > USAR ESTE) e no console (`--list-mics`, `--mic N`). |
+| 4 | Microfone só escolhível editando `settings.json`. | — | Lista e escolha na interface (DIAGNÓSTICOS > VOZ > USAR ESTE) e no console (`--list-mics`, `--mic N`). |
 | 5 | Voz robótica (altura 0,86, rouquidão 0,22, camada sintética). | Perfil antigo. | Perfil **JARVIS**: masculino, grave, natural — altura 0,95, ritmo 0,97, sem rouquidão nem camada sintética, graves +2,5 dB. Medida no teste `test_voice`: presença na faixa de inteligibilidade 0,717 (JARVIS) contra 0,475 (perfil antigo). |
 | 6 | Silêncio absoluto (privacidade do Windows bloqueando o microfone) passava despercebido. | — | Detecção de silêncio absoluto: aviso explícito com o caminho de correção nas configurações de privacidade do Windows. |
 
@@ -71,7 +71,7 @@ testes simulados estão marcados como tal no código.
 
 **Para validar no seu computador (5 minutos):**
 1. `START_JARVIS.bat --voice-test` — siga as instruções e diga "Jarvis, que horas são?".
-2. Se a etapa 6 falhar: Sistemas > VOZ > `CALIBRAR`, e repita o teste.
+2. Se a etapa 6 falhar: DIAGNÓSTICOS > VOZ > `CALIBRAR`, e repita o teste.
 3. Se a etapa 3 indicar silêncio: libere o microfone para aplicativos da área de trabalho.
 4. Com o JARVIS aberto, diga "Jarvis" e observe o halo ciano do CORE acompanhar a sua voz;
    a resposta deve ser falada sem que ele "se ouça".

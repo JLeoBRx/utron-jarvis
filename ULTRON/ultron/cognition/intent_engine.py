@@ -406,6 +406,26 @@ class IntentEngine:
         return None
 
     def _system_rules(self, raw, t):
+        # navegação da plataforma. "abra as configurações" (sozinho) continua abrindo as do Windows, como no
+        # JARVIS original; as do JARVIS precisam do nome
+        opening = re.search(r"\b(abr\w*|mostr\w*|exib\w*|v\w+ para|ir para|leve\w* (me )?para)\b", t)
+        if opening and re.search(r"\b(configurac\w*|ajustes|preferencias) do (jarvis|assistente)\b", t):
+            return _intent("control", raw, args={"open_view": "configuracoes"})
+        if opening and re.search(r"\b(historico|registro|pagina|lista) de atividades\b|\batividades recentes\b", t):
+            return _intent("control", raw, args={"open_view": "atividades"})
+        if opening and re.search(r"\bconsole de eventos\b", t):
+            return _intent("control", raw, args={"open_view": "diagnosticos", "section": "eventos"})
+        if opening and re.search(r"\b(o )?log do (jarvis|sistema)\b|\barquivo de log\b", t):
+            return _intent("control", raw, args={"open_view": "diagnosticos", "section": "log"})
+        if opening and re.search(r"\b(pagina|painel|tela) de diagnosticos?\b|\bos diagnosticos\b", t):
+            return _intent("control", raw, args={"open_view": "diagnosticos"})
+        if opening and re.search(r"\b(noctario|painel do robo|robo seguidor de linha)\b", t):
+            return _intent("control", raw, args={"open_view": "noctario"})
+        if re.search(r"\bvolt\w* (para |pra )?(o |a )?(jarvis|nucleo|inicio|pagina principal|conversa)\b", t):
+            return _intent("control", raw, args={"open_view": "jarvis"})
+        if re.search(r"\bo que voce (fez|executou|andou fazendo)\b|\bultimas atividades\b|"
+                     r"\bhistorico de atividades\b|\bsuas atividades (de hoje|recentes)\b", t):
+            return _cmd(raw, "activity.recent", limit=10)
         if re.search(r"\b(revog\w*|cancel\w*|remov\w*|apag\w*|retir\w*)\b.*\bautorizac\w*\b", t):
             return _cmd(raw, "autonomy.revoke")
         if re.search(r"\b(abr\w*|mostr\w*|exib\w*)\b.*\b(painel de )?autonomia\b", t):

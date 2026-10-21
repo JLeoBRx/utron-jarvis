@@ -1,24 +1,27 @@
-"""Controlador da interface: liga o Neural Core aos dois hubs sem misturar responsabilidades.
+"""Controlador da interface: liga o Neural Core à PLATAFORMA JARVIS ULTIMATE sem misturar responsabilidades.
 
-* **HUB principal — JARVIS CORE** (``HudWindow`` + orbe): percepção, decisão, planejamento,
-  execução, verificação, voz e saúde dos subsistemas; o **Painel de Sistemas** (voz, rede,
-  desempenho) abre a partir dele.
-* **Segundo HUB — TARDIS** (``TardisWindow``, criado sob demanda): a memória pessoal como
-  espaço navegável — compromissos, tarefas, projetos, ideias, memórias e lembretes.
+Uma janela (``PlatformWindow``) com seis módulos — JARVIS · TARDIS · NOCTÁRIO · ATIVIDADES ·
+CONFIGURAÇÕES · DIAGNÓSTICOS — e o orbe compacto. As páginas pesadas (TARDIS, Diagnósticos,
+Atividades, Configurações) nascem na primeira visita e nunca são destruídas: trocar de página
+preserva câmera, região, filtros e textos.
 
-Os hubs leem o MESMO estado central (JARVIS_STATE) e os MESMOS eventos:
+* **JARVIS** (``BrainView`` + conversa): percepção, decisão, planejamento, execução, verificação, voz.
+* **TARDIS** (``TardisWindow`` embutida): a memória pessoal como espaço navegável.
+* **DIAGNÓSTICOS** (o Painel de Sistemas embutido + eventos, log, serviços e GPU).
+
+Todas as páginas leem o MESMO estado central (JARVIS_STATE) e os MESMOS eventos:
 
 * Event Bus → interface: eventos chegam em qualquer thread e entram numa fila limitada; a
   thread da interface drena em lotes (uma única chamada enfileirada por rajada). Em
   sobrecarga extrema, os eventos visuais mais antigos são descartados e contados — nunca há
   bloqueio de quem publica.
 * Estado: ``STATE_CHANGED`` informa os campos alterados; a interface copia só esses campos
-  (leitura incremental) num cache compartilhado pelos dois hubs.
+  (leitura incremental) num cache compartilhado por todas as páginas.
 * Relógio: ritmo de quadros adaptativo. No teto do perfil só enquanto há movimento real; em
-  repouso, a cadência econômica; o hub que fica atrás do outro (em foco) cai para a cadência
-  de fundo; e nunca acima da carga que a pintura pode ocupar da thread da interface (o
-  desenho do PySide6 não libera o GIL: pintar demais atrasa o núcleo inteiro).
-* Trabalho pesado (snapshot do grafo, consultas do Second Brain) roda fora da thread da
+  repouso, a cadência econômica; vista fora da tela (outra página na frente), nenhum desenho; e
+  nunca acima da carga que a pintura pode ocupar da thread da interface (o desenho do PySide6 não
+  libera o GIL: pintar demais atrasa o núcleo inteiro).
+* Trabalho pesado (snapshot do grafo, consultas do Second Brain, listas) roda fora da thread da
   interface; o resultado volta por sinal.
 """
 from __future__ import annotations
@@ -35,8 +38,9 @@ from ..health.monitor import format_report
 from . import quality
 from .brain_view import BrainView
 from .orb import OrbWindow
+from .platform import NAV_KEYS, PlatformWindow, UnavailablePage
 from .scene import NeuralScene
-from .window import HudWindow, app_icon
+from .window import app_icon
 
 log = logging.getLogger("ultron.hud")
 
@@ -44,6 +48,7 @@ FORWARD = {t for t in EventType} - {EventType.STATE_CHANGED, EventType.LOG}
 AUTO_EXPAND = {EventType.WAKE_WORD.value, EventType.AUTHORIZATION_REQUIRED.value}
 PAINT_BUDGET = 0.45            # fração máxima da thread da interface ocupada pela pintura
 PAINT_BUDGET_LOADED = 0.30     # com a CPU do sistema acima de 85%
+SHUTDOWN_DELAY_MS = 1500       # "Encerrando, senhor." é dito antes de fechar
 
 
 class HudController(QtCore.QObject):
@@ -62,10 +67,17 @@ class HudController(QtCore.QObject):
         self.scene = scene or NeuralScene(profile=self.profile)
         self.scene.profile = self.profile
         self.view = BrainView(self.scene)
-        self.window = HudWindow(self.view)
+        self.window = PlatformWindow(self.view, core=core, effects=self._effects_enabled)
         self.orb = OrbWindow(self.scene)
-        self.second = None                          # TARDIS (criado na primeira abertura)
-        self.systems = None                         # Painel de Sistemas (criado na primeira abertura)
+        self.second = None                          # TARDIS (criado na primeira visita)
+        self.systems = None                         # Diagnósticos / Painel de Sistemas (idem)
+        self.activity_page = None
+        self.settings_page = None
+        self.window.set_factory("tardis", self._make_tardis)
+        self.window.set_factory("diagnosticos", self._make_diagnostics)
+        self.window.set_factory("atividades", self._make_activity)
+        self.window.set_factory("configuracoes", self._make_settings)
+        self.window.set_factory("noctario", self._make_noctario)
         self.tray = self._make_tray()
         self._inbox: deque = deque()
         self._inbox_lock = threading.Lock()
@@ -87,9 +99,11 @@ class HudController(QtCore.QObject):
         self._graph_ready.connect(self._on_graph, QtCore.Qt.QueuedConnection)
         core.bus.subscribe(None, self._from_bus, name="hud.bridge")
         core.hud_health = self.health
+        core.hud_probe = lambda: bool(self.window.covering)   # lido em outra thread: só um booleano
         core.settings_manager.on_change(lambda changed, s: self._settings_changed.emit(list(changed)))
         self._wire()
         self.scene.on_state(self.state_cache)
+        self.window.on_state(self.state_cache)
         self._load_graph_async()
         self._frame = QtCore.QTimer(self)
         self._frame.setTimerType(QtCore.Qt.PreciseTimer)
@@ -110,6 +124,46 @@ class HudController(QtCore.QObject):
     def _hud_fps(self) -> int:
         return int(getattr(self.core.settings(), "hud_fps", 60))
 
+    def _effects_enabled(self) -> bool:
+        """Transições holográficas e animações da barra: só com "efeitos pesados" e fora do perfil econômico."""
+        return bool(getattr(self.core.settings(), "heavy_effects", True)) and self.profile.name != "economy"
+
+    # ================================================================ páginas (criadas sob demanda)
+    def _make_tardis(self):
+        from .tardis import TardisWindow
+        self.second = TardisWindow(self.core, state=self.state_cache, profile=self.profile)
+        self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="tardis"))
+        self.second.authorization_always.connect(lambda: self._authorize_always("tardis"))
+        self.second.return_requested.connect(self.return_to_core)
+        return self.second
+
+    def _make_diagnostics(self):
+        from .diagnostics_page import DiagnosticsPanel
+        self.systems = DiagnosticsPanel(self.core, state=self.state_cache, profile=self.profile,
+                                        events=self.window.event_log)
+        self.systems.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="sistemas"))
+        self.systems.authorization_always.connect(lambda: self._authorize_always("sistemas"))
+        return self.systems
+
+    def _make_activity(self):
+        from .activity_page import ActivityPage
+        self.activity_page = ActivityPage(self.core)
+        return self.activity_page
+
+    def _make_settings(self):
+        from .settings_page import SettingsPage
+        self.settings_page = SettingsPage(self.core)
+        return self.settings_page
+
+    def _make_noctario(self):
+        service = getattr(self.core, "noctario", None)
+        if service is not None:
+            from .noctario_page import NoctarioPage
+            return NoctarioPage(self.core)
+        return UnavailablePage("NOCTÁRIO — SEM CONEXÃO",
+                               "O serviço do Noctário não está ativo nesta execução: nenhum dado do robô é exibido "
+                               "sem conexão real. Endereço, porta e modo de conexão ficam em CONFIGURAÇÕES > NOCTÁRIO.")
+
     # ================================================================ ligação com o Core
     def _wire(self) -> None:
         w = self.window
@@ -125,8 +179,13 @@ class HudController(QtCore.QObject):
         w.second_brain_requested.connect(lambda: self.open_tardis())
         w.systems_requested.connect(lambda: self.open_systems())
         w.closing.connect(self._closed_to_tray)
+        w.interrupt_requested.connect(self.escape)
+        w.stop_requested.connect(self.stop)
+        w.conversation_command.connect(lambda text: self.core.submit(text, source="text"))
+        w.chip_clicked.connect(self._chip_clicked)
         self.orb.expand_requested.connect(self.expand)
         self.orb.menu_requested.connect(lambda pos: self._menu().exec(pos))
+        self.orb.moved.connect(self._orb_moved)
 
     def _from_bus(self, event) -> None:
         """Chamado na thread de quem publicou: só enfileira, nunca desenha nem consulta."""
@@ -160,6 +219,7 @@ class HudController(QtCore.QObject):
                 metrics.record("ui.event_delay", max(0.0, now - stamp))
             try:
                 self.scene.on_event(kind, payload)
+                self.window.on_event(kind, payload, stamp)
                 for hub in (self.second, self.systems):
                     if hub is not None:
                         hub.on_event(kind, payload)
@@ -171,17 +231,28 @@ class HudController(QtCore.QObject):
                 self._notify(payload)
             elif kind == EventType.NOTIFICATION.value and payload.get("popup") and not payload.get("silent"):
                 self._show_message(f"JARVIS · {payload.get('title', '')}", str(payload.get("body", "")))
+            elif kind == EventType.SHUTDOWN_REQUESTED.value:
+                QtCore.QTimer.singleShot(SHUTDOWN_DELAY_MS, self.quit)    # já confirmado pelo executor
             elif kind == EventType.UI_REQUEST.value:
-                view = payload.get("view")
-                if view in ("second_brain", "tardis"):
-                    self.open_tardis(payload.get("section") or None)
-                elif view in ("systems", "voice", "network", "autonomy"):
-                    self.open_systems(payload.get("section") or (view if view != "systems" else None))
+                self._ui_request(payload)
             if kind in AUTO_EXPAND and not self.window.isVisible() \
                     and getattr(self.core.settings(), "hud_auto_expand", True):
                 self.expand()
         if more:
             QtCore.QTimer.singleShot(0, self._drain)
+
+    def _ui_request(self, payload: dict) -> None:
+        view = payload.get("view")
+        section = payload.get("section") or None
+        if view in ("second_brain", "tardis"):
+            self.open_tardis(section)
+        elif view in ("systems", "voice", "network", "autonomy", "diagnosticos", "diagnostics"):
+            self.open_systems(section or (view if view in ("voice", "network", "autonomy") else None))
+        elif view in NAV_KEYS:
+            self.open_page(view, section)
+        elif view in ("settings", "activity", "robot"):
+            self.open_page({"settings": "configuracoes", "activity": "atividades", "robot": "noctario"}[view],
+                           section)
 
     def _pull_state(self) -> None:
         with self._dirty_lock:
@@ -190,29 +261,34 @@ class HudController(QtCore.QObject):
             return
         self.state_cache.update(self.core.state.subset(names))
         self.scene.on_state(self.state_cache)
+        self.window.on_state(self.state_cache, names)
         for hub in (self.second, self.systems):
             if hub is not None:
                 hub.on_state(self.state_cache, names)
         if "pending_authorization" in names:
             pending = self.state_cache.get("pending_authorization")
+            active = bool(pending and pending.get("status") == "pending")
+            scope = f" [{pending['category_label']}]" if active and pending.get("category_label") else ""
             self.window.authorization.present(
-                f"Ação sensível: {pending.get('description', '')}"
-                if pending and pending.get("status") == "pending" else None,
+                f"Ação sensível{scope}: {pending.get('description', '')}" if active else None,
                 allow_always=bool(pending and pending.get("standing_allowed")))
             self.window.refresh_layout()
 
     def _pull_telemetry(self) -> None:
         if not (self.window.isVisible() or self.orb.isVisible()):
-            return                                        # só o HUB 1 e o orbe mostram níveis de áudio
+            return                                        # só a página JARVIS e o orbe mostram níveis de áudio
         telemetry = self.core.telemetry()
         mic = self.core.voice.mic_probe() if self.core.enable_voice else {}
-        if not mic.get("enabled", True):
+        if self.core.privacy_shield:
+            telemetry["mic_state"] = "PRIVACIDADE"
+        elif not mic.get("enabled", True):
             telemetry["mic_state"] = "MIC OFF"
         elif mic.get("capturing"):
             telemetry["mic_state"] = "MIC ON"
         else:
             telemetry["mic_state"] = "MIC —"
         self.scene.on_telemetry(telemetry)
+        self.window.on_telemetry(telemetry)
         suggestion = telemetry.get("suggestion")
         if bool(suggestion) != self.window.suggestion.isVisible():
             self.window.suggestion.present(suggestion)
@@ -239,6 +315,9 @@ class HudController(QtCore.QObject):
     def _apply_settings(self, changed: list) -> None:
         if "performance_profile" in changed or "hud_fps" in changed:
             self.set_profile(getattr(self.core.settings(), "performance_profile", quality.DEFAULT))
+        if self.settings_page is not None:
+            self.settings_page.on_settings_changed(changed)
+        self.window.refresh_chips()
 
     def set_profile(self, name: str) -> None:
         self.profile = quality.get(name)
@@ -256,7 +335,7 @@ class HudController(QtCore.QObject):
         self._last_tick = now
         self.scene.step(dt)
         self._tick_times.append(dt)
-        hub1 = self.window.isVisible() and not self.window.isMinimized()
+        hub1 = self.window.isVisible() and not self.window.isMinimized() and self.view.isVisible()
         orb = self.orb.isVisible()
         if not (hub1 or orb):
             wanted = self.profile.hidden_interval_ms      # nada visível: a cena segue coerente, sem desenho
@@ -284,10 +363,10 @@ class HudController(QtCore.QObject):
             self.frame_rate = len(self._tick_times) / max(1e-6, sum(self._tick_times))
 
     def _tardis_in_front(self) -> bool:
-        """O usuário está no TARDIS (janela ativa) e o CORE ficou atrás: o CORE segue o estado real
-        na cadência de fundo do perfil. O orbe e o CORE em foco nunca são reduzidos."""
+        """O TARDIS ficou numa janela separada e em foco (não acontece com a plataforma, onde ele é uma
+        página: com o TARDIS à frente a vista do JARVIS nem é desenhada)."""
         second = self.second
-        return bool(second is not None and second.isVisible() and second.isActiveWindow()
+        return bool(second is not None and second.isWindow() and second.isVisible() and second.isActiveWindow()
                     and not self.window.isActiveWindow())
 
     def _heartbeat(self) -> None:
@@ -307,6 +386,7 @@ class HudController(QtCore.QObject):
         metrics.gauge("ui.profile", self.profile.name)
         metrics.gauge("ui.events_dropped", self.dropped_events)
         metrics.gauge("ui.inbox", len(self._inbox))
+        metrics.gauge("ui.page", self.window.current_key)
         tardis_open = bool(self.second is not None and self.second.isVisible())
         metrics.gauge("ui.tardis_open", tardis_open)
         if tardis_open:
@@ -320,14 +400,17 @@ class HudController(QtCore.QObject):
             return {"status": "OK", "detail": "medindo taxa de quadros"}
         paint = self._paint_ema * 1000
         detail = f"{self.frame_rate:.0f} quadros/s (alvo {self.target_fps}) · pintura {paint:.1f} ms · " \
-                 f"perfil {self.profile.name}"
+                 f"perfil {self.profile.name} · página {self.window.current_key}"
         lag = getattr(self.core, "metrics", None)
         lag_stats = lag.stats("ui.lag") if lag is not None else {}
         slow = lag_stats.get("n", 0) >= 10 and lag_stats.get("p95", 0) > 0.25
         return {"status": "WARN" if slow and visible else "OK", "detail": detail + ("" if visible else " · oculto")}
 
-    # ================================================================ janelas
+    # ================================================================ janela e páginas
     def show(self, *, minimized: bool = False) -> None:
+        start = getattr(self.core.settings(), "start_page", "jarvis")
+        if start in NAV_KEYS and start != self.window.current_key:
+            self.window.navigate(start, animate=False)
         if minimized:
             self.collapse()
         else:
@@ -346,46 +429,60 @@ class HudController(QtCore.QObject):
         self.window.hide()
         if not self.orb.isVisible():
             if self.orb.pos() == QtCore.QPoint(0, 0):
-                self.orb.place_default()
+                self._place_orb()
             self.orb.show()
 
+    def _place_orb(self) -> None:
+        """Onde o usuário deixou o orbe da última vez (se ainda estiver numa tela), senão no canto."""
+        saved = tuple(getattr(self.core.settings(), "orb_position", ()) or ())
+        if len(saved) == 2:
+            point = QtCore.QPoint(int(saved[0]), int(saved[1]))
+            if any(screen.availableGeometry().contains(point) for screen in QtGui.QGuiApplication.screens()):
+                self.orb.move(point)
+                return
+        self.orb.place_default()
+
+    def _orb_moved(self, point: QtCore.QPoint) -> None:
+        try:
+            self.core.settings_manager.update(orb_position=[point.x(), point.y()])
+        except Exception:
+            log.debug("posição do orbe não gravada", exc_info=True)
+
+    def open_page(self, key: str, section: str | None = None):
+        """Mostra a janela e navega até o módulo (a página é criada na primeira visita)."""
+        if not self.window.isVisible() or self.window.isMinimized():
+            self.expand()
+        page = self.window.navigate(key)
+        if page is not None and not page.isVisible() and self.window.isVisible():
+            page.show()                                  # alguém escondeu a página dentro da janela
+        if section and page is not None and hasattr(page, "show_section"):
+            page.show_section(section)
+        return page
+
     def open_tardis(self, section: str | None = None) -> None:
-        """Abre o TARDIS (memória espacial). Fechar ou voltar só esconde: o estado é preservado."""
-        if self.second is None:
-            from .tardis import TardisWindow
-            self.second = TardisWindow(self.core, state=self.state_cache, profile=self.profile)
-            self.second.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="tardis"))
-            self.second.authorization_always.connect(lambda: self._authorize_always("tardis"))
-            self.second.return_requested.connect(self.return_to_core)
-        if section:
-            self.second.show_section(section)
-        self.second.showNormal() if self.second.isMinimized() else self.second.show()
-        self.second.raise_()
-        self.second.activateWindow()
+        """Abre o TARDIS. Voltar ao JARVIS só troca de página: câmera, região e filtros ficam."""
+        self.open_page("tardis", section)
+        if self.second is not None:
+            self.second.raise_()
 
     open_second_brain = open_tardis                 # nome antigo (compatibilidade)
 
     def return_to_core(self) -> None:
-        if self.second is not None:
-            self.second.hide()                      # nada é destruído: câmera, região e filtros ficam
+        self.window.navigate("jarvis")
         self.expand()
 
     def open_systems(self, section: str | None = None) -> None:
-        """Painel de Sistemas do JARVIS CORE: voz, rede local, desempenho e saúde."""
-        if self.systems is None:
-            from .systems_panel import SystemsPanel
-            self.systems = SystemsPanel(self.core, state=self.state_cache, profile=self.profile)
-            self.systems.authorization_decided.connect(lambda ok: self.core.authorizations.resolve(ok, by="sistemas"))
-            self.systems.authorization_always.connect(lambda: self._authorize_always("sistemas"))
-        self.systems.show_section(section)
-        self.systems.showNormal() if self.systems.isMinimized() else self.systems.show()
-        self.systems.raise_()
-        self.systems.activateWindow()
+        """DIAGNÓSTICOS: voz, rede local, autonomia, desempenho e saúde, eventos, log, serviços e GPU."""
+        self.open_page("diagnosticos")
+        if self.systems is not None:
+            self.systems.show_section(section)
 
     def _closed_to_tray(self) -> None:
         if self.tray is None:
             self.quit()
         elif not self.orb.isVisible():
+            if self.orb.pos() == QtCore.QPoint(0, 0):
+                self._place_orb()
             self.orb.show()
 
     def _authorize_always(self, by: str) -> None:
@@ -395,13 +492,109 @@ class HudController(QtCore.QObject):
         self.core.authorizations.resolve(True, by=by, remember=STANDING_DEFAULT)
 
     def _toggle_mic(self, enabled: bool) -> None:
-        if self.core.enable_voice:
-            self.core.voice.toggle_mic(enabled)
+        if not self.core.enable_voice:
+            return
+        if enabled and self.core.privacy_shield:
+            self.window.input.mic.blockSignals(True)
+            self.window.input.mic.setChecked(False)          # o modo privacidade manda: microfone fechado
+            self.window.input.mic.blockSignals(False)
+            self.window.conversation.add_system("modo privacidade ativo: saia dele para ligar o microfone",
+                                                alert=True)
+            return
+        self.core.voice.toggle_mic(enabled)
 
     def _toggle_voice(self, enabled: bool) -> None:
         self.core.speaker.muted = not enabled
         if not enabled:
             self.core.speaker.interrupt()
+
+    # ================================================================ Esc, PARAR e indicadores
+    def escape(self) -> str:
+        """Esc como no original: interrompe a fala; senão cancela o pedido em andamento (ou a autorização
+        pendente); senão sai da tela cheia. Nunca minimiza. Devolve o que foi feito."""
+        if self.core.speaker.speaking:
+            self.core.speaker.interrupt()
+            return "speech"
+        if self.core.busy or self.core.authorizations.pending() is not None:
+            self.core.cancel("cancelado pelo usuário (Esc)")
+            self.window.conversation.add_system("cancelado (Esc)")
+            return "cancel"
+        if self.window.isFullScreen():
+            self.window.showNormal()
+            return "fullscreen"
+        return ""
+
+    def stop(self) -> None:
+        """PARAR (conversa): cancela pedido, fala e autorização pendente."""
+        cancelled = self.core.cancel("cancelado pelo usuário (PARAR)")
+        self.window.conversation.add_system("cancelado" if cancelled else "não havia nada em andamento")
+
+    def _chip_clicked(self, key: str) -> None:
+        if key == "mic":
+            if self.core.privacy_shield:
+                self._privacy_menu().exec(QtGui.QCursor.pos())
+            else:
+                self.window.input.mic.toggle()
+        elif key == "tts":
+            self.window.input.voice.toggle()
+        elif key == "ai":
+            self.open_page("configuracoes", "ia")
+        elif key == "noct":
+            self.open_page("noctario")
+        elif key == "net":
+            self.open_systems("network")
+        elif key == "obs":
+            self._observer_menu().exec(QtGui.QCursor.pos())
+        elif key == "session":
+            self.open_page("configuracoes", "privacidade")
+
+    def _observer_menu(self) -> QtWidgets.QMenu:
+        menu = QtWidgets.QMenu(self.window)
+        self._fill_observer_menu(menu)
+        return menu
+
+    def _fill_observer_menu(self, menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
+        """Modos do Observador e pausa (barra de automação do original), relidos do estado real."""
+        menu.clear()
+        observer = self.state_cache.get("observer") or {}
+        mode = observer.get("mode") or getattr(self.core.settings(), "observer_mode", "off")
+        group = QtGui.QActionGroup(menu)
+        for value, label in (("off", "Desligado"), ("assistant", "Assistente (sugere na tela)"),
+                             ("observer", "Observador (sugere e fala)")):
+            action = menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(mode == value)
+            action.setActionGroup(group)
+            action.triggered.connect(lambda _=False, v=value: self._observer(v))
+        menu.addSeparator()
+        if observer.get("paused"):
+            menu.addAction("Retomar o Observador", lambda: self._observer("resume"))
+        else:
+            pause = menu.addAction("Pausar o Observador", lambda: self._observer("pause"))
+            pause.setEnabled(mode != "off")
+        return menu
+
+    def _privacy_menu(self) -> QtWidgets.QMenu:
+        menu = QtWidgets.QMenu(self.window)
+        if self.core.privacy_shield:
+            menu.addAction("Sair do modo privacidade (liberar o microfone)", lambda: self._privacy(False))
+        else:
+            menu.addAction("Entrar no modo privacidade (fechar o microfone)", lambda: self._privacy(True))
+        return menu
+
+    def _observer(self, action: str) -> None:
+        response = self.core.set_observer(action)
+        self.window.conversation.add_system(response.text)
+        self.window.refresh_chips()
+
+    def _privacy(self, active: bool) -> None:
+        response = self.core.set_privacy_shield(active, by="interface")
+        self.window.conversation.add_system(response.text, alert=active)
+        if self.core.enable_voice:
+            self.window.input.mic.blockSignals(True)
+            self.window.input.mic.setChecked(self.core.voice.mic_enabled)
+            self.window.input.mic.blockSignals(False)
+        self.window.refresh_chips()
 
     # ================================================================ notificações
     def _notify(self, payload: dict) -> None:
@@ -417,7 +610,7 @@ class HudController(QtCore.QObject):
 
     def _show_message(self, title: str, body: str) -> None:
         """Usa a notificação nativa do sistema (no Windows 10/11, o centro de notificações) quando há
-        bandeja; sem bandeja, o aviso fica na central de notificações do HUB 2 e na fala."""
+        bandeja; sem bandeja, o aviso fica na central de notificações do TARDIS e na fala."""
         self.notifications_shown += 1
         if self.tray is None or not self.tray.isVisible():
             return
@@ -429,43 +622,93 @@ class HudController(QtCore.QObject):
             return None
         tray = QtWidgets.QSystemTrayIcon(app_icon(), self)
         tray.setToolTip("JARVIS")
-        tray.setContextMenu(self._menu())
+        menu = self._menu()
+        tray.setContextMenu(menu)
+        self._tray_menu = menu
         tray.activated.connect(lambda reason: self.expand()
-                               if reason == QtWidgets.QSystemTrayIcon.Trigger else None)
+                               if reason in (QtWidgets.QSystemTrayIcon.Trigger,
+                                             QtWidgets.QSystemTrayIcon.DoubleClick) else None)
         tray.messageClicked.connect(lambda: self.open_tardis("notifications"))
         tray.show()
         return tray
 
     def _menu(self) -> QtWidgets.QMenu:
+        """Menu da bandeja e do orbe. As marcações são relidas a cada abertura (estado real)."""
         menu = QtWidgets.QMenu()
-        menu.addAction("Abrir o JARVIS CORE", self.expand)
-        menu.addAction("TARDIS — memória pessoal", lambda: self.open_tardis())
-        menu.addAction("Sistemas (voz, rede, desempenho)", lambda: self.open_systems())
+        header = menu.addAction("J.A.R.V.I.S.")
+        header.setEnabled(False)
+        menu.addAction("Abrir o JARVIS", lambda: self.open_page("jarvis"))
+        for key, label in (("tardis", "TARDIS — segundo cérebro"), ("noctario", "Noctário — robô"),
+                           ("atividades", "Atividades"), ("configuracoes", "Configurações"),
+                           ("diagnosticos", "Diagnósticos")):
+            menu.addAction(label, lambda k=key: self.open_page(k))
         menu.addAction("Diagnóstico de voz", lambda: self.open_systems("voice"))
-        menu.addAction("Autonomia e autorizações", lambda: self.open_systems("autonomy"))
         menu.addAction("Orbe compacto", self.collapse)
         menu.addSeparator()
         mic = menu.addAction("Microfone")
         mic.setCheckable(True)
-        mic.setChecked(self.core.voice.mic_enabled if self.core.enable_voice else False)
         mic.toggled.connect(lambda on: self.window.input.mic.setChecked(on))
         voice = menu.addAction("Voz do JARVIS")
         voice.setCheckable(True)
-        voice.setChecked(not self.core.speaker.muted)
         voice.toggled.connect(lambda on: self.window.input.voice.setChecked(on))
+        restart = menu.addAction("Reiniciar voz", self._restart_voice)
+        privacy = menu.addAction("Modo privacidade (microfone fechado)")
+        privacy.setCheckable(True)
+        privacy.triggered.connect(lambda on: self._privacy(bool(on)))
+        observer_menu = menu.addMenu("Observador")
+        startup = menu.addAction("Iniciar com o Windows")
+        startup.setCheckable(True)
+        startup.triggered.connect(self._toggle_startup)
         profiles = menu.addMenu("Qualidade visual")
         group = QtGui.QActionGroup(profiles)
-        for name, label in (("economy", "Econômico (máxima fluidez)"), ("balanced", "Equilibrado"),
-                            ("high", "Alto"), ("cinematic", "Cinematográfico (efeitos completos)")):
-            action = profiles.addAction(label)
+        profile_actions = {}
+        for name in quality.NAMES:
+            action = profiles.addAction(quality.LABELS[name])
             action.setCheckable(True)
-            action.setChecked(self.profile.name == name)
             action.setActionGroup(group)
             action.triggered.connect(lambda _=False, n=name: self.core.settings_manager.update(performance_profile=n))
+            profile_actions[name] = action
         menu.addAction("Diagnóstico", self.show_diagnostics)
         menu.addSeparator()
         menu.addAction("Sair", self.quit)
+
+        def sync() -> None:                           # estado real a cada abertura do menu
+            from ..platform import autostart
+            for action, value in ((mic, self.core.voice.mic_enabled if self.core.enable_voice else False),
+                                  (voice, not self.core.speaker.muted), (privacy, bool(self.core.privacy_shield))):
+                action.blockSignals(True)
+                action.setChecked(bool(value))
+                action.blockSignals(False)
+            mic.setEnabled(self.core.enable_voice and not self.core.privacy_shield)
+            restart.setEnabled(self.core.enable_voice and not self.core.privacy_shield)
+            startup.blockSignals(True)
+            startup.setChecked(autostart.is_enabled())
+            startup.blockSignals(False)
+            startup.setEnabled(autostart.supported())
+            startup.setToolTip("" if autostart.supported() else "disponível apenas no Windows")
+            for name, action in profile_actions.items():
+                action.setChecked(self.profile.name == name)
+            self._fill_observer_menu(observer_menu)
+
+        menu.aboutToShow.connect(sync)
+        sync()
         return menu
+
+    def _restart_voice(self) -> None:
+        if not self.core.enable_voice or self.core.privacy_shield:
+            return
+        threading.Thread(target=self.core.voice.restart, name="ultron-voice-restart", daemon=True).start()
+        self.window.conversation.add_system("reiniciando a voz (captura e reconhecimento)")
+
+    def _toggle_startup(self, on: bool) -> None:
+        """Pedido explícito do usuário (clique). Se o Registro recusar, a marcação volta (como no original)."""
+        from ..platform import autostart
+        try:
+            (autostart.enable if on else autostart.disable)()
+            self.core.settings_manager.update(startup=bool(on))
+            self._show_message("JARVIS", autostart.check()["text"])
+        except OSError as exc:
+            self._show_message("JARVIS · início automático", f"Não foi possível alterar: {exc}")
 
     def show_diagnostics(self) -> None:
         report = self.core.health.last or {}
@@ -484,9 +727,9 @@ class HudController(QtCore.QObject):
         self.window.hide_to_tray = False
         for timer in (self._frame, self._state_timer, self._telemetry_timer, self._heartbeat_timer):
             timer.stop()
-        for hub in (self.second, self.systems):
-            if hub is not None:
-                hub.shutdown()
+        self.window.shutdown()                          # para relógios e leitores de todas as páginas
+        self.window.hide()
+        self.orb.hide()
         if self.tray is not None:
             self.tray.hide()
         app = QtWidgets.QApplication.instance()

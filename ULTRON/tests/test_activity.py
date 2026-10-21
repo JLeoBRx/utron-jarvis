@@ -148,6 +148,31 @@ class ExecutorActivityTest(unittest.TestCase):
         self.assertEqual(self.log.get(wipe["id"])["state"], "negado", "a verificação não muda uma ação negada")
 
 
+class ActivitySkillsTest(unittest.TestCase):
+    def test_recent_reads_and_clear_is_a_deletion(self):
+        from ultron.agent.permissions import category_for
+        from ultron.skills.assistant import ActivityClear, ActivityRecent
+        memory = helpers.make_memory()
+        self.addCleanup(memory.db.close)
+        log = ActivityLog(memory.db)
+        log.record("pedido", "que horas são?", origin="voice", result="São 10:00.")
+        log.record("erro", "Componente VOZ falhou", origin="system", state="falhou", error="sem microfone")
+
+        class Core:
+            activity = log
+
+        ctx = SkillContext(extras={"core": Core()})
+        result = ActivityRecent().execute(ctx, limit=5)
+        self.assertTrue(result.success)
+        self.assertIn("que horas são?", result.result)
+        self.assertEqual(len(ActivityRecent().execute(ctx, kind="erro").data["items"]), 1)
+        self.assertEqual(category_for(ActivityClear()), "apagar_dados")
+        self.assertFalse(ActivityClear.expose_to_llm, "o modelo não escolhe apagar o histórico")
+        cleared = ActivityClear().execute(ctx)
+        self.assertEqual(cleared.data["removed"], 2)
+        self.assertTrue(ActivityClear().verify(ctx, {}, cleared).verified)
+
+
 class CoreActivityTest(unittest.TestCase):
     def test_requests_from_text_end_with_the_real_response(self):
         from fake_ollama import FakeOllama

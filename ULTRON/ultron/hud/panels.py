@@ -29,7 +29,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..secondbrain import timeutil
 from ..secondbrain.models import ACTIONABLE, KINDS, PRIORITIES, RELATIONS, STATUS_LABELS
-from . import theme
+from . import quality, theme
 from .window import DecisionBar, app_icon
 
 log = logging.getLogger("ultron.hub2")
@@ -1403,9 +1403,8 @@ class SystemPage(Page):
         super().__init__(hub)
         top = QtWidgets.QHBoxLayout()
         self.profile = QtWidgets.QComboBox()
-        for name, label in (("performance", "Performance — fluidez máxima"), ("balanced", "Balanced — equilíbrio"),
-                            ("cinematic", "Cinematic — efeitos completos")):
-            self.profile.addItem(label, name)
+        for name in quality.NAMES:                   # os mesmos perfis do menu e das configurações
+            self.profile.addItem(quality.LABELS[name], name)
         self.profile.setCurrentIndex(max(0, self.profile.findData(hub.profile.name)))
         self.profile.currentIndexChanged.connect(
             lambda *_: self.hub.core.settings_manager.update(performance_profile=self.profile.currentData()))

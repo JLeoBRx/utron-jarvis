@@ -83,6 +83,7 @@ SKILL_CATEGORIES = {
     # apagar dados (inclusive para a Lixeira)
     "fs.delete": "apagar_dados", "memory.forget": "apagar_dados", "automation.delete": "apagar_dados",
     "secondbrain.delete": "apagar_dados", "secondbrain.empty_trash": "apagar_dados",
+    "activity.clear": "apagar_dados",
 }
 _BY_SKILL_CATEGORY = {"filesystem": "arquivos", "second_brain": "arquivos", "memory": "arquivos",
                       "applications": "executar_programas", "windows": "executar_programas",

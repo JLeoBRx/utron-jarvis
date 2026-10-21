@@ -64,7 +64,7 @@ class CategoryTest(unittest.TestCase):
         self.assertEqual(set(SKILL_CATEGORIES) - set(registry.names()), set(), "tabela sem nomes inexistentes")
         deletions = {s.name for s in registry.all() if category_for(s, {}) == "apagar_dados"}
         self.assertEqual(deletions, {"fs.delete", "memory.forget", "automation.delete", "secondbrain.delete",
-                                     "secondbrain.empty_trash"})
+                                     "secondbrain.empty_trash", "activity.clear"})
         reads = {s.name for s in registry.all() if s.risk is Risk.NONE}
         self.assertTrue(all(category_for(registry.get(n), {}) == "consultar" for n in reads),
                         "leitura pura é sempre 'consultar'")

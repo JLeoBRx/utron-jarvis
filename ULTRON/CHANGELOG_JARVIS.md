@@ -99,3 +99,37 @@ finais em `PERFORMANCE_REPORT.md`.
 * Esse teste encontrou um defeito: o diagnóstico de voz acusava "modelo ausente" quando os
   arquivos não estavam no disco, mesmo com o reconhecedor carregado e em uso. Agora a etapa 5
   confia primeiro no reconhecedor em uso; teste de regressão em `test_jarvis_voice.py`.
+
+---
+
+# JARVIS ULTIMATE — JARVIS original + TARDIS + Noctário
+
+## Fases 1 e 2 — Auditoria e arquitetura (commit `a725f56`)
+* `INVENTARIO_JARVIS_ORIGINAL.md` (e `docs/inventario/`): o que o JARVIS original tinha, o que
+  funcionava, o que estava quebrado e o que precisava voltar. `ARQUITETURA_ULTIMATE.md` e
+  `DESIGN_VISUAL.md`: módulos, protocolos, estados, identidades visuais.
+
+## Fase 3, parte 1 — Recuperação do original no núcleo (commit `fb55f2d`)
+* Observador (desligado ao iniciar, pausar/retomar), **modo privacidade** que fecha o microfone
+  de verdade, automações do original reparadas (nomes antigos mapeados), personalidade do
+  original, frases de encerramento, teclas e apelidos do original, mutex do original respeitado,
+  `--autostart-check`, importação de modelos sem sobrescrever, **OpenAI** opcional (Responses
+  API, chave no cofre do sistema, LOCAL MODE bloqueia, falha → Ollama), notas de sessão.
+
+## Fase 3, parte 2 — Permissões, histórico e a plataforma (commits `bab7370` e seguinte)
+* **Permissões por categoria** aplicadas pelo executor, com pisos (apagar dados e robô nunca
+  abaixo de "confirmar") e parada de emergência sempre liberada.
+* **Histórico de atividades** no mesmo banco (migração v4), alimentado pelo núcleo, pelo
+  executor e pelos eventos; skills `activity.recent` e `activity.clear`.
+* **Plataforma**: janela única com navegação F1–F7, páginas preservadas, transição
+  holográfica, barra superior com estado e indicadores reais, conversa do original (horários,
+  STATUS, HORAS, PARAR, COPIAR RESPOSTA, LIMPAR, Ctrl+L), Esc como no original, histórico ↑/↓
+  com rascunho, ENVIAR.
+* Páginas **ATIVIDADES**, **CONFIGURAÇÕES** e **DIAGNÓSTICOS** (console de eventos, log,
+  serviços e GPU); TARDIS e Sistemas embutidos sem perder estado.
+* Bandeja: Reiniciar voz, Modo privacidade, Observador (modos e pausa), Iniciar com o Windows.
+* **Saída de áudio** selecionável; orbe lembra a posição; a interface informa quando cobre a
+  tela (observação suspensa); "encerre o JARVIS" fecha a interface e o modo console;
+  exceções não tratadas vão para o log.
+* Testes: 263 aprovados em Python 3.13 e 3.11 (novos: permissões, histórico, plataforma).
+

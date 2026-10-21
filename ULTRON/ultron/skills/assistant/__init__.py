@@ -101,4 +101,89 @@ class ReadAudit(Skill):
         return VerificationResult("VERIFIED", 0.95, [check("read", True, "lido do banco local")])
 
 
-SKILLS = (Shutdown, SessionNote, Profile, ReadAudit)
+def _activity(ctx):
+    core = (ctx.extras or {}).get("core")
+    return getattr(core, "activity", None)
+
+
+class ActivityRecent(Skill):
+    name = "activity.recent"
+    description = ("Ler o histórico de atividades: pedidos, ações executadas, confirmações, falhas e lembretes "
+                   "(com estado, resultado e horário). Filtros opcionais: tipo e texto.")
+    category = "diagnostics"
+    inputs = schema({"limit": {"type": "integer", "minimum": 1, "maximum": 30},
+                     "kind": {"type": "string", "enum": ["pedido", "acao", "lembrete", "erro", "sistema", "tardis",
+                                                         "noctario"]},
+                     "search": {"type": "string", "maxLength": 80, "minLength": 0}})
+    risk = Risk.NONE
+
+    def available(self) -> tuple[bool, str]:
+        return True, ""
+
+    def execute(self, ctx, limit: int = 10, kind: str = "", search: str = "") -> SkillResult:
+        activity = _activity(ctx)
+        if activity is None:
+            return SkillResult(False, error="histórico de atividades indisponível", error_kind="UNAVAILABLE")
+        items = activity.recent(int(limit), kinds=[kind] if kind else None, search=search or "")
+        if not items:
+            return SkillResult(True, "Nenhuma atividade registrada com esse filtro.", [], {"items": []})
+        lines = []
+        for item in items:
+            at = time.strftime("%d/%m %H:%M", time.localtime(item["started_at"]))
+            outcome = item["error"] or item["result"]
+            lines.append(f"{at} {item['kind_label']} '{item['title'][:60]}': {item['state_label']}"
+                         + (f" — {outcome[:80]}" if outcome else ""))
+        return SkillResult(True, "Atividades: " + "; ".join(lines), [],
+                           {"items": [{k: i[k] for k in ("id", "kind", "title", "state", "result", "error",
+                                                         "started_at", "seconds")} for i in items]})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        return VerificationResult("VERIFIED", 0.95, [check("read", True, "lido do banco local")])
+
+
+class ActivityClear(Skill):
+    name = "activity.clear"
+    description = "Apagar o histórico de atividades (todo ou o anterior a N dias). Irreversível."
+    category = "diagnostics"
+    inputs = schema({"older_than_days": {"type": "integer", "minimum": 1, "maximum": 3650}})
+    risk = Risk.HIGH
+    reversible = False
+    permission = "apagar_dados"
+    expose_to_llm = False                 # só por pedido direto (botão ou comando)
+
+    def describe_action(self, args):
+        days = args.get("older_than_days")
+        return f"apagar o histórico de atividades com mais de {days} dia(s)" if days else \
+            "apagar TODO o histórico de atividades"
+
+    def describe_resource(self, ctx, args):
+        activity = _activity(ctx)
+        return f"{activity.count()} registro(s) no histórico" if activity is not None else ""
+
+    def execute(self, ctx, older_than_days: int | None = None) -> SkillResult:
+        activity = _activity(ctx)
+        if activity is None:
+            return SkillResult(False, error="histórico de atividades indisponível", error_kind="UNAVAILABLE")
+        before = time.time() - older_than_days * 86400 if older_than_days else None
+        removed = activity.clear(before=before)
+        return SkillResult(True, f"Histórico de atividades: {removed} registro(s) apagado(s).", [str(removed)],
+                           {"removed": removed, "before": before})
+
+    def verify(self, ctx, args, result):
+        if not result.success:
+            return super().verify(ctx, args, result)
+        activity = _activity(ctx)
+        before = result.data.get("before")
+        if before is None:
+            left = activity.count()
+            ok = left <= 1                    # o próprio registro desta ação pode ter sido criado depois
+        else:
+            left = len(activity.recent(5000, since=0.0)) - len(activity.recent(5000, since=before))
+            ok = left == 0
+        return VerificationResult.from_checks([check("cleared", ok, "histórico relido do banco" if ok else
+                                                     f"ainda há {left} registro(s) antigos")])
+
+
+SKILLS = (Shutdown, SessionNote, Profile, ReadAudit, ActivityRecent, ActivityClear)

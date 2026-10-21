@@ -58,10 +58,13 @@ class _Utterance:
 class AudioOutput:
     name = "audio_output"
 
-    def __init__(self, rate: int = MIXER_RATE):
+    def __init__(self, rate: int = MIXER_RATE, *, device_name: str = "", device_index: int = -1):
         self.rate = rate
         self.backend = "none"
         self.reason = ""
+        self.device_name = str(device_name or "")       # saída escolhida (vazio = padrão do sistema)
+        self.device_index = int(device_index if device_index is not None else -1)
+        self.device = ""                                # dispositivo realmente aberto
         self.voice_volume = 0.9
         self.sfx_volume = 0.35
         self._lock = threading.Lock()
@@ -121,21 +124,57 @@ class AudioOutput:
     def available(self) -> bool:
         return self.backend != "none"
 
+    def set_device(self, name: str = "", index: int = -1) -> str:
+        """Troca a saída de áudio (nome exato/parcial ou índice; vazio = padrão) e reabre o fluxo.
+        A fala em andamento é interrompida. Devolve o dispositivo aberto ('' = nenhum)."""
+        self.device_name, self.device_index = str(name or ""), int(index if index is not None else -1)
+        was_running = self.backend in ("pyaudio", "sounddevice")
+        if was_running:
+            self.stop()
+            self.start()
+        return self.device
+
+    def _choose(self, devices: list[dict], default: int | None) -> dict | None:
+        """Nome escolhido → índice escolhido → padrão do sistema (nenhum outro é tentado sozinho)."""
+        for candidate in _candidates(devices, default, self.device_name, self.device_index):
+            return candidate
+        return None
+
     def _open_pyaudio(self) -> bool:
         import pyaudio
+        index = None
+        label = "padrão do sistema"
+        if self.device_name or self.device_index >= 0:
+            devices, default = _pyaudio_output_devices()
+            chosen = self._choose(devices, default)
+            if chosen is None:
+                log.warning("saída de áudio escolhida não encontrada (%s); usando a padrão",
+                            self.device_name or self.device_index)
+            else:
+                index, label = chosen["index"], chosen["name"]
         self._pa = pyaudio.PyAudio()
         self._stream = self._pa.open(format=pyaudio.paInt16, channels=1, rate=self.rate, output=True,
-                                     frames_per_buffer=BLOCK, stream_callback=self._pa_callback)
+                                     output_device_index=index, frames_per_buffer=BLOCK,
+                                     stream_callback=self._pa_callback)
         self._stream.start_stream()
         self.backend = "pyaudio"
+        self.device = label
         return True
 
     def _open_sounddevice(self) -> bool:
         import sounddevice as sd
+        device = None
+        label = "padrão do sistema"
+        if self.device_name or self.device_index >= 0:
+            devices, default = _sounddevice_output_devices()
+            chosen = self._choose(devices, default)
+            if chosen is not None:
+                device, label = chosen["index"], chosen["name"]
         self._stream = sd.OutputStream(samplerate=self.rate, channels=1, dtype="int16", blocksize=BLOCK,
-                                       callback=self._sd_callback)
+                                       device=device, callback=self._sd_callback)
         self._stream.start()
         self.backend = "sounddevice"
+        self.device = label
         return True
 
     # ------------------------------------------------------------ mixagem
@@ -386,6 +425,64 @@ def _sounddevice_devices():
                         "channels": int(info["max_input_channels"]), "rate": int(info.get("default_samplerate", 0)),
                         "default": i == default})
     return devices, default
+
+
+def _pyaudio_output_devices():
+    import pyaudio
+    audio = pyaudio.PyAudio()
+    devices, default = [], None
+    try:
+        try:
+            default = int(audio.get_default_output_device_info()["index"])
+        except Exception:
+            default = None
+        for i in range(audio.get_device_count()):
+            try:
+                info = audio.get_device_info_by_index(i)
+            except Exception:
+                continue
+            if int(info.get("maxOutputChannels", 0)) <= 0:
+                continue
+            try:
+                host = audio.get_host_api_info_by_index(int(info["hostApi"]))["name"]
+            except Exception:
+                host = ""
+            devices.append({"index": i, "name": str(info["name"]), "host_api": host,
+                            "channels": int(info["maxOutputChannels"]), "default": i == default})
+    finally:
+        audio.terminate()
+    return devices, default
+
+
+def _sounddevice_output_devices():
+    import sounddevice as sd
+    devices = []
+    try:
+        default = int(sd.default.device[1]) if sd.default.device[1] is not None else None
+    except Exception:
+        default = None
+    hostapis = sd.query_hostapis()
+    for i, info in enumerate(sd.query_devices()):
+        if int(info.get("max_output_channels", 0)) <= 0:
+            continue
+        host = hostapis[info["hostapi"]]["name"] if 0 <= info.get("hostapi", -1) < len(hostapis) else ""
+        devices.append({"index": i, "name": str(info["name"]), "host_api": host,
+                        "channels": int(info["max_output_channels"]), "default": i == default})
+    return devices, default
+
+
+def list_output_devices(backend: str = "auto") -> dict:
+    """Saídas de áudio visíveis (nada é aberto)."""
+    errors = []
+    for name in (("pyaudio", "sounddevice") if backend == "auto" else (backend,)):
+        try:
+            devices, default = (_pyaudio_output_devices if name == "pyaudio" else _sounddevice_output_devices)()
+            return {"backend": name, "devices": devices, "default": default, "errors": errors}
+        except ImportError:
+            errors.append(f"{name} não instalado")
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
+    return {"backend": None, "devices": [], "default": None, "errors": errors}
 
 
 def list_input_devices(backend: str = "auto") -> dict:

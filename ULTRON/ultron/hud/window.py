@@ -69,6 +69,7 @@ class InputBar(QtWidgets.QWidget):
         self.setObjectName("HudInput")
         self._history: list[str] = []
         self._cursor = 0
+        self._draft = ""                    # o que estava sendo digitado antes de navegar no histórico
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -77,6 +78,8 @@ class InputBar(QtWidgets.QWidget):
         self.line.setPlaceholderText("Diga \"Jarvis\" ou digite um pedido…")
         self.line.returnPressed.connect(self._submit)
         self.line.installEventFilter(self)
+        self.send = self._button("ENVIAR", "Enviar o pedido (Enter)")
+        self.send.clicked.connect(self._submit)
         self.mic = self._button("MIC", "Microfone ligado/desligado (Ctrl+M)", checkable=True)
         self.mic.setChecked(True)
         self.mic.toggled.connect(self.mic_toggled)
@@ -91,6 +94,7 @@ class InputBar(QtWidgets.QWidget):
         self.brain = self._button("TARDIS", "Memória pessoal: compromissos, tarefas, projetos, ideias, lembretes (F2)")
         self.brain.clicked.connect(self.second_brain)
         layout.addWidget(self.line, 1)
+        layout.addWidget(self.send)
         layout.addWidget(self.mic)
         layout.addWidget(self.voice)
         layout.addWidget(self.sys)
@@ -111,21 +115,25 @@ class InputBar(QtWidgets.QWidget):
         text = self.line.text().strip()
         if not text:
             return
-        self._history.append(text)
+        if not self._history or self._history[-1] != text:       # não repete a última (como no original)
+            self._history.append(text)
         del self._history[:-50]
         self._cursor = len(self._history)
+        self._draft = ""
         self.line.clear()
         self.submitted.emit(text)
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802 (Qt)
         if obj is self.line and event.type() == QtCore.QEvent.KeyPress and self._history:
             if event.key() == QtCore.Qt.Key_Up:
+                if self._cursor >= len(self._history):
+                    self._draft = self.line.text()                 # guarda o rascunho
                 self._cursor = max(0, self._cursor - 1)
                 self.line.setText(self._history[self._cursor])
                 return True
             if event.key() == QtCore.Qt.Key_Down:
                 self._cursor = min(len(self._history), self._cursor + 1)
-                self.line.setText(self._history[self._cursor] if self._cursor < len(self._history) else "")
+                self.line.setText(self._history[self._cursor] if self._cursor < len(self._history) else self._draft)
                 return True
         return super().eventFilter(obj, event)
 

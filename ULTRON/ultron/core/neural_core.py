@@ -164,7 +164,8 @@ class NeuralCore:
         self.imagination = ImaginationCore(router=self.router, memory=self.memory, bus=self.bus, state=self.state,
                                            privacy=self.privacy, settings_getter=s)
         # voz
-        self.audio_out = audio_output or AudioOutput()
+        self.audio_out = audio_output or AudioOutput(device_name=s().audio_output_name,
+                                                     device_index=s().audio_output_index)
         self.speaker = Speaker(self.audio_out, bus=self.bus, state=self.state, settings_getter=s)
         self.intents = IntentEngine(automations=self.memory.procedural.automation_for,
                                     wake_words=lambda: tuple(s().wake_words), recent_topic=self._recent_topic)
@@ -374,6 +375,11 @@ class NeuralCore:
         return self.speaker.say(text)
 
     @property
+    def busy(self) -> bool:
+        """Há um pedido sendo processado agora (Esc/PARAR podem cancelá-lo)."""
+        return self._token is not None
+
+    @property
     def voice_output_ready(self) -> bool:
         return self.enable_voice and not self.speaker.muted and self.audio_out.available
 
@@ -544,7 +550,9 @@ class NeuralCore:
             self.bus.publish(EventType.UI_REQUEST, {"view": args["open_view"], "section": args.get("section", "")},
                              source="core")
             label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz", "network": "a rede local",
-                     "autonomy": "o painel de autonomia"}.get(args["open_view"], "o TARDIS")
+                     "autonomy": "o painel de autonomia", "configuracoes": "as configurações do JARVIS",
+                     "atividades": "o histórico de atividades", "diagnosticos": "os diagnósticos",
+                     "noctario": "o painel do Noctário", "jarvis": "a conversa"}.get(args["open_view"], "o TARDIS")
             return Response(f"Abrindo {label}.", "info")
         return Response("Ajuste não reconhecido.", "error")
 
@@ -858,14 +866,20 @@ class NeuralCore:
             self.runtime.submit("network", self.privacy.refresh, name="privacy:refresh")
         if "sfx_volume" in changed:
             self.audio_out.sfx_volume = float(settings.sfx_volume)
+        if {"audio_output_name", "audio_output_index"} & set(changed) and hasattr(self.audio_out, "set_device"):
+            self.runtime.submit("voice", self.audio_out.set_device, settings.audio_output_name,
+                                settings.audio_output_index, name="audio:saida")
         if "consolidation_interval" in changed:
             self.runtime.scheduler.set_interval("consolidation", settings.consolidation_interval)
         if "discovery_interval" in changed:
             self.runtime.scheduler.set_interval("discovery", settings.discovery_interval)
         if "startup" in changed:
             from ..platform import autostart
-            if autostart.supported():
-                (autostart.enable if settings.startup else autostart.disable)()
+            if autostart.supported() and bool(settings.startup) != autostart.is_enabled():
+                try:
+                    (autostart.enable if settings.startup else autostart.disable)()
+                except OSError as exc:                      # o Registro recusou: a tela mostra o estado real
+                    log.warning("início automático não alterado: %s", exc)
 
     # ================================================================ contexto das skills e plugins
     def _skill_context(self, cancel) -> SkillContext:

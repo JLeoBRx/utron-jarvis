@@ -63,7 +63,7 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 
 | Comando | Efeito |
 |---|---|
-| `START_JARVIS.bat` | abre o JARVIS CORE (TARDIS pelo botão, por F2 ou dizendo "abra o TARDIS") |
+| `START_JARVIS.bat` | abre o JARVIS (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz) |
 | `START_JARVIS.bat --console` | modo console (texto) |
 | `START_JARVIS.bat --status` | diz se está em execução |
 | `START_JARVIS.bat --stop` | pede ao JARVIS em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
@@ -91,11 +91,53 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 
 ---
 
-## 3. JARVIS CORE (hub principal)
+## 3. A plataforma: JARVIS · TARDIS · NOCTÁRIO · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
 
-Barra inferior: campo de pedido, **MIC** (Ctrl+M), **VOZ**, **SISTEMAS** (F3), **TARDIS** (F2),
-**ORBE** (Esc recolhe para o orbe compacto; clique duplo no orbe expande). F11 = tela cheia.
+Uma janela com seis módulos. Trocar de módulo não perde nada: câmera e região do TARDIS,
+filtros, rolagem e textos digitados ficam como estavam.
+
+| Atalho | Efeito |
+|---|---|
+| F1 | JARVIS (núcleo e conversa) |
+| F2 | TARDIS (memória pessoal) |
+| F4 | NOCTÁRIO (robô) |
+| F5 | ATIVIDADES (histórico) |
+| F6 | CONFIGURAÇÕES |
+| F3 ou F7 | DIAGNÓSTICOS (voz, rede, autonomia, desempenho, eventos, log, serviços e GPU) |
+| F11 | tela cheia |
+| Esc | como no original: interrompe a fala; senão cancela o pedido ou a autorização pendente; senão sai da tela cheia. Nunca minimiza. No TARDIS, fecha a região aberta |
+| Ctrl+M | microfone |
+| Ctrl+L | limpa a conversa da tela |
+
+Por voz: *"abra o TARDIS"*, *"abra as configurações do JARVIS"* (sem "do JARVIS", abre as
+configurações do Windows, como no original), *"mostre o histórico de atividades"*, *"abra o
+console de eventos"*, *"abra o log do JARVIS"*, *"abra o noctário"*, *"volte para o JARVIS"*,
+*"o que você fez hoje?"*.
+
+**Barra superior**: mini-reator e identidade, navegação, relógio e data; na segunda linha o
+estado (LED, nome e cinco barras com o nível REAL do microfone ou da fala) e os indicadores MIC,
+VOZ, IA, NOCTÁRIO, REDE (Wi-Fi e tráfego), BATERIA (só se houver), OBSERVADOR e SESSÃO (tempo de
+execução e modo de privacidade). Passe o mouse para detalhes; clique para agir (ligar/desligar
+microfone e voz, modos do Observador, abrir a página certa). Indicador sem dado real mostra "—".
+
+**Barra inferior** (vale em qualquer página): campo de pedido com histórico ↑/↓ (guarda o
+rascunho), **ENVIAR**, **MIC**, **VOZ**, **ORBE** (recolhe para o orbe compacto; clique duplo no
+orbe expande; o orbe lembra onde foi deixado). Autorizações e sugestões aparecem logo acima.
 Fechar a janela mantém o JARVIS na bandeja; **Sair** encerra.
+
+**Conversa** (página JARVIS): cada mensagem com horário (`[HH:MM] VOCÊ ▸`, `J.A.R.V.I.S. ▸`,
+`// sistema`), **STATUS**, **HORAS**, **PARAR**, **COPIAR RESPOSTA** e **LIMPAR** (Ctrl+L).
+
+**Transições**: holográficas (~300 ms) com "efeitos pesados" ligados e fora do perfil
+econômico; senão, imediatas.
+
+**Observação da tela**: quando a janela do JARVIS cobre a maior parte da tela, a observação fica
+suspensa (o indicador mostra SUSPENSO), como no original. Pedidos explícitos ("o que há na
+tela?") continuam funcionando.
+
+**Bandeja**: abrir cada página, diagnóstico de voz, orbe, microfone, voz, **Reiniciar voz**,
+**Modo privacidade**, **Observador** (modos, pausar/retomar), **Iniciar com o Windows** (só por
+clique; se o Registro recusar, a marcação volta), qualidade visual, diagnóstico e Sair.
 
 Cada estado tem um visual próprio, sempre ligado a um sinal real:
 
@@ -117,7 +159,31 @@ da saúde. Módulos (plano, autorização com contagem regressiva, memória, sa�
 aparecem enquanto há algo real a mostrar. O raciocínio interno nunca é exibido — só fases,
 estados e resultados.
 
-### Painel de Sistemas (F3)
+### ATIVIDADES
+
+Tudo o que o JARVIS recebeu, decidiu e fez, com origem, estado, duração e o resultado ou o erro
+reais: pedidos (voz, texto, sugestões aceitas), ações ligadas ao pedido, confirmações,
+verificações, lembretes e falhas. Filtros por tipo e estado, busca, detalhe de cada registro,
+**COPIAR** e **LIMPAR HISTÓRICO** (categoria "apagar dados": pede confirmação). Textos que parecem
+senha ou token são redigidos antes de gravar. Desligue ou limite em CONFIGURAÇÕES > HISTÓRICO.
+
+### CONFIGURAÇÕES
+
+Geral e início (página inicial, início recolhido, **Iniciar com o Windows**, modo privacidade ao
+iniciar, Observador ao iniciar) · Voz e áudio (voz, timbre, volume, velocidade, legendas,
+palavras de ativação, **microfone** e **saída de áudio**) · Inteligência (Ollama ou **OpenAI**, com
+aviso e confirmação explícitos; chave no cofre do sistema, nunca exibida inteira; TESTAR) ·
+Privacidade e Observador (LOCAL/PADRÃO, modelos externos, modos, intervalo, **apps sem
+monitoramento**) · **Permissões** · Aparência e desempenho · Noctário · Histórico e registros ·
+**Restaurar padrões** (guarda uma cópia antes; mantém microfone, saída de áudio, calibração da voz,
+endereço do Noctário e fuso).
+
+**Permissões por categoria**: consultar, alterar configurações, executar programas e comandos
+do sistema, modificar arquivos e dados pessoais, apagar dados, comandos ao robô — cada uma em
+*permitir* (decide pelo risco), *confirmar sempre* ou *bloquear*. Apagar dados e comandos ao robô
+nunca ficam abaixo de *confirmar*; a parada de emergência do robô nunca é bloqueada.
+
+### DIAGNÓSTICOS (F3 / F7)
 
 * **VOZ** — microfones disponíveis e escolha (USAR ESTE), TESTAR, TESTAR FALANDO, CALIBRAR,
   contadores ao vivo. Detalhes em `VOICE_DIAGNOSTICS.md`.
@@ -125,6 +191,12 @@ estados e resultados.
 * **AUTONOMIA** — nível de autonomia, autorizações permanentes (revogar), histórico de pedidos
   de autorização e registro das ações executadas.
 * **DESEMPENHO E SAÚDE** — saúde dos componentes, quadros por segundo, perfil visual.
+* **EVENTOS** — console de eventos do original: 300 entradas `[HH:MM:SS] ▸ texto`, filtro,
+  PAUSAR, COPIAR (linhas visíveis) e LIMPAR; inclui os eventos desde a abertura do JARVIS.
+* **LOG** — fim do arquivo de log com filtro de nível. Exceções não tratadas (inclusive em
+  threads e na pintura da interface) também vão para o log.
+* **SERVIÇOS E GPU** — componentes, workers, Ollama, OpenAI, privacidade, GPUs do sistema e
+  DETECTAR OPENGL (para a renderização 3D opcional por GPU).
 
 ---
 
@@ -161,7 +233,7 @@ concluído, lembrete disparado).
 **Voz.** Diga **"Jarvis"** no início: *"Jarvis, abra o bloco de notas"*. Depois de uma
 resposta há 12 s de continuação sem repetir o nome. *"Pare"* interrompe a fala;
 *"fique quieto"* / *"pode falar"* desligam/religam a voz. Se ele não entende o seu "Jarvis",
-use Sistemas > VOZ > **CALIBRAR**.
+use DIAGNÓSTICOS > VOZ > **CALIBRAR**.
 
 **Texto.** Digite na barra inferior (↑/↓ percorrem o histórico).
 
@@ -204,7 +276,7 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ## 7. Rede local
 
-Sistemas > **REDE LOCAL** lista os aparelhos com IP, MAC, nome, fabricante (OUI), tipo,
+DIAGNÓSTICOS > **REDE LOCAL** lista os aparelhos com IP, MAC, nome, fabricante (OUI), tipo,
 **observação**, confiabilidade, origem, interface, primeira e última vez. Observação é o que
 se sabe agora: *respondeu recentemente*, *presença inferida — dados incompletos*, *conhecido
 anteriormente — não confirmado agora*, *sem resposta no momento* ou *informação do próprio
@@ -228,9 +300,9 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
 * Responda *"sim"*/*"não"* por voz, texto ou botões; sem resposta em 30 s = não.
 * *"Sim, sempre"* ou o botão **SEMPRE (24 h)**: autorização permanente **escopada** — só a
   mesma ação com o mesmo recurso, por 24 h; **nunca** para ações sensíveis, críticas,
-  irreversíveis ou proativas. Veja e revogue em Sistemas > AUTONOMIA ou diga *"revogue as
+  irreversíveis ou proativas. Veja e revogue em DIAGNÓSTICOS > AUTONOMIA ou diga *"revogue as
   autorizações"*.
-* *"Pare"* cancela o que estiver em andamento. Toda ação fica registrada (Sistemas >
+* *"Pare"* cancela o que estiver em andamento. Toda ação fica registrada (DIAGNÓSTICOS >
   AUTONOMIA).
 * Texto da tela, de arquivos e de páginas é **dado**, nunca instrução.
 * O JARVIS não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
@@ -263,7 +335,7 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 
 | Sintoma | O que fazer |
 |---|---|
-| Não responde ao "Jarvis" | `START_JARVIS.bat --voice-test`; Sistemas > VOZ > CALIBRAR; veja `VOICE_DIAGNOSTICS.md` |
+| Não responde ao "Jarvis" | `START_JARVIS.bat --voice-test`; DIAGNÓSTICOS > VOZ > CALIBRAR; veja `VOICE_DIAGNOSTICS.md` |
 | "Silêncio absoluto" no microfone | Configurações do Windows > Privacidade > Microfone: permitir aplicativos da área de trabalho |
 | Responde só por texto | botão VOZ ligado? voz neural instalada (`assets\voices`)? |
 | "Ollama indisponível" | instale/abra o Ollama e baixe `qwen2.5:3b` |

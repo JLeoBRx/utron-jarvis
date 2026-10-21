@@ -75,6 +75,13 @@ def _clock_text(seconds: float) -> str:
     return f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
 
 
+def covers_screen(window: QtCore.QRect, area: QtCore.QRect, *, fraction: float = COVERING_FRACTION) -> bool:
+    """A janela ocupa pelo menos ``fraction`` da área útil da tela?"""
+    mine = window.intersected(area)
+    total = max(1, area.width() * area.height())
+    return mine.width() * mine.height() / total >= fraction
+
+
 def date_text(at: float | None = None) -> str:
     """Data em pt-BR como no original: "SEG 01 JAN 2026"."""
     t = time.localtime(at if at is not None else time.time())
@@ -268,24 +275,34 @@ class NavBar(QtWidgets.QWidget):
         self._anim.setDuration(260)
         self._anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
         self._anim.valueChanged.connect(self._on_marker)
-        self._font = theme.font(9, weight=600, spacing=2.4)
+        self._fonts = (theme.font(9.5, weight=600, spacing=2.6), theme.font(8.5, weight=600, spacing=1.6),
+                       theme.font(7.5, weight=600, spacing=0.8))
+        self._font = self._fonts[0]
+
+    @staticmethod
+    def _widths(font: QtGui.QFont, padding: float) -> list[float]:
+        metrics = QtGui.QFontMetricsF(font)
+        return [metrics.horizontalAdvance(label) + padding for _, label, *_ in NAV]
 
     def sizeHint(self) -> QtCore.QSize:  # noqa: N802 (Qt)
-        metrics = QtGui.QFontMetricsF(self._font)
-        return QtCore.QSize(int(sum(metrics.horizontalAdvance(label) + 30 for _, label, *_ in NAV)), 46)
+        return QtCore.QSize(int(sum(self._widths(self._fonts[0], 36))), 46)
 
     def minimumSizeHint(self) -> QtCore.QSize:  # noqa: N802 (Qt)
-        return QtCore.QSize(420, 46)
+        return QtCore.QSize(int(sum(self._widths(self._fonts[-1], 14))), 46)
 
     def _layout(self) -> None:
-        metrics = QtGui.QFontMetricsF(self._font)
-        widths = [metrics.horizontalAdvance(label) + 30 for _, label, *_ in NAV]
-        scale = min(1.0, self.width() / max(1.0, sum(widths)))
-        x = 0.0
+        """Escolhe a maior fonte em que todos os rótulos cabem inteiros (o texto nunca é espremido)."""
+        for font, padding in zip(self._fonts, (36, 24, 14)):
+            widths = self._widths(font, padding)
+            if sum(widths) <= self.width():
+                break
+        self._font = font
+        total = sum(widths)
+        x = max(0.0, (self.width() - total) / 2)              # centralizada na linha
         self._rects = {}
         for (key, *_rest), width in zip(NAV, widths):
-            self._rects[key] = QtCore.QRectF(x, 0, width * scale, self.height())
-            x += width * scale
+            self._rects[key] = QtCore.QRectF(x, 0, width, self.height())
+            x += width
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)
         self._layout()
@@ -465,7 +482,7 @@ class ChipBar(QtWidgets.QWidget):
             shown.append(chip)
             used += width
         shown.sort(key=lambda c: self.chips.index(c))
-        x = self.width() - used
+        x = 0.0
         self._rects = []
         for chip in shown:
             width = self._width(chip)
@@ -549,30 +566,37 @@ class ClockWidget(QtWidgets.QWidget):
 
 
 class TopBar(QtWidgets.QWidget):
+    """Duas linhas: identidade · navegação · relógio; e estado · indicadores (como no original)."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(56)
+        self.setFixedHeight(88)
         self.brand = BrandMark(self)
         self.nav = NavBar(self)
         self.state_chip = StateChip(self)
         self.chips = ChipBar(self)
         self.clock = ClockWidget(self)
         self.sweep = 0.0
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(12, 4, 14, 6)
-        layout.setSpacing(14)
-        layout.addWidget(self.brand)
-        layout.addWidget(self.nav, 3)
-        layout.addWidget(self.state_chip)
-        layout.addWidget(self.chips, 4)
-        layout.addWidget(self.clock)
+        first = QtWidgets.QHBoxLayout()
+        first.setSpacing(14)
+        first.addWidget(self.brand)
+        first.addWidget(self.nav, 1)
+        first.addWidget(self.clock)
+        second = QtWidgets.QHBoxLayout()
+        second.setSpacing(10)
+        second.addWidget(self.state_chip)
+        second.addWidget(self.chips, 1)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(12, 2, 14, 8)
+        layout.setSpacing(2)
+        layout.addLayout(first)
+        layout.addLayout(second)
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)
-        compact = self.width() < 1500
+        compact = self.width() < 1280
         if compact != self.brand.compact:
             self.brand.compact = compact
             self.brand.updateGeometry()
-        self.state_chip.setVisible(self.width() >= 1100)
         super().resizeEvent(event)
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
@@ -872,6 +896,7 @@ class PlatformWindow(QtWidgets.QWidget):
         factory = self._factories.get(key)
         widget = factory() if factory is not None else UnavailablePage(
             PAGE_TITLES.get(key, key), "Este módulo não está disponível nesta execução.")
+        widget.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.stack.addWidget(widget)
         self._pages[key] = widget
         self._disable_page_escape(widget)
@@ -982,10 +1007,7 @@ class PlatformWindow(QtWidgets.QWidget):
         screen = self.screen()
         if screen is None:
             return False
-        area = screen.availableGeometry()
-        mine = self.frameGeometry().intersected(area)
-        total = max(1, area.width() * area.height())
-        return mine.width() * mine.height() / total >= COVERING_FRACTION
+        return covers_screen(self.frameGeometry(), screen.availableGeometry())
 
     def _animate(self) -> None:
         now = time.perf_counter()
@@ -1003,6 +1025,11 @@ class PlatformWindow(QtWidgets.QWidget):
             self.top.update()
         if self.top.state_chip.isVisible() and self.top.state_chip.activity not in ("IDLE",):
             self.top.state_chip.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
+        p = QtGui.QPainter(self)
+        p.fillRect(self.rect(), theme.BG)
+        p.end()
 
     # ------------------------------------------------------------ teclado e fechamento
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt)

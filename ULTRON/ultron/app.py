@@ -68,10 +68,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def install_exception_hooks() -> None:
+    """Exceções não tratadas (inclusive em threads e em métodos do Qt como paintEvent) vão para o log:
+    com pythonw não há console, e um traceback perdido esconde a causa de uma falha."""
+    log = logging.getLogger("ultron")
+
+    def main_hook(exc_type, exc, tb) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc, tb)
+            return
+        log.critical("exceção não tratada", exc_info=(exc_type, exc, tb))
+
+    def thread_hook(args) -> None:
+        if args.exc_type is SystemExit:
+            return
+        name = args.thread.name if args.thread is not None else "?"
+        log.critical("exceção não tratada na thread %s", name,
+                     exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+
+    sys.excepthook = main_hook
+    threading.excepthook = thread_hook
+
+
 def setup_logging(debug: bool = False) -> None:
     root = logging.getLogger()
     if any(getattr(h, "_ultron", False) for h in root.handlers):
         return
+    install_exception_hooks()
     root.setLevel(logging.DEBUG if debug else logging.INFO)
     fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     file_handler = logging.handlers.RotatingFileHandler(paths.logs_dir() / "ultron.log", maxBytes=5_000_000,
@@ -207,6 +230,18 @@ def run_headless(args: argparse.Namespace) -> int:
     core.bus.subscribe(EventType.AUTHORIZATION_REQUIRED,
                        lambda e: print(f"[autorização] {e.payload.get('description')} — responda sim/não", flush=True),
                        name="console.auth")
+
+    def shutdown_requested(_event) -> None:         # "encerre o JARVIS" (já confirmado pelo executor)
+        def finish() -> None:
+            time.sleep(1.0)                          # a resposta "Encerrando, senhor." chega antes
+            core.shutdown()
+            from .platform import control
+            control.unregister()
+            os._exit(0)
+
+        threading.Thread(target=finish, name="ultron-console-exit", daemon=True).start()
+
+    core.bus.subscribe(EventType.SHUTDOWN_REQUESTED, shutdown_requested, name="console.shutdown")
     core.boot()
     if not args.say:
         from .platform import control
@@ -371,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.diagnose or args.voice_test:
         if not single_instance.acquire():
             print("O JARVIS já está em execução: feche-o (bandeja > Sair) para diagnosticar sem disputar o "
-                  "microfone (START_JARVIS.bat --stop), ou use Sistemas > VOZ > TESTAR na interface.")
+                  "microfone (START_JARVIS.bat --stop), ou use DIAGNÓSTICOS > VOZ > TESTAR na interface.")
             return 2
         try:
             return run_voice_test(args) if args.voice_test else run_diagnose(args)

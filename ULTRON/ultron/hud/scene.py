@@ -646,7 +646,10 @@ class NeuralScene:
                      "idea": "Ideia", "note": "Nota", "person": "Pessoa", "routine": "Rotina",
                      "deadline": "Prazo"}.get(str(record.get("kind") or p.get("kind") or ""), "Registro")
             if p.get("change") == "completed":
-                verb = "concluída" if label in ("Tarefa", "Ideia", "Nota", "Rotina") else "concluído"
+                verb = "concluído"
+            if label in ("Tarefa", "Ideia", "Nota", "Pessoa", "Rotina"):     # concordância: "Tarefa registrada"
+                verb = verb.replace("registrado", "registrada").replace("atualizado", "atualizada") \
+                    .replace("excluído", "excluída").replace("enviado", "enviada").replace("concluído", "concluída")
             self._module("secondbrain", "MEMÓRIA PESSOAL", "hippocampus", [f"{label} {verb}", title],
                          ttl=6.0, priority=45)
         elif kind == "HEALTH_UPDATED":
