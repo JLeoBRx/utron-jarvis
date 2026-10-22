@@ -54,7 +54,8 @@ def scenario():
     expected: list[str] = []
     agenda = {2: ["CMD 1 PING", "bom dia", "CMD 2 VOAR", "CMD 3 START", "CMD 4 SET kp=0.5", "CMD 5 SET base=240",
                   "CMD 6 TEL hz=10", "CMD 7 CAL ms=1500"],
-              1600: ["CMD 8 SET kd=0,12 adapt=0.3", "CMD 9 PARAMS", "CMD 10 SENS", "CMD 11 MOTOR l=90 r=-90 ms=300"],
+              1600: ["CMD 8 SET kd=0,12 adapt=0.3", "CMD 9 PARAMS", "CMD 10 SENS", "CMD 11 MOTOR l=90 r=-90 ms=600"],
+              1800: ["CMD 32 STOP"],                                 # STOP encerra o teste de bancada na hora
               2200: ["CMD 12 START"],
               9000: ["CMD 13 SET loop=400", "CMD 14 STATUS", "CMD 15 SET kp=0.014"],
               20000: ["CMD 16 S\\!"],                              # parada de emergência no meio de uma linha
@@ -135,8 +136,9 @@ def scenario():
             at(now + 200, "D")
             at(now + 1000, "C", "CMD 26 STATUS", "X" * 300, " ".join(["CMD", "27", "SET"] + ["a=1"] * 40),
                "CMD 28 DEFAULTS", "CMD 29 TEL hz=0", "CMD 30 STOP")
-            at(now + 1500, "CMD 31 PING")
-        elif "link" in marks and now >= marks["link"] + 2000:
+            at(now + 1500, "CMD 31 PING", "CMD 33 CAL ms=2000 auto=1")
+            at(now + 1800, "CMD 34 STOP", "CMD 35 START")            # calibração girando interrompida
+        elif "link" in marks and now >= marks["link"] + 2500:
             marks["fim"] = now
     return script, expected, model, marks
 
@@ -175,6 +177,12 @@ class FirmwareHostTest(unittest.TestCase):
         self.assertTrue(seen("NAK 0 code=SYNTAX msg=linha_longa_demais"))
         self.assertTrue(seen("NAK 0 code=SYNTAX msg=campos_demais"))
         self.assertTrue(seen("ACK 28 defaults=1"))
+        self.assertTrue(seen("ACK 32 st=READY"), "STOP encerrou o teste de bancada")
+        self.assertTrue(seen("ACK 34 st=IDLE") and seen("NAK 35 code=NOCAL"),
+                        "calibração interrompida: sem calibração, sem partida")
+        bench = expected[expected.index("ACK 11 st=TEST"):expected.index("ACK 32 st=READY")]
+        self.assertFalse(any(line.startswith(("EVT stop", "STA st=STOPPING")) for line in bench),
+                         "teste de bancada não é volta")
         self.assertIn("fim", marks, f"o roteiro chegou ao fim: {marks}")
         crossings = [line for line in expected if line.startswith("EVT cross")]
         self.assertGreaterEqual(len(crossings), 2, "a volta de teste passou por cruzamentos")

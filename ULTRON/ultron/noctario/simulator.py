@@ -199,8 +199,10 @@ class FirmwareModel:
         self.emit(f"ACK {seq} st=RUN")
 
     def cmd_stop(self, seq, args):
-        if self.state in ("RUN", "LOST", "TEST") or (self.state == "CAL" and self.cal_auto):
-            self.set_state("STOPPING", "cmd")
+        if self.state in ("RUN", "LOST"):
+            self.set_state("STOPPING", "cmd")                  # percurso: freia pela rampa
+        elif self.state in ("TEST", "CAL"):
+            self.set_state("READY" if self.cal else "IDLE")    # bancada ou calibração: para na hora (não é volta)
         self.emit(f"ACK {seq} st={self.state}")
 
     def cmd_clear(self, seq, args):

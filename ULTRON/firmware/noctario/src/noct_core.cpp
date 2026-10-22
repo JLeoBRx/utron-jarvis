@@ -319,8 +319,10 @@ void Core::handle(char* line) {
     setState(State::RUN);
     emitf("ACK %d st=RUN", seq);
   } else if (strcmp(verb, "STOP") == 0) {
-    if (state_ == State::RUN || state_ == State::LOST || state_ == State::TEST || (state_ == State::CAL && calAuto_)) {
-      setState(State::STOPPING, "cmd");
+    if (state_ == State::RUN || state_ == State::LOST) {
+      setState(State::STOPPING, "cmd");    // percurso: freia pela rampa
+    } else if (state_ == State::TEST || state_ == State::CAL) {
+      setState(cal_ ? State::READY : State::IDLE);   // bancada ou calibração: para na hora (não é volta)
     }
     emitf("ACK %d st=%s", seq, stateName(state_));
   } else if (strcmp(verb, "CLEAR") == 0) {

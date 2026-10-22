@@ -221,6 +221,13 @@ static void test_bench() {
   r.send("CMD 4 MOTOR l=50 r=60 ms=200");
   r.tick(3.5);
   CHECK(r.left == -50 && r.right == -60, "sentido de cada motor ajustável (a confirmar na bancada)");
+  r.send("CMD 5 MOTOR l=80 r=80 ms=3000");
+  r.tick(3.5);
+  r.send("CMD 6 STOP");
+  CHECK(r.out.has("ACK 6 st=IDLE") && !r.core.motorsEnabled(), "STOP encerra o teste de bancada na hora");
+  r.tick(3.5);
+  CHECK(r.left == 0 && r.right == 0, "motores parados");
+  CHECK(!r.out.has("EVT stop"), "teste de bancada não é volta");
 }
 
 static void test_interrupted_calibration() {
@@ -234,6 +241,13 @@ static void test_interrupted_calibration() {
   CHECK(!r.core.calibrated() && r.core.state() == noct::State::IDLE, "calibração interrompida não vale");
   r.send("CMD 3 START");
   CHECK(r.out.has("NAK 3 code=NOCAL"), "sem calibração completa, sem partida");
+
+  Rig s;
+  s.calibrate();
+  s.send("CMD 1 CAL ms=3000");
+  s.tick(3.5);
+  s.send("CMD 2 STOP");
+  CHECK(s.out.has("ACK 2 st=IDLE") && !s.core.calibrated(), "STOP interrompe a calibração: fica sem calibração");
 }
 
 static void test_restore() {

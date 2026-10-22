@@ -39,7 +39,7 @@ SERIES_SECONDS = 60
 LINK_STATES = {"desconectado": "desconectado", "conectando": "conectando", "conectado": "conectado",
                "perdido": "link perdido"}
 REQUEST_TARGETS = {"START": ("RUN", "em percurso", {"RUN", "LOST"}),
-                   "STOP": ("STOP", "parado", {"STOPPING", "STOP", "DONE", "ESTOP"}),
+                   "STOP": ("STOP", "parado", {"STOPPING", "STOP", "DONE", "ESTOP", "READY", "IDLE"}),
                    "CAL": ("CAL", "calibrando", {"CAL", "READY", "IDLE"}),
                    "CLEAR": ("READY", "pronto", {"READY", "IDLE"}),
                    "MOTOR": ("TEST", "teste de bancada", {"TEST"}),
@@ -394,7 +394,7 @@ class NoctarioService:
             self.confirmed = {"state": state, "at": time.time(), "source": source}
         if state == previous:
             return
-        if state in RUN_STATES and previous not in RUN_STATES:
+        if state in ("RUN", "LOST") and previous not in RUN_STATES:     # volta só com o percurso de verdade
             self._begin_run(partial=previous == "")
         elif previous in RUN_STATES and state not in RUN_STATES:
             self._finish_run(state)

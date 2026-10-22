@@ -485,6 +485,19 @@ class SimulatorServiceTest(unittest.TestCase):
         self.assertTrue(wait_until(lambda: self.service.last_run is not None, 2))
         self.assertTrue(self.service.last_run["summary"]["partial"], "a volta com lacuna fica marcada")
 
+    def test_7_stopping_a_bench_test_is_confirmed_and_is_not_a_lap(self):
+        self.calibrate()
+        self.sim.speed = 1.0                               # tempo real: o teste de 3 s não acaba sozinho antes
+        bench = self.service.command("MOTOR", {"l": 60, "r": 60, "ms": 3000})
+        self.assertEqual((bench.outcome, bench.confirmed), ("ACK", "TEST"))
+        stop = self.service.stop_run()
+        self.assertEqual((stop.outcome, stop.confirmed), ("ACK", "READY"), "parou na hora, sem rampa")
+        self.assertEqual(self.service.requested_status()["status"], "confirmado")
+        time.sleep(0.3)
+        self.assertIsNone(self.service.last_run, "teste de bancada não vira volta")
+        self.assertEqual(self.service.store.runs(5), [])
+        self.assertEqual(self.bus.of("NOCTARIO_RUN"), [])
+
     def test_6_disconnect_records_the_firmware_policy(self):
         self.service.disconnect()
         self.assertEqual(self.service.link, "desconectado")

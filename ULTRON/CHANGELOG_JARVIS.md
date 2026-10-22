@@ -242,6 +242,9 @@ finais em `PERFORMANCE_REPORT.md`.
     calibrar; "crie uma tarefa para testar os motores do Noctário" → teste de motores). Ainda pediriam
     confirmação, mas um "sim" distraído moveria o robô. Lembretes, tarefas, notas, pesquisas e perguntas
     agora seguem para as regras certas; as frases de parada continuam valendo sempre.
+  * `STOP` durante o teste de bancada ou a calibração passava por `STOPPING`, e o PC gravava isso como
+    uma "volta interrompida" falsa. Agora o robô para na hora e volta a pronto/sem calibração; só o
+    percurso de verdade (RUN) abre uma volta.
 * **Medido** (`tools/benchmark_noctario.py`, `docs/benchmarks/noctario_fase6.json`; contêiner Linux, CPU,
   Qt offscreen, **simulador — não é Bluetooth nem o robô**): PARADA até o ESTOP confirmado 2,0 ms
   (mediana; máx. 8,1 ms); PING ida e volta 10,5 ms (o simulador processa em lotes de 10 ms); atualização
@@ -251,5 +254,5 @@ finais em `PERFORMANCE_REPORT.md`.
 * **Não verificado**: compilação real do `main.cpp` para a ESP32 (o ambiente bloqueou o download do
   toolchain; o `main.cpp` foi conferido contra cabeçalhos com as assinaturas do arduino-esp32 2.x e 3.x) e
   qualquer comportamento no robô real.
-* Testes: `test_noctario.py` (32), `test_noctario_firmware.py` (3) e `firmware/noctario/test/host`
+* Testes: `test_noctario.py` (33), `test_noctario_firmware.py` (3) e `firmware/noctario/test/host`
   (10 grupos); `test_platform.py`, `test_permissions.py` e `test_tardis_room.py` atualizados.

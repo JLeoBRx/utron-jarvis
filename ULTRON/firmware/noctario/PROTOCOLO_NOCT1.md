@@ -74,7 +74,7 @@ Verbo desconhecido: `NAK <seq> code=UNKNOWN`. Linha que não começa com `CMD <n
 | `INFO` | — | sempre | `ACK n fw=<versão> proto=1 sensors=8 cal=<0\|1>` |
 | `STATUS` | — | sempre | `ACK n st=<estado>` + `STA` |
 | `START` | — | `READY`, `STOP`, `DONE` (calibrado) | zera cruzamentos, rampa e cronômetro; `STA` (RUN) + `ACK n st=RUN`. Recusas: `NAK code=ESTOP`, `NOCAL`, `STATE` |
-| `STOP` | — | sempre | em `RUN`/`LOST`/`TEST`/`CAL` automática: `STOPPING` (motivo `cmd`), freia pela rampa e termina em `STOP`. `ACK n st=<estado>` |
+| `STOP` | — | sempre | em `RUN`/`LOST`: `STOPPING` (motivo `cmd`), freia pela rampa e termina em `STOP`. Em `TEST` ou `CAL`: para na hora e vai a `READY`/`IDLE` (não é volta; calibração interrompida fica sem calibração). `ACK n st=<estado>` |
 | `CLEAR` | — | sempre | em `ESTOP`: vai a `READY` (ou `IDLE`). `ACK n st=<estado>` |
 | `CAL` | `ms` (500–20000, padrão 3000), `auto` (0/1, padrão 0) | parado (`IDLE`, `READY`, `STOP`, `DONE`) | zera mínimos e máximos e invalida a calibração anterior (`cal=0` até terminar: calibração interrompida não permite partida); `STA` (CAL) + `ACK n st=CAL ms=.. auto=..`. Ao fim: `EVT cal ok=1` → `READY`, ou `EVT cal ok=0 msg=sensores_sem_contraste` → `IDLE`. `auto=1`: o robô gira no lugar (±80 PWM, troca de lado a cada 600 ms) |
 | `SET` | `chave=valor` (um ou mais, ver §5) | sempre; `loop`, `white`, `flip`, `ldir`, `rdir` só parado (ou em `ESTOP`) | **tudo ou nada**: valida cada valor e as regras entre eles; aceito → `ACK n <chave=valor aceito ...>` + `PAR`; recusado → `NAK code=RANGE` (ou `STATE`) e **nada muda** |
@@ -196,7 +196,8 @@ Reconectar nunca dá partida.
     RUN --x = cross--> STOPPING --(rampa)--> DONE
     RUN/LOST --STOP | cão de guarda--> STOPPING --(rampa)--> STOP
     qualquer estado --'!'--> ESTOP --CLEAR--> READY | IDLE
-    READY/STOP/DONE/IDLE --MOTOR--> TEST --ms--> READY | IDLE
+    READY/STOP/DONE/IDLE --MOTOR--> TEST --ms | STOP--> READY | IDLE
+    CAL --STOP--> IDLE (sem calibração)
 
 ---
 
