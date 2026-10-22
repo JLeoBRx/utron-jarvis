@@ -106,6 +106,7 @@ class ReasoningEngine:
         max_steps = int(getattr(s, "max_agent_steps", 8))
         max_calls = int(getattr(s, "max_tool_calls", 10))
         messages = self.context.messages(ctx, goal, extra_system=AGENT_RULES)
+        offered = {str((tool.get("function") or {}).get("name") or "") for tool in tools}
         outcome = AgenticOutcome("")
         for step in range(max_steps):
             if cancel is not None and getattr(cancel, "cancelled", False):
@@ -133,7 +134,13 @@ class ReasoningEngine:
                         args = json.loads(args)
                     except ValueError:
                         args = {}
-                observation = call_tool(name, args if isinstance(args, dict) else {})
+                if name not in offered:
+                    # só as ferramentas oferecidas neste pedido: as reservadas a pedidos diretos (mover o robô,
+                    # por exemplo) nunca são oferecidas ao modelo e não rodam mesmo que ele as invente
+                    observation = {"executado": False, "erro": f"ferramenta não disponível para o modelo: {name[:60]}"}
+                    log.warning("modelo pediu ferramenta não oferecida: %s", name[:60])
+                else:
+                    observation = call_tool(name, args if isinstance(args, dict) else {})
                 outcome.calls.append({"skill": name, "args": args, "observation": observation})
                 messages.append({"role": "tool", "content": json.dumps(observation, ensure_ascii=False, default=str)})
                 if observation.get("stop"):

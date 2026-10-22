@@ -35,6 +35,7 @@ OPTIONAL = {
     "pyautogui": "teclado, mouse e mídia", "pywinauto": "elementos de interface do Windows",
     "pycaw": "volume do sistema", "send2trash": "exclusão segura (Lixeira)", "mss": "captura de tela",
     "PIL": "imagens (Pillow)", "pytesseract": "OCR (requer Tesseract OCR)",
+    "serial": "Noctário pela porta COM do Bluetooth (pyserial)",
 }
 
 

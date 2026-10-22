@@ -614,9 +614,11 @@ class SettingsPage(QtWidgets.QWidget):
         self.number(form, "noctario_channel", "Canal RFCOMM", 1, 30)
         self.line(form, "noctario_port", "Porta COM", placeholder="COM5")
         self.check(form, "noctario_autoconnect", "Conectar ao iniciar (só conecta; nunca dá partida)")
+        self.check(form, "noctario_reconnect", "Reconectar se o link cair (só reconecta; nunca dá partida)")
         self.number(form, "noctario_heartbeat_ms", "Batimento PC → robô", 0, 5000, step=50, suffix=" ms",
                     tip="0 = sem batimento; a política de desconexão é a do firmware")
-        self.number(form, "noctario_telemetry_hz", "Telemetria", 1, 50, suffix=" Hz")
+        self.number(form, "noctario_telemetry_hz", "Telemetria pedida ao conectar", 1, 50, suffix=" Hz",
+                    tip="só a taxa de envio; não é gravada no robô")
 
     # ------------------------------------------------------------ HISTÓRICO E REGISTROS
     def _build_records(self, form) -> None:

@@ -118,6 +118,13 @@ class PlatformTest(unittest.TestCase):
         shortcuts["F2"].activated.emit()
         self.assertFalse(self.window.escape.isEnabled(), "no TARDIS, Esc fecha a região aberta (sem conflito)")
         shortcuts["F1"].activated.emit()
+        fired = []
+        self.window.interrupt_requested.connect(lambda: fired.append("Esc"))
+        self.window.emergency_requested.connect(lambda: fired.append("F12"))
+        shortcuts["Esc"].activated.emit()
+        shortcuts["F12"].activated.emit()
+        self.pump(0.05)
+        self.assertEqual(fired, ["Esc", "F12"], "atalhos ligados a sinais disparam de verdade")
 
     def test_03_holographic_transition_follows_the_effects_setting(self):
         self.manager.update(heavy_effects=True)

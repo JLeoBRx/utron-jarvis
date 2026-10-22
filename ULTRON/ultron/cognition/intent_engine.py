@@ -122,8 +122,8 @@ class IntentEngine:
 
     # ------------------------------------------------------------ regras
     def _rules(self, raw: str, t: str) -> Intent | None:
-        for rule in (self._tardis_rules, self._secondbrain_rules, self._time_rules, self._control_rules,
-                     self._voice_rules,
+        for rule in (self._tardis_rules, self._noctario_rules, self._secondbrain_rules, self._time_rules,
+                     self._control_rules, self._voice_rules,
                      self._power_rules, self._network_rules,
                      self._system_rules, self._project_rules, self._imagination_rules, self._memory_rules,
                      self._vision_rules, self._file_rules, self._web_rules, self._window_rules, self._app_rules,
@@ -204,6 +204,94 @@ class IntentEngine:
         if not question:
             return _intent("response", raw, response="Pois não? O que a TARDIS deve analisar?", reason="vazio")
         return _cmd(raw, "tardis.consult", kind="consulta", question=question[:400])
+
+    # ------------------------------------------------------------ Noctário (robô)
+    NOCT_PARAMS = (("kp", r"\bkp\b"), ("kd", r"\bkd\b"), ("base", r"\b(pwm base|velocidade base|base)\b"),
+                   ("max", r"\b(pwm maximo|velocidade maxima|maximo)\b"), ("cross", r"\bcruzamentos?\b"),
+                   ("accel", r"\b(rampa de aceleracao|aceleracao)\b"), ("decel", r"\b(rampa de frenagem|frenagem)\b"),
+                   ("adapt", r"\bvelocidade adaptativa\b"))
+
+    # lembrete, tarefa, nota, agenda, pesquisa ou pergunta que só MENCIONA o robô: não é comando a ele
+    NOCT_ABOUT = re.compile(
+        r"^(me lembr\w*|lembr\w*|nao me deixe esquecer|anot\w*|registr\w*|crie|criar|adicion\w*|nov[ao]|agend\w*|"
+        r"marqu\w*|pesquis\w*|procur\w*|busqu\w*)\b|^(tarefa|ideia|nota|lembrete|decisao)\s*:|"
+        r"^(o que (e|sao)|como (funciona|faz|fazer|se faz|calibrar|ajustar|configurar|testar)|por ?que|qual a diferenca)\b|"
+        r"\b(na internet|na web|no google)\b")
+
+    def _noctario_rules(self, raw, t):
+        """Robô: PARADA primeiro (sempre), depois partida, conexão, leitura e ajustes. "Pare o robô" é parada de
+        emergência; "pare" sozinho continua sendo cancelar (e, com o robô andando, o núcleo também o para).
+        Lembretes, tarefas, notas, pesquisas e perguntas que só mencionam o robô seguem para as outras regras:
+        "lembre-me de calibrar o robô amanhã" é um lembrete, não uma calibração."""
+        robot = re.search(r"\b(noctario|robo|seguidor de linha)\b", t)
+        about = bool(self.NOCT_ABOUT.search(t))
+        if re.match(r"^(liber\w*|sai\w* da|sair do modo de|desfa\w*|limp\w*|desarm\w*)\b.*\bemergencia\b", t):
+            return _cmd(raw, "noctario.clear")
+        if re.fullmatch(r"(parada de emergencia|emergencia)( do (robo|noctario))?( agora)?", t) or \
+                (robot and not about and re.search(r"\b(parada de emergencia|emergencia)\b", t)) or \
+                re.match(r"^(pare|para|parar|freie|desligue|segure)( o| a)? (robo|noctario)\b(?!.*\b(suave\w*|devagar|"
+                         r"com calma|no fim)\b)", t) or re.match(r"^(noctario|robo),? (pare|para|parar)\b(?!.*\bsuave)", t):
+            return _cmd(raw, "noctario.emergency_stop")
+        if not robot or about:
+            return None
+        if re.search(r"\b(pare|para|parar|finaliz\w*|encerr\w*|termin\w*)\b.*\b(suave\w*|devagar|com calma|percurso)\b",
+                     t):
+            return _cmd(raw, "noctario.stop")
+        if re.search(r"\b(analis\w*|avali\w*|compar\w*)\b.*\b(voltas?|telemetria|desempenho|tempo de volta)\b", t):
+            return _cmd(raw, "tardis.consult", kind="telemetria")
+        if re.search(r"\btelemetria\b", t):
+            if re.search(r"\b(deslig\w*|desativ\w*|pare a)\b", t):
+                return _cmd(raw, "noctario.telemetry", hz=0)
+            amount = re.search(r"\b(\d{1,2})\s*(hz|hertz|vezes)", t)
+            if amount or re.search(r"\b(lig\w*|ativ\w*|reativ\w*)\b", t):
+                return _cmd(raw, "noctario.telemetry", hz=max(1, min(50, int(amount.group(1)))) if amount else 20)
+        if re.search(r"\b(desconect\w*)\b", t):
+            return _cmd(raw, "noctario.disconnect")
+        if re.search(r"\b(conect\w*|reconect\w*|parei?\w* com|ligu?e[- ]se)\b", t):
+            return _cmd(raw, "noctario.connect")
+        if re.search(r"\btest\w*\b.*\bmotor\w*\b|\bteste de bancada\b", t):     # bancada: rodas fora do chão
+            only_left = "esquerdo" in t and "direito" not in t
+            only_right = "direito" in t and "esquerdo" not in t
+            power = -120 if re.search(r"\b(para tras|re|ao contrario)\b", t) else 120
+            return _cmd(raw, "noctario.motor_test", l=0 if only_right else power, r=0 if only_left else power, ms=500)
+        if re.search(r"\b(recalibr\w*|calibr\w*)\b", t):
+            auto = bool(re.search(r"\b(girando|gire|automatic\w*|sozinho)\b", t))
+            return _cmd(raw, "noctario.calibrate", **({"auto": True} if auto else {}))
+        if re.search(r"\b(inici\w*|comec\w*|d[ae] a partida|partida|largad\w*|larg\w*|corr\w*|rod\w*|execut\w*)\b", t) \
+                and not re.search(r"\b(quanto|qual|quando|tempo)\b", t):
+            return _cmd(raw, "noctario.start")
+        if re.search(r"\b(zer\w*|reinici\w*|reset\w*)\b.*\bcruzamentos?\b", t):
+            return _cmd(raw, "noctario.reset_crossings")
+        if re.search(r"\b(salv\w*|grav\w*)\b.*\bparametros\b", t):
+            return _cmd(raw, "noctario.save_params")
+        if re.search(r"\b(restaur\w*|volt\w*)\b.*\b(padrao|padroes|originais)\b", t):
+            return _cmd(raw, "noctario.defaults")
+        setting = re.search(r"\b(ajust\w*|mud\w*|defin\w*|coloqu\w*|ponha|alter\w*|configur\w*|aument\w*|"
+                            r"diminu\w*|reduz\w*|troqu\w*|use)\b", t)
+        if setting:
+            values = {}
+            folded = norm(raw)
+            for key, pattern in self.NOCT_PARAMS:
+                match = re.search(pattern + r"[^\d-]{0,24}(-?\d+(?:[.,]\d+)?)", folded)
+                if match:
+                    values[key] = float(match.group(match.lastindex).replace(",", "."))
+                    if key in ("base", "max", "cross", "accel", "decel") and values[key] == int(values[key]):
+                        values[key] = int(values[key])
+            if values:
+                return _cmd(raw, "noctario.set_params", **values)
+            return _intent("response", raw, response="Ajustar qual parâmetro do Noctário, senhor, e para quanto? "
+                                                      "Por exemplo: 'ajuste o Kd para 0,12'.", reason="ajuste sem valor")
+        if re.search(r"\bcruzamentos?\b", t):
+            return _cmd(raw, "noctario.crossings")
+        if re.search(r"\bsensor\w*\b", t):
+            return _cmd(raw, "noctario.sensors")
+        if re.search(r"\b(parametros|configuracao|ganhos|kp|kd)\b", t):
+            return _cmd(raw, "noctario.params")
+        if re.search(r"\b(alertas?|avisos|falhas?)\b", t):
+            return _cmd(raw, "noctario.alerts")
+        if re.search(r"\b(status|estado|como esta|situacao|onde esta|esta conectado)\b", t):
+            return _cmd(raw, "noctario.status")
+        return None
 
     def _time_rules(self, raw, t):
         if re.search(r"\bque horas\b|\bhora atual\b", t):

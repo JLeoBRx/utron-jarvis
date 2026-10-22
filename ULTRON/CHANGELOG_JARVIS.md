@@ -188,3 +188,68 @@ finais em `PERFORMANCE_REPORT.md`.
   thread da interface. `tools/benchmark_tardis_room.py` e `docs/benchmarks/tardis_room_fase5.json`.
 * Testes: `test_tardis_logic.py` (33) e `test_tardis_room.py` (12); `test_tardis.py` e
   `test_platform.py` atualizados para o ARQUIVO dentro da página TARDIS.
+
+## Fase 6 — Noctário: firmware ESP32, protocolo Bluetooth, serviço, skills e painel
+> O código original do Noctário **não foi fornecido**. O firmware foi escrito a partir da especificação
+> (pinagem, parâmetros iniciais, comportamentos); o que só o original confirma virou parâmetro ajustável
+> e está listado em `firmware/noctario/README.md` (A CONFIRMAR), junto com o pedido do código.
+
+* **Firmware** (`firmware/noctario/`): núcleo sem Arduino (`noct_core.cpp`: protocolo, 12 estados, posição
+  da linha com 8 QTR, linha branca em pista preta, PD com velocidade adaptativa e rampas, 4 cruzamentos com
+  filtro, perda de linha com recuperação limitada, cão de guarda do link com política `stop`/`continue`,
+  parada imediata pelo byte `!`, teste de bancada) e camada da ESP32 (`main.cpp`: pinagem exata recebida,
+  STBY baixo antes de tudo, PWM 20 kHz para arduino-esp32 2.x e 3.x, Bluetooth Clássico SPP, NVS, LED,
+  laço em ritmo fixo). Parâmetros lidos da NVS passam pelos limites do protocolo (memória corrompida →
+  padrões); calibração interrompida não permite partida.
+* **Protocolo NOCT/1** (`PROTOCOLO_NOCT1.md`): linhas ASCII até 240 bytes, `!` de emergência em qualquer
+  ponto, batimento, comandos com sequência e resposta única (ACK/NAK com código), STA/TEL/EVT/PAR/SEN,
+  limites validados nos dois lados, `SET` tudo-ou-nada.
+* **Serviço no PC** (`ultron/noctario/`): transportes porta COM (pyserial), RFCOMM direto e SIMULADOR
+  (sempre rotulado; só conecta ao que foi configurado, sem varredura); estado **solicitado × confirmado**
+  ("aguardando confirmação", "sem confirmação do robô — estado desconhecido"); prazo por comando (TIMEOUT
+  nunca vira "feito"); PARADA direto no transporte, repetida até o ESTOP confirmado; reconexão com espera
+  crescente que nunca dá partida; voltas gravadas no mesmo banco (migração v6, amostras comprimidas,
+  volta parcial marcada) e entregues à TARDIS; alertas; operações registradas; taxa de telemetria das
+  configurações aplicada a cada conexão.
+* **Simulador** (`simulator.py`): a mesma lógica do núcleo C++ em Python + física de uma pista de TESTE
+  inventada. `tests/test_noctario_firmware.py` compila o núcleo com g++ e compara os dois **linha a linha**
+  numa sessão de 62 s simulados (31 071 ciclos: mensagens, eventos, telemetria e PWM de cada ciclo).
+* **Skills e voz**: 18 skills (`noctario.*`) e frases ("pare o Noctário", "calibre o Noctário", "dê a
+  partida no Noctário", "teste o motor esquerdo do Noctário", "ajuste o Kd do Noctário para 0,12"…).
+  Paradas são emergência (nenhuma permissão as bloqueia; "pare o Noctário" sai na hora, sem fila nem
+  modelo; "pare"/"cancelar" com o robô andando também param). Tudo que move ou reconfigura o robô pede
+  confirmação a cada vez e não é oferecido ao modelo de linguagem.
+* **Página NOCTÁRIO (F4)**: SEM CONEXÃO / SIMULADOR / CONECTADO, estado informado pelo robô e pedido em
+  andamento, valores, barras dos sensores, gráfico de 20 s (posição, PWM, mapa dos sensores, cruzamentos),
+  PARADA DE EMERGÊNCIA (F12) sempre visível com o aviso do botão físico, comandos, parâmetros com limites
+  (inclusive os de fiação a confirmar), voltas gravadas com ANALISAR NA TARDIS, alertas. CONFIGURAÇÕES >
+  NOCTÁRIO ganhou "Reconectar se o link cair".
+* **Defeitos encontrados pelos testes novos e corrigidos**:
+  * **F12 e Esc da plataforma nunca disparavam** (PySide6 6.8: sinal passado como `activated=` do atalho
+    não é chamado); F2/F3/Esc da janela antiga tinham o mesmo defeito. Agora `.emit`, com teste.
+  * O modo agêntico executava **ferramentas que não tinham sido oferecidas ao modelo** (inclusive as
+    reservadas a pedidos diretos, como dar partida no robô — o executor ainda pediria confirmação); e o
+    planejador listava essas skills. Agora são recusadas e ficam fora da lista.
+  * Pedido em que nada foi executado respondia "Feito e verificado. 0 etapa(s) verificada(s)." Agora diz
+    "Nenhuma ação foi executada." e não marca verificado.
+  * Sem Bluetooth no PC, abrir o RFCOMM derrubava a thread do link e a mensagem culpava o robô; agora o
+    motivo real chega à interface.
+  * A volta era anunciada antes de gravada no banco; o ACK de `SET`/`TEL` não atualizava o parâmetro no
+    PC; o indicador da barra superior dizia "DESCONECTADO" em vez de "SEM CONEXÃO".
+  * Argumentos numéricos NaN ou infinitos passavam pela validação das skills (toda comparação com NaN é
+    falsa); agora são recusados.
+  * Frases que só **mencionam** o robô viravam comando a ele ("lembre-me de calibrar o robô amanhã" →
+    calibrar; "crie uma tarefa para testar os motores do Noctário" → teste de motores). Ainda pediriam
+    confirmação, mas um "sim" distraído moveria o robô. Lembretes, tarefas, notas, pesquisas e perguntas
+    agora seguem para as regras certas; as frases de parada continuam valendo sempre.
+* **Medido** (`tools/benchmark_noctario.py`, `docs/benchmarks/noctario_fase6.json`; contêiner Linux, CPU,
+  Qt offscreen, **simulador — não é Bluetooth nem o robô**): PARADA até o ESTOP confirmado 2,0 ms
+  (mediana; máx. 8,1 ms); PING ida e volta 10,5 ms (o simulador processa em lotes de 10 ms); atualização
+  da página 0,43 ms; pintura do gráfico com a janela cheia (400 amostras) 6,8 ms (p95 13 ms) — o mapa dos
+  sensores virou uma imagem única: nos mesmos dados (400 amostras, 1000×300) 16,2 → 5,5 ms (p95 22,9 →
+  6,6 ms); uma volta da pista de teste (27,4 s simulados, 548 amostras a 20 Hz) ocupa 6,6 KB no banco.
+* **Não verificado**: compilação real do `main.cpp` para a ESP32 (o ambiente bloqueou o download do
+  toolchain; o `main.cpp` foi conferido contra cabeçalhos com as assinaturas do arduino-esp32 2.x e 3.x) e
+  qualquer comportamento no robô real.
+* Testes: `test_noctario.py` (32), `test_noctario_firmware.py` (3) e `firmware/noctario/test/host`
+  (10 grupos); `test_platform.py`, `test_permissions.py` e `test_tardis_room.py` atualizados.

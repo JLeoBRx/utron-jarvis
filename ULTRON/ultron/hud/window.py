@@ -212,10 +212,10 @@ class HudWindow(QtWidgets.QWidget):
         self.suggestion = DecisionBar("SIM", "NÃO", self)
         self.input.collapse.connect(self.collapse_requested)
         QtGui.QShortcut(QtGui.QKeySequence("F11"), self, activated=self.toggle_fullscreen)
-        QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.collapse_requested)
+        QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.collapse_requested.emit)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+M"), self, activated=self.input.mic.toggle)
-        QtGui.QShortcut(QtGui.QKeySequence("F2"), self, activated=self.second_brain_requested)
-        QtGui.QShortcut(QtGui.QKeySequence("F3"), self, activated=self.systems_requested)
+        QtGui.QShortcut(QtGui.QKeySequence("F2"), self, activated=self.second_brain_requested.emit)
+        QtGui.QShortcut(QtGui.QKeySequence("F3"), self, activated=self.systems_requested.emit)
         self.hide_to_tray = True
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)

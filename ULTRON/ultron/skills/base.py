@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import enum
 import importlib.util
+import math
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -169,6 +170,12 @@ class Skill:
             elif kind == "number":
                 if isinstance(value, bool) or not isinstance(value, (int, float)):
                     raise ValueError(f"{key} deve ser número")
+                if not math.isfinite(value):                 # NaN passaria pelos limites (toda comparação é falsa)
+                    raise ValueError(f"{key} deve ser um número finito")
+                if "minimum" in spec and value < spec["minimum"]:
+                    raise ValueError(f"{key} abaixo de {spec['minimum']}")
+                if "maximum" in spec and value > spec["maximum"]:
+                    raise ValueError(f"{key} acima de {spec['maximum']}")
             elif kind == "boolean":
                 if not isinstance(value, bool):
                     raise ValueError(f"{key} deve ser verdadeiro/falso")

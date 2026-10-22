@@ -227,7 +227,7 @@ nunca ficam abaixo de *confirmar*; a parada de emergência do robô nunca é blo
 
 * **VOZ** — microfones disponíveis e escolha (USAR ESTE), TESTAR, TESTAR FALANDO, CALIBRAR,
   contadores ao vivo. Detalhes em `VOICE_DIAGNOSTICS.md`.
-* **REDE LOCAL** — aparelhos da sua rede (seção 7).
+* **REDE LOCAL** — aparelhos da sua rede (seção 8).
 * **AUTONOMIA** — nível de autonomia, autorizações permanentes (revogar), histórico de pedidos
   de autorização e registro das ações executadas.
 * **DESEMPENHO E SAÚDE** — saúde dos componentes, quadros por segundo, perfil visual.
@@ -362,7 +362,76 @@ tarefa no motor, 0,8 ms (mediana). Números completos em `docs/benchmarks/tardis
 
 ---
 
-## 5. Falando com o JARVIS
+## 5. Noctário — o robô seguidor de linha
+
+O JARVIS conecta ao Noctário pelo Bluetooth, mostra tudo o que o robô informa, envia comandos com
+limites e confirmação, grava as voltas e as entrega à TARDIS. **O controle PD roda no ESP32**: a
+interface só pede, lê e registra. Firmware, pinagem e a primeira vez na bancada:
+`firmware/noctario/README.md`; protocolo: `firmware/noctario/PROTOCOLO_NOCT1.md`.
+
+> O código original do Noctário não foi fornecido: o firmware foi escrito a partir da especificação e
+> tem itens **A CONFIRMAR** (ordem dos sensores, sentido dos motores, nível do sensor de cruzamento,
+> ritmo do laço, política sem link) — todos ajustáveis pela interface, sem regravar.
+
+**Conectar.** Pareie o robô ("Noctario") no Windows. Em CONFIGURAÇÕES > NOCTÁRIO escolha *Porta COM do
+Bluetooth* (a porta de saída criada pelo Windows), *Bluetooth direto* (endereço do robô) ou *Simulador*.
+O JARVIS só conecta ao que você configurou — não procura nem varre aparelhos. *Conectar ao iniciar* e
+*Reconectar se o link cair* só conectam: **nunca dão partida**.
+
+**A página NOCTÁRIO (F4).**
+
+* Faixa: CONECTADO (porta e firmware), **SIMULADOR — não é o robô** ou **SEM CONEXÃO — nenhum dado do
+  robô** (sem conexão nada é exibido como se fosse do robô).
+* **Estado informado pelo robô** e o pedido em andamento: *aguardando confirmação*, *confirmado* ou
+  *sem confirmação do robô — estado desconhecido* (depois de 3 s).
+* Calibração, cruzamentos (x de N), tempo da volta, erro, correção PD, PWM de cada motor, velocidade
+  alvo, Kp/Kd, o que o firmware faz sem link e a última falha.
+* Barras dos 8 sensores com a posição da linha e o gráfico dos últimos 20 s (posição e erro, PWM de cada
+  motor, sensores como mapa de calor, cruzamentos).
+* Ao lado: **PARADA DE EMERGÊNCIA (F12)** sempre visível; CONECTAR/DESCONECTAR, PARTIDA, PARAR,
+  CALIBRAR, CALIBRAR GIRANDO, LIBERAR EMERGÊNCIA, ZERAR CRUZAMENTOS, MOTOR ESQUERDO e MOTOR DIREITO
+  (bancada); parâmetros com os limites do protocolo (APLICAR envia só o que mudou; RELER; SALVAR NO
+  ROBÔ); VOLTAS GRAVADAS com ANALISAR NA TARDIS; ALERTAS.
+
+**Segurança.**
+
+* **F12** (em qualquer página), o botão vermelho, *"pare o Noctário"*, *"parada de emergência"* ou
+  *"robô, pare"*: o byte de parada vai direto ao robô — sem fila, sem modelo de linguagem, sem
+  confirmação — e é repetido até o robô confirmar (até 1,5 s). Sem confirmação, o JARVIS diz para usar o
+  botão físico. Nenhuma permissão bloqueia a parada. *"Pare"* ou *"cancelar"* com o robô andando também
+  o param.
+* **A parada pelo Bluetooth não substitui um botão físico** que corte a alimentação dos motores.
+* Tudo o que move ou reconfigura o robô (partida, calibração, teste de motores, parâmetros, gravar,
+  padrões, liberar a emergência, zerar cruzamentos) pede **confirmação a cada vez**, com a descrição
+  exata do que será feito — nunca "sim, sempre" (categoria *comandos ao robô*, nunca abaixo de
+  *confirmar*; pode ser bloqueada — a parada não).
+* O modelo de linguagem não move o robô por conta própria: esses comandos não são oferecidos a ele e,
+  se ele os inventar, são recusados.
+* Sem link, vale a política do firmware (padrão: parar, com cão de guarda de 1,5 s). Reconectar nunca
+  dá partida.
+* Cada resposta diz o que o **robô confirmou**. Sem resposta: "estado desconhecido", nunca "feito".
+
+**Por voz ou texto:** *"conecte o Noctário"*, *"calibre o Noctário"* (ou *"… girando"*), *"dê a partida
+no Noctário"*, *"pare o Noctário"*, *"pare o robô suavemente"*, *"libere a emergência do Noctário"*,
+*"ajuste o Kd do Noctário para 0,12"*, *"mude o PWM base do robô para 200"*, *"telemetria do Noctário a
+10 Hz"*, *"teste o motor esquerdo do Noctário"*, *"leia os sensores do robô"*, *"quantos cruzamentos o
+Noctário contou?"*, *"qual o estado do Noctário?"*, *"alertas do Noctário"*, *"salve os parâmetros do
+Noctário"*, *"analise as voltas do Noctário"*.
+
+**Voltas e TARDIS.** Cada volta feita com o JARVIS conectado é gravada da partida ao fim, com a
+telemetria, no mesmo banco (resultado: concluída, linha perdida, interrompida ou parada de emergência;
+marcada como parcial se o link caiu no meio). *"Analise as voltas do Noctário"* ou ANALISAR NA TARDIS
+compara as voltas e explica hipóteses de ajuste; a TARDIS só propõe. Parâmetros confirmados pelo robô
+vão para a memória de projeto "Noctário".
+
+**Simulador.** Para conhecer a interface sem o robô: a mesma lógica do firmware (conferida linha a
+linha contra o código C++) e a física de uma pista de **teste** inventada, com 4 cruzamentos. Tudo
+aparece rotulado SIMULADOR; voltas do simulador ficam marcadas, nunca viram comando ao robô e o tempo
+delas não diz nada sobre o robô real.
+
+---
+
+## 6. Falando com o JARVIS
 
 **Voz.** Diga **"Jarvis"** no início: *"Jarvis, abra o bloco de notas"*. Depois de uma
 resposta há 12 s de continuação sem repetir o nome. *"Pare"* interrompe a fala;
@@ -382,7 +451,7 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ---
 
-## 6. Memória pessoal e lembretes
+## 7. Memória pessoal e lembretes
 
 * Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.
 * Datas e horas em português ("amanhã às 15h", "sexta", "dia 12 às 9h30", "toda segunda").
@@ -408,7 +477,7 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ---
 
-## 7. Rede local
+## 8. Rede local
 
 DIAGNÓSTICOS > **REDE LOCAL** lista os aparelhos com IP, MAC, nome, fabricante (OUI), tipo,
 **observação**, confiabilidade, origem, interface, primeira e última vez. Observação é o que
@@ -423,7 +492,7 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
 
 ---
 
-## 8. Autonomia e segurança
+## 9. Autonomia e segurança
 
 | Situação | Comportamento |
 |---|---|
@@ -444,7 +513,7 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
 
 ---
 
-## 9. Qualidade visual e desempenho
+## 10. Qualidade visual e desempenho
 
 Bandeja > *Qualidade visual*: **Econômico**, **Equilibrado** (padrão), **Alto**,
 **Cinematográfico**. O perfil muda só o custo visual (quadros, partículas, densidade) —
@@ -455,7 +524,7 @@ a cadência de fundo; minimizado ou oculto, não desenha. Números medidos em
 
 ---
 
-## 10. Dados e privacidade
+## 11. Dados e privacidade
 
 Tudo em `%LOCALAPPDATA%\ULTRON\`: `ultron.sqlite3` (memórias, Second Brain, lembretes,
 grafo, rede, auditoria), `settings.json`, `world_model.json`, `backups\`, `exports\`,
@@ -465,7 +534,7 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 
 ---
 
-## 11. Problemas comuns
+## 12. Problemas comuns
 
 | Sintoma | O que fazer |
 |---|---|
@@ -477,8 +546,9 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 | Lembrete não tocou | horário de silêncio? central de notificações (TARDIS > LEMBRETES) |
 | Algo estranho depois de atualizar | `DIAGNOSTICO_JARVIS.bat`; se preciso, restaure o backup feito pela atualização |
 
-## 12. Documentos
+## 13. Documentos
 
 `CHANGELOG_JARVIS.md` · `ARCHITECTURE_JARVIS.md` (mapa de integração) ·
+`firmware/noctario/README.md` e `firmware/noctario/PROTOCOLO_NOCT1.md` (Noctário) ·
 `PERFORMANCE_REPORT.md` · `VOICE_DIAGNOSTICS.md` · `TEST_REPORT.md` ·
 `docs/JARVIS_AUDITORIA_E_PLANO.md` (auditoria e plano). Testes: `python TEST_JARVIS.py`.

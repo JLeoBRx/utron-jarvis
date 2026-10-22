@@ -59,13 +59,18 @@ class RobotStop(_Probe):
 class CategoryTest(unittest.TestCase):
     def test_every_builtin_skill_has_a_category(self):
         registry = load_builtin(SkillRegistry())
+        emergency = {s.name for s in registry.all() if s.emergency}
+        self.assertEqual(emergency, {"noctario.emergency_stop", "noctario.stop"}, "só as paradas do robô")
         for skill in registry.all():
-            self.assertIn(category_for(skill, {}), PERMISSION_CATEGORIES, skill.name)
+            if skill.emergency:                            # fora das categorias: nenhuma política as bloqueia
+                self.assertEqual(category_for(skill, {}), "", skill.name)
+            else:
+                self.assertIn(category_for(skill, {}), PERMISSION_CATEGORIES, skill.name)
         self.assertEqual(set(SKILL_CATEGORIES) - set(registry.names()), set(), "tabela sem nomes inexistentes")
         deletions = {s.name for s in registry.all() if category_for(s, {}) == "apagar_dados"}
         self.assertEqual(deletions, {"fs.delete", "memory.forget", "automation.delete", "secondbrain.delete",
                                      "secondbrain.empty_trash", "activity.clear"})
-        reads = {s.name for s in registry.all() if s.risk is Risk.NONE}
+        reads = {s.name for s in registry.all() if s.risk is Risk.NONE and not s.emergency}
         self.assertTrue(all(category_for(registry.get(n), {}) == "consultar" for n in reads),
                         "leitura pura é sempre 'consultar'")
         self.assertEqual(category_for(registry.get("app.open")), "executar_programas")
@@ -73,6 +78,13 @@ class CategoryTest(unittest.TestCase):
         self.assertEqual(category_for(registry.get("fs.write_text")), "arquivos")
         self.assertEqual(category_for(registry.get("autonomy.revoke")), "consultar",
                          "revogar autorizações só reduz permissões")
+        robot = {s.name: category_for(s, {}) for s in registry.all() if s.name.startswith("noctario.")}
+        self.assertEqual({n for n, c in robot.items() if c == "robo"},
+                         {"noctario.start", "noctario.clear", "noctario.calibrate", "noctario.set_params",
+                          "noctario.save_params", "noctario.defaults", "noctario.reset_crossings",
+                          "noctario.motor_test"}, "tudo o que move ou reconfigura o robô")
+        self.assertEqual((robot["noctario.connect"], robot["noctario.telemetry"], robot["noctario.status"]),
+                         ("configurar", "configurar", "consultar"))
 
     def test_robot_skills_and_emergency_stop(self):
         self.assertEqual(category_for(RobotStart()), "robo")

@@ -2,8 +2,9 @@
 pedem confirmação própria (robô), cancelamento, modo "operação" do rotor e a SALA DE CONTROLE na plataforma
 (Qt offscreen, Ollama simulado por HTTP, banco temporário).
 
-Não é teste de GPU, de janela real do Windows, de microfone nem de robô: a skill do Noctário aqui é um
-falso registrado só para provar que a TARDIS PROPÕE e o JARVIS pede confirmação antes de qualquer comando.
+Não é teste de GPU, de janela real do Windows, de microfone nem de robô: a skill ``noctario.set_params`` é
+trocada aqui por um falso que só registra o pedido, para provar que a TARDIS PROPÕE e o JARVIS pede
+confirmação antes de qualquer comando (a skill real é testada em ``test_noctario.py``).
 """
 import threading
 import time
@@ -89,7 +90,7 @@ class CoreIntegrationTest(unittest.TestCase):
         manager.settings.auto_backup = False
         cls.core = NeuralCore(manager, voice=False, perception=False, plugins=False,
                               memory_db=helpers.make_memory().db)
-        cls.core.registry.register(FakeRobotParams())
+        cls.core.registry.register(FakeRobotParams(), replace=True)
         cls.responses = []
         cls.core.bus.subscribe(EventType.RESPONSE_READY, lambda e: cls.responses.append(e.payload), name="t")
         cls.core.boot()

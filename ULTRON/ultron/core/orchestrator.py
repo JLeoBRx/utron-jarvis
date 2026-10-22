@@ -421,7 +421,7 @@ class Orchestrator:
         cancelled = bool(stop_reason) and any(s.status == "CANCELLED" for s in steps)
         success = bool(ran) and not blocking and final_ok and agentic_ok and not stop_reason
         unconfirmed = [s.description for s in ran if s.status == "UNCONFIRMED"]
-        verified = success and not unconfirmed
+        verified = success and not unconfirmed and any(s.skill for s in ran)    # sem ação, nada a verificar
         confidences = [float(s.verification.get("confidence", 0.0)) for s in ran if s.verification]
         return {"success": success, "verified": verified, "cancelled": cancelled, "stop_reason": stop_reason,
                 "confidence": round(sum(confidences) / len(confidences), 3) if confidences else 0.0,
@@ -435,8 +435,13 @@ class Orchestrator:
         last_ok = next((s for s in reversed(steps) if s.status in ("DONE", "UNCONFIRMED") and s.skill), None)
         extra: dict[str, Any] = {}
         if outcome["success"]:
+            executed = [s for s in steps if s.skill and s.status in ("DONE", "UNCONFIRMED")]
             if agent_answer:
                 text = agent_answer
+            elif not executed:                          # só palavras do modelo: nunca "feito e verificado"
+                agentic = next((s for s in plan.steps if s.kind == "agentic"), None)
+                said = str((agentic.result or {}).get("result") or "").strip() if agentic is not None else ""
+                text = (said + " " if said else "") + "Nenhuma ação foi executada."
             elif len([s for s in steps if s.skill]) <= 1 and last_ok is not None:
                 text = last_ok.result.get("result") or dialogue.say("done")
             else:

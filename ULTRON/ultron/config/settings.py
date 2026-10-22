@@ -165,6 +165,7 @@ class Settings:
     noctario_channel: int = 1
     noctario_port: str = ""                   # porta COM do Bluetooth (serial), ex.: COM5
     noctario_autoconnect: bool = False        # conectar ao iniciar (nunca dá partida sozinho)
+    noctario_reconnect: bool = True           # link caiu sem pedido: tentar de novo (nunca dá partida sozinho)
     noctario_heartbeat_ms: int = 500          # batimento do PC → robô enquanto conectado
     noctario_telemetry_hz: int = 20
     # ------------------------------------------------------------ plugins

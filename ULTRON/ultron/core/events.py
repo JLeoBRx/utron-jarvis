@@ -115,6 +115,11 @@ class EventType(str, Enum):
     TARDIS_TASK_REJECTED = "TARDIS_TASK_REJECTED"
     TARDIS_TASK_CANCELLED = "TARDIS_TASK_CANCELLED"
     TARDIS_STATE = "TARDIS_STATE"                 # modo do rotor: repouso, processando, operacao, jarvis, falha
+    # Noctário (robô seguidor de linha): link, estado confirmado, alertas e voltas gravadas
+    NOCTARIO_LINK = "NOCTARIO_LINK"
+    NOCTARIO_STATE = "NOCTARIO_STATE"
+    NOCTARIO_ALERT = "NOCTARIO_ALERT"
+    NOCTARIO_RUN = "NOCTARIO_RUN"
 
 
 _ids = itertools.count(1)

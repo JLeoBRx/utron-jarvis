@@ -269,6 +269,23 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
             created REAL NOT NULL, source TEXT NOT NULL DEFAULT 'usuario')""",
         "CREATE INDEX IF NOT EXISTS idx_project_notes ON project_notes(project, created)",
     ]),
+    # v6 — Noctário: voltas gravadas da telemetria (amostras comprimidas, parâmetros, cruzamentos, origem
+    # robô/simulador) e o registro de cada comando enviado (solicitado, resultado, latência).
+    (6, [
+        """CREATE TABLE IF NOT EXISTS noctario_runs (
+            id TEXT PRIMARY KEY,
+            started REAL NOT NULL, finished REAL, duration_s REAL,
+            result TEXT NOT NULL, source TEXT NOT NULL,
+            params TEXT NOT NULL DEFAULT '{}', crossings TEXT NOT NULL DEFAULT '[]',
+            losses INTEGER NOT NULL DEFAULT 0, samples BLOB, summary TEXT NOT NULL DEFAULT '{}')""",
+        "CREATE INDEX IF NOT EXISTS idx_noctario_runs_started ON noctario_runs(started)",
+        """CREATE TABLE IF NOT EXISTS noctario_ops (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            at REAL NOT NULL, seq INTEGER, verb TEXT NOT NULL, args TEXT NOT NULL DEFAULT '{}',
+            origin TEXT NOT NULL DEFAULT '', requested TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL,
+            detail TEXT NOT NULL DEFAULT '', latency_ms REAL, source TEXT NOT NULL DEFAULT 'robo')""",
+        "CREATE INDEX IF NOT EXISTS idx_noctario_ops_at ON noctario_ops(at)",
+    ]),
 ]
 
 

@@ -139,8 +139,8 @@ class PlannerEngine:
             if not isinstance(raw, dict):
                 continue
             skill = self.registry.get(str(raw.get("skill", "")))
-            if skill is None or not skill.available()[0]:
-                continue
+            if skill is None or not skill.available()[0] or not skill.expose_to_llm:
+                continue                  # reservadas a pedidos diretos (ex.: mover o robô) não entram no plano
             try:
                 args = skill.validate(dict(raw.get("args") or {}))
             except ValueError:

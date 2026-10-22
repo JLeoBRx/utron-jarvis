@@ -26,3 +26,6 @@ send2trash>=1.8                                 # exclusão sempre pela Lixeira
 pywinauto>=0.6.8; sys_platform == "win32"       # elementos de interface (UI Automation)
 pycaw>=20240210; sys_platform == "win32"        # volume do sistema com leitura verificável
 comtypes>=1.2; sys_platform == "win32"
+
+# Noctário (robô): porta COM do Bluetooth pareado (SPP). Sem ele, use o transporte "Bluetooth direto"
+pyserial>=3.5

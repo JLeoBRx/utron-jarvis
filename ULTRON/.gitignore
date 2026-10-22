@@ -18,3 +18,8 @@ images/
 # Sistema
 Thumbs.db
 .DS_Store
+
+# Firmware do Noctário: build do PlatformIO e binários dos testes no PC
+firmware/noctario/.pio/
+firmware/noctario/test/host/test_core
+firmware/noctario/test/host/replay

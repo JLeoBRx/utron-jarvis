@@ -150,10 +150,22 @@ def compute_chips(core, state: dict, *, now: float | None = None, covering: bool
     else:
         status = service.status()
         link = status.get("link", "desconectado")
-        robot = status.get("confirmed", {}).get("state") or "—"
-        level = {"conectado": "ok", "conectando": "info", "perdido": "error"}.get(link, "off")
-        chips.append(Chip("noct", "NOCTÁRIO", robot.upper() if link == "conectado" else link.upper(), level,
-                          status.get("summary", "")))
+        robot_state = status.get("state") or "—"
+        sim = "SIM · " if status.get("simulated") else ""
+        if link == "conectado":
+            value = sim + robot_state
+            level = "error" if robot_state == "ESTOP" else "warn" if status.get("simulated") or robot_state == "LOST" \
+                else "ok"
+            requested = status.get("requested") or {}
+            pending = f" · pedido '{requested['label']}': {requested['status']}" \
+                if requested.get("label") and requested.get("status") != "confirmado" else ""
+            tip = (f"{status.get('transport', '')} · estado informado pelo robô: {status.get('state_label', '')}"
+                   f"{pending} · F12: PARADA DE EMERGÊNCIA")
+        else:
+            value = sim + ("SEM CONEXÃO" if link == "desconectado" else status.get("link_label", link).upper())
+            level = {"conectando": "info", "perdido": "error"}.get(link, "off")
+            tip = "Sem conexão: nenhum dado do robô é exibido. " + (status.get("detail") or "")
+        chips.append(Chip("noct", "NOCTÁRIO", value, level, tip.strip()))
     # rede
     network = state.get("network_state") or {}
     telemetry = state.get("telemetry") or {}
@@ -813,6 +825,7 @@ class PlatformWindow(QtWidgets.QWidget):
     page_changed = QtCore.Signal(str)
     chip_clicked = QtCore.Signal(str)
     interrupt_requested = QtCore.Signal()          # Esc
+    emergency_requested = QtCore.Signal()          # F12 — parada de emergência do Noctário
     stop_requested = QtCore.Signal()               # PARAR (conversa)
     conversation_command = QtCore.Signal(str)      # STATUS / HORAS
 
@@ -882,9 +895,10 @@ class PlatformWindow(QtWidgets.QWidget):
             for sequence in keys:
                 QtGui.QShortcut(QtGui.QKeySequence(sequence), self, activated=lambda k=key: self.navigate(k))
         QtGui.QShortcut(QtGui.QKeySequence("F11"), self, activated=self.toggle_fullscreen)
+        QtGui.QShortcut(QtGui.QKeySequence("F12"), self, activated=self.emergency_requested.emit)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+M"), self, activated=self.input.mic.toggle)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+L"), self, activated=self.conversation.clear)
-        self.escape = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.interrupt_requested)
+        self.escape = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.interrupt_requested.emit)
         # relógios da barra superior
         self._last_anim = time.perf_counter()
         self._anim_timer = QtCore.QTimer(self)
@@ -991,6 +1005,8 @@ class PlatformWindow(QtWidgets.QWidget):
             handler = getattr(page, "platform_event", None)
             if handler is not None:
                 handler(kind, payload, at)
+        if kind in ("NOCTARIO_LINK", "NOCTARIO_STATE"):          # o indicador do robô acompanha na hora
+            self.refresh_chips()
 
     def on_state(self, state: dict, names=None) -> None:
         self.state = state

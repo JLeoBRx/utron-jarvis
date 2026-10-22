@@ -1,0 +1,52 @@
+{
+  "what": "SIMULADOR no PC — não é Bluetooth nem o robô real",
+  "machine": {
+    "python": "3.13.16",
+    "system": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+    "cpu": "x86_64",
+    "cpus": 4
+  },
+  "commands": {
+    "ping_round_trip": {
+      "n": 50,
+      "mean_ms": 10.54,
+      "p50_ms": 10.54,
+      "p95_ms": 10.75,
+      "max_ms": 11.15
+    },
+    "estop_until_confirmed": {
+      "n": 10,
+      "mean_ms": 3.1,
+      "p50_ms": 1.98,
+      "p95_ms": 8.12,
+      "max_ms": 8.12
+    }
+  },
+  "lap": {
+    "lap_simulated_s": 27.39,
+    "lap_wall_s_at_25x": 1.1,
+    "samples": 548,
+    "telemetry_hz": 20,
+    "stored_bytes": 6577,
+    "crossings": 4
+  },
+  "page": {
+    "size": "1440x860",
+    "graph_samples": 400,
+    "refresh": {
+      "n": 150,
+      "mean_ms": 0.39,
+      "p50_ms": 0.43,
+      "p95_ms": 0.61,
+      "max_ms": 0.79
+    },
+    "graph_paint": {
+      "n": 150,
+      "mean_ms": 7.71,
+      "p50_ms": 6.82,
+      "p95_ms": 12.95,
+      "max_ms": 19.44
+    },
+    "refresh_hz_connected": 20
+  }
+}

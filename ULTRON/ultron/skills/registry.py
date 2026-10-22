@@ -21,7 +21,7 @@ FORBIDDEN = frozenset({"run_shell", "shell", "powershell", "cmd", "bash", "pytho
 
 SKILL_PACKAGES = ("windows", "applications", "automation", "filesystem", "browser", "vision", "network",
                   "devices", "diagnostics", "development", "audio", "memory", "imagination", "system", "secondbrain",
-                  "assistant", "tardis")
+                  "assistant", "tardis", "noctario")
 
 
 class SkillRegistry:
@@ -93,8 +93,9 @@ class SkillRegistry:
         return [s.info() for s in self.all()]
 
     def catalog_text(self, limit: int = 60) -> str:
+        """Lista para o planejador do modelo: só as skills que o modelo pode escolher (``expose_to_llm``)."""
         lines = []
-        for skill in self.available()[:limit]:
+        for skill in [s for s in self.available() if s.expose_to_llm][:limit]:
             props = ", ".join(skill.inputs.get("properties", {}).keys())
             lines.append(f"- {skill.name}({props}) [{skill.risk.value}]: {skill.description}")
         return "\n".join(lines)

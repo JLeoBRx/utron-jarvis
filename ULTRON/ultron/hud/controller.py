@@ -246,6 +246,7 @@ class HudController(QtCore.QObject):
         w.systems_requested.connect(lambda: self.open_systems())
         w.closing.connect(self._closed_to_tray)
         w.interrupt_requested.connect(self.escape)
+        w.emergency_requested.connect(lambda: self.emergency_stop("F12"))
         w.stop_requested.connect(self.stop)
         w.conversation_command.connect(lambda text: self.core.submit(text, source="text"))
         w.chip_clicked.connect(self._chip_clicked)
@@ -624,6 +625,18 @@ class HudController(QtCore.QObject):
         """PARAR (conversa): cancela pedido, fala e autorização pendente."""
         cancelled = self.core.cancel("cancelado pelo usuário (PARAR)")
         self.window.conversation.add_system("cancelado" if cancelled else "não havia nada em andamento")
+
+    def emergency_stop(self, by: str = "interface") -> dict:
+        """PARADA DE EMERGÊNCIA do Noctário (F12, botão): direto no transporte, sem fila nem modelo."""
+        service = getattr(self.core, "noctario", None)
+        if service is None:
+            outcome = {"sent": False, "detail": "serviço do Noctário inativo — use o botão físico"}
+        else:
+            outcome = service.estop(origin=by)
+        text = ("PARADA DE EMERGÊNCIA enviada ao Noctário" if outcome.get("sent") else
+                f"PARADA DE EMERGÊNCIA NÃO enviada: {outcome.get('detail', '')}")
+        self.window.conversation.add_system(text)
+        return outcome
 
     def _chip_clicked(self, key: str) -> None:
         if key == "mic":
