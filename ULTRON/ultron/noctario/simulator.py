@@ -50,7 +50,7 @@ class FirmwareModel:
         self.crossings = 0
         self.last_cross = -10 ** 9
         self.cross_prev = False
-        self.cross_raw = False                    # nível lido no pino de cruzamento (conferir o xact na bancada)
+        self.cross_raw = True                     # repouso HIGH; o sketch original detecta cruzamento em LOW
         self.lost_since: int | None = None
         self.last_err = 0
         self.ramp = 0.0
@@ -478,7 +478,8 @@ class Physics:
         return raw
 
     def cross_pin(self) -> bool:
-        return self.track.crossing_at(self.s)
+        # Nível elétrico bruto: o sensor original é ativo em LOW.
+        return not self.track.crossing_at(self.s)
 
 
 class NoctarioSimulator:
