@@ -149,7 +149,8 @@ class FirmwareHostTest(unittest.TestCase):
         binary = build("test_core")
         result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        self.assertIn("núcleo do firmware aprovado", result.stdout)
+        self.assertIn("OK:", result.stdout)
+        self.assertIn("firmware aprovado", result.stdout)
 
     def test_arduino_layer_type_checks_against_api_stubs(self):
         """``main.cpp`` contra cabeçalhos com as assinaturas do arduino-esp32 2.x e 3.x: pega erro de tipo e de
