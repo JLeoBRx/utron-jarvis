@@ -327,6 +327,12 @@ class MicrophoneBackendTest(unittest.TestCase):
         from ultron.voice import audio
         listing = audio.list_input_devices("nao-existe")
         self.assertIsNone(listing["backend"])
+        self.assertIn("backend desconhecido", " ".join(listing["errors"]))
+        output = audio.list_output_devices("nao-existe")
+        self.assertIsNone(output["backend"])
+        self.assertIn("backend desconhecido", " ".join(output["errors"]))
+        with self.assertRaisesRegex(ValueError, "backend de áudio desconhecido"):
+            audio.open_microphone(backend="nao-existe")
         if not helpers.module_available("pyaudio") and not helpers.module_available("sounddevice"):
             with self.assertRaises(audio.AudioBackendMissing):
                 audio.open_microphone()
