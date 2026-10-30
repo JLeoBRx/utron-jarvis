@@ -8,10 +8,10 @@
 // O simulador do JARVIS (ultron/noctario/simulator.py, FirmwareModel) implementa a MESMA lógica; um teste
 // alimenta os dois com as mesmas entradas e compara as saídas linha a linha.
 //
-// Construído a partir da especificação recebida (o código original do Noctário não foi fornecido). Os
-// pontos que só o código original confirma são parâmetros: ordem dos sensores (flip), sentido de cada
-// motor (ldir/rdir), nível ativo do sensor de cruzamento (xact), ritmo do laço (loop) e política sem link
-// (onlink). Ver firmware/noctario/README.md.
+// Reconciliação com os sketches originais na Biblioteca: linha branca, sensor de cruzamento ativo em LOW
+// (xact=0) e laço de 100 Hz (loop=100) estão confirmados. A variante de 28/10 usa 6 cruzamentos;
+// o perfil JARVIS mantido aqui usa 4. Ordem física QTR e sentidos reais dos motores exigem bancada.
+// O cão de guarda de link é uma proteção adicional deste firmware, não existia no sketch original.
 #pragma once
 
 #include <stddef.h>
