@@ -188,8 +188,8 @@ void loadNvs() {
     migrated.loop = 100;   // 10 ms, confirmado no sketch original
     migrated.white = 1;    // linha branca em pista preta
     core.restore(migrated, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
-    Serial.println("NVS antiga migrada: parâmetros compatíveis e calibração 10→12 bits preservados.");
-    Serial.println("Ajuste fino dos ganhos e dos sentidos dos motores exige validação na bancada.");
+    Serial.print("NVS antiga migrada: parâmetros compatíveis e calibração 10→12 bits preservados.\\n");
+    Serial.print("Ajuste fino dos ganhos e dos sentidos dos motores exige validação na bancada.\\n");
     migrateCurrent = true;
   }
 
