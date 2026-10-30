@@ -120,6 +120,7 @@ static_assert(sizeof(LegacyNoctarioConfig) == 16 * sizeof(float), "layout NVS le
 
 void loadNvs() {
   bool migrateCurrent = false;
+  bool hasCurrentParams = false;
   bool hasLegacyConfig = false;
   bool hasLegacyCalibration = false;
   uint16_t storedVersion = 0;
@@ -130,8 +131,8 @@ void loadNvs() {
 
   nvs.begin("noctario", true);
   storedVersion = nvs.getUShort("ver", 0);
-  if ((storedVersion == 1 || storedVersion == NVS_VERSION) &&
-      nvs.getBytesLength("params") == sizeof(noct::Params)) {
+  hasCurrentParams = nvs.getBytesLength("params") == sizeof(noct::Params);
+  if ((storedVersion == 1 || storedVersion == NVS_VERSION) && hasCurrentParams) {
     nvs.getBytes("params", &stored, sizeof(stored));
     cal = nvs.getBool("cal", false) &&
           nvs.getBytes("mins", mins, sizeof(mins)) == sizeof(mins) &&
@@ -163,24 +164,22 @@ void loadNvs() {
   }
   nvs.end();
 
-  if (storedVersion == 1 || storedVersion == NVS_VERSION) {
-    if (nvs.getBytesLength("params") == sizeof(noct::Params)) {
-      core.restore(stored, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
-    }
+  if ((storedVersion == 1 || storedVersion == NVS_VERSION) && hasCurrentParams) {
+    core.restore(stored, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
   } else if (storedVersion == 0 && (hasLegacyConfig || hasLegacyCalibration)) {
     // Preserva somente os campos com equivalência clara. Kp/Kd e a curva adaptativa antigas
     // não são equivalentes ao PD fixo do NOCT/1 e ficam nos padrões novos.
     noct::Params migrated;
     if (hasLegacyConfig) {
       if (std::isfinite(legacy.pwmMax) && legacy.pwmMax >= 0.0f && legacy.pwmMax <= 255.0f) {
-        migrated.base = (int)lroundf(legacy.pwmMax);
+        migrated.base = (int)std::lround(legacy.pwmMax);
         migrated.max = migrated.base;
       }
       if (std::isfinite(legacy.reversePwm) && legacy.reversePwm >= 0.0f && legacy.reversePwm <= 255.0f) {
-        migrated.minpwm = -(int)lroundf(legacy.reversePwm);
+        migrated.minpwm = -(int)std::lround(legacy.reversePwm);
       }
       if (std::isfinite(legacy.crossings) && legacy.crossings >= 0.0f) {
-        long count = lroundf(legacy.crossings);
+        long count = std::lround(legacy.crossings);
         migrated.cross = (int)(count > 20 ? 20 : count);
       }
       migrated.deb = 100;  // debounce original
