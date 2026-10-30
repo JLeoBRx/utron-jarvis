@@ -15,6 +15,7 @@
 #include <Preferences.h>
 
 #include <initializer_list>
+#include <cmath>
 
 #include "noct_core.h"
 
@@ -106,28 +107,94 @@ void led(noct::State state, uint32_t ms) {
   digitalWrite(PIN_LED, on ? HIGH : LOW);
 }
 
+// Layout do Config salvo pelas versões antigas Nefarious_6/Noctario (16 floats, nesta ordem).
+// A estrutura fica aqui apenas para ler a NVS antiga; o algoritmo adaptativo antigo não é 1:1
+// conversível para os parâmetros fixos do NOCT/1.
+struct LegacyNoctarioConfig {
+  float kpMin, kpMax, kdMin, kdMax;
+  float pwmMin, pwmMax, errorRef, derivativeRef;
+  float errorReduction, derivativeReduction, derivativeFilter, reversePwm;
+  float crossings, lineLossMs, calibrationPwm, calibrateAtBoot;
+};
+static_assert(sizeof(LegacyNoctarioConfig) == 16 * sizeof(float), "layout NVS legado mudou");
+
 void loadNvs() {
-  bool migrate = false;
+  bool migrateCurrent = false;
+  bool hasLegacyConfig = false;
+  bool hasLegacyCalibration = false;
+  uint16_t storedVersion = 0;
+  noct::Params stored;
+  LegacyNoctarioConfig legacy{};
+  uint16_t mins[noct::SENSORS] = {0}, maxs[noct::SENSORS] = {0};
+  bool cal = false;
+
   nvs.begin("noctario", true);
-  uint16_t storedVersion = nvs.getUShort("ver", 0);
+  storedVersion = nvs.getUShort("ver", 0);
   if ((storedVersion == 1 || storedVersion == NVS_VERSION) &&
       nvs.getBytesLength("params") == sizeof(noct::Params)) {
-    noct::Params stored;
-    uint16_t mins[noct::SENSORS], maxs[noct::SENSORS];
     nvs.getBytes("params", &stored, sizeof(stored));
-    bool cal = nvs.getBool("cal", false) && nvs.getBytes("mins", mins, sizeof(mins)) == sizeof(mins) &&
-               nvs.getBytes("maxs", maxs, sizeof(maxs)) == sizeof(maxs);
+    cal = nvs.getBool("cal", false) &&
+          nvs.getBytes("mins", mins, sizeof(mins)) == sizeof(mins) &&
+          nvs.getBytes("maxs", maxs, sizeof(maxs)) == sizeof(maxs);
     if (storedVersion == 1) {
-      // Os defaults antigos vieram antes da leitura do sketch: sensor LOW e laço 100 Hz.
-      // Mantém a calibração existente e todos os outros parâmetros gravados pelo usuário.
+      // Migra a primeira versão NOCT/1: sensor LOW e laço de 100 Hz foram confirmados no sketch.
       stored.xact = 0;
       stored.loop = 100;
-      migrate = true;
+      migrateCurrent = true;
     }
-    core.restore(stored, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
+  } else if (storedVersion == 0) {
+    // Migra também a NVS original (Preferences: cfg, cal_min, cal_max).
+    hasLegacyConfig = nvs.getBytesLength("cfg") == sizeof(LegacyNoctarioConfig);
+    if (hasLegacyConfig) nvs.getBytes("cfg", &legacy, sizeof(legacy));
+    hasLegacyCalibration =
+        nvs.getBytesLength("cal_min") == sizeof(uint16_t) * noct::SENSORS &&
+        nvs.getBytesLength("cal_max") == sizeof(uint16_t) * noct::SENSORS;
+    if (hasLegacyCalibration) {
+      uint16_t oldMin[noct::SENSORS], oldMax[noct::SENSORS];
+      nvs.getBytes("cal_min", oldMin, sizeof(oldMin));
+      nvs.getBytes("cal_max", oldMax, sizeof(oldMax));
+      // O sketch antigo usava ADC de 10 bits; o NOCT/1 lê 12 bits.
+      for (int i = 0; i < noct::SENSORS; ++i) {
+        mins[i] = (uint16_t)((uint32_t)oldMin[i] * 4U > 4095U ? 4095U : (uint32_t)oldMin[i] * 4U);
+        maxs[i] = (uint16_t)((uint32_t)oldMax[i] * 4U > 4095U ? 4095U : (uint32_t)oldMax[i] * 4U);
+      }
+      cal = true;
+    }
   }
   nvs.end();
-  if (migrate) saveNvs();  // grava a versão nova sem descartar uma calibração válida
+
+  if (storedVersion == 1 || storedVersion == NVS_VERSION) {
+    if (nvs.getBytesLength("params") == sizeof(noct::Params)) {
+      core.restore(stored, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
+    }
+  } else if (storedVersion == 0 && (hasLegacyConfig || hasLegacyCalibration)) {
+    // Preserva somente os campos com equivalência clara. Kp/Kd e a curva adaptativa antigas
+    // não são equivalentes ao PD fixo do NOCT/1 e ficam nos padrões novos.
+    noct::Params migrated;
+    if (hasLegacyConfig) {
+      if (std::isfinite(legacy.pwmMax) && legacy.pwmMax >= 0.0f && legacy.pwmMax <= 255.0f) {
+        migrated.base = (int)lroundf(legacy.pwmMax);
+        migrated.max = migrated.base;
+      }
+      if (std::isfinite(legacy.reversePwm) && legacy.reversePwm >= 0.0f && legacy.reversePwm <= 255.0f) {
+        migrated.minpwm = -(int)lroundf(legacy.reversePwm);
+      }
+      if (std::isfinite(legacy.crossings) && legacy.crossings >= 0.0f) {
+        long count = lroundf(legacy.crossings);
+        migrated.cross = (int)(count > 20 ? 20 : count);
+      }
+      migrated.deb = 100;  // debounce original
+    }
+    migrated.xact = 0;     // LOW ativo, confirmado no sketch original
+    migrated.loop = 100;   // 10 ms, confirmado no sketch original
+    migrated.white = 1;    // linha branca em pista preta
+    core.restore(migrated, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
+    Serial.println("NVS antiga migrada: parâmetros compatíveis e calibração 10→12 bits preservados.");
+    Serial.println("Ajuste fino dos ganhos e dos sentidos dos motores exige validação na bancada.");
+    migrateCurrent = true;
+  }
+
+  if (migrateCurrent) saveNvs();  // grava o formato novo sem apagar as chaves antigas de segurança
 }
 
 void saveNvs() {
