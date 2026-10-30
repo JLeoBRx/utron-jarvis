@@ -29,7 +29,7 @@ constexpr int PIN_QTR[noct::SENSORS] = {32, 33, 25, 26, 27, 14, 12, 13};
 constexpr uint32_t PWM_HZ = 20000;                           // TB6612FNG aceita até 100 kHz; 20 kHz é inaudível
 constexpr uint8_t PWM_BITS = 8;
 constexpr int CH_A = 0, CH_B = 1;
-constexpr uint16_t NVS_VERSION = 1;                          // muda se a estrutura Params mudar
+constexpr uint16_t NVS_VERSION = 2;                          // migra xact/loop confirmados no sketch original
 
 BluetoothSerial bt;
 Preferences nvs;
@@ -105,16 +105,27 @@ void led(noct::State state, uint32_t ms) {
 }
 
 void loadNvs() {
+  bool migrate = false;
   nvs.begin("noctario", true);
-  if (nvs.getUShort("ver", 0) == NVS_VERSION && nvs.getBytesLength("params") == sizeof(noct::Params)) {
+  uint16_t storedVersion = nvs.getUShort("ver", 0);
+  if ((storedVersion == 1 || storedVersion == NVS_VERSION) &&
+      nvs.getBytesLength("params") == sizeof(noct::Params)) {
     noct::Params stored;
     uint16_t mins[noct::SENSORS], maxs[noct::SENSORS];
     nvs.getBytes("params", &stored, sizeof(stored));
     bool cal = nvs.getBool("cal", false) && nvs.getBytes("mins", mins, sizeof(mins)) == sizeof(mins) &&
                nvs.getBytes("maxs", maxs, sizeof(maxs)) == sizeof(maxs);
+    if (storedVersion == 1) {
+      // Os defaults antigos vieram antes da leitura do sketch: sensor LOW e laço 100 Hz.
+      // Mantém a calibração existente e todos os outros parâmetros gravados pelo usuário.
+      stored.xact = 0;
+      stored.loop = 100;
+      migrate = true;
+    }
     core.restore(stored, cal ? mins : nullptr, cal ? maxs : nullptr, cal);
   }
   nvs.end();
+  if (migrate) saveNvs();  // grava a versão nova sem descartar uma calibração válida
 }
 
 void saveNvs() {
