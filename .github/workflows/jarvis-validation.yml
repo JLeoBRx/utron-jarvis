@@ -1,11 +1,9 @@
 name: JARVIS validation
 
 on:
-  push:
-    branches:
-      - "work/phase-7-8-safe-release"
-      - "claude/**"
   pull_request:
+    branches:
+      - "claude/adoring-brahmagupta-vcejpt"
   workflow_dispatch:
 
 permissions:
@@ -50,6 +48,11 @@ jobs:
         run: |
           python tools/build_release.py --out ../JARVIS_FINAL.zip
           python tools/build_release.py --check ../JARVIS_FINAL.zip
+      - name: Test release ZIP after clean extraction
+        run: |
+          python -c "import zipfile; zipfile.ZipFile('../JARVIS_FINAL.zip').extractall('../_jarvis_release_test')"
+          cd ../_jarvis_release_test/JARVIS
+          python TEST_JARVIS.py --quick
       - name: Upload release candidate
         uses: actions/upload-artifact@v4
         with:
@@ -123,6 +126,11 @@ jobs:
         run: |
           python tools/build_release.py --out ../JARVIS_FINAL_WINDOWS.zip
           python tools/build_release.py --check ../JARVIS_FINAL_WINDOWS.zip
+      - name: Test Windows release ZIP after clean extraction
+        run: |
+          python -c "import zipfile; zipfile.ZipFile('../JARVIS_FINAL_WINDOWS.zip').extractall('../_jarvis_release_test_windows')"
+          Set-Location ../_jarvis_release_test_windows/JARVIS
+          python TEST_JARVIS.py --quick
       - name: Upload Windows release candidate
         uses: actions/upload-artifact@v4
         with:
