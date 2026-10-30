@@ -23,3 +23,15 @@ Thumbs.db
 firmware/noctario/.pio/
 firmware/noctario/test/host/test_core
 firmware/noctario/test/host/replay
+# Local identity backup and private data
+settings.*.json
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-*
+*.sqlite
+*.sqlite3-*
