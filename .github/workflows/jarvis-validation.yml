@@ -92,3 +92,41 @@ jobs:
           path: ULTRON/firmware/noctario/.pio/build/esp32dev/firmware.bin
           if-no-files-found: error
           retention-days: 30
+
+  windows-validation:
+    name: Windows 11 installation and test validation
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ULTRON
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install application dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest pyflakes
+      - name: Run full application test suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python TEST_JARVIS.py
+      - name: Static checks
+        run: |
+          python -m compileall -q ultron tests tools main.py TEST_JARVIS.py
+          python -m pyflakes ultron tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
+      - name: Build and validate Windows release package
+        run: |
+          python tools/build_release.py --out ../JARVIS_FINAL_WINDOWS.zip
+          python tools/build_release.py --check ../JARVIS_FINAL_WINDOWS.zip
+      - name: Upload Windows release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-windows-release-candidate
+          path: JARVIS_FINAL_WINDOWS.zip
+          if-no-files-found: error
+          retention-days: 30
