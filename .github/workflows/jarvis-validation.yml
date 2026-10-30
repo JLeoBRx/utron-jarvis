@@ -1,0 +1,67 @@
+name: JARVIS validation
+
+on:
+  push:
+    branches:
+      - "work/phase-7-8-safe-release"
+      - "claude/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    name: Python ${{ matrix.python }} tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+    defaults:
+      run:
+        working-directory: ULTRON
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest pyflakes
+      - name: Run test suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python TEST_JARVIS.py
+      - name: Static checks
+        run: |
+          python -m compileall -q ultron tests tools main.py TEST_JARVIS.py
+          python -m pyflakes ultron tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
+      - name: Build and validate release ZIP
+        run: |
+          python tools/build_release.py --out ../JARVIS_FINAL.zip
+          python tools/build_release.py --check ../JARVIS_FINAL.zip
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-final-python-${{ matrix.python }}
+          path: JARVIS_FINAL.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  noctario-host:
+    name: Noctario host C++ tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ULTRON/firmware/noctario/test/host
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Compile and run host tests
+        run: make clean && make && ./test_core
