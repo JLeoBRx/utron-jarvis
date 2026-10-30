@@ -7,9 +7,11 @@ com velocidade adaptativa, rampas e contagem de 4 cruzamentos até o destino.
 > **Estado honesto.** Os arquivos originais `Noctario_JARVIS(1).ino` (20/10/2026) e
 > `Nefarious_6_cruzamentos(1).txt` (28/10/2026) foram localizados e comparados. Ambos confirmam a
 > pinagem, linha branca em pista preta, sensor de cruzamento ativo em LOW e laço de 100 Hz. Há dois
-> perfis históricos: 4 cruzamentos e uma variante posterior de 6 cruzamentos. Este firmware conserva
-> o perfil de 4 cruzamentos já especificado para o JARVIS. Ganhos e velocidade da variante de 6 não são
-> equivalentes aos parâmetros fixos do NOCT/1; sentido físico dos motores e ordem da barra precisam da bancada.
+> perfis históricos: `Noctario_JARVIS.ino` (4 cruzamentos, Kp 0,0125, Kd 0,1, PWM 220),
+> `Noctario_JARVIS(1).ino` (4 cruzamentos, Kp 0,0352, Kd 0,0085, PWM 110, máximo 175) e
+> `Nefarious_6_cruzamentos` (6 cruzamentos e ganhos adaptativos). Este firmware conserva o perfil
+> NOCT/1 de 4 cruzamentos e ganhos configuráveis. Os algoritmos de controle não são cópias byte a byte;
+> sentido físico dos motores e ordem da barra precisam da bancada.
 
 ## O que foi verificado e o que não foi
 
@@ -19,7 +21,7 @@ com velocidade adaptativa, rampas e contagem de 4 cruzamentos até o destino.
 | Testes do núcleo no PC (`test/host/test_core.cpp`: protocolo, limites, calibração, PD, parada de emergência, cruzamentos e destino, perda de linha, cão de guarda, bancada, calibração interrompida, NVS corrompida) | aprovados |
 | Núcleo C++ ≡ simulador do JARVIS, **linha a linha**, numa sessão de 62 s simulados (31 071 ciclos do laço, todas as mensagens e o PWM de cada ciclo) | verificado (`tests/test_noctario_firmware.py`) |
 | `src/main.cpp` (pinos, PWM, Bluetooth, NVS, LED) contra cabeçalhos com as assinaturas do arduino-esp32 2.x e 3.x (`test/host/stubs/`) | tipos e sintaxe conferidos (`-Wall -Wextra -Werror`) — não é o framework real |
-| `src/main.cpp` compilado de verdade para a ESP32 | **NÃO verificado**: o ambiente onde isto foi escrito não conseguiu baixar o toolchain da ESP32. O primeiro `pio run` na sua máquina é essa verificação |
+| `src/main.cpp` compilado de verdade para a ESP32 | **verificado por CI**: PlatformIO compilou para `esp32dev` e publicou o `firmware.bin`; não significa que o binário foi gravado na placa |
 | Comportamento no robô real (motores, sensores, Bluetooth, tempo de volta) | **NÃO verificado** — nenhum teste daqui usa o robô |
 
 ## Pinagem (exatamente como recebida)
@@ -121,10 +123,10 @@ protocolo; se algo estiver fora, o robô usa os padrões.
 | Nível do sensor de cruzamento | **LOW ativo; borda HIGH → LOW** | confirmado nos dois sketches originais | `xact=0` |
 | Ritmo do laço de controle | **100 Hz (10 ms)** | confirmado nos dois sketches originais | `loop=100` |
 | Escala do erro | posição 0–7000, centro 3500 (como a biblioteca QTRSensors da Pololu) | código original; em outra escala, Kp e Kd mudam de efeito na mesma proporção | — |
-| Política sem link | parar (`onlink=stop`), cão de guarda de 1,5 s | código original | `onlink`, `hb` |
+| Política sem link | parar (`onlink=stop`), cão de guarda de 1,5 s | proteção adicional do NOCT/1; os sketches antigos não tinham cão de guarda | `onlink`, `hb` |
 | Contagem até o destino | perfil JARVIS: 4 cruzamentos; variante `Nefarious_6` de 28/10: 6 | manter 4 neste perfil; use `cross=6` só ao selecionar a variante de 6 | `cross`, `deb` |
-| Perda de linha | recupera após 0,3 s, desiste após mais 1,5 s, giro com PWM 120 | código original / pista | `lostms`, `loststop`, `recov` |
-| Velocidade adaptativa e rampas | 0,35; 600 e 900 PWM/s | a especificação só diz que existem | `adapt`, `accel`, `decel` |
+| Perda de linha | recupera após 0,3 s, desiste após mais 1,5 s, giro com PWM 120 | comportamento novo do NOCT/1; os sketches antigos paravam após 500 ms sem linha | `lostms`, `loststop`, `recov` |
+| Velocidade adaptativa e rampas | 0,35; 600 e 900 PWM/s | modelo simplificado novo do NOCT/1; o sketch de 28/10 usava reduções separadas por erro e derivada | `adapt`, `accel`, `decel` |
 | Nome Bluetooth | `Noctario` | confirmado nos dois sketches originais | — |
 
 A pinagem, a linha branca, o nível ativo do cruzamento, o laço e o nome Bluetooth foram confirmados.
