@@ -130,8 +130,8 @@ class ReleasePackageValidationTest(unittest.TestCase):
 
         archive = helpers.temp_dir("release-") / "unsafe.zip"
         with zipfile.ZipFile(archive, "w") as bundle:
-            bundle.writestr(r"JARVIS/subfolder\\payload.txt", "unsafe")
-            bundle.writestr(r"JARVIS/..\\outside.txt", "unsafe")
+            bundle.writestr(r"JARVIS/subfolder\payload.txt", "unsafe")
+            bundle.writestr(r"JARVIS/..\outside.txt", "unsafe")
         problems = build_release.check(archive)
         unsafe = [problem for problem in problems if "caminho inseguro" in problem]
         self.assertEqual(len(unsafe), 2, problems)
