@@ -126,7 +126,14 @@ class ReleasePackageValidationTest(unittest.TestCase):
     def test_windows_style_zip_paths_are_rejected(self):
         import zipfile
 
-        from tools import build_release
+        import importlib.util
+
+        module_path = helpers.ROOT / "tools" / "build_release.py"
+        spec = importlib.util.spec_from_file_location("jarvis_build_release", module_path)
+        if spec is None or spec.loader is None:
+            self.fail("não foi possível carregar tools/build_release.py")
+        build_release = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build_release)
 
         archive = helpers.temp_dir("release-") / "unsafe.zip"
         with zipfile.ZipFile(archive, "w") as bundle:
