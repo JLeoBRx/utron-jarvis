@@ -23,10 +23,13 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parent.parent          # pasta do programa (ULTRON/)
 PREFIX = "JARVIS/"
-EXCLUDE = ("assets/stt/*", "assets/voices/*", "*.pyc", "*/__pycache__/*", ".venv/*", "*.sqlite3*", "settings.json",
-           "logs/*", "*.log", "*.zip", "*.partial", "world_model.json", "autorizacoes_permanentes.json")
-FORBIDDEN = (".venv/", "__pycache__/", ".pyc", ".sqlite3", "settings.json", "/logs/", ".git/", ".onnx", "final.mdl",
-             "HCLr.fst", "autorizacoes_permanentes.json")
+EXCLUDE = ("assets/stt/*", "assets/voices/*", "*.pyc", "*/__pycache__/*", ".venv/*", "venv/*",
+           "*.sqlite3*", "*.sqlite3-*", "*.db", "*.db-*", "settings.json", "settings.*.json",
+           "logs/*", "*.log", "*.zip", "*.partial", "world_model.json", "autorizacoes_permanentes.json",
+           ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", ".DS_Store", "Thumbs.db")
+FORBIDDEN = (".venv/", "venv/", "__pycache__/", ".pyc", ".sqlite3", ".db", "settings.json", "/logs/",
+             ".git/", ".onnx", "final.mdl", "HCLr.fst", "autorizacoes_permanentes.json",
+             ".env", ".pem", ".key", ".p12", ".pfx")
 REQUIRED = ("main.py", "requirements.txt", "INSTALL_JARVIS.bat", "START_JARVIS.bat", "ATUALIZAR_JARVIS.bat",
             "DIAGNOSTICO_JARVIS.bat", "README_JARVIS.md", "CHANGELOG_JARVIS.md", "ARCHITECTURE_JARVIS.md",
             "PERFORMANCE_REPORT.md", "VOICE_DIAGNOSTICS.md", "TEST_REPORT.md", "TEST_JARVIS.py",
@@ -60,6 +63,8 @@ def build(out: Path) -> list[str]:
 def check(path: Path) -> list[str]:
     """Problemas encontrados no pacote (lista vazia = aprovado)."""
     problems = []
+    if not path.is_file():
+        return [f"pacote não encontrado: {path}"]
     if path.stat().st_size > MAX_BYTES:
         problems.append(f"pacote grande demais: {path.stat().st_size / 2 ** 20:.1f} MB")
     with zipfile.ZipFile(path) as archive:
@@ -67,7 +72,11 @@ def check(path: Path) -> list[str]:
         if bad:
             problems.append(f"arquivo corrompido no ZIP: {bad}")
         names = archive.namelist()
+        if len(names) != len(set(names)):
+            problems.append("há caminhos duplicados no ZIP")
         for name in names:
+            if name.startswith("/") or "\\\\" in name or ".." in Path(name).parts:
+                problems.append(f"caminho inseguro no ZIP: {name}")
             if not name.startswith(PREFIX):
                 problems.append(f"fora da pasta {PREFIX}: {name}")
             if any(token in name for token in FORBIDDEN):
