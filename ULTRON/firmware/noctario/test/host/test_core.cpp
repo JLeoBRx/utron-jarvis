@@ -68,7 +68,9 @@ static void test_protocol() {
   Rig r;
   r.core.connect(0);
   CHECK(r.out.has("HELLO fw=teste proto=1 st=IDLE cal=0"), "HELLO ao conectar");
-  CHECK(r.out.has("PAR kp=0.0125 kd=0.1 base=220 max=220"), "PAR com os valores da especificação");
+  CHECK(r.out.has("PAR kp=0.0125 kd=0.1 base=220 max=220"), "PAR com os valores iniciais");
+  CHECK(r.out.has("deb=150 xact=0 thr=200"), "sensor de cruzamento ativo em LOW");
+  CHECK(r.out.has("tel=20 loop=100 white=1"), "laço de controle confirmado em 100 Hz");
   r.out.clear();
   r.send("CMD 1 PING");
   CHECK(r.out.last("ACK 1").find("pong=1") != std::string::npos, "PING responde");
