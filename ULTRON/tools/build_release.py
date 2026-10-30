@@ -75,7 +75,7 @@ def check(path: Path) -> list[str]:
         if len(names) != len(set(names)):
             problems.append("há caminhos duplicados no ZIP")
         for name in names:
-            if name.startswith("/") or "\\\\" in name or ".." in Path(name).parts:
+            if name.startswith("/") or "\\" in name or ".." in Path(name).parts:
                 problems.append(f"caminho inseguro no ZIP: {name}")
             if not name.startswith(PREFIX):
                 problems.append(f"fora da pasta {PREFIX}: {name}")
