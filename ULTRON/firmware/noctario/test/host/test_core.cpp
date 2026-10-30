@@ -46,7 +46,7 @@ struct Rig {
     for (const char* c = text; *c; ++c) core.feed((uint8_t)*c, now);
     core.feed('\n', now);
   }
-  // linha branca sob o sensor "center" (0..7, fracionário), pista preta no resto
+  // linha branca sob o sensor "center" (0..7); cross=true representa a marca ativa (pino LOW).
   void tick(double center, bool cross = false, int ms = 2) {
     now += ms;
     uint16_t raw[8];
@@ -55,7 +55,7 @@ struct Rig {
       double strength = center < 0 ? 0.0 : (d * d < 0.25 ? 1.0 : (d * d < 2.25 ? 0.4 : 0.0));
       raw[i] = (uint16_t)(3400 - (3400 - 450) * strength);
     }
-    core.tick(now, raw, cross, left, right);
+    core.tick(now, raw, !cross, left, right);  // nível bruto HIGH em repouso; LOW sobre a marca
   }
   void calibrate() {
     send("CMD 90 CAL ms=500");
