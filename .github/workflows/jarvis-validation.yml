@@ -69,3 +69,26 @@ jobs:
         uses: actions/checkout@v4
       - name: Compile and run host tests
         run: make clean && make && ./test_core
+
+  noctario-esp32-firmware:
+    name: Noctario ESP32 firmware compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PlatformIO
+        run: python -m pip install --upgrade platformio
+      - name: Compile firmware for ESP32 DevKit
+        working-directory: ULTRON/firmware/noctario
+        run: pio run
+      - name: Upload ESP32 firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: noctario-esp32-firmware
+          path: ULTRON/firmware/noctario/.pio/build/esp32dev/firmware.bin
+          if-no-files-found: error
+          retention-days: 30
