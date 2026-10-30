@@ -183,8 +183,8 @@ class ProtocolTest(unittest.TestCase):
                 validate(bad)
 
     def test_initial_parameters_are_the_requested_ones(self):
-        self.assertEqual({k: DEFAULTS[k] for k in ("kp", "kd", "base", "max", "cross")},
-                         {"kp": 0.0125, "kd": 0.1, "base": 220, "max": 220, "cross": 4})
+        self.assertEqual({k: DEFAULTS[k] for k in ("kp", "kd", "base", "max", "cross", "xact", "loop")},
+                         {"kp": 0.0125, "kd": 0.1, "base": 220, "max": 220, "cross": 4, "xact": 0, "loop": 100})
         self.assertEqual(DEFAULTS["white"], 1, "linha branca em pista preta")
         widest = {k: (1.23457e-05 if s.kind == "float" else -255 if s.low < 0 else int(s.high) if s.kind == "int"
                       else max(s.choices, key=len)) for k, s in protocol.PARAMS.items()}
