@@ -1,0 +1,48 @@
+# Local data, credentials and exports must never enter the repository
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+settings.json
+settings.*.json
+world_model.json
+autorizacoes_permanentes.json
+*.log
+**/logs/
+**/backups/
+*.bak
+*.backup
+*.dump
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Generated release and build artifacts
+JARVIS_FINAL*.zip
+*.partial
+ULTRON/firmware/noctario/.pio/
+ULTRON/firmware/noctario/test/host/test_core
+ULTRON/firmware/noctario/test/host/replay
+*.elf
+*.bin
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
