@@ -1,5 +1,9 @@
 name: JARVIS validation
 
+concurrency:
+  group: jarvis-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
