@@ -88,8 +88,8 @@ class ParamSpec:
         return number
 
 
-# Os valores iniciais são os da especificação recebida (PD, PWM base e máximo 220, Kp 0,0125, Kd 0,1,
-# 4 cruzamentos). Os itens marcados "a confirmar" dependem do código original e ficam ajustáveis.
+# Perfil inicial de 4 cruzamentos do JARVIS. O sketch original confirma o sensor em LOW e o laço a 100 Hz.
+# A variante posterior Nefarious_6 usa seis cruzamentos e ganhos adaptativos diferentes.
 PARAMS: dict[str, ParamSpec] = {p.key: p for p in (
     ParamSpec("kp", "Kp", "float", 0.0125, 0.0, 0.2, help="ganho proporcional do PD"),
     ParamSpec("kd", "Kd", "float", 0.1, 0.0, 2.0, help="ganho derivativo do PD (por ciclo do laço de controle)"),
@@ -102,8 +102,8 @@ PARAMS: dict[str, ParamSpec] = {p.key: p for p in (
               help="quanto a velocidade base cai com o erro (0 = desligada)"),
     ParamSpec("cross", "Cruzamentos até o destino", "int", 4, 0, 20, help="0 = sem destino (só para pelo comando)"),
     ParamSpec("deb", "Filtro do cruzamento", "int", 150, 20, 2000, "ms", help="intervalo mínimo entre contagens"),
-    ParamSpec("xact", "Nível ativo do sensor de cruzamento", "int", 1, 0, 1, choices=(0, 1),
-              help="1 = nível alto ao detectar (a confirmar no código original)"),
+    ParamSpec("xact", "Nível ativo do sensor de cruzamento", "int", 0, 0, 1, choices=(0, 1),
+              help="0 = nível baixo; borda de descida no sketch original"),
     ParamSpec("thr", "Limiar de linha", "int", 200, 0, 1000, help="valor calibrado mínimo para considerar a linha vista"),
     ParamSpec("lostms", "Tempo até recuperar", "int", 300, 50, 3000, "ms", help="sem linha por este tempo → recuperação"),
     ParamSpec("loststop", "Tempo máximo de recuperação", "int", 1500, 100, 10000, "ms",
@@ -113,7 +113,7 @@ PARAMS: dict[str, ParamSpec] = {p.key: p for p in (
     ParamSpec("onlink", "Ao perder o link", "choice", "stop", choices=("stop", "continue"),
               help="política do firmware: parar (stop) ou terminar o percurso (continue)"),
     ParamSpec("tel", "Telemetria", "int", 20, 0, 50, "Hz", help="0 = desligada"),
-    ParamSpec("loop", "Laço de controle", "int", 500, 100, 2000, "Hz", help="o Kd depende deste ritmo"),
+    ParamSpec("loop", "Laço de controle", "int", 100, 100, 2000, "Hz", help="100 Hz = 10 ms, confirmado no sketch original"),
     ParamSpec("white", "Linha branca em pista preta", "int", 1, 0, 1, choices=(0, 1)),
     ParamSpec("flip", "Inverter a ordem dos sensores", "int", 0, 0, 1, choices=(0, 1),
               help="a confirmar no código original (esquerda → direita)"),
