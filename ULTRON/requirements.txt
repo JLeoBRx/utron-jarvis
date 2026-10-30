@@ -2,6 +2,7 @@
 # Instale com INSTALL_JARVIS.bat ou: python -m pip install -r requirements.txt
 
 # Núcleo
+# PyAudio é opcional: sounddevice é o backend primário e inclui PortAudio.
 numpy>=1.24
 psutil>=5.9
 tzdata>=2024.1; sys_platform == "win32"         # fusos IANA (ex.: America/Sao_Paulo) no Windows
@@ -12,7 +13,6 @@ PySide6-Essentials>=6.6
 # Voz: reconhecimento offline, microfone/saída de áudio e voz neural
 vosk>=0.3.45
 sounddevice>=0.4.6                              # microfone e saída (PortAudio embutido) — funciona sem PyAudio
-PyAudio>=0.2.14                                 # alternativa; se não houver pacote para o seu Python, o sounddevice basta
 piper-tts>=1.2
 pyttsx3>=2.90                                   # voz alternativa (SAPI) se a voz neural faltar
 pywin32>=306; sys_platform == "win32"           # COM na thread da voz SAPI (como no JARVIS original)
