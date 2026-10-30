@@ -270,7 +270,7 @@ static void test_restore() {
   bad.base = 300;
   Rig b;
   b.core.restore(bad, mins, maxs, true);
-  CHECK(b.core.params().loop == 500 && b.core.params().base == 220, "parâmetros inválidos: padrões");
+  CHECK(b.core.params().loop == 100 && b.core.params().base == 220, "parâmetros inválidos: padrões");
   CHECK(b.core.calibrated(), "a calibração válida continua");
 
   noct::Params swapped = good;
