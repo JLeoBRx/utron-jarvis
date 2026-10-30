@@ -41,7 +41,7 @@ struct Params {
   double adapt = 0.35;
   int cross = 4;
   int deb = 150;
-  int xact = 1;
+  int xact = 0;
   int thr = 200;
   int lostms = 300;
   int loststop = 1500;
@@ -49,7 +49,7 @@ struct Params {
   int hb = 1500;
   bool onlinkStop = true;                  // "stop" | "continue"
   int tel = 20;
-  int loop = 500;
+  int loop = 100;
   int white = 1;
   int flip = 0;
   int ldir = 1;
