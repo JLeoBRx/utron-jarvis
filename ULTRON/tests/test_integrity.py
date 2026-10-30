@@ -123,10 +123,9 @@ if __name__ == "__main__":
 
 
 class ReleasePackageValidationTest(unittest.TestCase):
-    def test_windows_style_zip_paths_are_rejected(self):
-        import zipfile
-
+    def test_windows_style_zip_paths_are_rejected_on_every_platform(self):
         import importlib.util
+        import zipfile
 
         module_path = helpers.ROOT / "tools" / "build_release.py"
         spec = importlib.util.spec_from_file_location("jarvis_build_release", module_path)
@@ -135,10 +134,14 @@ class ReleasePackageValidationTest(unittest.TestCase):
         build_release = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(build_release)
 
+        self.assertTrue(build_release.unsafe_zip_path(r"JARVIS/subfolder\payload.txt"))
+        self.assertTrue(build_release.unsafe_zip_path(r"JARVIS/..\outside.txt"))
+        self.assertTrue(build_release.unsafe_zip_path("JARVIS/../outside.txt"))
+        self.assertFalse(build_release.unsafe_zip_path("JARVIS/subfolder/payload.txt"))
+
+        # Confere também que check() usa a mesma regra na leitura de um ZIP real.
         archive = helpers.temp_dir("release-") / "unsafe.zip"
         with zipfile.ZipFile(archive, "w") as bundle:
-            bundle.writestr(r"JARVIS/subfolder\payload.txt", "unsafe")
-            bundle.writestr(r"JARVIS/..\outside.txt", "unsafe")
+            bundle.writestr("JARVIS/../outside.txt", "unsafe")
         problems = build_release.check(archive)
-        unsafe = [problem for problem in problems if "caminho inseguro" in problem]
-        self.assertEqual(len(unsafe), 2, problems)
+        self.assertTrue(any("caminho inseguro" in problem for problem in problems), problems)
