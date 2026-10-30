@@ -78,6 +78,19 @@ Os parâmetros e a calibração ficam na memória do robô (NVS) **só depois de
 parâmetros do Noctário" ou SALVAR NO ROBÔ). Ao ligar, o que estiver na NVS passa pelos mesmos limites do
 protocolo; se algo estiver fora, o robô usa os padrões.
 
+### Migração da memória de versões anteriores
+
+- NVS NOCT/1 versão 1: atualiza os defaults confirmados (`xact=0`, `loop=100`) e mantém parâmetros
+  e calibração já salvos.
+- Sketch legado `Nefarious_6`: importa `cfg`, `cal_min` e `cal_max`; a calibração de 10 bits é
+  convertida para 12 bits. Também mantém a contagem de cruzamentos salva, PWM máximo e ré máxima.
+  Assim, uma configuração antiga de 6 cruzamentos continua em 6; o default novo, quando não há
+  configuração anterior, permanece 4.
+- Os ganhos adaptativos antigos (`KPMIN/KPMAX/KDMIN/KDMAX`) e a curva de velocidade não têm conversão
+  exata para o PD do NOCT/1; esses campos usam os defaults novos e devem ser ajustados na bancada.
+- As chaves antigas não são apagadas durante a migração. A versão nova é gravada separadamente, depois
+  da leitura e validação dos dados antigos.
+
 ## LED
 
 | Padrão | Estado |
