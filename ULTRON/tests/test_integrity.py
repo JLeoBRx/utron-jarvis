@@ -120,3 +120,18 @@ class ProcessControlTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReleasePackageValidationTest(unittest.TestCase):
+    def test_windows_style_zip_paths_are_rejected(self):
+        import zipfile
+
+        from tools import build_release
+
+        archive = helpers.temp_dir("release-") / "unsafe.zip"
+        with zipfile.ZipFile(archive, "w") as bundle:
+            bundle.writestr(r"JARVIS/subfolder\\payload.txt", "unsafe")
+            bundle.writestr(r"JARVIS/..\\outside.txt", "unsafe")
+        problems = build_release.check(archive)
+        unsafe = [problem for problem in problems if "caminho inseguro" in problem]
+        self.assertEqual(len(unsafe), 2, problems)
