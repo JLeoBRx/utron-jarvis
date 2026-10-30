@@ -4,10 +4,12 @@ Seguidor de linha com ESP32 DevKit, ponte TB6612FNG, 8 sensores QTR analógicos,
 cruzamento, 2 motores DC, LED e Bluetooth Clássico. Linha **branca** em pista **preta**. Controle PD
 com velocidade adaptativa, rampas e contagem de 4 cruzamentos até o destino.
 
-> **Estado honesto.** Este firmware foi construído a partir da especificação recebida (pinagem,
-> parâmetros iniciais, comportamentos). **O código original do Noctário não foi fornecido**, então nada
-> aqui foi conferido contra ele. Antes de pôr o robô na pista, faça a *Primeira vez na bancada* abaixo
-> e confira os itens **A CONFIRMAR**. Veja o pedido no fim deste arquivo.
+> **Estado honesto.** Os arquivos originais `Noctario_JARVIS(1).ino` (20/10/2026) e
+> `Nefarious_6_cruzamentos(1).txt` (28/10/2026) foram localizados e comparados. Ambos confirmam a
+> pinagem, linha branca em pista preta, sensor de cruzamento ativo em LOW e laço de 100 Hz. Há dois
+> perfis históricos: 4 cruzamentos e uma variante posterior de 6 cruzamentos. Este firmware conserva
+> o perfil de 4 cruzamentos já especificado para o JARVIS. Ganhos e velocidade da variante de 6 não são
+> equivalentes aos parâmetros fixos do NOCT/1; sentido físico dos motores e ordem da barra precisam da bancada.
 
 ## O que foi verificado e o que não foi
 
@@ -27,9 +29,9 @@ com velocidade adaptativa, rampas e contagem de 4 cruzamentos até o destino.
 | Motor **direito** — TB6612FNG canal A: PWMA / AIN1 / AIN2 | 21 / 18 / 19 |
 | Motor **esquerdo** — TB6612FNG canal B: PWMB / BIN1 / BIN2 | 23 / 4 / 22 |
 | STBY do TB6612FNG | 5 |
-| Sensor de cruzamento (digital) | 34 |
+| Sensor de cruzamento (digital, ativo em LOW) | 34 |
 | LED | 15 |
-| QTR 0 → 7 (analógicos; 0 = esquerda **a confirmar**) | 32, 33, 25, 26, 27, 14, 12, 13 |
+| QTR 0 → 7 (ordem física esquerda/direita a validar) | 32, 33, 25, 26, 27, 14, 12, 13 |
 
 PWM dos motores: 20 kHz, 8 bits (inaudível; o TB6612FNG aceita até 100 kHz). Sentido pelo par IN1/IN2;
 PWM 0 deixa o motor livre.
@@ -110,23 +112,26 @@ protocolo; se algo estiver fora, o robô usa os padrões.
 10. **Primeiras voltas** com velocidade menor (por exemplo PWM base 150 e máximo 180), olhando o gráfico
     de telemetria; depois suba em direção a 220.
 
-## A CONFIRMAR (sem o código original)
+## O que foi confirmado no sketch original e o que ainda precisa da bancada
 
 | Item | Aqui | Como confirmar | Parâmetro |
 |---|---|---|---|
 | Ordem dos sensores (GPIO 32 = esquerda?) | 32 à esquerda | passo 7 da bancada | `flip` |
 | Sentido de cada motor | IN1 alto = para a frente | passo 5 da bancada | `ldir`, `rdir` |
-| Nível do sensor de cruzamento | alto = cruzamento | passo 8 da bancada | `xact` |
-| Ritmo do laço de controle | 500 Hz | código original. **O Kd 0,1 é por ciclo**: em outro ritmo, o mesmo Kd tem outro efeito | `loop` |
+| Nível do sensor de cruzamento | **LOW ativo; borda HIGH → LOW** | confirmado nos dois sketches originais | `xact=0` |
+| Ritmo do laço de controle | **100 Hz (10 ms)** | confirmado nos dois sketches originais | `loop=100` |
 | Escala do erro | posição 0–7000, centro 3500 (como a biblioteca QTRSensors da Pololu) | código original; em outra escala, Kp e Kd mudam de efeito na mesma proporção | — |
 | Política sem link | parar (`onlink=stop`), cão de guarda de 1,5 s | código original | `onlink`, `hb` |
-| Contagem até o destino | 4 cruzamentos, contados a partir da partida | pista e código original (a largada conta?) | `cross`, `deb` |
+| Contagem até o destino | perfil JARVIS: 4 cruzamentos; variante `Nefarious_6` de 28/10: 6 | manter 4 neste perfil; use `cross=6` só ao selecionar a variante de 6 | `cross`, `deb` |
 | Perda de linha | recupera após 0,3 s, desiste após mais 1,5 s, giro com PWM 120 | código original / pista | `lostms`, `loststop`, `recov` |
 | Velocidade adaptativa e rampas | 0,35; 600 e 900 PWM/s | a especificação só diz que existem | `adapt`, `accel`, `decel` |
-| Nome Bluetooth | `Noctario` | robô original | — |
+| Nome Bluetooth | `Noctario` | confirmado nos dois sketches originais | — |
 
-Tudo o que está na tabela é ajustável pela interface, por voz ou por `SET`, com os limites do protocolo,
-sem regravar o firmware.
+A pinagem, a linha branca, o nível ativo do cruzamento, o laço e o nome Bluetooth foram confirmados.
+A ordem física da barra e o sentido real dos motores ainda precisam do teste de bancada.
+O perfil de ganhos/velocidade do arquivo de 28/10 é diferente do controle do NOCT/1 e não foi copiado
+automaticamente. Os parâmetros do NOCT/1 seguem ajustáveis pela interface, por voz ou por `SET`,
+com os limites do protocolo, sem regravar o firmware.
 
 ## Reduzir o tempo de volta (sem prometer tempo)
 
