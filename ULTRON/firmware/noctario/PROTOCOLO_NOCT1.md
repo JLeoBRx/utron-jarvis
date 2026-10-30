@@ -219,16 +219,16 @@ para conferência.
 | `adapt` | 0.35 | 0–1 | velocidade adaptativa: quanto a base cai com o erro |
 | `cross` | 4 | 0–20 | cruzamentos até o destino (0 = sem destino) |
 | `deb` | 150 | 20–2000 ms | intervalo mínimo entre duas contagens |
-| `xact` | 1 | 0 ou 1 | nível do pino 34 que significa "cruzamento" — **a confirmar** |
+| `xact` | 0 | 0 ou 1 | LOW ativo — confirmado no sketch original (borda HIGH → LOW) |
 | `thr` | 200 | 0–1000 | valor calibrado mínimo para "linha vista" |
 | `lostms` | 300 | 50–3000 ms | sem linha por este tempo → `LOST` |
 | `loststop` | 1500 | 100–10000 ms | recuperação sem sucesso por este tempo → parada |
 | `recov` | 120 | 0–255 | PWM do giro de recuperação |
 | `hb` | 1500 | 0–10000 ms | cão de guarda do link (0 = desligado) |
-| `onlink` | stop | stop/continue | política sem link — **a confirmar** no código original |
+| `onlink` | stop | stop/continue | política de segurança deste firmware; o sketch original não implementava cão de guarda |
 | `tel` | 20 | 0–50 Hz | taxa da telemetria |
-| `loop` | 500 | 100–2000 Hz | ritmo do laço de controle — **a confirmar**; só parado |
-| `white` | 1 | 0 ou 1 | 1 = linha branca em pista preta; só parado |
+| `loop` | 100 | 100–2000 Hz | 100 Hz (10 ms), confirmado no sketch original; só parado |
+| `white` | 1 | 0 ou 1 | 1 = linha branca em pista preta; confirmado no sketch original; só parado |
 | `flip` | 0 | 0 ou 1 | inverte a ordem dos sensores — **a confirmar**; só parado |
 | `ldir` | 1 | −1 ou 1 | sentido do motor esquerdo — **a confirmar na bancada**; só parado |
 | `rdir` | 1 | −1 ou 1 | sentido do motor direito — **a confirmar na bancada**; só parado |
@@ -269,8 +269,8 @@ A interface do JARVIS **não roda o PD**: só envia pedidos, lê e registra.
     PC  → (conecta)
     ROB ← HELLO fw=noctario-1.0 proto=1 st=IDLE cal=0 name=Noctario
     ROB ← STA st=IDLE cal=0 x=0 xt=4 lap=0 why=- fw=noctario-1.0 tel=20 onlink=stop hb=1500
-    ROB ← PAR kp=0.0125 kd=0.1 base=220 max=220 minpwm=0 accel=600 decel=900 adapt=0.35 cross=4 deb=150 xact=1 thr=200
-    ROB ← PAR lostms=300 loststop=1500 recov=120 hb=1500 onlink=stop tel=20 loop=500 white=1 flip=0 ldir=1 rdir=1
+    ROB ← PAR kp=0.0125 kd=0.1 base=220 max=220 minpwm=0 accel=600 decel=900 adapt=0.35 cross=4 deb=150 xact=0 thr=200
+    ROB ← PAR lostms=300 loststop=1500 recov=120 hb=1500 onlink=stop tel=20 loop=100 white=1 flip=0 ldir=1 rdir=1
     PC  → CMD 1 START
     ROB ← NAK 1 code=NOCAL msg=sensores_nao_calibrados:_use_CAL
     PC  → CMD 2 CAL ms=3000
