@@ -471,10 +471,24 @@ def _sounddevice_output_devices():
     return devices, default
 
 
+def _backend_order(backend: str) -> tuple[str, ...]:
+    """Normaliza uma escolha explícita e nunca transforma um nome inválido em sounddevice."""
+    name = str(backend or "").strip().lower()
+    if name == "auto":
+        return INPUT_BACKENDS
+    if name in INPUT_BACKENDS:
+        return (name,)
+    return ()
+
+
 def list_output_devices(backend: str = "auto") -> dict:
     """Saídas de áudio visíveis (nada é aberto)."""
+    order = _backend_order(backend)
+    if not order:
+        return {"backend": None, "devices": [], "default": None,
+                "errors": [f"backend desconhecido: {backend}"]}
     errors = []
-    for name in (("pyaudio", "sounddevice") if backend == "auto" else (backend,)):
+    for name in order:
         try:
             devices, default = (_pyaudio_output_devices if name == "pyaudio" else _sounddevice_output_devices)()
             return {"backend": name, "devices": devices, "default": default, "errors": errors}
@@ -487,8 +501,12 @@ def list_output_devices(backend: str = "auto") -> dict:
 
 def list_input_devices(backend: str = "auto") -> dict:
     """Microfones visíveis para a biblioteca de áudio disponível (nada é aberto)."""
+    order = _backend_order(backend)
+    if not order:
+        return {"backend": None, "devices": [], "default": None,
+                "errors": [f"backend desconhecido: {backend}"]}
     errors = []
-    for name in (INPUT_BACKENDS if backend == "auto" else (backend,)):
+    for name in order:
         try:
             devices, default = (_pyaudio_devices if name == "pyaudio" else _sounddevice_devices)()
             return {"backend": name, "devices": devices, "default": default, "errors": errors}
@@ -570,7 +588,9 @@ def open_microphone(*, rate: int = 16000, chunk: int = 4000, name_hint: str = ""
     sounddevice. Devolve (handle, stream, nome) com ``stream.read(n)`` → PCM 16 bits mono a ``rate``."""
     errors = []
     missing = 0
-    order = INPUT_BACKENDS if backend == "auto" else (backend,)
+    order = _backend_order(backend)
+    if not order:
+        raise ValueError(f"backend de áudio desconhecido: {backend}")
     for name in order:
         opener = _open_pyaudio_input if name == "pyaudio" else _open_sounddevice_input
         try:
