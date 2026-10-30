@@ -60,6 +60,11 @@ def build(out: Path) -> list[str]:
     return files
 
 
+def unsafe_zip_path(name: str) -> bool:
+    """Rejeita travessia Unix e separadores Windows mesmo quando a validação roda em Linux."""
+    return name.startswith("/") or "\\" in name or ".." in Path(name).parts
+
+
 def check(path: Path) -> list[str]:
     """Problemas encontrados no pacote (lista vazia = aprovado)."""
     problems = []
@@ -75,7 +80,7 @@ def check(path: Path) -> list[str]:
         if len(names) != len(set(names)):
             problems.append("há caminhos duplicados no ZIP")
         for name in names:
-            if name.startswith("/") or "\\" in name or ".." in Path(name).parts:
+            if unsafe_zip_path(name):
                 problems.append(f"caminho inseguro no ZIP: {name}")
             if not name.startswith(PREFIX):
                 problems.append(f"fora da pasta {PREFIX}: {name}")
