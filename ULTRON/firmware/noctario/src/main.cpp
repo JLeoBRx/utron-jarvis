@@ -49,6 +49,8 @@ noct::Core core(output, "noctario-1.0");
 bool linked = false;
 uint32_t lastTickUs = 0;
 
+void saveNvs();  // usado também pelo migrador de configuração da NVS
+
 void pwmSetup() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
   ledcAttach(PIN_PWMA, PWM_HZ, PWM_BITS);
