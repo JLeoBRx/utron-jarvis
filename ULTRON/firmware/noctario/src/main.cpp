@@ -1,10 +1,10 @@
 // Noctário — camada Arduino (ESP32 DevKit + TB6612FNG + 8 QTR analógicos + sensor de cruzamento + LED).
 //
-// PINAGEM EXATAMENTE COMO RECEBIDA (especificação do usuário; o código original não foi fornecido):
+// PINAGEM conferida com os sketches originais Noctario_JARVIS (20/10) e Nefarious_6 (28/10):
 //   motor DIREITO  (canal A do TB6612FNG): PWMA 21, AIN1 18, AIN2 19
 //   motor ESQUERDO (canal B do TB6612FNG): PWMB 23, BIN1 4,  BIN2 22
 //   STBY 5 · sensor de cruzamento 34 · LED 15
-//   QTR (esquerda → direita, a confirmar): 32, 33, 25, 26, 27, 14, 12, 13
+//   QTR: pinos na ordem do sketch; orientação física esquerda/direita ainda exige ensaio na bancada.
 //
 // Cuidados de hardware (ver README.md): GPIO 25/26/27/14/12/13 são ADC2 (o Wi-Fi nunca é ligado aqui);
 // GPIO 12 é pino de strapping (nível alto no boot pode impedir a partida); GPIO 34 não tem pull-up
@@ -166,7 +166,7 @@ void loop() {
     if (nowUs - lastTickUs > 4 * period) lastTickUs = nowUs;   // atrasou muito: não tenta "recuperar" ciclos
     uint16_t raw[noct::SENSORS];
     for (int i = 0; i < noct::SENSORS; ++i) raw[i] = (uint16_t)analogRead(PIN_QTR[i]);
-    bool cross = digitalRead(PIN_CROSS) == HIGH;
+    bool cross = digitalRead(PIN_CROSS) == HIGH; // core aplica xact=0: LOW ativo, borda de descida
     int left = 0, right = 0;
     core.tick(millis(), raw, cross, left, right);
     drive(left, right, core.motorsEnabled());
