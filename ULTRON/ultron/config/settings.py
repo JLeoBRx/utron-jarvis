@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import threading
+import time
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -349,13 +350,18 @@ class SettingsManager:
         with self._lock:
             settings = Settings()
             stored: dict[str, Any] = {}
+            unreadable = ""
             if self.path.is_file():
                 try:
                     stored = json.loads(self.path.read_text(encoding="utf-8")) or {}
                 except (OSError, ValueError) as exc:
                     log.warning("settings.json ilegível (%s); usando padrões", exc)
                     stored = {}
+                    unreadable = self._keep_unreadable()
             stored, notes = migrate(stored)
+            if unreadable:
+                notes = [*notes, f"settings.json ilegível: padrões em uso; o arquivo original foi guardado em "
+                                 f"{unreadable}"]
             if notes and self.path.is_file():
                 self._backup_and_rewrite(stored, notes)
             chosen = (profile or os.environ.get("JARVIS_PROFILE") or os.environ.get("ULTRON_PROFILE")
@@ -373,6 +379,21 @@ class SettingsManager:
             self.settings = settings
             self.migration_notes = notes
             return settings
+
+    def _keep_unreadable(self) -> str:
+        """Guarda o settings.json ilegível ANTES que a próxima gravação o substitua (uma cópia por conteúdo)."""
+        try:
+            raw = self.path.read_bytes()
+            for old in self.path.parent.glob("settings.ilegivel-*.json"):
+                if old.read_bytes() == raw:
+                    return str(old)
+            copy = self.path.with_name(f"settings.ilegivel-{time.strftime('%Y%m%d-%H%M%S')}.json")
+            copy.write_bytes(raw)
+        except OSError as exc:
+            log.warning("não foi possível guardar o settings.json ilegível: %s", exc)
+            return ""
+        log.warning("settings.json ilegível guardado em %s", copy)
+        return str(copy)
 
     def _backup_and_rewrite(self, stored: dict, notes: list[str]) -> None:
         """Guarda o arquivo original e grava a versão migrada (só campos de identidade mudam)."""

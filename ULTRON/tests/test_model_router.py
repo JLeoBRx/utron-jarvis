@@ -44,6 +44,23 @@ class OllamaClientTest(unittest.TestCase):
             self.assertEqual(ctx.exception.kind, "CANCELLED")
             self.assertLess(time.perf_counter() - started, 1.0)
 
+    def test_cancel_before_the_first_token_releases_the_caller_at_once(self):
+        """Modelo ainda carregando (nada chegou, nem os cabeçalhos): cancelar encerra a conexão na hora."""
+        def slow(payload):
+            time.sleep(3.0)
+            return "tarde demais"
+        with FakeOllama(["qwen2.5:3b"], responder=slow) as fake:
+            client = OllamaClient(fake.url)
+            token = CancellationToken()
+            threading.Timer(0.2, token.cancel).start()
+            started = time.perf_counter()
+            with self.assertRaises(OllamaError) as ctx:
+                client.chat("qwen2.5:3b", [{"role": "user", "content": "oi"}], cancel=token)
+            self.assertEqual(ctx.exception.kind, "CANCELLED")
+            self.assertLess(time.perf_counter() - started, 1.0)
+            answer = client.chat("qwen2.5:3b", [{"role": "user", "content": "de novo"}])
+            self.assertEqual(answer.content, "tarde demais", "a chamada seguinte funciona normalmente")
+
     def test_missing_model_dead_server_and_local_mode(self):
         with FakeOllama(["qwen2.5:3b"]) as fake:
             with self.assertRaises(OllamaError) as ctx:

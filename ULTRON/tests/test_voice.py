@@ -420,6 +420,38 @@ class RealSpeechIntegrationTest(unittest.TestCase):
         vp.flush()
         self.assertTrue(commands and "navegador" in commands[0], commands)
 
+    def test_calibration_from_real_recognition_keeps_known_forms_and_refuses_common_words(self):
+        """CALIBRAR com o reconhecedor real: "Jarvis" sintetizado pelo Piper (NÃO é microfone) ouvido pelo Vosk
+        do pacote. Seja qual for a transcrição desta plataforma, as formas conhecidas ficam e palavra comum
+        nunca vira forma forte; o comando ``python -m ultron.voice.calibrate`` roda de ponta a ponta."""
+        from unittest import mock
+
+        from ultron.config import paths
+        from ultron.voice import calibrate
+        from ultron.voice.stt import SMALL, VoskSTT
+        from ultron.voice.tts import PiperSynth
+        from ultron.voice.wake_word import DEFAULT_STRONG_VARIANTS, _NEVER_VARIANTS
+        voice = paths.voices_dir() / "pt_BR-faber-medium.onnx"
+        model = paths.stt_models_dir() / SMALL
+        if not voice.is_file() or not (model / "final.mdl").is_file():
+            self.skipTest("voz ou modelo de fala ausente em assets/")
+        synth = PiperSynth(str(voice))
+        takes = []
+        for text in ("Jarvis.", "Jarvis!", "Jarvis?"):
+            samples, rate = synth.synthesize(text)
+            takes.append(dsp.to_int16(np.concatenate([np.zeros(4000, np.float32), dsp.resample(samples, 16000 / rate),
+                                                      np.zeros(12000, np.float32)]), 0.8))
+        known = tuple(DEFAULT_STRONG_VARIANTS)
+        result = calibrate.calibrate(VoskSTT(model), takes, known)
+        self.assertTrue(set(known) <= set(result.variants), "as formas conhecidas nunca somem")
+        self.assertFalse(set(result.added) & set(_NEVER_VARIANTS), "palavra comum não vira forma forte")
+        out = []
+        with mock.patch("builtins.input", lambda prompt="": ""), \
+                mock.patch("builtins.print", lambda *a, **k: out.append(" ".join(map(str, a)))):
+            code = calibrate.main(["3"], recorder=lambda seconds: takes.pop(0))
+        self.assertEqual(code, 0)
+        self.assertTrue(any(line.startswith("Ouvido:") for line in out), out)
+
 
 if __name__ == "__main__":
     unittest.main()

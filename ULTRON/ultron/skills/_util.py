@@ -25,6 +25,44 @@ def absolute_path(value: str) -> str:
     return os.path.abspath(value)
 
 
+def protected_roots() -> list[tuple[str, str]]:
+    """Pastas onde as skills nunca criam, alteram, movem nem apagam nada (ler e listar continuam livres):
+
+    * o sistema operacional;
+    * a inicialização automática (um arquivo ali roda sozinho a cada login: persistência oculta);
+    * o próprio JARVIS: programa e plugins (um .py ali é executado na próxima partida) e os dados do
+      usuário (memória pessoal, lembretes, backups), que só os módulos do JARVIS alteram."""
+    from ..config import paths
+    roots = [(str(paths.project_root()), "a pasta do programa do JARVIS"),
+             (str(Path(__file__).resolve().parent.parent.parent), "a pasta do programa do JARVIS"),
+             (str(paths.data_dir()), "os dados do JARVIS (memória pessoal, plugins e backups)")]
+    if os.name == "nt":
+        env = os.environ
+        for key, label in (("SystemRoot", "a pasta do Windows"), ("ProgramFiles", "Arquivos de Programas"),
+                           ("ProgramFiles(x86)", "Arquivos de Programas"), ("ProgramW6432", "Arquivos de Programas"),
+                           ("ProgramData", "ProgramData")):
+            if env.get(key):
+                roots.append((env[key], label))
+        if env.get("APPDATA"):
+            roots.append((os.path.join(env["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
+                          "a inicialização automática do Windows"))
+    else:
+        for folder in ("/bin", "/boot", "/dev", "/etc", "/lib", "/lib32", "/lib64", "/proc", "/sbin", "/sys", "/usr",
+                       "/System", "/Library"):
+            roots.append((folder, "o sistema operacional"))
+        roots.append((os.path.join(os.path.expanduser("~"), ".config", "autostart"), "a inicialização automática"))
+    return [(os.path.normcase(os.path.realpath(path)), label) for path, label in roots if path]
+
+
+def protected_reason(path: str) -> str:
+    """Descrição da pasta protegida que contém ``path`` (links resolvidos), ou ``""``."""
+    target = os.path.normcase(os.path.realpath(path))
+    for root, label in protected_roots():
+        if target == root or target.startswith(root.rstrip(os.sep) + os.sep):
+            return label
+    return ""
+
+
 def pyautogui():
     """Importa o pyautogui sob demanda com FAILSAFE ligado (canto superior esquerdo aborta)."""
     global _pyautogui

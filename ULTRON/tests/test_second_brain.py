@@ -415,5 +415,74 @@ class CaptureTest(unittest.TestCase):
         self.assertFalse(self.capture.auto("tenho que trocar a senha do banco amanhã às 9h").ok)
 
 
+
+class QueriesTest(unittest.TestCase):
+    """Perguntas sobre a memória pessoal: a resposta sai SÓ dos registros salvos; sem registro correspondente,
+    diz que não encontrou — nunca completa com suposições."""
+
+    def setUp(self):
+        self.brain = Brain(dt.datetime(2026, 3, 10, 9, 0))            # terça-feira, 9h
+        self.sb = self.brain.service
+
+    def tearDown(self):
+        self.brain.close()
+
+    def ask(self, text):
+        from ultron.secondbrain.queries import answer
+        return answer(self.sb, text)
+
+    def test_with_nothing_saved_every_question_says_so(self):
+        cases = {"quais são minhas prioridades de hoje?": "Não há compromissos nem tarefas prioritárias registrados "
+                                                         "para hoje.",
+                 "o que está atrasado?": "Nada atrasado.",
+                 "o que preciso terminar esta semana?": "Não há tarefas abertas com prazo até o fim desta semana.",
+                 "quais ideias salvei para o projeto Atlas?": "Não encontrei ideias salvas para Atlas.",
+                 "o que eu havia decidido sobre o orçamento?": "Não encontrei decisões registradas sobre orçamento.",
+                 "quais são meus projetos?": "Nenhum projeto ativo registrado.",
+                 "o que tenho amanhã?": "Nada agendado para amanhã.",
+                 "o que anotei sobre a viagem?": 'Não encontrei registros sobre "a viagem".'}
+        for question, expected in cases.items():
+            reply = self.ask(question)
+            self.assertEqual((reply.text, reply.kind, reply.records), (expected, "empty", []), question)
+
+    def test_answers_come_only_from_saved_records(self):
+        sb = self.sb
+        atlas = sb.create("project", "Atlas")
+        sb.create("idea", "Painel solar portátil", project="Atlas")
+        sb.create("idea", "Bateria modular", project="Atlas")
+        sb.create("idea", "Horta vertical")                                   # de outro assunto
+        sb.create("task", "Revisar orçamento", when="2026-03-08 18:00", priority=3)
+        sb.create("task", "Entregar relatório", when="2026-03-13 17:00", project="Atlas")
+        sb.create("event", "Dentista", when="2026-03-11 15:00")
+        sb.create("note", "Usar fornecedor local", body="sobre o orçamento do Atlas: menor frete",
+                  tags=("decisão",))
+        ideas = self.ask("quais ideias salvei para o projeto Atlas?")
+        self.assertEqual((ideas.kind, len(ideas.records)), ("list", 2))
+        self.assertIn("Painel solar portátil", ideas.text)
+        self.assertNotIn("Horta vertical", ideas.text, "só as ideias do projeto perguntado")
+        overdue = self.ask("o que está atrasado?")
+        self.assertEqual([r.title for r in overdue.records], ["Revisar orçamento"])
+        week = self.ask("o que preciso terminar esta semana?")
+        self.assertIn("Entregar relatório", week.text)
+        tomorrow = self.ask("o que tenho amanhã?")
+        self.assertIn("Dentista", tomorrow.text)
+        decided = self.ask("o que eu havia decidido sobre o orçamento?")
+        self.assertIn("Usar fornecedor local", decided.text)
+        projects = self.ask("quais são meus projetos?")
+        self.assertIn("Atlas (3 aberto(s))", projects.text, "2 ideias e 1 tarefa ligadas ao projeto")
+        self.assertEqual(projects.records[0]["id"] if isinstance(projects.records[0], dict) else projects.records[0].id,
+                         atlas.id)
+        found = self.ask("o que anotei sobre painel solar?")
+        self.assertEqual((found.kind, found.query), ("list", "search"))
+        self.assertIn("Painel solar portátil", found.text)
+        nothing = self.ask("o que anotei sobre submarino?")
+        self.assertEqual((nothing.kind, nothing.records), ("empty", []))
+
+    def test_ambiguous_reference_asks_instead_of_guessing(self):
+        self.sb.create("task", "Relatório de vendas")
+        self.sb.create("task", "Relatório de compras")
+        reply = self.ask("quais tarefas dependem do relatório?")
+        self.assertEqual(reply.kind, "clarify", reply.text)
+
 if __name__ == "__main__":
     unittest.main()

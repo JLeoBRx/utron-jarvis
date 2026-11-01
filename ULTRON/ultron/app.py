@@ -26,6 +26,7 @@ import importlib.util
 import logging
 import logging.handlers
 import os
+import sqlite3
 import sys
 import threading
 import time
@@ -110,6 +111,31 @@ def setup_logging(debug: bool = False) -> None:
         root.addHandler(console)
 
 
+class StartupError(RuntimeError):
+    """O JARVIS não pôde abrir algo essencial; a mensagem diz o que aconteceu e o que fazer."""
+
+
+def _database_problem(exc: Exception) -> StartupError:
+    return StartupError(
+        f"O banco de memória do JARVIS não abriu ({exc}). O arquivo NÃO foi alterado: {paths.database_path()}\n"
+        "Para recuperar, com o JARVIS fechado: START_JARVIS.bat --list-backups e depois "
+        "START_JARVIS.bat --restore-backup ARQUIVO. Para começar com um banco novo, mova o arquivo para outra "
+        "pasta antes de iniciar.")
+
+
+def _show_startup_error(text: str) -> None:
+    """Sem console (pythonw), a mensagem precisa aparecer numa janela; com console, o texto basta."""
+    if sys.stderr is not None:
+        return
+    try:
+        from PySide6 import QtWidgets
+        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        QtWidgets.QMessageBox.critical(None, "J.A.R.V.I.S. — não foi possível iniciar", text)
+        del app
+    except Exception:                                  # sem interface: fica o registro no log
+        pass
+
+
 def _make_core(args: argparse.Namespace, *, voice: bool | None = None, perception: bool | None = None):
     from .config import settings as settings_module
     from .core.neural_core import NeuralCore
@@ -117,9 +143,12 @@ def _make_core(args: argparse.Namespace, *, voice: bool | None = None, perceptio
     manager = settings_module.manager()
     if args.profile:
         manager.load(args.profile)
-    return NeuralCore(manager, voice=not args.no_voice if voice is None else voice,
-                      perception=not args.no_perception if perception is None else perception,
-                      plugins=not args.no_plugins)
+    try:
+        return NeuralCore(manager, voice=not args.no_voice if voice is None else voice,
+                          perception=not args.no_perception if perception is None else perception,
+                          plugins=not args.no_plugins)
+    except sqlite3.DatabaseError as exc:
+        raise _database_problem(exc) from exc
 
 
 def _wait_voice_ready(core, timeout: float = 30.0) -> None:
@@ -348,7 +377,10 @@ def run_data_command(args: argparse.Namespace) -> int:
         if result["previous"]:
             print(f"O banco anterior foi guardado em {result['previous']}")
         return 0
-    db = Database(paths.database_path())
+    try:
+        db = Database(paths.database_path())
+    except sqlite3.DatabaseError as exc:
+        raise _database_problem(exc) from exc
     try:
         if args.backup:
             path = backup.create_backup(db, reason="manual")
@@ -373,6 +405,15 @@ def main(argv: list[str] | None = None) -> int:
     setup_logging(args.debug)
     log = logging.getLogger("ultron")
     log.info("JARVIS %s iniciando (%s)", __version__, " ".join(sys.argv[1:]) or "HUB")
+    try:
+        return _dispatch(args, log)
+    except StartupError as exc:
+        log.error("início interrompido: %s", exc)       # no console (stderr) e no log; sem console, numa janela
+        _show_startup_error(str(exc))
+        return 3
+
+
+def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
     if args.list_mics or args.mic:
         return run_microphones(args)
     from .platform import control, single_instance

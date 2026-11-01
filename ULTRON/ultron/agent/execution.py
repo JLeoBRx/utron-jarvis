@@ -156,6 +156,13 @@ class ExecutionEngine:
                 False, error=f"argumentos inválidos: {exc}", error_kind="INVALID_ARGUMENT"), started=started))
         action.args = args
         try:
+            refusal = skill.refuse_reason(args)
+        except Exception as exc:                          # na dúvida, recusa: a checagem é de segurança
+            refusal = f"não foi possível conferir a ação com segurança: {exc}"
+        if refusal:
+            return self._finish(ExecutionRecord(action, "refused", SkillResult(
+                False, error=refusal, error_kind="PERMISSION_ERROR"), started=started))
+        try:
             skip_reason = skill.precheck(self._ctx(cancel), args)
         except Exception:
             skip_reason = None

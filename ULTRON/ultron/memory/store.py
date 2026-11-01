@@ -390,14 +390,21 @@ class Database:
         destination.parent.mkdir(parents=True, exist_ok=True)
         partial = destination.with_name(destination.name + ".partial")
         target = sqlite3.connect(str(partial))
+        done = False
         try:
             with self._lock:
                 self._conn.backup(target)
             row = target.execute("PRAGMA quick_check").fetchone()
             if not row or str(row[0]).lower() != "ok":
                 raise sqlite3.DatabaseError("a cópia não passou na verificação de integridade")
+            done = True
         finally:
             target.close()
+            if not done:                                   # disco cheio, cópia ruim: nada de meio arquivo
+                try:
+                    partial.unlink()
+                except OSError:
+                    pass
         partial.replace(destination)
         return destination
 

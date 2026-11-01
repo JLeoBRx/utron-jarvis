@@ -1,13 +1,15 @@
 """Cliente do Ollama — o único caminho de chamada ao modelo local.
 
 * Somente biblioteca padrão (``urllib``).
-* ``chat`` usa *streaming* para permitir cancelamento real no meio da geração.
+* ``chat`` usa *streaming* para permitir cancelamento real no meio da geração — e também ANTES do primeiro
+  token (modelo ainda carregando): o cancelamento encerra a conexão e libera quem esperava na hora.
 * Erros são classificados (``OllamaError.kind``) para o Recovery Engine.
 * No modo de privacidade local, endereços que não sejam da própria máquina são recusados.
 * Nunca devolve resposta inventada: falha é sempre exceção.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import os
@@ -15,6 +17,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -25,6 +28,50 @@ from typing import Any, Callable, Iterator
 log = logging.getLogger("ultron.ollama")
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
+
+class _TrackedHTTPHandler(urllib.request.HTTPHandler):
+    """Guarda a conexão HTTP criada pelo urllib para que um cancelamento possa encerrá-la de outra thread."""
+
+    def __init__(self, connections: list):
+        super().__init__()
+        self._connections = connections
+
+    def http_open(self, req):
+        def connect(host, **kwargs):
+            connection = http.client.HTTPConnection(host, **kwargs)
+            self._connections.append(connection)
+            return connection
+        return self.do_open(connect, req)
+
+
+class _CancelWatch:
+    """Enquanto a chamada ao modelo estiver aberta, um cancelamento encerra o socket (conexão, espera dos
+    cabeçalhos ou leitura): quem esperava recebe o erro na hora, sem aguardar o primeiro token."""
+
+    def __init__(self, connections: list, cancel):
+        self._done = threading.Event()
+        self.fired = False
+        if cancel is None or not hasattr(cancel, "cancelled"):
+            return
+
+        def watch() -> None:
+            while not self._done.wait(0.05):
+                if cancel.cancelled:
+                    self.fired = True
+                    for connection in list(connections):
+                        sock = getattr(connection, "sock", None)
+                        if sock is not None:
+                            try:
+                                sock.shutdown(socket.SHUT_RDWR)
+                            except OSError:
+                                pass
+                    return
+
+        threading.Thread(target=watch, name="ollama-cancelamento", daemon=True).start()
+
+    def stop(self) -> None:
+        self._done.set()
 
 
 class OllamaError(RuntimeError):
@@ -91,13 +138,16 @@ class OllamaClient:
                                          f"(endereço configurado: {self.base_url}).")
 
     def _request(self, path: str, payload: dict | None = None, *, timeout: float | None = None,
-                 method: str | None = None):
+                 method: str | None = None, connections: list | None = None):
         self._guard()
         data = None if payload is None else json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(self.base_url + path, data=data,
                                      headers={"Content-Type": "application/json"},
                                      method=method or ("POST" if data is not None else "GET"))
         try:
+            if connections is not None and req.type == "http":
+                opener = urllib.request.build_opener(_TrackedHTTPHandler(connections))
+                return opener.open(req, timeout=timeout or self.timeout)
             return urllib.request.urlopen(req, timeout=timeout or self.timeout)
         except urllib.error.HTTPError as exc:
             body = ""
@@ -194,7 +244,15 @@ class OllamaClient:
             payload["options"] = options
         if keep_alive:
             payload["keep_alive"] = keep_alive
-        response = self._request("/api/chat", payload, timeout=timeout)
+        connections: list = []
+        watch = _CancelWatch(connections, cancel)
+        try:
+            response = self._request("/api/chat", payload, timeout=timeout, connections=connections)
+        except OllamaError as exc:
+            watch.stop()
+            if watch.fired:
+                raise OllamaError("CANCELLED", "geração cancelada") from exc
+            raise
         try:
             for raw in response:
                 if cancel is not None and getattr(cancel, "cancelled", False):
@@ -213,9 +271,16 @@ class OllamaClient:
                 yield chunk
                 if chunk.get("done"):
                     break
+            if watch.fired:                                   # o socket foi encerrado pelo cancelamento
+                raise OllamaError("CANCELLED", "geração cancelada")
         except (TimeoutError, socket.timeout) as exc:
             raise OllamaError("TIMEOUT", "o modelo parou de responder") from exc
+        except (OSError, http.client.HTTPException) as exc:
+            if watch.fired:
+                raise OllamaError("CANCELLED", "geração cancelada") from exc
+            raise OllamaError("UNAVAILABLE", f"conexão com o Ollama interrompida: {exc}") from exc
         finally:
+            watch.stop()
             response.close()
 
     def chat(self, model: str, messages: list[dict], *, tools: list | None = None,

@@ -20,6 +20,7 @@ Toda inferência roda no worker ``ai``; a interface nunca espera por nada daqui.
 from __future__ import annotations
 
 import logging
+import sqlite3
 import threading
 import time
 from typing import Any, Callable
@@ -516,6 +517,10 @@ class NeuralCore:
                 response = self.orchestrator.handle(Command(text, source=source), token)
         except CancelledError:
             response = Response(dialogue.say("cancelled"), "info", success=False)
+        except sqlite3.OperationalError as exc:          # disco cheio, banco somente leitura ou bloqueado
+            log.exception("banco de memória recusou a gravação")
+            response = Response(f"Não consegui gravar na memória do JARVIS ({exc}). Nada foi registrado; confira o "
+                                "espaço em disco e se a pasta de dados aceita gravação.", "error", success=False)
         except Exception as exc:  # o JARVIS nunca cai por causa de um pedido
             log.exception("falha ao processar pedido")
             response = Response(f"Falha interna ao processar o pedido ({type(exc).__name__}). Registrado.", "error",

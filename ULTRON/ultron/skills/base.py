@@ -206,6 +206,11 @@ class Skill:
         """Devolve um motivo quando a ação é desnecessária (nada a fazer). Evita pedir autorização à toa."""
         return None
 
+    def refuse_reason(self, args: dict) -> str:
+        """Motivo para recusar esta chamada ANTES de qualquer autorização (ex.: caminho numa pasta protegida):
+        nem um "sim" a libera. ``""`` = nada a recusar."""
+        return ""
+
     def describe_action(self, args: dict) -> str:
         return f"{self.name}({', '.join(f'{k}={v!r}' for k, v in args.items())})"
 

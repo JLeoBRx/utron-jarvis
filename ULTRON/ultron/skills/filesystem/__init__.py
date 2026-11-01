@@ -1,7 +1,9 @@
 """Skills de arquivos: localizar, abrir, criar, ler, editar, copiar, mover, renomear, excluir.
 
 * Exclusão sempre vai para a Lixeira (send2trash), nunca apaga definitivamente.
-* Antes de sobrescrever/editar, uma cópia ``.ultron.bak`` é criada.
+* Antes de sobrescrever/editar, uma cópia ``.ultron.bak`` é criada — nunca por cima de uma cópia anterior.
+* Nada é criado, alterado, movido ou apagado nas pastas protegidas (sistema operacional, inicialização
+  automática, programa e dados do JARVIS): a recusa vem antes de qualquer pedido de autorização.
 * Conteúdo lido de arquivos é dado não confiável, nunca instrução.
 * Cada operação tem verificação observando o disco de novo.
 """
@@ -14,7 +16,7 @@ import time
 from pathlib import Path
 
 from ...platform import system
-from .._util import absolute_path, norm
+from .._util import absolute_path, norm, protected_reason
 from ..base import Risk, Skill, SkillResult, VerificationResult, check, schema, string
 
 EXECUTABLE_EXTENSIONS = {".exe", ".com", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".msi", ".scr", ".reg", ".lnk",
@@ -32,9 +34,30 @@ def _digest(path: str) -> str:
 
 
 def _backup(path: str) -> str:
+    """Cópia antes de alterar: ``x.ultron.bak``, depois ``x.ultron.1.bak``... nunca por cima da anterior
+    (a primeira guarda o conteúdo original do usuário)."""
     backup = path + ".ultron.bak"
-    shutil.copy2(path, backup)
-    return backup
+    for number in range(1, 100):
+        if not os.path.exists(backup):
+            shutil.copy2(path, backup)
+            return backup
+        backup = f"{path}.ultron.{number}.bak"
+    raise ValueError("cópias de segurança demais para este arquivo; mova as antigas antes de editar de novo")
+
+
+def _root_or_home(path: str) -> bool:
+    home = str(Path.home())
+    return path in (home, os.path.dirname(home), os.path.abspath(os.sep)) or len(Path(path).parts) <= 2
+
+
+def _protected(path: str, action: str) -> str:
+    """Motivo da recusa quando ``path`` fica numa pasta protegida; ``""`` quando pode."""
+    try:
+        target = absolute_path(path)
+    except ValueError:
+        return "caminho inválido"
+    label = protected_reason(target)
+    return f"{action} recusado: {target} fica em {label} — o JARVIS não altera essa pasta" if label else ""
 
 
 def _read_text(path: str) -> str:
@@ -54,6 +77,15 @@ def _read_text(path: str) -> str:
 
 class _FsSkill(Skill):
     category = "filesystem"
+    guarded: dict = {}               # argumento com caminho → ação, conferido contra as pastas protegidas
+
+    def refuse_reason(self, args: dict) -> str:
+        for key, action in self.guarded.items():
+            if args.get(key):
+                reason = _protected(args[key], action)
+                if reason:
+                    return reason
+        return ""
 
 
 class SearchFiles(_FsSkill):
@@ -145,9 +177,13 @@ class CreateFolder(_FsSkill):
     description = "Criar uma pasta."
     inputs = schema({"path": string(1000)}, ("path",))
     risk = Risk.LOW
+    guarded = {"path": "criar pasta"}
 
     def execute(self, ctx, path: str) -> SkillResult:
         target = absolute_path(path)
+        refusal = self.refuse_reason({"path": target})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         if os.path.exists(target):
             return SkillResult(False, error=f"{target} já existe", error_kind="ALREADY_EXISTS")
         os.makedirs(target)
@@ -165,9 +201,13 @@ class CreateFile(_FsSkill):
     description = "Criar um arquivo de texto novo (não sobrescreve)."
     inputs = schema({"path": string(1000), "content": {"type": "string", "maxLength": 200000, "minLength": 0}}, ("path",))
     risk = Risk.MEDIUM
+    guarded = {"path": "criar arquivo"}
 
     def execute(self, ctx, path: str, content: str = "") -> SkillResult:
         target = absolute_path(path)
+        refusal = self.refuse_reason({"path": target})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         if os.path.exists(target):
             return SkillResult(False, error=f"{target} já existe", error_kind="ALREADY_EXISTS")
         os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
@@ -217,12 +257,16 @@ class WriteText(_FsSkill):
                      "mode": string(10, enum=["append", "overwrite"])}, ("path", "content", "mode"))
     risk = Risk.MEDIUM
     reversible = True
+    guarded = {"path": "escrever"}
 
     def risk_for(self, args):
         return Risk.HIGH if args.get("mode") == "overwrite" else Risk.MEDIUM
 
     def execute(self, ctx, path: str, content: str, mode: str) -> SkillResult:
         target = absolute_path(path)
+        refusal = self.refuse_reason({"path": target})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         if not os.path.isfile(target):
             return SkillResult(False, error=f"arquivo não encontrado: {target}", error_kind="FILE_NOT_FOUND")
         backup = _backup(target)
@@ -251,9 +295,13 @@ class EditText(_FsSkill):
                                                                               "minLength": 0}},
                     ("path", "find", "replace"))
     risk = Risk.HIGH
+    guarded = {"path": "editar"}
 
     def execute(self, ctx, path: str, find: str, replace: str) -> SkillResult:
         target = absolute_path(path)
+        refusal = self.refuse_reason({"path": target})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         if not os.path.isfile(target):
             return SkillResult(False, error=f"arquivo não encontrado: {target}", error_kind="FILE_NOT_FOUND")
         text = _read_text(target)
@@ -281,6 +329,7 @@ class CopyPath(_FsSkill):
     description = "Copiar arquivo ou pasta."
     inputs = schema({"source": string(1000), "destination": string(1000)}, ("source", "destination"))
     risk = Risk.MEDIUM
+    guarded = {"destination": "copiar para"}
 
     def risk_for(self, args):
         try:
@@ -294,6 +343,9 @@ class CopyPath(_FsSkill):
             return SkillResult(False, error=f"origem não encontrada: {src}", error_kind="FILE_NOT_FOUND")
         if os.path.isdir(dst) and os.path.isfile(src):
             dst = os.path.join(dst, os.path.basename(src))
+        refusal = self.refuse_reason({"destination": dst})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         real_src, real_dst = os.path.realpath(src), os.path.realpath(dst)
         if real_src == real_dst or (os.path.isdir(src) and os.path.commonpath((real_src, real_dst)) == real_src):
             return SkillResult(False, error="origem e destino se sobrepõem", error_kind="INVALID_ARGUMENT")
@@ -323,6 +375,15 @@ class MovePath(_FsSkill):
     inputs = schema({"source": string(1000), "destination": string(1000)}, ("source", "destination"))
     risk = Risk.HIGH
     reversible = True
+    guarded = {"source": "mover", "destination": "mover para"}
+
+    def refuse_reason(self, args: dict) -> str:
+        try:
+            if args.get("source") and _root_or_home(absolute_path(args["source"])):
+                return "mover a pasta raiz ou o perfil do usuário é recusado"
+        except ValueError:
+            return "caminho inválido"
+        return super().refuse_reason(args)
 
     def execute(self, ctx, source: str, destination: str) -> SkillResult:
         src, dst = absolute_path(source), absolute_path(destination)
@@ -330,6 +391,9 @@ class MovePath(_FsSkill):
             return SkillResult(False, error=f"origem não encontrada: {src}", error_kind="FILE_NOT_FOUND")
         if os.path.isdir(dst):
             dst = os.path.join(dst, os.path.basename(src))
+        refusal = self.refuse_reason({"source": src, "destination": dst})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         if os.path.exists(dst):
             return SkillResult(False, error=f"destino já existe: {dst}", error_kind="ALREADY_EXISTS")
         shutil.move(src, dst)
@@ -350,14 +414,23 @@ class DeletePath(_FsSkill):
     risk = Risk.CRITICAL
     reversible = True                     # Lixeira, mas trata como crítico por segurança
     requirements = {"modules": ["send2trash"]}
+    guarded = {"path": "excluir"}
+
+    def refuse_reason(self, args: dict) -> str:
+        try:
+            if args.get("path") and _root_or_home(absolute_path(args["path"])):
+                return "exclusão de pasta raiz ou do perfil recusada"
+        except ValueError:
+            return "caminho inválido"
+        return super().refuse_reason(args)
 
     def execute(self, ctx, path: str) -> SkillResult:
         target = absolute_path(path)
         if not os.path.exists(target):
             return SkillResult(False, error=f"não encontrei {target}", error_kind="FILE_NOT_FOUND")
-        home = str(Path.home())
-        if target in (home, os.path.dirname(home), os.path.abspath(os.sep)) or len(Path(target).parts) <= 2:
-            return SkillResult(False, error="exclusão de pasta raiz ou do perfil recusada", error_kind="PERMISSION_ERROR")
+        refusal = self.refuse_reason({"path": target})
+        if refusal:
+            return SkillResult(False, error=refusal, error_kind="PERMISSION_ERROR")
         from send2trash import send2trash
         send2trash(target)
         return SkillResult(True, f"{os.path.basename(target)} movido para a Lixeira.", [target], {"path": target})

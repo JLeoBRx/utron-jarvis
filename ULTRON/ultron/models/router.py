@@ -303,6 +303,11 @@ class ModelRouter:
         try:
             return self.client.chat(selection.model, messages, **kwargs)
         except OllamaError as exc:
+            if exc.kind in ("UNAVAILABLE", "TIMEOUT", "HTTP", "BAD_RESPONSE") and self._bus is not None:
+                # o modelo falhou no meio do pedido: o rosto e o histórico mostram a falha real
+                self._bus.publish(EventType.MODEL_UNAVAILABLE, {"task": task, "provider": "ollama",
+                                                                "model": selection.model, "kind": exc.kind,
+                                                                "reason": str(exc)[:200]}, source="router")
             if exc.kind != "MODEL_MISSING":
                 raise
             self.refresh(force=True)                 # o modelo pode ter sido removido
