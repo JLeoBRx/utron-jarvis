@@ -26,7 +26,8 @@ class CommandLineTest(unittest.TestCase):
         cls.data = helpers.temp_dir("cli-")
         cls.env = {**os.environ, "ULTRON_DATA_DIR": str(cls.data), "QT_QPA_PLATFORM": "offscreen",
                    "JARVIS_OLLAMA_URL": f"http://127.0.0.1:{free_port()}", "JARVIS_OLLAMA_AUTOSTART": "0",
-                   "JARVIS_NETWORK_DISCOVERY": "0", "JARVIS_AUTO_BACKUP": "0"}
+                   "JARVIS_NETWORK_DISCOVERY": "0", "JARVIS_AUTO_BACKUP": "0",
+                   "PYTHONIOENCODING": "utf-8"}           # num pipe, o Windows usaria cp1252 (num console, não)
         cls.env.pop("JARVIS_DATA_DIR", None)
 
     def run_jarvis(self, *args, timeout=180):

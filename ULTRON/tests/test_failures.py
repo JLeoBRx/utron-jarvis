@@ -58,9 +58,11 @@ class SettingsFailureTest(unittest.TestCase):
 
 class DatabaseFailureTest(unittest.TestCase):
     def run_jarvis(self, data_dir, *args):
-        env = {**os.environ, "ULTRON_DATA_DIR": str(data_dir), "QT_QPA_PLATFORM": "offscreen"}
+        env = {**os.environ, "ULTRON_DATA_DIR": str(data_dir), "QT_QPA_PLATFORM": "offscreen",
+               "PYTHONIOENCODING": "utf-8"}                  # num pipe, o Windows usaria cp1252 (num console, não)
         return subprocess.run([sys.executable, str(helpers.ROOT / "main.py"), *args], cwd=helpers.ROOT, env=env,
-                              stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120)
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=120)
 
     def test_damaged_database_stops_startup_with_a_clear_message_and_is_left_untouched(self):
         data = helpers.temp_dir("dados-")

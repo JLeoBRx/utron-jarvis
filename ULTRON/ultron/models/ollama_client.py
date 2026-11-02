@@ -13,6 +13,7 @@ import http.client
 import json
 import logging
 import os
+import queue
 import shutil
 import socket
 import subprocess
@@ -45,33 +46,17 @@ class _TrackedHTTPHandler(urllib.request.HTTPHandler):
         return self.do_open(connect, req)
 
 
-class _CancelWatch:
-    """Enquanto a chamada ao modelo estiver aberta, um cancelamento encerra o socket (conexão, espera dos
-    cabeçalhos ou leitura): quem esperava recebe o erro na hora, sem aguardar o primeiro token."""
-
-    def __init__(self, connections: list, cancel):
-        self._done = threading.Event()
-        self.fired = False
-        if cancel is None or not hasattr(cancel, "cancelled"):
-            return
-
-        def watch() -> None:
-            while not self._done.wait(0.05):
-                if cancel.cancelled:
-                    self.fired = True
-                    for connection in list(connections):
-                        sock = getattr(connection, "sock", None)
-                        if sock is not None:
-                            try:
-                                sock.shutdown(socket.SHUT_RDWR)
-                            except OSError:
-                                pass
-                    return
-
-        threading.Thread(target=watch, name="ollama-cancelamento", daemon=True).start()
-
-    def stop(self) -> None:
-        self._done.set()
+def _abort(connections: list) -> None:
+    """Encerra as conexões de uma chamada cancelada (melhor esforço: libera o Ollama e o socket antes)."""
+    for connection in list(connections):
+        sock = getattr(connection, "sock", None)
+        if sock is None:
+            continue
+        for close in (lambda: sock.shutdown(socket.SHUT_RDWR), sock.close):
+            try:
+                close()
+            except OSError:
+                pass
 
 
 class OllamaError(RuntimeError):
@@ -244,20 +229,54 @@ class OllamaClient:
             payload["options"] = options
         if keep_alive:
             payload["keep_alive"] = keep_alive
+        # Uma thread lê a resposta e entrega as linhas numa fila; quem pediu espera NA FILA, olhando o
+        # cancelamento a cada 50 ms. Assim cancelar libera o JARVIS na hora em qualquer sistema — mesmo com o
+        # modelo ainda carregando, antes de qualquer byte (no Windows, encerrar o socket de outra thread não
+        # acorda quem está bloqueado nele).
         connections: list = []
-        watch = _CancelWatch(connections, cancel)
+        lines: queue.Queue = queue.Queue()
+        stop = threading.Event()
+
+        def read() -> None:
+            response = None
+            try:
+                response = self._request("/api/chat", payload, timeout=timeout, connections=connections)
+                for raw in response:
+                    if stop.is_set():
+                        break
+                    lines.put(("line", raw))
+                lines.put(("end", None))
+            except BaseException as exc:                      # entregue a quem espera, nunca perdido
+                lines.put(("error", exc))
+            finally:
+                if response is not None:
+                    try:
+                        response.close()
+                    except Exception:
+                        pass
+
+        threading.Thread(target=read, name="ollama-leitura", daemon=True).start()
+        cancelled = False
         try:
-            response = self._request("/api/chat", payload, timeout=timeout, connections=connections)
-        except OllamaError as exc:
-            watch.stop()
-            if watch.fired:
-                raise OllamaError("CANCELLED", "geração cancelada") from exc
-            raise
-        try:
-            for raw in response:
+            while True:
                 if cancel is not None and getattr(cancel, "cancelled", False):
+                    cancelled = True
                     raise OllamaError("CANCELLED", "geração cancelada")
-                line = raw.strip()
+                try:
+                    kind, value = lines.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                if kind == "end":
+                    return
+                if kind == "error":
+                    if isinstance(value, OllamaError):
+                        raise value
+                    if isinstance(value, (TimeoutError, socket.timeout)):
+                        raise OllamaError("TIMEOUT", "o modelo parou de responder") from value
+                    if isinstance(value, (OSError, ValueError, http.client.HTTPException)):
+                        raise OllamaError("UNAVAILABLE", f"conexão com o Ollama interrompida: {value}") from value
+                    raise value
+                line = value.strip()
                 if not line:
                     continue
                 try:
@@ -271,17 +290,10 @@ class OllamaClient:
                 yield chunk
                 if chunk.get("done"):
                     break
-            if watch.fired:                                   # o socket foi encerrado pelo cancelamento
-                raise OllamaError("CANCELLED", "geração cancelada")
-        except (TimeoutError, socket.timeout) as exc:
-            raise OllamaError("TIMEOUT", "o modelo parou de responder") from exc
-        except (OSError, http.client.HTTPException) as exc:
-            if watch.fired:
-                raise OllamaError("CANCELLED", "geração cancelada") from exc
-            raise OllamaError("UNAVAILABLE", f"conexão com o Ollama interrompida: {exc}") from exc
         finally:
-            watch.stop()
-            response.close()
+            stop.set()
+            if cancelled:
+                _abort(connections)
 
     def chat(self, model: str, messages: list[dict], *, tools: list | None = None,
              fmt: str | dict | None = None, options: dict | None = None, timeout: float | None = None,

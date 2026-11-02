@@ -94,7 +94,21 @@ class _Result(unittest.TextTestResult):
         self._count(test, 2)
 
 
+def _safe_output() -> None:
+    """O relatório nunca cai por um caractere: redirecionada (CI, arquivo), a saída vira UTF-8; num console,
+    o que a página de código não tiver vira '?' em vez de derrubar a impressão das falhas."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if stream.isatty():
+                stream.reconfigure(errors="replace")
+            else:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _safe_output()
     parser = argparse.ArgumentParser(description="Suíte de testes do JARVIS")
     parser.add_argument("modules", nargs="*", help="módulos de teste (ex.: test_voice)")
     parser.add_argument("--quick", action="store_true", help="pula testes lentos")
