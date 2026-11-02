@@ -46,6 +46,7 @@ def run(args: list[str], *, timeout: float = 10.0, env: dict | None = None,
         full_env.update({k: str(v) for k, v in env.items()})
     try:
         proc = subprocess.run(list(args), capture_output=True, timeout=timeout, env=full_env,
+                              stdin=subprocess.DEVNULL,   # nunca lê a entrada do usuário (o PowerShell leria)
                               creationflags=NO_WINDOW, shell=False)
     except FileNotFoundError:
         return CommandResult(127, "", f"{args[0]} não encontrado")

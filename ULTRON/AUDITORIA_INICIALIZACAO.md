@@ -63,6 +63,11 @@ nele é idêntico ao reproduzido.
    voz), prompt com o nome configurado (`profile_name`), cada resposta esperada antes do próximo prompt,
    confirmações de autorização, Ctrl+C cancela o pedido, `sair` e `--stop` encerram em ordem.
 
+8. **Processos filhos e a entrada do usuário**: a verificação da GPU (no boot) chamava o PowerShell sem
+   fechar a entrada padrão; com a entrada redirecionada ele a lia até o fim — no CI do Windows, as linhas
+   enviadas ao modo console sumiam antes do primeiro prompt. Todas as chamadas de processo agora fecham a
+   entrada (teste confere o código inteiro).
+
 ## O que continua sem verificação no seu PC
 
 A janela real com a sua bandeja, o seu microfone e a sua voz. Os testes declaram a bandeja disponível no Qt

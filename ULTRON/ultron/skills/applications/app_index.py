@@ -150,7 +150,8 @@ def launch(entry: dict) -> None:
     if kind == "appid":
         if not _APPID_OK.match(target):
             raise ValueError("identificador de aplicativo inválido")
-        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + target], creationflags=system.NO_WINDOW)
+        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + target], creationflags=system.NO_WINDOW,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
     if kind == "lnk":
         real = os.path.realpath(target)

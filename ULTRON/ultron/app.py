@@ -580,8 +580,8 @@ def _open_console_window(args: argparse.Namespace) -> None:
     if args.profile:
         command += ["--profile", args.profile]
     env = {**os.environ, "JARVIS_PAUSE_ON_ERROR": "1"}       # a janela nova não some se o console falhar
-    if sys.platform == "win32":
-        subprocess.Popen(command, cwd=str(paths.project_root()), env=env,
+    if sys.platform == "win32":                       # stdin=None: a janela nova lê o PRÓPRIO console
+        subprocess.Popen(command, cwd=str(paths.project_root()), env=env, stdin=None,
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
     else:
-        subprocess.Popen(command, cwd=str(paths.project_root()), env=env, start_new_session=True)
+        subprocess.Popen(command, cwd=str(paths.project_root()), env=env, stdin=None, start_new_session=True)

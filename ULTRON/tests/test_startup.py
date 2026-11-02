@@ -267,6 +267,25 @@ class ConsoleModeTest(_Processes):
         self.assertRegex(out, r"São \d{2}:\d{2}")
 
 
+class ChildProcessInputTest(unittest.TestCase):
+    def test_no_child_process_inherits_the_user_input(self):
+        """Todo processo filho do JARVIS diz de onde vem a entrada. O PowerShell (nome da GPU, no boot) lia a entrada
+        padrão até o fim quando ela era redirecionada: no CI do Windows, as linhas digitadas para o console sumiam
+        antes do primeiro prompt."""
+        import ast
+        missing = []
+        for path in sorted((helpers.ROOT / "ultron").rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                func = getattr(node, "func", None)
+                if (isinstance(node, ast.Call) and isinstance(func, ast.Attribute)
+                        and isinstance(func.value, ast.Name) and func.value.id == "subprocess"
+                        and func.attr in ("run", "Popen", "call", "check_call", "check_output")):
+                    if not {"stdin", "input"} & {k.arg for k in node.keywords}:
+                        missing.append(f"{path.relative_to(helpers.ROOT)}:{node.lineno}")
+        self.assertEqual(missing, [], "subprocesso sem stdin definido (use subprocess.DEVNULL)")
+
+
 class DiagnoseTest(unittest.TestCase):
     def test_a_step_that_does_not_answer_is_named_and_the_next_ones_run(self):
         from ultron import diagnose

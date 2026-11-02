@@ -320,6 +320,9 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
   permissões e executor; cabeçalho com o estado real, prompt com o nome configurado, confirmações, Ctrl+C
   cancela, `sair` e `--stop` encerram em ordem; segunda abertura recusada com aviso.
 * `START_JARVIS.bat --foreground` (a janela com o terminal mostrando erros) e `--gui-check`.
+* **Processos filhos não leem mais a entrada do usuário**: a verificação da GPU chamava o PowerShell sem
+  `stdin`, e ele consumia a entrada padrão quando ela era redirecionada — no CI do Windows, as linhas enviadas
+  ao console sumiam antes do primeiro prompt. Todas as chamadas agora fecham a entrada; teste confere.
 * Teste do Noctário que lia o histórico de operações antes de ele ser gravado: agora espera a gravação.
 * Testes: `test_startup.py` (9, processos reais: janela com bandeja, segunda abertura, `--stop` durante a
   abertura, falha da interface, console com conversa, memória, TARDIS e autorização, `--stop`, reabertura,

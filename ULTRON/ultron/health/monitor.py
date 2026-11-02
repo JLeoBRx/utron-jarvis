@@ -70,7 +70,8 @@ def _gpu_name_windows() -> str:
         try:
             out = subprocess.run(["powershell", "-NoProfile", "-Command",
                                   "(Get-CimInstance Win32_VideoController | Select-Object -First 1).Name"],
-                                 capture_output=True, text=True, timeout=6, creationflags=_NO_WINDOW)
+                                 capture_output=True, text=True, timeout=6, creationflags=_NO_WINDOW,
+                                 stdin=subprocess.DEVNULL)   # com a entrada redirecionada, o PowerShell a consumiria
             name = out.stdout.strip()
         except (OSError, subprocess.SubprocessError):
             pass
@@ -95,7 +96,7 @@ def check_gpu(model_probe: Callable[[], list[dict]] | None = None) -> dict[str, 
         try:
             out = subprocess.run([smi, "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
                                   "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=3,
-                                 creationflags=_NO_WINDOW)
+                                 creationflags=_NO_WINDOW, stdin=subprocess.DEVNULL)
             line = (out.stdout.strip().splitlines() or [""])[0]
             name, util, used, total, temp = [x.strip() for x in line.split(",")]
             util_v, temp_v = float(util), float(temp)
