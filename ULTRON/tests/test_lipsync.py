@@ -70,6 +70,28 @@ class TrackTest(unittest.TestCase):
         self.assertGreaterEqual(track.total_words, 1)
 
 
+class FrameBoundaryTest(unittest.TestCase):
+    def test_silence_right_after_speech_keeps_the_mouth_closed_at_frame_instants(self):
+        """0,29 s gerado por np.arange é 28,999999999999996 quadros: antes, a boca do quadro 29 (silêncio) saía
+        aberta em 1e-15, misturada com o quadro 28 (fala). Visto no CI do Windows com a voz Piper real."""
+        from ultron.voice.lipsync import FRAME_S
+        rate, n = 22050, int(22050 * 3.0)
+        t = np.arange(n) / rate
+        signal = np.zeros(n, dtype=np.float32)
+        start, end = int(0.10 * rate), int(0.280 * rate)       # a fala termina no fim do quadro 28
+        signal[start:end] = 0.5 * np.sin(2 * np.pi * 200 * t[start:end])
+        track = LipSyncTrack(signal, rate, None)
+        self.assertGreater(track.params[28, 0], 0)
+        self.assertLess(track.energy[29], 0.05)
+        instants = np.arange(0, track.duration, 0.01)
+        self.assertNotEqual(int(instants[29] / FRAME_S), 29, "o instante cai com resíduo antes do quadro 29")
+        params, energy, _ = track.at(instants[29])
+        self.assertEqual(params[0], 0.0)
+        opening = np.array([track.at(s)[0][0] for s in instants])
+        energies = np.array([track.at(s)[1] for s in instants])
+        self.assertTrue((opening[energies < 0.05] == 0).all())
+
+
 @unittest.skipUnless((helpers.ROOT / "assets" / "voices" / "pt_BR-faber-medium.onnx").is_file()
                      and helpers.module_available("piper"), "voz Piper não instalada")
 class PiperRealVoiceTest(unittest.TestCase):

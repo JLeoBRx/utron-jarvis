@@ -290,9 +290,12 @@ class LipSyncTrack:
         if seconds < 0 or seconds >= self.duration:
             return REST.copy(), 0.0, -1
         position = seconds / FRAME_S
-        i = int(position)
+        i = int(position + 1e-6)                    # instante sobre um quadro: o próprio quadro. Sem isso, 0.29 s
+        w = max(0.0, position - i)                  # vira o quadro 28 + 0.999999… e o silêncio do 29 "abre" a boca
+        if w < 1e-6:                                # em 1e-15 (resíduo de ponto flutuante)
+            w = 0.0
+        i = min(i, self.n - 1)
         j = min(self.n - 1, i + 1)
-        w = position - i
         params = self.params[i] * (1 - w) + self.params[j] * w
         return params, float(self.energy[i] * (1 - w) + self.energy[j] * w), int(self.word_ffill[i])
 

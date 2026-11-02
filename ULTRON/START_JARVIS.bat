@@ -1,6 +1,6 @@
 @echo off
 setlocal
-chcp 65001 >nul
+chcp 65001 <nul >nul
 cd /d "%~dp0"
 
 rem START_JARVIS.bat                 abre o JARVIS (TARDIS, Noctario e as outras paginas pela navegacao ou F1-F7)
