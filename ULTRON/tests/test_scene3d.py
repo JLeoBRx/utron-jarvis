@@ -229,6 +229,7 @@ class ControllerSceneTest(unittest.TestCase):
             scene.unavailable.connect(controller_self._scene3d_failed)
             scene.action_requested.connect(controller_self._scene3d_request)
             controller_self.scene3d, controller_self.scene3d_reason = scene, ""
+            controller_self.avatar_reason = "cena 3D (abrindo)"          # como a vista real
             self.created.append(scene)
             return scene
 
@@ -295,6 +296,7 @@ class ControllerSceneTest(unittest.TestCase):
         self.assertEqual(c.scene3d_reason, "contexto WebGL perdido (teste)")
         self.assertTrue(scene.disposed)
         self.assertIsInstance(c.avatar, AvatarView)
+        self.assertEqual(c.avatar_reason, "CPU", "o texto da vista acompanha a troca (achado no CI do Windows)")
         self.assertIsNone(c.tardis_page.room.scene3d)
         self.assertTrue(c.tardis_page.room.view.isVisibleTo(c.tardis_page.room), "a sala 2D volta a desenhar")
         c.open_page("jarvis")

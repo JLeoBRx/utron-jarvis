@@ -202,6 +202,7 @@ class HudController(QtCore.QObject):
         room = self.tardis_page.room if self.tardis_page is not None else None
         if room is not None and room.scene3d is view:
             room.detach_scene3d()
+        self.avatar_reason = ""                         # era "cena 3D (abrindo)": agora vale o desenho 2D
         self.avatar = self._make_avatar_2d(getattr(self.core.settings(), "render_backend", "cpu"))
         self.avatar.face_clicked.connect(lambda: self.window.input.mic.toggle())
         self.avatar.set_profile(self.profile.name, effects=self._effects_enabled())
