@@ -200,6 +200,8 @@ class BrandMark(QtWidgets.QWidget):
         self.angle = 0.0
         self.animated = True
         self.color = QtGui.QColor(theme.PRIMARY)
+        self.title = "J.A.R.V.I.S."
+        self.subtitle = "JUST A RATHER VERY INTELLIGENT SYSTEM"
         self.compact = False
         self.setFixedHeight(46)
         self.setMinimumWidth(170)
@@ -236,12 +238,11 @@ class BrandMark(QtWidgets.QWidget):
         p.drawEllipse(QtCore.QPointF(cx, cy), 6, 6)
         p.setPen(theme.TEXT_BRIGHT)
         p.setFont(theme.font(13, weight=700, spacing=3.0))
-        p.drawText(QtCore.QRectF(48, 4, 260, 22), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, "J.A.R.V.I.S.")
+        p.drawText(QtCore.QRectF(48, 4, 260, 22), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, self.title)
         if not self.compact:
             p.setPen(theme.TEXT_DIM)
             p.setFont(theme.font(6.5, spacing=1.6))
-            p.drawText(QtCore.QRectF(49, 25, 260, 14), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
-                       "JUST A RATHER VERY INTELLIGENT SYSTEM")
+            p.drawText(QtCore.QRectF(49, 25, 260, 14), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, self.subtitle)
         p.end()
 
 
@@ -809,7 +810,10 @@ class PlatformWindow(QtWidgets.QWidget):
         super().__init__()
         self.core = core
         self.view = view
-        self.setWindowTitle("J.A.R.V.I.S.")
+        self.identity = "J.A.R.V.I.S."               # o Protocolo ULTRON troca só isto (evento visual)
+        self.escape_override = False
+        self._escape_saved: dict = {}
+        self.setWindowTitle(self.identity)
         self.setWindowIcon(app_icon())
         self.resize(1440, 880)
         self.setMinimumSize(980, 600)
@@ -926,7 +930,7 @@ class PlatformWindow(QtWidgets.QWidget):
             self.stack.setCurrentWidget(widget)
         self.current_key = key
         self.nav.set_current(key, animate=animate)
-        self.setWindowTitle("J.A.R.V.I.S." if key == "jarvis" else f"J.A.R.V.I.S. — {PAGE_TITLES[key]}")
+        self.refresh_title()
         self._sync_escape()
         self.refresh_layout()
         if key == "jarvis":
@@ -934,10 +938,36 @@ class PlatformWindow(QtWidgets.QWidget):
         self.page_changed.emit(key)
         return widget
 
+    def refresh_title(self) -> None:
+        key = getattr(self, "current_key", "jarvis")
+        self.setWindowTitle(self.identity if key == "jarvis" or key not in PAGE_TITLES
+                            else f"{self.identity} — {PAGE_TITLES[key]}")
+
+    def set_escape_override(self, on: bool) -> None:
+        """Esc da plataforma vale em TODAS as páginas enquanto ligado (ex.: encerrar o Protocolo ULTRON); os
+        atalhos Esc próprios das páginas ficam suspensos e voltam exatamente como estavam."""
+        self.escape_override = bool(on)
+        if not on:
+            for shortcut, enabled in self._escape_saved.items():
+                try:
+                    shortcut.setEnabled(enabled)
+                except RuntimeError:                   # página destruída nesse meio-tempo
+                    pass
+            self._escape_saved = {}
+        self._sync_escape()
+
     def _sync_escape(self) -> None:
         """O TARDIS usa Esc para fechar a região aberta; nas outras páginas, Esc é da plataforma
         (dois atalhos iguais ativos ao mesmo tempo anulariam um ao outro no Qt)."""
         page = self.stack.currentWidget()
+        if getattr(self, "escape_override", False) and page is not None:
+            escape = QtGui.QKeySequence("Esc")
+            for shortcut in page.findChildren(QtGui.QShortcut):
+                if shortcut.key() == escape and shortcut not in self._escape_saved:
+                    self._escape_saved[shortcut] = shortcut.isEnabled()
+                    shortcut.setEnabled(False)
+            self.escape.setEnabled(True)
+            return
         self.escape.setEnabled(not hasattr(page, "open_region"))
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt)

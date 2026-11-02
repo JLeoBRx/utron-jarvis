@@ -1,6 +1,7 @@
 // O convés do JARVIS: piso metálico gravado, salão circular de nervuras com luz, feixes de luz volumétrica,
 // poeira suspensa e um painel holográfico com dados REAIS do sistema (sem dado, o painel diz que não há).
 import * as THREE from 'three';
+import { ULTRON_RED } from './ultron.js';
 import { disposer, canvasTexture, glowMaterial, glowTexture, PALETTE, physical, textPlate } from './materials.js';
 
 const HALL_R = 11.5;
@@ -201,6 +202,10 @@ export class Deck {
     this.avatarLight.color.copy(look.color);
     this.avatarLight.intensity = 2.5 + 3.5 * look.glow;
     this.floorMat.emissiveIntensity = 0.42 + 0.18 * look.glow;
+    const uk = this.ultron || 0;                             // Protocolo ULTRON: convés em vermelho
+    this.floorMat.emissive.setRGB(1, 1 - 0.7 * uk, 1 - 0.65 * uk);
+    this.ribLights.material.color.setHex(0x168bff).lerp(ULTRON_RED, uk);
+    this.shaftMat.uniforms.uColor.value.setHex(0x4fb7ff).lerp(ULTRON_RED, uk);
     // vista do núcleo: feixes e painel recuam (foco no ORBE)
     const f = 1 - Math.exp(-dt * 2.5);
     this.shaftMat.uniforms.uPower.value += ((look.focus ? 0 : 1) - this.shaftMat.uniforms.uPower.value) * f;

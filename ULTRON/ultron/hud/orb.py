@@ -55,6 +55,8 @@ class _OrbOverlay(QtWidgets.QWidget):
         p.setPen(QtGui.QPen(theme.with_alpha(theme.BG, 1.0), 4.0))
         p.drawEllipse(c, s / 2 - 1.5, s / 2 - 1.5)
         tone = theme.ALERT if self.orb.scene.runtime_state == "AWAITING_AUTHORIZATION" else theme.PRIMARY
+        if self.orb.ultron:
+            tone = theme.ERROR
         p.setPen(QtGui.QPen(theme.with_alpha(tone, 0.75), 1.4))
         p.drawEllipse(c, s / 2 - 3.5, s / 2 - 3.5)
         p.end()
@@ -77,6 +79,7 @@ class OrbWindow(QtWidgets.QWidget):
         self._drag: QtCore.QPoint | None = None
         self._dragged = False
         self.scene_view = None                      # a cena 3D emprestada (None = desenho 2D)
+        self.ultron = False                         # Protocolo ULTRON (evento visual): orbe vermelho
         self.overlay = _OrbOverlay(self)
         self.overlay.hide()
 
@@ -154,7 +157,7 @@ class OrbWindow(QtWidgets.QWidget):
         p.drawEllipse(c, s * 0.44, s * 0.44)
         p.setPen(QtCore.Qt.NoPen)
         authorization = scene.runtime_state == "AWAITING_AUTHORIZATION"
-        tone = theme.ALERT if authorization else theme.PRIMARY
+        tone = theme.ERROR if self.ultron else theme.ALERT if authorization else theme.PRIMARY
         level = STATE_LEVEL.get(scene.runtime_state, 0.3)
         breath = 0.5 + 0.5 * math.sin(2 * math.pi * scene.breath)
         mic = float(scene.telemetry.get("mic_level", 0.0)) if scene.telemetry.get("listening") else 0.0

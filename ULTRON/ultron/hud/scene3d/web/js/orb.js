@@ -11,6 +11,7 @@
 // Estados (só eventos reais): EM ESPERA, ESCUTANDO, PENSANDO, FALANDO, EXECUTANDO, ERRO, ALERTA,
 // PRIVACIDADE, INICIALIZANDO e SEM CONEXÃO (a página não recebe nada do JARVIS — o orbe apaga).
 import * as THREE from 'three';
+import { ULTRON_RED, ULTRON_GLOW } from './ultron.js';
 import { disposer, canvasTexture, glowMaterial, glowTexture, PALETTE } from './materials.js';
 
 const SHELLS = [[0.27, 26], [0.39, 44], [0.52, 70]];
@@ -266,6 +267,8 @@ export class Orb {
     const k = 1 - Math.exp(-dt * 2.6);
     for (const key of KEYS) this.p[key] += (target[key] - this.p[key]) * k;
     this.color.lerp(this.targetColor, k); this.accent.lerp(this.targetAccent, k);
+    const uk = this.ultron || 0;                             // Protocolo ULTRON: núcleo vermelho
+    if (uk > 0) { this.color.lerp(ULTRON_RED, uk); this.accent.lerp(ULTRON_GLOW, uk); }
     const p = this.p;
     const voice = this.state === 'speaking' ? this.voice : 0;
     const mic = this.state === 'listening' ? this.mic : 0;
@@ -275,7 +278,8 @@ export class Orb {
     u.uTime.value = t;
     u.uColor.value.copy(this.color); u.uAccent.value.copy(this.accent);
     u.uField.value = p.field; u.uCore.value = p.core; u.uVoice.value = voice;
-    this.netU.uPulses.value = p.pulses; this.netU.uPulseSpeed.value = p.pulseSpeed; this.netU.uNet.value = p.net;
+    this.netU.uPulses.value = Math.max(p.pulses, 0.85 * uk); this.netU.uPulseSpeed.value = p.pulseSpeed + 1.6 * uk;
+    this.netU.uNet.value = Math.max(p.net, 0.8 * uk);
     this.flowU.uFlow.value = p.flow; this.flowU.uFlowSpeed.value = 0.18 + 0.25 * Math.abs(p.flow) + voice * 0.4;
     // núcleo respira devagar; na fala, pulsa com a energia real da voz; na escuta, oscila com o microfone
     const breath = 1 + 0.03 * Math.sin(t * 1.3);

@@ -8,6 +8,7 @@
 // * Movimento: procedural, por estado REAL resolvido pelo JARVIS (nada é simulado aqui): respiração, apoio,
 //   olhar, piscadas, gestos pela energia real da fala, mãos na execução, boca pela trilha labial do áudio.
 import * as THREE from 'three';
+import { ULTRON_RED, ULTRON_GLOW } from './ultron.js';
 import { holoUniforms, holoLineMaterial, holoPointsMaterial, holoShellMaterial, holoCircuitMaterial, glowMaterial, glowTexture,
          disposer, canvasTexture, PALETTE } from './materials.js';
 
@@ -590,6 +591,7 @@ class Projector {
     base.position.y = 0.05;
     const lip = new THREE.Mesh(new THREE.TorusGeometry(0.97, 0.012, 8, 96), glowMaterial(PALETTE.cyan, 0.65));
     lip.rotation.x = Math.PI / 2; lip.position.y = 0.102;
+    this.lip = lip;
     this.group.add(base, lip);
     disposer.track(base.geometry); disposer.track(lip.geometry);
     // anéis gravados no topo: segmentos e marcas de telemetria (textura feita aqui)
@@ -663,6 +665,9 @@ class Projector {
     this.beamMat.uniforms.uTime.value = time;
     this.beamMat.uniforms.uPower.value = lerp(this.beamMat.uniforms.uPower.value, look.beam, 0.08);
     this.beamMat.uniforms.uColor.value.copy(look.color);
+    this.lip.material.color.copy(look.color);             // a base acompanha a cor do holograma (e o ULTRON)
+    this.disc.material.color.copy(look.color);
+    this.inner.material.color.copy(look.color);
     this.pMat.uniforms.uTime.value = time;
     this.pMat.uniforms.uSpeed.value = look.particles;
     for (const w of this.waves) {
@@ -821,6 +826,8 @@ export class Avatar {
     for (const key of KEYS) this.p[key] += ((target[key] || 0) - this.p[key]) * k;
     this.color.lerp(this.targetColor, k * 0.8);
     this.accent.lerp(this.targetAccent, k * 0.8);
+    const uk = this.ultron || 0;                             // Protocolo ULTRON (só aparência)
+    if (uk > 0) { this.color.lerp(ULTRON_RED, uk); this.accent.lerp(ULTRON_GLOW, uk); }
     const p = this.p, R = this.rig;
     const speed = p.slump > 0.5 ? 0.55 : 1;
     const t = time * speed;
@@ -851,6 +858,7 @@ export class Avatar {
       pitch += (voice - 0.35) * 0.06 * p.talk;
       yaw += Math.sin(t * 1.7) * 0.05 * p.talk * voice;
     }
+    pitch += 0.11 * uk; roll *= 1 - uk;                    // ULTRON: queixo baixo, olhar fixo
     R.rot('head', pitch, yaw, roll);
     const jaw = clamp(this.mouth.open || 0, 0, 1);
     R.rot('jaw', jaw * 0.32, 0, 0);
@@ -887,7 +895,7 @@ export class Avatar {
       R.rot('fore' + s, -elbow, side * (0.5 * gest + 0.6 * p.work), 0);
       const typing = p.work * Math.sin(t * 9 + (side > 0 ? 0 : 1.3)) * 0.12;
       R.rot('hand' + s, -0.1 * gest + typing - 0.2 * thinkHand, side * 0.6 * p.ask, side * (0.15 * gest));
-      const curl = 0.18 + 0.25 * p.slump + 0.35 * thinkHand - 0.12 * gest - 0.12 * p.ask;
+      const curl = 0.18 + 0.25 * p.slump + 0.35 * thinkHand - 0.12 * gest - 0.12 * p.ask + 0.55 * uk;
       for (const [fi, f] of ['index', 'middle', 'ring', 'pinky'].entries()) {
         const wave = p.work * Math.sin(t * 11 + fi * 1.3 + side) * 0.25;
         for (let kk = 1; kk <= 3; kk++) R.rot(`${f}${kk}${s}`, 0, 0, -side * (curl + wave) * (kk === 1 ? 0.6 : 1));
@@ -917,10 +925,10 @@ export class Avatar {
     u.uTime.value = time;
     u.uColor.value.copy(this.color);
     u.uAccent.value.copy(this.accent);
-    u.uGlow.value = p.glow;
+    u.uGlow.value = p.glow * (1 + 0.18 * uk);
     u.uPulse.value = p.pulse;
     u.uPulseSpeed.value = 2.2 + p.pulse * 2.5;
-    u.uFlicker.value = p.flicker;
+    u.uFlicker.value = Math.max(p.flicker, 0.12 * uk);
     u.uVoice.value = voice * p.talk + (this.state === 'escutando' || this.state === 'reconhecendo' ? this.mic * 0.6 : 0);
     const period = this.state === 'inicializando' ? 1.0 : (p.scan > 0.6 ? 2.6 : 6.5);
     const phase = (time / period) % 1;

@@ -139,7 +139,12 @@ class WebFilesTest(unittest.TestCase):
 
     def test_page_requests_are_whitelisted_in_python(self):
         view = (ROOT / "ultron" / "hud" / "scene3d" / "view.py").read_text(encoding="utf-8")
-        self.assertIn('REQUESTS = frozenset({"tardis", "jarvis", "mic"})', view)
+        self.assertIn('REQUESTS = frozenset({"tardis", "jarvis", "mic", "restore"})', view)
+        controller = (ROOT / "ultron" / "hud" / "controller.py").read_text(encoding="utf-8")
+        handler = controller[controller.index("def _scene3d_request"):controller.index("def _page_changed")]
+        self.assertIn('if action == "restore":\n            self.ultron_stop("botão")', handler,
+                      "a página só pode PEDIR o fim do evento ULTRON — nunca iniciá-lo")
+        self.assertNotIn("ultron_start", handler)
         self.assertNotIn("subprocess", view)
         self.assertNotIn("os.system", view)
 

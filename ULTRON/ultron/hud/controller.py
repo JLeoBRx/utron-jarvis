@@ -36,7 +36,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..core.events import EventType
 from ..health.monitor import format_report
-from . import quality
+from . import quality, theme
 from .brain_view import BrainView
 from .orb import OrbWindow
 from .platform import NAV_KEYS, PlatformWindow
@@ -149,6 +149,14 @@ class HudController(QtCore.QObject):
         self._heartbeat_timer.timeout.connect(self._heartbeat)
         self._last_beat = time.perf_counter()
         self._heartbeat_timer.start(200)
+        # Protocolo ULTRON: evento VISUAL (nenhuma ação real); sorteio ocasional e fim automático
+        from ..config import paths
+        from .ultron_protocol import UltronProtocol
+        self.ultron = UltronProtocol(settings=core.settings, history_path=paths.data_file("protocolo_ultron.json"))
+        self._ultron_saved: dict | None = None          # aparência de antes do evento, restaurada exatamente
+        self._ultron_timer = QtCore.QTimer(self)
+        self._ultron_timer.timeout.connect(self._ultron_tick)
+        self._ultron_timer.start(5000)
 
     def _hud_fps(self) -> int:
         return int(getattr(self.core.settings(), "hud_fps", 60))
@@ -221,7 +229,9 @@ class HudController(QtCore.QObject):
 
     def _scene3d_request(self, action: str) -> None:
         """Pedidos da página 3D (cliques do usuário): os mesmos caminhos dos botões da interface."""
-        if action == "tardis":
+        if action == "restore":
+            self.ultron_stop("botão")
+        elif action == "tardis":
             self.open_tardis()
         elif action == "jarvis":
             self.open_page("jarvis")
@@ -317,6 +327,7 @@ class HudController(QtCore.QObject):
                                       effects=self._effects_enabled)
         self.tardis_page.mode_changed.connect(lambda _mode: self.window.refresh_layout())
         self.tardis_page.escape_unhandled.connect(self.escape)
+        self.tardis_page.room.escape_first = lambda: self.ultron_stop("Esc")
         return self.tardis_page
 
     def _make_archive(self):
@@ -346,6 +357,9 @@ class HudController(QtCore.QObject):
     def _make_settings(self):
         from .settings_page import SettingsPage
         self.settings_page = SettingsPage(self.core)
+        self.settings_page.ultron_history = lambda: list(self.ultron.history)
+        self.settings_page.ultron_demo.connect(lambda: self.ultron_start("demonstracao"))
+        self.settings_page.refresh()
         return self.settings_page
 
     # ================================================================ ligação com o Core
@@ -432,6 +446,13 @@ class HudController(QtCore.QObject):
             QtCore.QTimer.singleShot(0, self._drain)
 
     def _ui_request(self, payload: dict) -> None:
+        if payload.get("ultron"):
+            action = str(payload["ultron"])
+            if action == "stop":
+                self.ultron_stop("comando")
+            else:
+                self.ultron_start("demonstracao" if action == "demo" else "manual")
+            return
         view = payload.get("view")
         section = payload.get("section") or None
         if view == "second_brain":
@@ -540,7 +561,14 @@ class HudController(QtCore.QObject):
             self.avatar.update_state()                    # o estado vale mesmo com outra página à frente
         from .avatar.states import SHORT
         resolved = self.avatar.resolved
-        self.window.top.state_chip.set_display(SHORT.get(resolved.key, resolved.label), resolved.style.rgb)
+        if getattr(self, "ultron", None) is not None and self.ultron.active:
+            reason = self.ultron.interrupt_reason(self._ultron_guard())
+            if reason:                                    # atividade real: a aparência não pode encobri-la
+                self.ultron_stop(reason)
+        if getattr(self, "ultron", None) is not None and self.ultron.active:
+            self.window.top.state_chip.set_display("ULTRON", (255, 31, 61))
+        else:
+            self.window.top.state_chip.set_display(SHORT.get(resolved.key, resolved.label), resolved.style.rgb)
         orb = self.orb.isVisible()
         if not (hub1 or orb):
             wanted = self.profile.hidden_interval_ms      # nada visível: a cena segue coerente, sem desenho
@@ -767,7 +795,11 @@ class HudController(QtCore.QObject):
     # ================================================================ Esc, PARAR e indicadores
     def escape(self) -> str:
         """Esc como no original: interrompe a fala; senão cancela o pedido em andamento (ou a autorização
-        pendente); senão sai da tela cheia. Nunca minimiza. Devolve o que foi feito."""
+        pendente); senão sai da tela cheia. Nunca minimiza. Devolve o que foi feito. Com o Protocolo ULTRON
+        ativo, Esc primeiro restaura o JARVIS."""
+        if self.ultron.active:
+            self.ultron_stop("Esc")
+            return "ultron"
         if self.core.speaker.speaking:
             self.core.speaker.interrupt()
             return "speech"
@@ -784,6 +816,87 @@ class HudController(QtCore.QObject):
         """PARAR (conversa): cancela pedido, fala e autorização pendente."""
         cancelled = self.core.cancel("cancelado pelo usuário (PARAR)")
         self.window.conversation.add_system("cancelado" if cancelled else "não havia nada em andamento")
+
+    # ================================================================ Protocolo ULTRON (evento visual)
+    def _ultron_guard(self):
+        from .ultron_protocol import Guard
+        state = self.state_cache
+        return Guard(runtime_state=str(state.get("runtime_state") or "IDLE"),
+                     authorization_pending=self.core.authorizations.pending() is not None,
+                     action_running=bool(state.get("current_action")),
+                     privacy=bool(getattr(self.core, "privacy_shield", False)),
+                     idle_seconds=time.time() - float(getattr(self.core, "_last_interaction", time.time())))
+
+    def ultron_start(self, source: str = "manual") -> bool:
+        ok, reason = self.ultron.start(source, self._ultron_guard())
+        if not ok:
+            self.window.conversation.add_system(f"Protocolo ULTRON não iniciado: {reason}.")
+            return False
+        self._ultron_apply(True, source)
+        return True
+
+    def ultron_stop(self, by: str) -> bool:
+        if not self.ultron.stop(by):
+            return False
+        self._ultron_apply(False, by)
+        return True
+
+    def _ultron_tick(self) -> None:
+        if self.ultron.active:
+            if self.ultron.expired():
+                self.ultron_stop("tempo")
+        elif self.ultron.maybe_trigger(self._ultron_guard()):
+            self._ultron_apply(True, "ocasional")
+
+    def _ultron_apply(self, on: bool, source: str) -> None:
+        """Só aparência: cores, marca, título, orbe, cena 3D e uma linha na conversa e no histórico."""
+        from .ultron_protocol import LABEL, MESSAGES
+        app = QtWidgets.QApplication.instance()
+        brand = self.window.top.brand
+        if on:
+            self._ultron_saved = {"style": app.styleSheet() if app is not None else None,
+                                  "identity": self.window.identity,
+                                  "brand": (brand.title, brand.subtitle, QtGui.QColor(brand.color)),
+                                  "panels": [(w, w.styleSheet()) for w in self.window.findChildren(QtWidgets.QWidget)
+                                             if w.styleSheet()]}
+            if app is not None:
+                app.setStyleSheet(theme.ultron_stylesheet(self._ultron_saved["style"]))
+            for widget, style in self._ultron_saved["panels"]:      # os painéis também "mudam de dono"
+                widget.setStyleSheet(theme.ultron_stylesheet(style))
+            self.window.identity = "U.L.T.R.O.N."
+            self.window.refresh_title()
+            self.window.set_escape_override(True)       # Esc restaura o JARVIS em qualquer página
+            brand.title, brand.subtitle, brand.color = "U.L.T.R.O.N.", "PROTOCOLO ULTRON — EVENTO VISUAL", \
+                QtGui.QColor(theme.ERROR)
+            text = f"PROTOCOLO ULTRON INICIADO — {LABEL}."
+        else:
+            saved, self._ultron_saved = self._ultron_saved, None
+            if saved is not None:
+                if app is not None and saved["style"] is not None:
+                    app.setStyleSheet(saved["style"])
+                self.window.identity = saved["identity"]
+                self.window.refresh_title()
+                for widget, style in saved["panels"]:
+                    try:
+                        widget.setStyleSheet(style)
+                    except RuntimeError:                   # painel fechado durante o evento
+                        pass
+                brand.title, brand.subtitle, brand.color = saved["brand"]
+            self.window.set_escape_override(False)
+            text = f"JARVIS restaurado ({source})."
+            page = getattr(self, "settings_page", None)
+            if page is not None:
+                page.refresh()                         # histórico de ocorrências atualizado
+        brand.update()
+        self.orb.ultron = on
+        self.orb.update()
+        if self.scene3d is not None:
+            self.scene3d.set_ultron(on, source=source, messages=MESSAGES, label=LABEL)
+        self.window.conversation.add_system(text)
+        activity = getattr(self.core, "activity", None)
+        if activity is not None:
+            activity.record("sistema", ("Protocolo ULTRON iniciado" if on else "Protocolo ULTRON encerrado")
+                            + " (evento visual)", origin="hud", result=source)
 
     def _chip_clicked(self, key: str) -> None:
         if key == "mic":
@@ -983,6 +1096,8 @@ class HudController(QtCore.QObject):
         self.window.hide_to_tray = False
         for timer in (self._frame, self._state_timer, self._telemetry_timer, self._heartbeat_timer):
             timer.stop()
+        if self.ultron.active:
+            self.ultron.stop("encerramento")
         if self.scene3d is not None:
             self.scene3d.dispose()                      # sem relatórios tardios; o marcador de abertura sai
         self.window.shutdown()                          # para relógios e leitores de todas as páginas

@@ -575,6 +575,13 @@ class NeuralCore:
             self.settings_manager.update(privacy_mode=str(args["privacy_mode"]))
             self.privacy.refresh()
             return Response("LOCAL MODE ativo. Conexões externas automáticas bloqueadas.", "info")
+        if "ultron" in args:                       # evento VISUAL: só um pedido à interface, nada mais
+            if self.hud_health is None:
+                return Response("O Protocolo ULTRON é um evento visual da interface gráfica; no modo console ele "
+                                "não tem efeito.", "info")
+            self.bus.publish(EventType.UI_REQUEST, {"ultron": str(args["ultron"])}, source="core")
+            return Response("Restaurando o JARVIS." if args["ultron"] == "stop" else "Protocolo ULTRON solicitado.",
+                            "info")
         if "open_view" in args:
             if self.hud_health is None:
                 return Response("Interface gráfica indisponível nesta execução.", "error", success=False)

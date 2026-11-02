@@ -157,6 +157,12 @@ class Settings:
     heavy_effects: bool = True                # brilho, partículas e varredura (desligue em máquinas modestas)
     render_backend: str = "cpu"               # cpu (padrão, roda em qualquer máquina) | gpu (OpenGL, opcional)
     scene3d: str = "auto"                     # auto (central 3D quando há QtWebEngine e WebGL 2) | desligado (2D)
+    # Protocolo ULTRON: evento VISUAL e narrativo (nenhuma ação real no sistema)
+    ultron_manual: bool = True                # a frase secreta inicia o evento
+    ultron_occasional: bool = False           # ocorrências raras em repouso (desligado por padrão)
+    ultron_chance_per_hour: float = 2.0       # % de chance por hora ociosa (sorteio por minuto)
+    ultron_min_interval_hours: float = 24.0   # intervalo mínimo entre ocorrências ocasionais
+    ultron_duration_s: float = 45.0           # encerramento automático (0 = só por "restaurar JARVIS"/Esc/botão)
     orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
     audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)
     audio_output_index: int = -1
@@ -185,6 +191,8 @@ class Settings:
         "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
         "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
         "audio_output_index": (-1, 64), "activity_keep": (100, 100000),
+        "ultron_chance_per_hour": (0.0, 100.0), "ultron_min_interval_hours": (1.0, 720.0),
+        "ultron_duration_s": (0.0, 600.0),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,

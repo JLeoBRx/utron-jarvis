@@ -187,9 +187,9 @@ export class PoliceBox {
     this.doors[0].rotation.y = a;
     this.doors[1].rotation.y = -a * 0.97;
     this.spillMat.opacity = Math.min(1, this.open * 1.6);
-    const active = this.mode === 'processando' || this.mode === 'jarvis' || this.mode === 'operacao';
+    const active = this.mode === 'processando' || this.mode === 'jarvis' || this.mode === 'operacao' || (this.ultron || 0) > 0.5;
     const pulse = active ? 0.5 + 0.5 * Math.sin(time * (this.mode === 'jarvis' ? 4.2 : 2.6)) : 0;
-    const target = this.mode === 'falha' ? 0xff6b5a : (this.mode === 'jarvis' ? 0x9fe8ff : 0xfff0d8);
+    const target = (this.ultron || 0) > 0.5 ? 0xff1f3d : this.mode === 'falha' ? 0xff6b5a : (this.mode === 'jarvis' ? 0x9fe8ff : 0xfff0d8);
     this.lampColor.lerp(_c.set(target), 1 - Math.exp(-dt * 3));
     this.lampMat.emissive.copy(this.lampColor);
     this.lampMat.emissiveIntensity = 0.45 + (active ? 1.4 * pulse : 0) + (this.mode === 'falha' ? 0.5 : 0);

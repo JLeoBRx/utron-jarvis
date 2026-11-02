@@ -29,9 +29,16 @@
     <button data-view="exterior" title="A cabine da TARDIS por fora">CABINE</button>
   </div>
   <div id="notice" class="glass hidden"></div>
+  <div id="ultron" class="hidden" aria-live="assertive">
+    <div class="u-title" data-text="U.L.T.R.O.N.">U.L.T.R.O.N.</div>
+    <div class="u-message"></div>
+    <div class="u-label"></div>
+    <button class="u-restore" title="Encerra o evento visual e volta ao JARVIS (Esc também)">RESTAURAR JARVIS</button>
+  </div>
   <div id="perf" class="hidden"></div>
 </div>
 <div id="veil"></div>
+<div id="glitch"></div>
 
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <!-- Sem módulos ES ou sem WebGL, o lado Python não recebe "pronto" e volta para a vista 2D, dizendo por quê. -->

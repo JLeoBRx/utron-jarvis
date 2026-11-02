@@ -19,6 +19,7 @@ import html
 import logging
 import threading
 import time
+from typing import Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -194,6 +195,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         self._refresh.setSingleShot(True)
         self._refresh.setInterval(120)
         self._refresh.timeout.connect(self.refresh)
+        self.escape_first: Callable[[], bool] | None = None
         QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self._escape,
                         context=QtCore.Qt.WidgetWithChildrenShortcut)
         self.on_profile(profile)
@@ -462,6 +464,8 @@ class TardisRoomPage(QtWidgets.QWidget):
         self.scene3d.push_room(self.scene3d_snapshot())
 
     def _escape(self) -> None:
+        if self.escape_first is not None and self.escape_first():
+            return                                     # ex.: Esc encerra o Protocolo ULTRON antes de tudo
         if self.scene.selected:
             self.scene.select("")
             if self.scene3d is not None:

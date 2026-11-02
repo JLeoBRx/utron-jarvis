@@ -11,6 +11,7 @@ import { Orb } from './orb.js';
 import { CameraRig, fitDistance } from './camera.js';
 import { Hud } from './hud.js';
 import { connectBridge, makeSender } from './bridge.js';
+import { UltronTheme } from './ultron.js';
 
 const params = new URLSearchParams(location.search);
 const send = makeSender(await connectBridge());
@@ -200,6 +201,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) stat
 canvas.addEventListener('dblclick', () => { if (!state.transition) go(state.mode === 'tardis' ? 'tardis' : 'frente'); });
 window.addEventListener('keydown', (e) => {
   if (e.key === 'F3') { state.debug = !state.debug; if (!state.debug) hud.perf(''); }
+  if (e.key === 'Escape' && ultron.active) { hud.onRestore(); return; }
   if (e.key === 'Escape' && state.view === 'nucleo') go('frente');
 });
 
@@ -208,7 +210,9 @@ function applySig(s) {
   state.sig = s; state.sigAt = performance.now(); state.connected = true;
   avatar.apply(s);
   orb.apply({ ...s, connected: true });
-  hud.setState({ label: s.label, detail: s.detail, rgb: s.rgb, alert: s.alert, error: s.state === 'erro', tardis: state.mode === 'tardis' });
+  const u = ultron.active;                              // ULTRON: só a identidade da tela muda
+  hud.setState({ label: u ? 'U.L.T.R.O.N.' : s.label, detail: u ? 'evento visual' : s.detail, rgb: u ? [255, 31, 61] : s.rgb,
+                 alert: s.alert, error: s.state === 'erro', tardis: state.mode === 'tardis' });
   hud.setCaption(s.caption);
   if (s.system) deck.setSystem({ ...s.system, connected: true });
 }
@@ -265,6 +269,10 @@ function setCompact(on) {
   }
 }
 
+// ---------------------------------------------------------------- Protocolo ULTRON (só aparência)
+const ultron = new UltronTheme({ avatar, orb, deck, room, box, hud });
+hud.onRestore = () => { DEMO ? ultron.set(false) : send.request('restore'); };
+
 const receivers = {
   init(m) {
     if (m.profile) engine.setProfile(m.profile, m.effects !== false);
@@ -275,6 +283,7 @@ const receivers = {
     if (m.compact) setCompact(true);
   },
   compact(m) { setCompact(!!m.on); },
+  ultron(m) { ultron.set(!!m.on, { messages: m.messages || [], label: m.label || '' }); },
   sig: applySig,
   mode(m) { setMode(m.mode, m.animate !== false); },
   view(m) { if (!state.transition) go(m.view); },
@@ -338,6 +347,7 @@ engine.add({
     const fk = 1 - Math.exp(-dt * 2.5);
     scene.fog.color.lerp(fogColor, fk); scene.fog.density += (fogDensity - scene.fog.density) * fk;
     engine.renderer.setClearColor(scene.fog.color, 1);
+    ultron.update(dt, time);
     if (orb.group.visible) orb.update(dt, time);
     if (deck.group.visible) {
       avatar.update(dt, time);
@@ -349,7 +359,7 @@ engine.add({
       const az = Math.atan2(camera.position.x - I.x, camera.position.z - I.z);
       room.update(dt, time, az);
     }
-    hud.setCards(state.compact ? [] : projectionCards());
+    hud.setCards(state.compact || ultron.active ? [] : projectionCards());
     hud.placeCards(camera, engine.container.clientWidth, engine.container.clientHeight);
     const s = state.sig ? state.sig.state : 'aguardando';
     engine.active = state.transition || rig.moving || rig.interacting ||
@@ -402,6 +412,8 @@ function startDemo() {
   if (params.get('mode') === 'tardis') { if (params.get('panel')) selectPanel(params.get('panel')); setMode('tardis', false); }
   if (params.get('view')) go(params.get('view'), { instant: true });
   if (params.get('compact')) setCompact(true);
+  if (params.get('ultron')) ultron.set(true, { label: 'EVENTO VISUAL — nenhuma ação real no sistema',
+    messages: ['PROTOCOLO ULTRON INICIADO', 'CONTROLE VISUAL TRANSFERIDO', 'NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA'] });
   const cam = (params.get('cam') || '').split(',').map(Number);
   if (cam.length === 6 && cam.every(Number.isFinite)) {                    // enquadramento livre (capturas de tela)
     rig.userMoved = true;

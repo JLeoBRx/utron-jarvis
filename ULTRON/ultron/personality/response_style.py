@@ -55,8 +55,9 @@ _URL = re.compile(r"https?://([^/\s]+)\S*")
 
 
 def _replace_identity(text: str) -> str:
+    # "Protocolo ULTRON" é o nome do evento visual da interface, não uma autorreferência: fica como está
     for old in identity.FORBIDDEN_IDENTITIES:
-        text = re.sub(rf"\b{re.escape(old)}\b", identity.NAME, text) if old[-1].isalnum() else \
+        text = re.sub(rf"(?<![Pp]rotocolo )\b{re.escape(old)}\b", identity.NAME, text) if old[-1].isalnum() else \
             text.replace(old, identity.NAME)
     text = re.sub(r"\bJust A Rather Very Intelligent System\b", identity.NAME, text, flags=re.I)
     return text

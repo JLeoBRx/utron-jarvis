@@ -271,3 +271,15 @@ def dot_px(rgb: tuple[int, int, int], radius: float, qx: int, qy: int, dpr: floa
 def dot_size(radius: float) -> int:
     """Lado (px lógicos, par) do sprite de um nó de raio ``radius``."""
     return 2 * int(math.ceil(radius + 1.4))
+
+
+ULTRON_SWAPS = (("0, 217, 255", "255, 31, 61"), ("103, 243, 255", "255, 90, 107"), ("#00D9FF", "#FF1F3D"),
+                ("#67F3FF", "#FF5A6B"), ("#E6FBFF", "#FFE6E9"), ("#F0FAFF", "#FFF0F2"), ("7, 20, 38", "26, 5, 9"),
+                ("#071426", "#1A0509"), ("#0B1F3A", "#2A0A10"), ("#DCEEFF", "#FFE1E4"))
+
+
+def ultron_stylesheet(base: str) -> str:
+    """O mesmo estilo com as cores do Protocolo ULTRON (evento visual): só troca cores."""
+    for old, new in ULTRON_SWAPS:
+        base = base.replace(old, new)
+    return base

@@ -125,7 +125,9 @@ microfone e voz, modos do Observador, abrir a página certa). Indicador sem dado
 
 **Barra inferior** (vale em qualquer página): campo de pedido com histórico ↑/↓ (guarda o
 rascunho), **ENVIAR**, **MIC**, **VOZ**, **ORBE** (recolhe para o orbe compacto; clique duplo no
-orbe expande; o orbe lembra onde foi deixado). Autorizações e sugestões aparecem logo acima.
+orbe expande; o orbe lembra onde foi deixado; com a central 3D aberta, o orbe recolhido é a **mesma cena 3D**
+em modo compacto — o mesmo ORBE, com o estado real — e, sem ela, o orbe 2D). Autorizações e sugestões aparecem
+logo acima.
 Fechar a janela mantém o JARVIS na bandeja; **Sair** encerra.
 
 **Conversa** (página JARVIS): cada mensagem com horário (`[HH:MM] VOCÊ ▸`, `J.A.R.V.I.S. ▸`,
@@ -152,6 +154,8 @@ Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo
   casca translúcida e esqueleto interno. Respira, olha, pisca, gesticula com a energia real da fala e mexe a
   boca pela trilha labial do áudio real — **cada movimento vem de um estado real** (tabela abaixo; detalhes em
   `AUDITORIA_VISUAL_3D.md`);
+* vistas **FRENTE** e **LATERAL** (corpo inteiro), rosto androide (olhos, íris, nariz, boca, mandíbula, joia
+  na testa), placas anatômicas, linhas que seguem a anatomia e circuitos com pulsos;
 * o **ORBE** (núcleo de inteligência) flutua ao lado: rede neural de três camadas com pulsos, filamentos,
   anéis orbitais e partículas que entram (escuta) ou saem (fala) do núcleo. Botão **NÚCLEO** amplia com
   órbita/zoom; sem sinal do JARVIS ele apaga e diz "SEM CONEXÃO";
@@ -166,6 +170,25 @@ liga/desliga o microfone. CONFIGURAÇÕES > APARÊNCIA > **Cena 3D**: Automátic
 cena não puder abrir (sem QtWebEngine, sem WebGL 2, falha da placa de vídeo), a interface usa o rosto 2D
 abaixo e DIAGNÓSTICOS diz por quê; depois de uma falha, Desligada → Automática tenta de novo. Para medir no
 seu computador: `python tools/benchmark_scene3d.py`.
+
+### Protocolo ULTRON (evento visual)
+
+Um *easter egg*: por um tempo, a interface "muda de dono" — holograma com postura dura e olhos vermelhos,
+ORBE vermelho, TARDIS em alerta, painéis e barra superior em vermelho/vinho, título **U.L.T.R.O.N.** e
+mensagens de um personagem fictício ("NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA"). **É só aparência**: não
+altera permissões nem configurações, não executa comandos, não grava arquivos seus, não acessa credenciais e
+não esconde nenhuma ação real; o rótulo **"EVENTO VISUAL — nenhuma ação real no sistema"** fica na tela o tempo
+todo.
+
+* **Ativar**: "JARVIS, iniciar protocolo ULTRON" (voz ou texto). "protocolo ULTRON demonstração" mostra 20 s.
+* **Sair**: "restaurar JARVIS" / "encerrar protocolo ULTRON", botão **RESTAURAR JARVIS**, **Esc**, ou sozinho
+  depois do tempo configurado.
+* **Nunca começa** com autorização pendente, ação em execução (inclusive gravação de arquivos), verificação ou
+  recuperação em andamento, ou modo privacidade — e diz o motivo. Se uma autorização, uma ação real ou o modo
+  privacidade surgir **durante** o evento, ele termina na hora: nada real fica escondido pela aparência.
+* CONFIGURAÇÕES > APARÊNCIA > **PROTOCOLO ULTRON**: ativação pela frase, ocorrência ocasional (desligada por
+  padrão; só em repouso, com probabilidade por hora e intervalo mínimo), duração, **DEMONSTRAÇÃO** e o
+  histórico de ocorrências (`protocolo_ultron.json` na pasta de dados). No modo console não tem efeito.
 
 ### O rosto holográfico 2D (reserva da central 3D)
 

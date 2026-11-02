@@ -8,7 +8,10 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 export class Hud {
   constructor({ onView }) {
     this.el = { state: $('state'), label: $('state-label'), detail: $('state-detail'), cards: $('cards'), caption: $('caption'),
-                views: $('views'), notice: $('notice'), perf: $('perf'), veil: $('veil') };
+                views: $('views'), notice: $('notice'), perf: $('perf'), veil: $('veil'), ultron: $('ultron'),
+                glitch: $('glitch') };
+    this.onRestore = null;
+    this.el.ultron.querySelector('.u-restore').addEventListener('click', () => this.onRestore && this.onRestore());
     this.cards = new Map();
     this.onView = onView;
     this.mode = 'jarvis';
@@ -112,5 +115,17 @@ export class Hud {
   perf(text) { this.el.perf.textContent = text || ''; this.el.perf.classList.toggle('hidden', !text); }
 
   veil(on) { this.el.veil.classList.toggle('on', !!on); }
+
+  /** Protocolo ULTRON: painel do personagem (mensagem fictícia + rótulo de evento visual + RESTAURAR). */
+  ultron(on, { label = '', message = '' } = {}) {
+    document.body.classList.toggle('ultron', !!on);
+    this.el.ultron.classList.toggle('hidden', !on);
+    if (on) {
+      this.el.ultron.querySelector('.u-message').textContent = message;
+      this.el.ultron.querySelector('.u-label').textContent = label;
+    }
+  }
+
+  glitch(on) { this.el.glitch.classList.toggle('on', !!on); }
 }
 const _p = new THREE.Vector3();

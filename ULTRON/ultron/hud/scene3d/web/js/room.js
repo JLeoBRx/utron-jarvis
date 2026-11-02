@@ -8,6 +8,7 @@
 // (âmbar = concluiu, vermelho = falhou) e as telas mostram o texto que o motor informou. Sem motor, a sala
 // fica apagada e diz isso.
 import * as THREE from 'three';
+import { ULTRON_RED } from './ultron.js';
 import { Batch, disposer, canvasTexture, glowMaterial, glowTexture, physical, textPlate, PALETTE } from './materials.js';
 
 export const PANEL_KEYS = ['analise', 'planejamento', 'arquivo', 'rotinas', 'telemetria', 'diagnostico'];
@@ -104,6 +105,7 @@ export class TardisRoom {
     });
     this.roundelMat = disposer.track(new THREE.MeshStandardMaterial({ color: 0xd8c8a8, map: roundelTex, emissive: 0xffd9a0,
                                                                       emissiveMap: roundelTex, emissiveIntensity: 0.3, roughness: 0.6 }));
+    this._roundelBase = this.roundelMat.emissive.clone();
     const wallMat = disposer.track(new THREE.MeshStandardMaterial({ color: 0x3a3f47, metalness: 0.55, roughness: 0.5,
       map: canvasTexture(512, 512, (g, w, h) => {
         g.fillStyle = '#9aa0a8'; g.fillRect(0, 0, w, h);
@@ -556,6 +558,9 @@ export class TardisRoom {
     st.speed += (t.speed - st.speed) * k; st.amplitude += (t.amplitude - st.amplitude) * k;
     st.brightness += (t.brightness - st.brightness) * k; st.spin += (t.spin - st.spin) * k;
     st.color.lerp(t.color, k); st.beam += (t.beam - st.beam) * k; st.fault += (t.fault - st.fault) * k;
+    const uk = this.ultron || 0;                             // Protocolo ULTRON: sala em alerta (só cor)
+    if (uk > 0) st.color.lerp(ULTRON_RED, uk);
+    this.roundelMat.emissive.copy(this._roundelBase).lerp(ULTRON_RED, uk * 0.8);
     const avail = st.available ? 1 : 0.25;
     this.phase = (this.phase + dt * st.speed * Math.PI * 2) % (Math.PI * 2);
     this.spinA = (this.spinA + dt * st.spin * Math.PI * 2) % (Math.PI * 2);

@@ -23,7 +23,7 @@ log = logging.getLogger("ultron.hud.scene3d")
 ACTIVE = frozenset({"falando", "escutando", "reconhecendo", "inicializando"})
 MOVING = frozenset({"falando", "escutando", "reconhecendo", "pensando", "executando", "tardis", "inicializando",
                     "alerta"})
-REQUESTS = frozenset({"tardis", "jarvis", "mic"})
+REQUESTS = frozenset({"tardis", "jarvis", "mic", "restore"})
 _inside_web = inside_web
 
 
@@ -123,6 +123,7 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
         self.stats: dict = {}
         self.mode = "jarvis"
         self.compact = False
+        self.ultron = False
         self.selected = ""
         self.mic_state = ""
         self.system: dict = {}
@@ -331,6 +332,11 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
         mouse). Desligar devolve a vista anterior sem perder estado."""
         self.compact = bool(on)
         self._send({"type": "compact", "on": self.compact})
+
+    def set_ultron(self, on: bool, *, source: str = "", messages=(), label: str = "") -> None:
+        """Protocolo ULTRON: só aparência (cores, postura, mensagens do personagem, rótulo de evento visual)."""
+        self.ultron = bool(on)
+        self._send({"type": "ultron", "on": self.ultron, "source": source, "messages": list(messages), "label": label})
 
     def select_panel(self, key: str) -> None:
         self.selected = key or ""

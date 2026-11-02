@@ -216,6 +216,15 @@ class IntentEngine:
         return None
 
     def _control_rules(self, raw, t):
+        # Protocolo ULTRON: evento visual da interface (não executa nada no sistema)
+        if re.search(r"\bprotocolo ultron\b", t):
+            if re.search(r"\b(encerr\w*|deslig\w*|par\w*|cancel\w*|sai\w*|termin\w*)\b", t):
+                return _intent("control", raw, args={"ultron": "stop"})
+            if re.search(r"\b(demonstra\w*|teste|testar)\b", t):
+                return _intent("control", raw, args={"ultron": "demo"})
+            return _intent("control", raw, args={"ultron": "start"})
+        if re.search(r"\brestaur\w* (o )?jarvis\b", t):
+            return _intent("control", raw, args={"ultron": "stop"})
         # Observador (frases do JARVIS original, commands.py): pausar/retomar/desativar/ativar
         if re.search(r"\b(pausar|pause|pausa)\b.*\bobservador\b", t):
             return _intent("control", raw, args={"observer": "pause"})

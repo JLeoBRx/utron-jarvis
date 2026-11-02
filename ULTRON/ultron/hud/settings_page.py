@@ -32,6 +32,7 @@ PAGE_LABELS = {"jarvis": "JARVIS", "tardis": "TARDIS", "atividades": "ATIVIDADES
 class SettingsPage(QtWidgets.QWidget):
     _devices_ready = QtCore.Signal(str, object)       # ("input"|"output", resultado da listagem)
     _message = QtCore.Signal(str)
+    ultron_demo = QtCore.Signal()                      # botão DEMONSTRAÇÃO do Protocolo ULTRON (evento visual)
 
     def __init__(self, core, parent=None, *, ask: Callable[..., bool] | None = None):
         super().__init__(parent)
@@ -47,6 +48,7 @@ class SettingsPage(QtWidgets.QWidget):
                 border-left: 2px solid #00D9FF; }
         """)
         self._ask = ask or self._confirm_dialog
+        self.ultron_history: Callable[[], list] = lambda: []    # o controlador liga ao histórico real do evento
         self._refreshers: list[Callable[[], None]] = []
         self._loading = False
         self._devices_ready.connect(self._show_devices, QtCore.Qt.QueuedConnection)
@@ -604,6 +606,30 @@ class SettingsPage(QtWidgets.QWidget):
                                                                    ("gpu", "GPU — OpenGL (volta para CPU se falhar)")])
         self.number(form, "hud_fps", "Quadros por segundo (máximo)", 15, 144, step=5)
         self.check(form, "ambient_sound", "Som ambiente discreto do TARDIS")
+        self._build_ultron(form)
+
+    def _build_ultron(self, form) -> None:
+        form.addRow(_label("PROTOCOLO ULTRON — evento visual", "PanelTitle"))
+        form.addRow(_label("Uma troca temporária de identidade da interface (cores, holograma, ORBE, TARDIS e "
+                           "mensagens de um personagem fictício). É só aparência: não muda permissões nem "
+                           "configurações, não executa nada, não grava arquivos seus e mostra o tempo todo o rótulo "
+                           "\"evento visual — nenhuma ação real no sistema\". Nunca começa com autorização pendente, "
+                           "ação em execução ou modo privacidade. Sai com \"restaurar JARVIS\", pelo botão ou Esc.",
+                           "PanelDim"))
+        self.check(form, "ultron_manual", "Ativação pela frase \"JARVIS, iniciar protocolo ULTRON\"")
+        self.check(form, "ultron_occasional", "Ocorrência ocasional (rara, só em repouso, após 2 min sem interação)")
+        self.number(form, "ultron_chance_per_hour", "Probabilidade por hora em repouso", 0, 100, step=0.5,
+                    decimals=1, suffix=" %", tip="Sorteada uma vez por minuto ocioso")
+        self.number(form, "ultron_min_interval_hours", "Intervalo mínimo entre ocorrências", 1, 720, step=1,
+                    suffix=" h")
+        self.number(form, "ultron_duration_s", "Encerrar sozinho depois de", 0, 600, step=5, suffix=" s",
+                    tip="0 = só termina por comando, botão ou Esc")
+        demo = _button("DEMONSTRAÇÃO", "Mostra o efeito por 20 segundos (rotulado como demonstração)")
+        demo.clicked.connect(self.ultron_demo.emit)
+        form.addRow("", demo)
+        history = _label("", "PanelDim")
+        self._refreshers.append(lambda: history.setText(ultron_history_text(self.ultron_history())))
+        form.addRow("Ocorrências", history)
 
     # ------------------------------------------------------------ HISTÓRICO E REGISTROS
     def _build_records(self, form) -> None:
@@ -669,3 +695,19 @@ def _set_value(widget: QtWidgets.QAbstractSpinBox, value: Any) -> None:
     widget.blockSignals(True)
     widget.setValue(value)
     widget.blockSignals(False)
+
+
+ULTRON_SOURCES = {"manual": "frase", "ocasional": "ocasional", "demonstracao": "demonstração"}
+
+
+def ultron_history_text(history: list) -> str:
+    """Resumo honesto do histórico do Protocolo ULTRON (arquivo protocolo_ultron.json)."""
+    if not history:
+        return "nenhuma ocorrência registrada"
+    import time as _time
+    last = history[-1]
+    when = _time.strftime("%d/%m/%Y %H:%M", _time.localtime(float(last.get("started") or 0)))
+    seconds = max(0, round(float(last.get("ended") or 0) - float(last.get("started") or 0)))
+    source = ULTRON_SOURCES.get(str(last.get("source")), str(last.get("source")))
+    return (f"{len(history)} registrada(s); última em {when} ({source}, {seconds} s, encerrada por "
+            f"{last.get('ended_by') or '—'})")

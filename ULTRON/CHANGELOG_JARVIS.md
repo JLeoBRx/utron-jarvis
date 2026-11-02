@@ -370,3 +370,32 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
   completo: `REMOCAO_NOCTARIO.md`. Dados do usuário e tabelas antigas do banco preservados.
 * TARDIS > TELEMETRIA agora mede o próprio JARVIS (processo, latência real dos modelos e respostas, interface,
   Event Bus, workers), com pontos de atenção explicados e nenhuma alteração automática.
+* Complemento (commit `7385b99`): menções restantes em textos, exemplos e documentos de usuário.
+
+## Operação Phoenix — Fase B: holograma androide, ORBE minimizado 3D e design system
+* Holograma: rosto androide (olhos amendoados com íris, joia na testa, sobrancelhas, maçãs, mandíbula),
+  placas anatômicas (esterno, peitorais, clavículas, abdômen, coluna, escápulas), circuitos com pulsos que
+  seguem a anatomia, pescoço afinado; vista **LATERAL**.
+* ORBE recolhido = a **mesma** cena 3D em modo compacto (emprestada da página e devolvida ao expandir; sem
+  segunda engine, sem segundo núcleo); sem cena pronta ou com falha, o orbe 2D continua.
+* Rotor da TARDIS com hélice de energia azul ligada à atividade real.
+* Design system: `ultron/hud/design/tokens.json` como fonte única → `tokens.css` (gerado) e paletas Qt/3D
+  conferidas por teste; `DESIGN_SYSTEM.md`.
+* Qualidade adaptativa com período de aquecimento (não reage à compilação de shaders).
+
+## Operação Phoenix — Fase C: Protocolo ULTRON (evento visual)
+* `ultron/hud/ultron_protocol.py` (lógica pura): ativação manual, ocasional (probabilidade por hora em repouso,
+  intervalo mínimo, uma checagem por minuto), demonstração, término automático, histórico
+  (`protocolo_ultron.json`); bloqueado com autorização pendente, ação em execução, verificação/recuperação ou
+  modo privacidade — e encerrado na hora se uma delas surgir durante o evento.
+* "Protocolo ULTRON" não é mais trocado por "JARVIS" pelo corretor de identidade (autorreferências continuam
+  corrigidas).
+* Interface: estilo da aplicação e dos painéis, título da janela, marca, ORBE e cena 3D (holograma, olhos,
+  convés, TARDIS, cabine, interferência, mensagens, botão RESTAURAR JARVIS) — tudo salvo antes e restaurado
+  exatamente; Esc restaura primeiro.
+* Frases: "iniciar protocolo ULTRON", "protocolo ULTRON demonstração", "encerrar protocolo ULTRON",
+  "restaurar JARVIS". No console: explica que não tem efeito.
+* CONFIGURAÇÕES > APARÊNCIA: controles, DEMONSTRAÇÃO e histórico.
+* `tests/test_ultron_protocol.py`: lógica, frases, console e, com a interface real (Qt offscreen), que
+  configurações, permissões, autorizações permanentes e o executor ficam intactos e que a aparência volta
+  exatamente como era.
