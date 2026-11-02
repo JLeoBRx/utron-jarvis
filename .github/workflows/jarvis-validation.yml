@@ -101,7 +101,7 @@ jobs:
           retention-days: 30
 
   windows-validation:
-    name: Windows 11 installation and test validation
+    name: Windows installation and test validation
     runs-on: windows-latest
     defaults:
       run:
@@ -135,6 +135,93 @@ jobs:
           python -c "import zipfile; zipfile.ZipFile('../JARVIS_FINAL_WINDOWS.zip').extractall('../_jarvis_release_test_windows')"
           Set-Location ../_jarvis_release_test_windows/JARVIS
           python TEST_JARVIS.py --quick
+      - name: Install from the extracted ZIP with INSTALL_JARVIS.bat and run the documented scripts
+        # Como um usuário: o ZIP extraído numa pasta nova, INSTALL_JARVIS.bat e os scripts .bat pelo cmd.exe.
+        # --unattended: sem perguntas, não baixa modelos e não mexe no início automático. Dados em pasta temporária.
+        working-directory: .
+        timeout-minutes: 30
+        env:
+          JARVIS_DATA_DIR: ${{ runner.temp }}\jarvis-dados
+          JARVIS_OLLAMA_AUTOSTART: "0"
+          JARVIS_NETWORK_DISCOVERY: "0"
+          JARVIS_AUTO_BACKUP: "0"
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -c "import zipfile; zipfile.ZipFile('JARVIS_FINAL_WINDOWS.zip').extractall('_jarvis_install_test')"
+          Set-Location _jarvis_install_test/JARVIS
+          function Invoke-Bat([string]$Line, [int]$Expected = 0, [switch]$AnyCode) {
+            # cada comando vai num .cmd próprio: nenhuma aspa passa pelo PowerShell
+            Set-Content -Path _passo.cmd -Encoding ascii -Value "@call $Line < NUL 2>&1", "@exit %errorlevel%"
+            Write-Host "::group::$Line"
+            $out = (& cmd.exe /d /c _passo.cmd) | Out-String
+            $code = $LASTEXITCODE
+            Write-Host $out
+            Write-Host "::endgroup::"
+            if (-not $AnyCode -and $code -ne $Expected) { Write-Host "::error::$Line terminou com codigo $code (esperado $Expected)"; exit 1 }
+            return $out
+          }
+          function Assert-Text([string]$Text, [string]$Pattern, [string]$What) {
+            if ($Text -notmatch $Pattern) { Write-Host "::error::$What (esperado: $Pattern)"; exit 1 }
+          }
+          $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+          $autostartBefore = (Get-ItemProperty -Path $runKey -ErrorAction SilentlyContinue).JARVIS
+
+          $out = Invoke-Bat "INSTALL_JARVIS.bat --unattended"
+          Assert-Text $out "Instalacao concluida\. Inicie com START_JARVIS\.bat" "INSTALL_JARVIS.bat nao terminou limpo"
+          Assert-Text $out "Skills: \d+/\d+" "o diagnostico do instalador nao rodou"
+          if (-not (Test-Path .venv\Scripts\pythonw.exe)) { Write-Host "::error::.venv incompleto"; exit 1 }
+          if ((Get-ItemProperty -Path $runKey -ErrorAction SilentlyContinue).JARVIS -ne $autostartBefore) {
+            Write-Host "::error::--unattended alterou o inicio automatico"; exit 1
+          }
+
+          # instalar de novo não apaga nada: .venv reaproveitado, arquivos do usuário intactos
+          Set-Content .venv\marcador-do-usuario.txt "nao apagar"
+          New-Item -ItemType Directory -Force assets\stt\modelo-do-usuario | Out-Null
+          Set-Content assets\stt\modelo-do-usuario\LEIA.txt "nao apagar"
+          $out = Invoke-Bat "INSTALL_JARVIS.bat --unattended"
+          Assert-Text $out "existente: reaproveitado" "a segunda instalacao nao reaproveitou o .venv"
+          foreach ($file in ".venv\marcador-do-usuario.txt", "assets\stt\modelo-do-usuario\LEIA.txt") {
+            if (-not (Test-Path $file)) { Write-Host "::error::a reinstalacao apagou $file"; exit 1 }
+          }
+
+          $out = Invoke-Bat "START_JARVIS.bat --version"
+          Assert-Text $out "JARVIS \d+\.\d+" "START_JARVIS.bat --version"
+          $out = Invoke-Bat "START_JARVIS.bat --status"
+          Assert-Text $out "execu" "START_JARVIS.bat --status"
+          $out = Invoke-Bat "START_JARVIS.bat --backup"
+          Assert-Text $out "Backup criado:" "START_JARVIS.bat --backup"
+          $backup = Split-Path -Leaf ((($out -split "Backup criado:")[1].Trim()) -split "`r?`n")[0].Trim()
+          $out = Invoke-Bat "START_JARVIS.bat --list-backups"
+          Assert-Text $out ([regex]::Escape($backup)) "START_JARVIS.bat --list-backups nao mostrou o backup criado"
+          $out = Invoke-Bat 'START_JARVIS.bat --say "que horas sao?" --no-voice --no-perception --no-plugins'
+          Assert-Text $out "S\S{1,3}o \d{2}:\d{2}" "START_JARVIS.bat --say"
+
+          # a janela de verdade: START_JARVIS.bat sem argumentos abre pelo pythonw; --stop encerra normalmente
+          Set-Content -Path _abrir.cmd -Encoding ascii -Value "@call START_JARVIS.bat < NUL > NUL 2>&1"
+          & cmd.exe /d /c _abrir.cmd
+          $status = ""
+          for ($i = 0; $i -lt 60 -and $status -notmatch "processo \d+"; $i++) {
+            Start-Sleep -Seconds 2
+            $status = (& .venv\Scripts\python.exe main.py --status) | Out-String
+          }
+          if ($status -notmatch "processo \d+") {
+            Get-ChildItem -Recurse -Filter *.log $env:JARVIS_DATA_DIR | ForEach-Object { Get-Content -Tail 80 $_.FullName }
+            Write-Host "::error::START_JARVIS.bat: o JARVIS nao abriu em 120 s"; exit 1
+          }
+          Write-Host $status
+          Start-Sleep -Seconds 10
+          $out = Invoke-Bat "START_JARVIS.bat --stop"
+          Assert-Text $out "encerrado" "START_JARVIS.bat --stop"
+          $out = Invoke-Bat "START_JARVIS.bat --status"
+          if ($out -match "processo \d+") { Write-Host "::error::o JARVIS continuou em execucao"; exit 1 }
+
+          $out = Invoke-Bat "DIAGNOSTICO_JARVIS.bat" -AnyCode
+          Assert-Text $out "Skills: \d+/\d+" "DIAGNOSTICO_JARVIS.bat"
+          $out = Invoke-Bat "ATUALIZAR_JARVIS.bat"
+          Assert-Text $out "Atualizacao concluida" "ATUALIZAR_JARVIS.bat"
+          Assert-Text $out "Backup criado:" "ATUALIZAR_JARVIS.bat sem o backup antes de atualizar"
+          Get-ChildItem -Recurse -Filter *.log $env:JARVIS_DATA_DIR | ForEach-Object { Select-String -Path $_.FullName -Pattern "Traceback" -SimpleMatch -List } | ForEach-Object { Write-Host "::warning::Traceback no log: $($_.Path)" }
+          exit 0
       - name: Upload Windows release candidate
         uses: actions/upload-artifact@v4
         with:

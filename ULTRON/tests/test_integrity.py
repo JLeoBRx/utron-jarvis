@@ -41,6 +41,16 @@ class ImportTest(unittest.TestCase):
                          "autonomy.revoke", "autonomy.list", "voice.diagnose", "network.devices"):
             self.assertIn(required, names)
 
+    def test_command_reference_matches_the_registry(self):
+        """COMANDOS_JARVIS.md é gerado do registro: uma skill nova, removida ou com risco/permissão mudados sem
+        regerar o documento reprova aqui (``python tools/gerar_comandos.py``)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gerar_comandos", Path(helpers.ROOT) / "tools" / "gerar_comandos.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        current = (Path(helpers.ROOT) / "COMANDOS_JARVIS.md").read_text(encoding="utf-8")
+        self.assertEqual(current, module.render(), "COMANDOS_JARVIS.md desatualizado: rode python tools/gerar_comandos.py")
+
 
 class NetworkFailureTest(unittest.TestCase):
     def test_scan_failure_is_reported_not_hidden(self):

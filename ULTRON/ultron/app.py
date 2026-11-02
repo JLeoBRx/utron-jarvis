@@ -35,7 +35,7 @@ from . import __version__
 from .config import paths
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis", description="JARVIS — inteligência local do computador")
     parser.add_argument("--headless", action="store_true", help="console de texto, sem interface gráfica")
     parser.add_argument("--boot", action="store_true", help="início automático com o Windows (orbe recolhido)")
@@ -66,7 +66,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-plugins", action="store_true", help="não carrega plugins")
     parser.add_argument("--debug", action="store_true", help="registro detalhado")
     parser.add_argument("--version", action="version", version=f"JARVIS {__version__}")
-    return parser.parse_args(argv)
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)
 
 
 def install_exception_hooks() -> None:

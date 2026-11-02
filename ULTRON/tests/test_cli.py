@@ -6,6 +6,7 @@ teste do Windows, da bandeja ou do microfone: é o caminho de linha de comando d
 """
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -79,6 +80,37 @@ class CommandLineTest(unittest.TestCase):
         self.assertIn("Ollama: indisponível", out, "sem servidor, o relatório diz isso em vez de inventar")
         self.assertIn("Voz: desativada nesta execução (--no-voice).", out)
         self.assertRegex(out, r"Skills: \d+/\d+ disponíveis")
+
+
+class WindowsScriptsTest(unittest.TestCase):
+    """Os ``.bat`` só rodam no Windows (o CI executa o instalador e os scripts a partir do ZIP extraído); aqui
+    fica o que dá para conferir no texto deles."""
+
+    def test_scripts_use_crlf_line_endings(self):
+        scripts = sorted(helpers.ROOT.glob("*.bat"))
+        self.assertGreaterEqual(len(scripts), 7)
+        for script in scripts:
+            data = script.read_bytes()
+            self.assertNotIn(b"\n", data.replace(b"\r\n", b""),
+                             f"{script.name}: com LF sozinho o cmd.exe pode não achar os rótulos do goto")
+
+    def test_commands_that_answer_with_text_run_in_a_console(self):
+        """``START_JARVIS.bat`` abre a janela pelo pythonw, que não tem console: um comando que responde com
+        texto (backup, restauração, status…) rodaria sem mostrar nada. Todo comando "… e sai" do programa precisa
+        estar na lista que o script roda pelo Python de console."""
+        from ultron.app import build_parser
+        text = (helpers.ROOT / "START_JARVIS.bat").read_text(encoding="ascii")
+        listed = set(re.search(r"for %%A in \(([^)]*)\) do", text).group(1).split())
+        options = {}
+        for action in build_parser()._actions:
+            for option in action.option_strings:
+                options[option] = action.help or ""
+        answering = {option for option, text_ in options.items() if text_.endswith("e sai")}
+        answering |= {"--voice-test", "--headless", "--version", "--help"}
+        self.assertGreaterEqual(len(answering), 18)
+        self.assertEqual(answering - listed, set(), "comandos que responderiam com texto pelo pythonw (sem console)")
+        self.assertEqual(listed - set(options), set(), "itens da lista que o programa não conhece")
+        self.assertNotIn("--boot", listed, "o início com o Windows abre a janela, sem console")
 
 
 if __name__ == "__main__":

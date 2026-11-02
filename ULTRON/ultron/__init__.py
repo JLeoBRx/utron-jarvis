@@ -24,5 +24,5 @@ O pacote é organizado por responsabilidade (ver ARCHITECTURE_REPORT.md):
     hud/          Neural HUD (somente apresentação)
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 NAME = "JARVIS"

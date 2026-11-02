@@ -41,3 +41,4 @@ echo Atualizacao concluida. Inicie com START_JARVIS.bat
 echo Para voltar ao estado anterior: START_JARVIS.bat --stop e depois
 echo   .venv\Scripts\python.exe main.py --list-backups   e   --restore-backup ARQUIVO
 pause
+exit /b 0

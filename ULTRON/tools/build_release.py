@@ -32,7 +32,7 @@ FORBIDDEN = (".venv/", "venv/", "__pycache__/", ".pyc", ".sqlite3", ".db", "sett
              ".env", ".pem", ".key", ".p12", ".pfx")
 REQUIRED = ("main.py", "requirements.txt", "INSTALL_JARVIS.bat", "START_JARVIS.bat", "ATUALIZAR_JARVIS.bat",
             "DIAGNOSTICO_JARVIS.bat", "README_JARVIS.md", "CHANGELOG_JARVIS.md", "ARCHITECTURE_JARVIS.md",
-            "PERFORMANCE_REPORT.md", "VOICE_DIAGNOSTICS.md", "TEST_REPORT.md", "TEST_JARVIS.py",
+            "PERFORMANCE_REPORT.md", "VOICE_DIAGNOSTICS.md", "TEST_REPORT.md", "TEST_JARVIS.py", "COMANDOS_JARVIS.md",
             "ultron/app.py", "ultron/hud/tardis.py", "assets/LEIA-ME.txt", "tests/test_tardis.py")
 MAX_BYTES = 25 * 1024 * 1024
 
