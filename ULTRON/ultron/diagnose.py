@@ -253,7 +253,6 @@ def run(args: argparse.Namespace, *, make_core: Callable, wait_voice: Callable, 
         else:
             report.line("—", "Percepção", "desativada nesta execução (--no-perception).")
         report.step("Plugins", 15, lambda: _plugins(core))
-        report.step("Noctário", 15, lambda: _noctario(health))
         report.step("Sistema", 15, lambda: _system(health))
     else:
         for name in dependents:
@@ -304,13 +303,6 @@ def _ollama(health: dict, core) -> tuple:
     reason = status.error or detail or "não respondeu"
     return ("FALHA", f"indisponível — {reason}. Abra o Ollama (ollama.com); comandos diretos, lembretes e memória "
                      "continuam funcionando sem ele")
-
-
-def _noctario(health: dict) -> tuple:
-    status, detail = health_line(health, "NOCTARIO")
-    if "desconectado" in detail:
-        return ("—", "desconectado (normal sem o robô ligado; a conexão é feita pela página NOCTÁRIO)")
-    return (status, detail)
 
 
 def _system(health: dict) -> tuple:

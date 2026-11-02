@@ -34,7 +34,7 @@ from .events import EventType
 log = logging.getLogger("ultron.activity")
 
 KINDS = {"pedido": "Pedido", "acao": "Ação", "aviso": "Aviso", "lembrete": "Lembrete", "erro": "Erro",
-         "sistema": "Sistema", "tardis": "TARDIS", "noctario": "Noctário"}
+         "sistema": "Sistema", "tardis": "TARDIS"}
 STATES = {"recebido": "recebido", "executando": "executando", "aguardando_confirmacao": "aguardando confirmação",
           "concluido": "concluído", "verificado": "verificado", "nao_confirmado": "não confirmado",
           "pergunta": "pediu esclarecimento", "falhou": "falhou", "negado": "negado", "cancelado": "cancelado",
@@ -43,8 +43,7 @@ FINAL_STATES = frozenset({"concluido", "verificado", "nao_confirmado", "pergunta
                           "cancelado", "recusado", "aviso"})
 ORIGINS = {"voice": "voz", "text": "texto", "hud": "interface", "user": "usuário", "plan": "plano",
            "agent": "agente", "recovery": "recuperação", "proactive": "proatividade", "automation": "automação",
-           "reminders": "lembretes", "core": "JARVIS", "system": "sistema", "tardis": "TARDIS",
-           "noctario": "Noctário"}
+           "reminders": "lembretes", "core": "JARVIS", "system": "sistema", "tardis": "TARDIS"}
 _EXECUTION_STATES = {"executed": "concluido", "skipped": "concluido", "failed": "falhou", "refused": "recusado",
                      "denied": "negado", "cancelled": "cancelado", "unavailable": "falhou"}
 _VERIFICATION_STATES = {"VERIFIED": "verificado", "UNCONFIRMED": "nao_confirmado", "FAILED": "falhou"}

@@ -23,7 +23,7 @@ GROUPS = {
     "automation": "Automações", "autonomy": "Autonomia e autorizações", "dev": "Desenvolvimento",
     "devices": "Periféricos", "diagnostics": "Diagnóstico", "fs": "Arquivos e pastas", "imagination": "Imaginação",
     "input": "Teclado e mouse", "jarvis": "O próprio JARVIS",
-    "memory": "Memória e preferências", "network": "Rede local", "noctario": "Noctário (robô)",
+    "memory": "Memória e preferências", "network": "Rede local",
     "secondbrain": "Memória pessoal (segundo cérebro)", "system": "Sistema", "tardis": "TARDIS",
     "vision": "Tela e visão", "voice": "Voz", "web": "Navegador e web", "window": "Janelas",
 }
@@ -32,8 +32,8 @@ HEADER = """# JARVIS — Referência de comandos (ações executáveis)
 
 Gerado por `tools/gerar_comandos.py` a partir do registro real de skills (`ultron/skills/`); não edite à
 mão. São **{total} ações** em {groups} grupos. Você não chama estes nomes: fala ou digita o pedido ("abra o
-bloco de notas", "anote uma ideia…", "pare o Noctário") e o JARVIS escolhe a ação — os exemplos de frases
-estão no `README_JARVIS.md` (§§ 4–7) e o mapa dos comandos do JARVIS original em
+bloco de notas", "anote uma ideia…") e o JARVIS escolhe a ação — os exemplos de frases
+estão no `README_JARVIS.md` (§§ 4–6) e o mapa dos comandos do JARVIS original em
 `docs/inventario/comandos.md`.
 
 Como cada ação passa pelo executor (`ultron/agent/execution.py`), na ordem: validação estrita dos

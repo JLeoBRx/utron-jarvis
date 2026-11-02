@@ -71,7 +71,7 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 | `START_JARVIS.bat --gui-check` | monta a interface sem mostrá-la e diz se ela abre nesta máquina |
 | `START_JARVIS.bat --status` | diz se está em execução |
 | `START_JARVIS.bat --stop` | pede ao JARVIS em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
-| `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | diagnóstico **por etapas** (`[OK]`/`[AVISO]`/`[FALHA]`/`[TEMPO]`): configurações, banco, núcleo, Ollama, modelos, memória, TARDIS, voz em 8 etapas, percepção, plugins, Noctário, sistema e a interface gráfica montada de verdade. Cada etapa tem prazo; a que não responde é nomeada e as outras continuam |
+| `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | diagnóstico **por etapas** (`[OK]`/`[AVISO]`/`[FALHA]`/`[TEMPO]`): configurações, banco, núcleo, Ollama, modelos, memória, TARDIS, voz em 8 etapas, percepção, plugins, sistema e a interface gráfica montada de verdade. Cada etapa tem prazo; a que não responde é nomeada e as outras continuam |
 | `START_JARVIS.bat --voice-test` | teste de voz falando ("Jarvis, que horas são?") |
 | `START_JARVIS.bat --backup` | backup do banco agora |
 | `START_JARVIS.bat --autostart` / `--no-autostart` | liga/desliga o início com o Windows |
@@ -95,16 +95,15 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 
 ---
 
-## 3. A plataforma: JARVIS · TARDIS · NOCTÁRIO · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
+## 3. A plataforma: JARVIS · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
 
-Uma janela com seis módulos. Trocar de módulo não perde nada: câmera e região do TARDIS,
+Uma janela com cinco módulos. Trocar de módulo não perde nada: câmera e região do TARDIS,
 filtros, rolagem e textos digitados ficam como estavam.
 
 | Atalho | Efeito |
 |---|---|
 | F1 | JARVIS (núcleo e conversa) |
 | F2 | TARDIS (sala de controle e ARQUIVO da memória pessoal) |
-| F4 | NOCTÁRIO (robô) |
 | F5 | ATIVIDADES (histórico) |
 | F6 | CONFIGURAÇÕES |
 | F3 ou F7 | DIAGNÓSTICOS (voz, rede, autonomia, desempenho, eventos, log, serviços e GPU) |
@@ -115,12 +114,12 @@ filtros, rolagem e textos digitados ficam como estavam.
 
 Por voz: *"abra a TARDIS"*, *"abra o segundo cérebro"* (o ARQUIVO), *"abra as configurações do JARVIS"* (sem "do JARVIS", abre as
 configurações do Windows, como no original), *"mostre o histórico de atividades"*, *"abra o
-console de eventos"*, *"abra o log do JARVIS"*, *"abra o noctário"*, *"volte para o JARVIS"*,
+console de eventos"*, *"abra o log do JARVIS"*, *"volte para o JARVIS"*,
 *"o que você fez hoje?"*.
 
 **Barra superior**: mini-reator e identidade, navegação, relógio e data; na segunda linha o
 estado (LED, nome e cinco barras com o nível REAL do microfone ou da fala) e os indicadores MIC,
-VOZ, IA, NOCTÁRIO, REDE (Wi-Fi e tráfego), BATERIA (só se houver), OBSERVADOR e SESSÃO (tempo de
+VOZ, IA, REDE (Wi-Fi e tráfego), BATERIA (só se houver), OBSERVADOR e SESSÃO (tempo de
 execução e modo de privacidade). Passe o mouse para detalhes; clique para agir (ligar/desligar
 microfone e voz, modos do Observador, abrir a página certa). Indicador sem dado real mostra "—".
 
@@ -188,10 +187,10 @@ ditas (desligue em CONFIGURAÇÕES > VOZ E ÁUDIO).
 | Estado | Sinal real | Visual |
 |---|---|---|
 | Privacidade | modo privacidade ativo | viseira de linhas sobre os olhos, brilho baixo |
-| Erro de integração | componente falhou, modelo indisponível, link do Noctário perdido sem pedido (8 s) | tom coral e leve "falha" de projeção |
+| Erro de integração | componente falhou ou modelo indisponível (8 s) | tom coral e leve "falha" de projeção |
 | Aguardando confirmação | autorização pendente | âmbar, sobrancelhas erguidas, olhar direto |
 | Falando | áudio saindo agora (posição real de reprodução) | boca sincronizada, acenos nas sílabas fortes, anéis pela saída real |
-| Alerta | lembrete devido, alerta do Noctário (6 s) | âmbar, atenção súbita; tinge os estados abaixo |
+| Alerta | lembrete devido (6 s) | âmbar, atenção súbita; tinge os estados abaixo |
 | Reconhecendo | parciais do reconhecimento com a escuta aberta | olhos focados, micro-movimentos |
 | Escutando | escuta aberta | atenção, cabeça inclinada, halo pelo nível real do microfone |
 | Consultando a TARDIS | tarefa da TARDIS pedida pelo JARVIS | olhar para o lado, íris âmbar |
@@ -243,14 +242,13 @@ iniciar, Observador ao iniciar) · Voz e áudio (voz, timbre, volume, velocidade
 palavras de ativação, **microfone** e **saída de áudio**) · Inteligência (Ollama ou **OpenAI**, com
 aviso e confirmação explícitos; chave no cofre do sistema, nunca exibida inteira; TESTAR) ·
 Privacidade e Observador (LOCAL/PADRÃO, modelos externos, modos, intervalo, **apps sem
-monitoramento**) · **Permissões** · Aparência e desempenho · Noctário · Histórico e registros ·
-**Restaurar padrões** (guarda uma cópia antes; mantém microfone, saída de áudio, calibração da voz,
-endereço do Noctário e fuso).
+monitoramento**) · **Permissões** · Aparência e desempenho · Histórico e registros ·
+**Restaurar padrões** (guarda uma cópia antes; mantém microfone, saída de áudio, calibração da voz e
+fuso).
 
 **Permissões por categoria**: consultar, alterar configurações, executar programas e comandos
-do sistema, modificar arquivos e dados pessoais, apagar dados, comandos ao robô — cada uma em
-*permitir* (decide pelo risco), *confirmar sempre* ou *bloquear*. Apagar dados e comandos ao robô
-nunca ficam abaixo de *confirmar*; a parada de emergência do robô nunca é bloqueada.
+do sistema, modificar arquivos e dados pessoais e apagar dados — cada uma em *permitir* (decide pelo
+risco), *confirmar sempre* ou *bloquear*. Apagar dados nunca fica abaixo de *confirmar*.
 
 ### DIAGNÓSTICOS (F3 / F7)
 
@@ -293,8 +291,8 @@ faz no resto da plataforma).
 | PLANEJAMENTO | decompõe um objetivo em etapas verificáveis e aponta riscos (exige o modelo; sem ele, falha com o motivo). Nenhuma etapa é executada |
 | ARQUIVO | organização da memória pessoal (atrasados, conflitos, duplicados, tarefas sem data, registros aguardando revisão) e a entrada da memória espacial |
 | ROTINAS | lembretes futuros, registros recorrentes e automações |
-| TELEMETRIA | métricas das voltas gravadas do Noctário (tempo, erro RMS, oscilação, saturação do PWM, perdas de linha, intervalos entre cruzamentos, comparação entre voltas) e hipóteses de ajuste explicadas |
-| DIAGNÓSTICO | saúde, componentes, workers, voz e Noctário, com gravidade e fonte (diagnóstico); e a fotografia do estado de cada módulo agora (coordenação) |
+| TELEMETRIA | telemetria do próprio JARVIS medida pelo núcleo: CPU e memória do processo, latência real dos modelos e das respostas, fluidez da interface, Event Bus e workers, com pontos de atenção explicados (nada é alterado) |
+| DIAGNÓSTICO | saúde, componentes, workers e voz, com gravidade e fonte (diagnóstico); e a fotografia do estado de cada módulo agora (coordenação) |
 
 O **rotor** mostra o estado REAL do motor da TARDIS:
 
@@ -311,21 +309,21 @@ As telas flutuantes mostram a fila e o último resultado. Sem evento, a sala fic
 
 O lado direito mostra o **RESULTADO** da tarefa escolhida: resumo, itens com a fonte de cada um,
 modelo usado, o registro de operações e as **ações propostas** com o botão **APLICAR** (executa pelo
-JARVIS, que pede confirmação quando a categoria exige — comandos ao robô e apagar dados sempre pedem).
+JARVIS, que pede confirmação quando a categoria exige — apagar dados sempre pede).
 **CANCELAR** interrompe uma análise na fila ou em execução. **TAREFAS** lista as desta sessão e as
 anteriores (lidas do banco).
 
 ### Pelo JARVIS (voz ou texto)
 
-*"Jarvis, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o Kd do
-Noctário"*, *"TARDIS, organize minha memória"*, *"peça à TARDIS um plano para montar a pista"*,
-*"TARDIS, diagnostique o sistema"*, *"peça à TARDIS para analisar a telemetria do Noctário"*,
+*"Jarvis, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o
+projeto Phoenix"*, *"TARDIS, organize minha memória"*, *"peça à TARDIS um plano para montar a pista"*,
+*"TARDIS, diagnostique o sistema"*, *"peça à TARDIS para analisar a telemetria do sistema"*,
 *"TARDIS, quais são minhas rotinas?"*, *"TARDIS, estado dos módulos"*, *"anote na TARDIS uma
-decisão: usar pista de 3 metros"*, *"mostre a memória de projeto do Noctário"*.
+decisão: usar pista de 3 metros"*, *"mostre a memória de projeto do Phoenix"*.
 
 A resposta diz qual análise rodou, o modelo e as fontes. Se a TARDIS propõe uma ação, o JARVIS
 pergunta: diga **"sim"** para executar ou **"não"** para descartar (a proposta expira em 90 s). Para
-comandos ao robô, o "sim" ainda passa pela confirmação própria da categoria. **"Cancelar"** para as
+apagar dados, o "sim" ainda passa pela confirmação própria da categoria. **"Cancelar"** para as
 consultas que o JARVIS fez à TARDIS (as análises pedidas na sala continuam).
 
 ### Protocolo e garantias
@@ -342,8 +340,8 @@ atividades (pedido → ação → tarefa da TARDIS, ligados).
   telemetria 20 s, diagnóstico 30 s, coordenação 5 s, memória de projeto 10 s); uma análise que
   trava é abandonada com TIMEOUT e a fila segue.
 * **Sem dado, sem resultado**: nada encontrado → FAILED com o motivo (`NO_DATA`); sem modelo para
-  planejar → `NO_MODEL`. Telemetria sem voltas gravadas do Noctário diz que não há o que analisar;
-  voltas do simulador são rotuladas e nunca viram comando ao robô. Nenhuma sugestão promete tempo de volta.
+  planejar → `NO_MODEL`. A TELEMETRIA mede o próprio JARVIS (processo, latência real dos modelos e das
+  respostas, interface, Event Bus e workers); sem métrica coletada ainda, diz que não há dado.
 * A memória de projeto **recusa senhas, tokens e dados sensíveis**; textos que parecem segredo são
   redigidos antes de gravar.
 * Tarefas que estavam na fila quando o JARVIS fechou viram CANCELLED (`INTERRUPTED`) na próxima abertura.
@@ -391,78 +389,7 @@ tarefa no motor, 0,8 ms (mediana). Números completos em `docs/benchmarks/tardis
 
 ---
 
-## 5. Noctário — o robô seguidor de linha
-
-O JARVIS conecta ao Noctário pelo Bluetooth, mostra tudo o que o robô informa, envia comandos com
-limites e confirmação, grava as voltas e as entrega à TARDIS. **O controle PD roda no ESP32**: a
-interface só pede, lê e registra. Firmware, pinagem e a primeira vez na bancada:
-`firmware/noctario/README.md`; protocolo: `firmware/noctario/PROTOCOLO_NOCT1.md`.
-
-> Os sketches originais (`Noctario_JARVIS.ino`, 20/10, e a variante `Nefarious_6`, 28/10) foram
-> comparados: pinagem, linha branca, sensor de cruzamento ativo em LOW e laço de 100 Hz estão confirmados
-> e já são o padrão. Ainda dependem da bancada a ordem física dos sensores e o sentido de cada motor —
-> ajustáveis pela interface, sem regravar. O firmware compila para a ESP32 no CI; gravar na placa e
-> ensaiar no robô (rodas suspensas, botão físico ao alcance) é o passo seguinte.
-
-**Conectar.** Pareie o robô ("Noctario") no Windows. Em CONFIGURAÇÕES > NOCTÁRIO escolha *Porta COM do
-Bluetooth* (a porta de saída criada pelo Windows), *Bluetooth direto* (endereço do robô) ou *Simulador*.
-O JARVIS só conecta ao que você configurou — não procura nem varre aparelhos. *Conectar ao iniciar* e
-*Reconectar se o link cair* só conectam: **nunca dão partida**.
-
-**A página NOCTÁRIO (F4).**
-
-* Faixa: CONECTADO (porta e firmware), **SIMULADOR — não é o robô** ou **SEM CONEXÃO — nenhum dado do
-  robô** (sem conexão nada é exibido como se fosse do robô).
-* **Estado informado pelo robô** e o pedido em andamento: *aguardando confirmação*, *confirmado* ou
-  *sem confirmação do robô — estado desconhecido* (depois de 3 s).
-* Calibração, cruzamentos (x de N), tempo da volta, erro, correção PD, PWM de cada motor, velocidade
-  alvo, Kp/Kd, o que o firmware faz sem link e a última falha.
-* Barras dos 8 sensores com a posição da linha e o gráfico dos últimos 20 s (posição e erro, PWM de cada
-  motor, sensores como mapa de calor, cruzamentos).
-* Ao lado: **PARADA DE EMERGÊNCIA (F12)** sempre visível; CONECTAR/DESCONECTAR, PARTIDA, PARAR,
-  CALIBRAR, CALIBRAR GIRANDO, LIBERAR EMERGÊNCIA, ZERAR CRUZAMENTOS, MOTOR ESQUERDO e MOTOR DIREITO
-  (bancada); parâmetros com os limites do protocolo (APLICAR envia só o que mudou; RELER; SALVAR NO
-  ROBÔ); VOLTAS GRAVADAS com ANALISAR NA TARDIS; ALERTAS.
-
-**Segurança.**
-
-* **F12** (em qualquer página), o botão vermelho, *"pare o Noctário"*, *"parada de emergência"* ou
-  *"robô, pare"*: o byte de parada vai direto ao robô — sem fila, sem modelo de linguagem, sem
-  confirmação — e é repetido até o robô confirmar (até 1,5 s). Sem confirmação, o JARVIS diz para usar o
-  botão físico. Nenhuma permissão bloqueia a parada. *"Pare"* ou *"cancelar"* com o robô andando também
-  o param.
-* **A parada pelo Bluetooth não substitui um botão físico** que corte a alimentação dos motores.
-* Tudo o que move ou reconfigura o robô (partida, calibração, teste de motores, parâmetros, gravar,
-  padrões, liberar a emergência, zerar cruzamentos) pede **confirmação a cada vez**, com a descrição
-  exata do que será feito — nunca "sim, sempre" (categoria *comandos ao robô*, nunca abaixo de
-  *confirmar*; pode ser bloqueada — a parada não).
-* O modelo de linguagem não move o robô por conta própria: esses comandos não são oferecidos a ele e,
-  se ele os inventar, são recusados.
-* Sem link, vale a política do firmware (padrão: parar, com cão de guarda de 1,5 s). Reconectar nunca
-  dá partida.
-* Cada resposta diz o que o **robô confirmou**. Sem resposta: "estado desconhecido", nunca "feito".
-
-**Por voz ou texto:** *"conecte o Noctário"*, *"calibre o Noctário"* (ou *"… girando"*), *"dê a partida
-no Noctário"*, *"pare o Noctário"*, *"pare o robô suavemente"*, *"libere a emergência do Noctário"*,
-*"ajuste o Kd do Noctário para 0,12"*, *"mude o PWM base do robô para 200"*, *"telemetria do Noctário a
-10 Hz"*, *"teste o motor esquerdo do Noctário"*, *"leia os sensores do robô"*, *"quantos cruzamentos o
-Noctário contou?"*, *"qual o estado do Noctário?"*, *"alertas do Noctário"*, *"salve os parâmetros do
-Noctário"*, *"analise as voltas do Noctário"*.
-
-**Voltas e TARDIS.** Cada volta feita com o JARVIS conectado é gravada da partida ao fim, com a
-telemetria, no mesmo banco (resultado: concluída, linha perdida, interrompida ou parada de emergência;
-marcada como parcial se o link caiu no meio). *"Analise as voltas do Noctário"* ou ANALISAR NA TARDIS
-compara as voltas e explica hipóteses de ajuste; a TARDIS só propõe. Parâmetros confirmados pelo robô
-vão para a memória de projeto "Noctário".
-
-**Simulador.** Para conhecer a interface sem o robô: a mesma lógica do firmware (conferida linha a
-linha contra o código C++) e a física de uma pista de **teste** inventada, com 4 cruzamentos. Tudo
-aparece rotulado SIMULADOR; voltas do simulador ficam marcadas, nunca viram comando ao robô e o tempo
-delas não diz nada sobre o robô real.
-
----
-
-## 6. Falando com o JARVIS
+## 5. Falando com o JARVIS
 
 **Voz.** Diga **"Jarvis"** no início: *"Jarvis, abra o bloco de notas"*. Depois de uma
 resposta há 12 s de continuação sem repetir o nome. *"Pare"* interrompe a fala;
@@ -482,7 +409,7 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ---
 
-## 7. Memória pessoal e lembretes
+## 6. Memória pessoal e lembretes
 
 * Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.
 * Datas e horas em português ("amanhã às 15h", "sexta", "dia 12 às 9h30", "toda segunda").
@@ -508,7 +435,7 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ---
 
-## 8. Rede local
+## 7. Rede local
 
 DIAGNÓSTICOS > **REDE LOCAL** lista os aparelhos com IP, MAC, nome, fabricante (OUI), tipo,
 **observação**, confiabilidade, origem, interface, primeira e última vez. Observação é o que
@@ -523,7 +450,7 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
 
 ---
 
-## 9. Autonomia e segurança
+## 8. Autonomia e segurança
 
 | Situação | Comportamento |
 |---|---|
@@ -545,13 +472,13 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
   recusa vem antes do pedido de autorização. Ler e listar continuam livres. Excluir vai sempre para a
   Lixeira; editar guarda uma cópia `.ultron.bak` (as anteriores nunca são sobrescritas).
 * O modelo de linguagem só executa as ferramentas oferecidas naquele pedido; as reservadas a pedidos
-  diretos (mover o robô, por exemplo) não são oferecidas e são recusadas se ele as inventar.
+  diretos não são oferecidas e são recusadas se ele as inventar.
 * O JARVIS não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
   invasão, captura de credenciais, exploração ou interceptação.
 
 ---
 
-## 10. Qualidade visual e desempenho
+## 9. Qualidade visual e desempenho
 
 Bandeja > *Qualidade visual*: **Econômico**, **Equilibrado** (padrão), **Alto**,
 **Cinematográfico**. O perfil muda só o custo visual (quadros, partículas, densidade) —
@@ -562,7 +489,7 @@ a cadência de fundo; minimizado ou oculto, não desenha. Números medidos em
 
 ---
 
-## 11. Dados e privacidade
+## 10. Dados e privacidade
 
 Tudo em `%LOCALAPPDATA%\ULTRON\`: `ultron.sqlite3` (memórias, Second Brain, lembretes,
 grafo, rede, auditoria), `settings.json`, `world_model.json`, `backups\`, `exports\`,
@@ -572,7 +499,7 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 
 ---
 
-## 12. Problemas comuns
+## 11. Problemas comuns
 
 | Sintoma | O que fazer |
 |---|---|
@@ -592,9 +519,8 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 | A central 3D está lenta | perfil Econômico ou Equilibrado (a qualidade também desce sozinha); `python tools/benchmark_scene3d.py` mede no seu computador |
 | "O JARVIS já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
 
-## 13. Documentos
+## 12. Documentos
 
 `CHANGELOG_JARVIS.md` · `ARCHITECTURE_JARVIS.md` (mapa de integração) ·
-`firmware/noctario/README.md` e `firmware/noctario/PROTOCOLO_NOCT1.md` (Noctário) ·
 `PERFORMANCE_REPORT.md` · `VOICE_DIAGNOSTICS.md` · `TEST_REPORT.md` ·
 `docs/JARVIS_AUDITORIA_E_PLANO.md` (auditoria e plano). Testes: `python TEST_JARVIS.py`.

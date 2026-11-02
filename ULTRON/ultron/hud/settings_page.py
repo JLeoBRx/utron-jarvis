@@ -23,9 +23,9 @@ from .panels import _button, _label
 
 SECTIONS = (("geral", "GERAL E INÍCIO"), ("voz", "VOZ E ÁUDIO"), ("ia", "INTELIGÊNCIA"),
             ("privacidade", "PRIVACIDADE E OBSERVADOR"), ("permissoes", "PERMISSÕES"),
-            ("aparencia", "APARÊNCIA E DESEMPENHO"), ("noctario", "NOCTÁRIO"), ("registros", "HISTÓRICO E REGISTROS"),
+            ("aparencia", "APARÊNCIA E DESEMPENHO"), ("registros", "HISTÓRICO E REGISTROS"),
             ("restaurar", "RESTAURAR PADRÕES"))
-PAGE_LABELS = {"jarvis": "JARVIS", "tardis": "TARDIS", "noctario": "NOCTÁRIO", "atividades": "ATIVIDADES",
+PAGE_LABELS = {"jarvis": "JARVIS", "tardis": "TARDIS", "atividades": "ATIVIDADES",
                "configuracoes": "CONFIGURAÇÕES", "diagnosticos": "DIAGNÓSTICOS"}
 
 
@@ -58,7 +58,7 @@ class SettingsPage(QtWidgets.QWidget):
         self.forms: dict[str, QtWidgets.QFormLayout] = {}
         builders = {"geral": self._build_general, "voz": self._build_voice, "ia": self._build_ai,
                     "privacidade": self._build_privacy, "permissoes": self._build_permissions,
-                    "aparencia": self._build_appearance, "noctario": self._build_noctario,
+                    "aparencia": self._build_appearance,
                     "registros": self._build_records, "restaurar": self._build_reset}
         for key, label in SECTIONS:
             self.nav.addItem(label)
@@ -539,8 +539,7 @@ class SettingsPage(QtWidgets.QWidget):
     def _build_permissions(self, form) -> None:
         intro = _label("O que o JARVIS pode fazer por categoria. \"Permitir\" deixa a decisão com o risco de cada "
                        "ação (sensíveis continuam pedindo autorização); \"Confirmar sempre\" pergunta a cada vez; "
-                       "\"Bloquear\" recusa. Apagar dados e comandos ao robô nunca ficam abaixo de \"Confirmar\". A "
-                       "parada de emergência do robô nunca é bloqueada.", "PanelDim")
+                       "\"Bloquear\" recusa. Apagar dados nunca fica abaixo de \"Confirmar\".", "PanelDim")
         form.addRow(intro)
         self.permission_boxes: dict[str, QtWidgets.QComboBox] = {}
         for category in PERMISSION_CATEGORIES:
@@ -605,24 +604,6 @@ class SettingsPage(QtWidgets.QWidget):
                                                                    ("gpu", "GPU — OpenGL (volta para CPU se falhar)")])
         self.number(form, "hud_fps", "Quadros por segundo (máximo)", 15, 144, step=5)
         self.check(form, "ambient_sound", "Som ambiente discreto do TARDIS")
-
-    # ------------------------------------------------------------ NOCTÁRIO
-    def _build_noctario(self, form) -> None:
-        form.addRow(_label("A interface envia comandos e lê telemetria; o controle PD roda no ESP32. Nenhuma partida "
-                           "acontece sozinha. A parada por Bluetooth NÃO substitui um botão físico de parada no robô.",
-                           "PanelDim"))
-        self.combo(form, "noctario_transport", "Conexão", [("rfcomm", "Bluetooth direto (RFCOMM)"),
-                                                           ("serial", "Porta COM do Bluetooth"),
-                                                           ("simulator", "Simulador (rotulado como SIMULADO)")])
-        self.line(form, "noctario_address", "Endereço Bluetooth", placeholder="AA:BB:CC:DD:EE:FF")
-        self.number(form, "noctario_channel", "Canal RFCOMM", 1, 30)
-        self.line(form, "noctario_port", "Porta COM", placeholder="COM5")
-        self.check(form, "noctario_autoconnect", "Conectar ao iniciar (só conecta; nunca dá partida)")
-        self.check(form, "noctario_reconnect", "Reconectar se o link cair (só reconecta; nunca dá partida)")
-        self.number(form, "noctario_heartbeat_ms", "Batimento PC → robô", 0, 5000, step=50, suffix=" ms",
-                    tip="0 = sem batimento; a política de desconexão é a do firmware")
-        self.number(form, "noctario_telemetry_hz", "Telemetria pedida ao conectar", 1, 50, suffix=" Hz",
-                    tip="só a taxa de envio; não é gravada no robô")
 
     # ------------------------------------------------------------ HISTÓRICO E REGISTROS
     def _build_records(self, form) -> None:

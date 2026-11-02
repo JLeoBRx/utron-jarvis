@@ -45,8 +45,6 @@ from ..config import settings as settings_module
 from ..health.monitor import HealthMonitor
 from ..imagination.imagination_core import ImaginationCore
 from ..memory.system import MemorySystem
-from ..noctario import protocol as noctario_protocol
-from ..noctario.service import NoctarioService
 from ..models.ollama_client import OllamaClient
 from ..models.router import ModelRouter
 from ..network.world_integration import NetworkIntelligence
@@ -209,15 +207,12 @@ class NeuralCore:
         self.proactive = ProactiveIntelligence(bus=self.bus, state=self.state, decisions=self.decisions,
                                                settings_getter=s)
         self.health = HealthMonitor(bus=self.bus, state=self.state, model_probe=self._running_models)
-        # Noctário — robô seguidor de linha: o PC conecta, pede, confirma e registra; o PD roda no firmware
-        self.noctario = NoctarioService(s, bus=self.bus, activity=self.activity, db=self.memory.db)
         # TARDIS — segundo cérebro: módulo lógico com fila própria; usa o MESMO modelo do JARVIS (router)
         self.tardis = TardisEngine(TardisStore(self.memory.db), TardisContext(
             second_brain=self.second_brain, memory=self.memory, activity=self.activity, health=self.health,
             router=self.router, voice_probe=self.voice.mic_probe if self.enable_voice else None, state=self.state,
             lifecycle=self.lifecycle, runtime=self.runtime, registry=self.registry,
-            noctario=self.noctario, noctario_runs=self.noctario.runs), bus=self.bus, activity=self.activity)
-        self.noctario.tardis = self.tardis           # parâmetros confirmados vão para a memória de projeto
+            metrics=self.metrics), bus=self.bus, activity=self.activity)
         self.plugins = PluginManager(context_factory=self._plugin_context, settings_getter=s)
         self._register_health_probes()
         self._register_components()
@@ -239,7 +234,6 @@ class NeuralCore:
         L.register(self.second_brain, depends_on=("memory",))
         L.register(self.reminders, depends_on=("second_brain",))
         L.register(self.tardis, depends_on=("memory", "second_brain"))
-        L.register(self.noctario, depends_on=("memory",))
         L.register(self.network, depends_on=("memory", "world_model", "privacy"))
         L.register(Service("skills", health=lambda: {"status": "OK", "detail": f"{len(self.registry.available())}"
                                                                             f"/{len(self.registry)} disponíveis"}))
@@ -435,15 +429,9 @@ class NeuralCore:
         self.bus.publish(EventType.USER_INPUT, {"text": text[:500], "source": source, **(meta or {})}, source="core")
         text_in = text
         intent = self.intents.classify(text)
-        if intent.kind == "command" and intent.skill == "noctario.emergency_stop":
-            self._emergency_stop(text_in, source)          # direto no transporte: nada de fila nem de modelo
-            return True
         if intent.kind == "cancel":
-            robot = self.noctario.confirmed.get("state") in noctario_protocol.MOVING and self.noctario.connected
-            if robot:                                      # "pare!" com o robô andando: a parada vem primeiro
-                self._emergency_stop(text_in, source)
             was_speaking = bool(self.speaker.speaking)
-            cancelled = self.cancel("cancelado pelo usuário") or robot
+            cancelled = self.cancel("cancelado pelo usuário")
             text = dialogue.say("cancelled") if cancelled or was_speaking else "Não há nada em andamento."
             self.activity.record("pedido", text_in, origin=source, input=text_in,
                                  state="cancelado" if cancelled or was_speaking else "concluido", result=text)
@@ -595,7 +583,7 @@ class NeuralCore:
             label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz", "network": "a rede local",
                      "autonomy": "o painel de autonomia", "configuracoes": "as configurações do JARVIS",
                      "atividades": "o histórico de atividades", "diagnosticos": "os diagnósticos",
-                     "noctario": "o painel do Noctário", "jarvis": "a conversa",
+                     "jarvis": "a conversa",
                      "second_brain": "o arquivo da TARDIS (memória espacial)",
                      "tardis": "a sala de controle da TARDIS"}.get(args["open_view"], "a TARDIS")
             return Response(f"Abrindo {label}.", "info")
@@ -744,35 +732,10 @@ class NeuralCore:
         self.activity.finish_request(activity, response, cancelled=token.cancelled)
         self._emit_response(response, source)
 
-    # ================================================================ Noctário
-    def _emergency_stop(self, text: str, source: str) -> None:
-        """PARADA DE EMERGÊNCIA pedida por voz ou texto: o byte de parada sai NESTA thread, na hora; a
-        confirmação do robô (ou a falta dela) chega em seguida, sem prender quem pediu."""
-        outcome = self.noctario.estop(origin=source)
-        activity = self.activity.record("pedido", text, origin=source, input=text,
-                                        state="concluido" if outcome["sent"] else "falhou",
-                                        result=outcome["detail"])
-        if not outcome["sent"]:
-            self._emit_response(Response(f"Parada de emergência NÃO enviada: {outcome['detail']}.", "error",
-                                         success=False), source)
-            return
-        self._emit_response(Response("Parada de emergência enviada ao Noctário.", "info"), source, partial=True)
-
-        def confirm() -> None:
-            confirmed = self.noctario.wait_confirmed({"ESTOP"}, 1.6)
-            if activity:
-                self.activity.update(activity, state="verificado" if confirmed else "nao_confirmado")
-            text = ("Parada de emergência confirmada pelo robô." if confirmed else
-                    "O robô NÃO confirmou a parada. Use o botão físico.")
-            self._emit_response(Response(text, "result" if confirmed else "error", success=confirmed,
-                                         verified=confirmed), source)
-
-        threading.Thread(target=confirm, name="noctario-estop-confirm", daemon=True).start()
-
     # ================================================================ TARDIS
     def _on_tardis_finished(self, event) -> None:
         """Tarefa pedida pelo JARVIS terminou com ação proposta: vira sugestão ("sim"/"não"). Categorias que
-        exigem confirmação própria (robô, apagar dados) NÃO são pré-aprovadas: o executor pergunta de novo."""
+        exigem confirmação própria (apagar dados) NÃO são pré-aprovadas: o executor pergunta de novo."""
         payload = event.payload
         if payload.get("origin") != "jarvis" or not payload.get("actions"):
             return
@@ -787,7 +750,7 @@ class NeuralCore:
         category = category_for(skill, dict(action.args)) if skill is not None else ""
         self._suggestion = {"text": f"Proposta da TARDIS: {action.description}.",
                             "suggestion": {"skill": action.skill, "args": dict(action.args)},
-                            "action": "" if category in ("robo", "apagar_dados") else "authorize",
+                            "action": "" if category == "apagar_dados" else "authorize",
                             "source": "tardis", "task": task.id, "reason": action.reason,
                             "expires": time.time() + SUGGESTION_TTL}
 
@@ -992,7 +955,7 @@ class NeuralCore:
                             emit=lambda kind, **payload: self.bus.publish(kind, payload, source="skill"),
                             extras={"registry": self.registry, "goals": self.goals, "core": self,
                                     "second_brain": self.second_brain, "capture": self.capture,
-                                    "tardis": self.tardis, "noctario": self.noctario})
+                                    "tardis": self.tardis})
 
     def _plugin_context(self, plugin) -> PluginContext:
         return PluginContext(plugin=plugin, bus=self.bus, state=self.state, settings=self.settings,
@@ -1010,7 +973,6 @@ class NeuralCore:
         h.register("MEMORY", self._memory_health)
         h.register("SECOND_BRAIN", self._second_brain_health)
         h.register("TARDIS", self.tardis.health)
-        h.register("NOCTARIO", self.noctario.health)
         h.register("HUD", lambda: self.hud_health() if self.hud_health else
                    {"status": "UNAVAILABLE", "detail": "modo sem interface gráfica"})
 

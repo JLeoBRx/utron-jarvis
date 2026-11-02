@@ -1,4 +1,4 @@
-"""Permissões por categoria (consultar, configurar, executar programas, arquivos, apagar dados, robô)."""
+"""Permissões por categoria (consultar, configurar, executar programas, arquivos, apagar dados)."""
 import threading
 import unittest
 
@@ -41,17 +41,19 @@ class Trash(_Probe):
     permission = "apagar_dados"
 
 
-class RobotStart(_Probe):
-    name = "noctario.test_start"
-    sensitive = "robot_motion"
+class SensitiveConfig(_Probe):
+    name = "test.sensitive_config"
+    permission = "configurar"
+    sensitive = "system_config"
 
 
-class RobotConnect(_Probe):
-    name = "noctario.test_connect"
+class PlainConfig(_Probe):
+    name = "test.plain_config"
+    permission = "configurar"
 
 
-class RobotStop(_Probe):
-    name = "noctario.test_stop"
+class EmergencyStop(_Probe):
+    name = "test.emergency_stop"
     risk = Risk.LOW
     emergency = True
 
@@ -60,7 +62,7 @@ class CategoryTest(unittest.TestCase):
     def test_every_builtin_skill_has_a_category(self):
         registry = load_builtin(SkillRegistry())
         emergency = {s.name for s in registry.all() if s.emergency}
-        self.assertEqual(emergency, {"noctario.emergency_stop", "noctario.stop"}, "só as paradas do robô")
+        self.assertEqual(emergency, set(), "nenhuma skill embutida tem parada de emergência (módulo do robô removido)")
         for skill in registry.all():
             if skill.emergency:                            # fora das categorias: nenhuma política as bloqueia
                 self.assertEqual(category_for(skill, {}), "", skill.name)
@@ -78,31 +80,26 @@ class CategoryTest(unittest.TestCase):
         self.assertEqual(category_for(registry.get("fs.write_text")), "arquivos")
         self.assertEqual(category_for(registry.get("autonomy.revoke")), "consultar",
                          "revogar autorizações só reduz permissões")
-        robot = {s.name: category_for(s, {}) for s in registry.all() if s.name.startswith("noctario.")}
-        self.assertEqual({n for n, c in robot.items() if c == "robo"},
-                         {"noctario.start", "noctario.clear", "noctario.calibrate", "noctario.set_params",
-                          "noctario.save_params", "noctario.defaults", "noctario.reset_crossings",
-                          "noctario.motor_test"}, "tudo o que move ou reconfigura o robô")
-        self.assertEqual((robot["noctario.connect"], robot["noctario.telemetry"], robot["noctario.status"]),
-                         ("configurar", "configurar", "consultar"))
+        self.assertFalse(any(s.name.startswith("noctario.") for s in registry.all()), "módulo do robô removido")
+        self.assertNotIn("robo", PERMISSION_CATEGORIES)
 
-    def test_robot_skills_and_emergency_stop(self):
-        self.assertEqual(category_for(RobotStart()), "robo")
-        self.assertEqual(category_for(RobotConnect()), "robo")
-        self.assertEqual(category_for(RobotStop()), "", "a parada de emergência não pertence a categoria nenhuma")
+    def test_declared_categories_and_emergency_skill(self):
+        self.assertEqual(category_for(SensitiveConfig()), "configurar")
+        self.assertEqual(category_for(PlainConfig()), "configurar")
+        self.assertEqual(category_for(EmergencyStop()), "", "uma parada de emergência não pertence a categoria nenhuma")
 
     def test_policy_defaults_choices_and_floors(self):
         self.assertEqual(parse_policy(()), DEFAULT_POLICY)
         self.assertEqual(DEFAULT_POLICY["apagar_dados"], "confirmar")
-        self.assertEqual(DEFAULT_POLICY["robo"], "confirmar")
+        self.assertNotIn("robo", DEFAULT_POLICY)
         policy = parse_policy(("arquivos=confirmar", "executar_programas=bloquear", "consultar=xyz", "foo=permitir",
                                "apagar_dados=permitir", "robo=permitir"))
         self.assertEqual(policy["arquivos"], "confirmar")
         self.assertEqual(policy["executar_programas"], "bloquear")
         self.assertEqual(policy["consultar"], "permitir", "modo inválido é ignorado")
         self.assertEqual(policy["apagar_dados"], "confirmar", "apagar dados nunca fica abaixo de confirmar")
-        self.assertEqual(policy["robo"], "confirmar", "comandos ao robô nunca ficam abaixo de confirmar")
-        self.assertEqual(parse_policy(("robo=bloquear",))["robo"], "bloquear", "endurecer é sempre possível")
+        self.assertNotIn("robo", policy, "categoria do módulo removido é ignorada")
+        self.assertEqual(parse_policy(("consultar=bloquear",))["consultar"], "bloquear", "endurecer é sempre possível")
         self.assertEqual(policy_entries(policy), ("executar_programas=bloquear", "arquivos=confirmar"),
                          "só o que difere do padrão é gravado")
 
@@ -112,7 +109,8 @@ class CategoryTest(unittest.TestCase):
         self.assertEqual(settings.permission_policy, ("arquivos=confirmar",))
         described = {d["category"]: d for d in PermissionPolicy(lambda: settings).describe()}
         self.assertEqual(described["arquivos"]["mode"], "confirmar")
-        self.assertEqual(described["robo"]["floor"], "confirmar")
+        self.assertEqual(described["apagar_dados"]["floor"], "confirmar")
+        self.assertNotIn("robo", described)
 
 
 class EnforcementTest(unittest.TestCase):
@@ -120,8 +118,8 @@ class EnforcementTest(unittest.TestCase):
         self.bus, self.state = helpers.make_bus_state()
         self.settings = helpers.make_settings(autonomy_level="balanced")
         self.registry = SkillRegistry()
-        self.skills = {cls.name: cls() for cls in (OpenProgram, WriteNote, Trash, RobotStart, RobotConnect,
-                                                   RobotStop)}
+        self.skills = {cls.name: cls() for cls in (OpenProgram, WriteNote, Trash, SensitiveConfig, PlainConfig,
+                                                   EmergencyStop)}
         for skill in self.skills.values():
             self.registry.register(skill)
         self.auth = AuthorizationManager(bus=self.bus, state=self.state, timeout_getter=lambda: 2.0)
@@ -173,18 +171,18 @@ class EnforcementTest(unittest.TestCase):
         self.assertEqual(self.skills["test.trash"].calls, 0)
         self.assertEqual(self.requests[-1]["permission"], "apagar_dados")
 
-    def test_robot_motion_confirms_and_blocked_robot_still_stops(self):
-        self._policy("robo=permitir")
+    def test_sensitive_action_confirms_and_blocked_category_still_lets_emergency_run(self):
+        self._policy("configurar=permitir")
         self._reply_later("sim, sempre")
-        start = self.engine.execute(Action("noctario.test_start", {"label": "pista"}))
+        start = self.engine.execute(Action("test.sensitive_config", {"label": "x"}))
         self.assertEqual(start.status, "executed")
-        self.assertEqual(start.authorization["category"], "robot_motion")
-        self.assertFalse(start.authorization["standing_allowed"], "movimento nunca recebe 'sempre'")
-        self._policy("robo=bloquear")
+        self.assertEqual(start.authorization["category"], "system_config")
+        self.assertFalse(start.authorization["standing_allowed"], "ação sensível nunca recebe 'sempre'")
+        self._policy("configurar=bloquear")
         self.settings.apply({"autonomy_level": "restricted"}, source="teste")
-        connect = self.engine.execute(Action("noctario.test_connect", {"label": "a"}, origin="agent"))
+        connect = self.engine.execute(Action("test.plain_config", {"label": "a"}, origin="agent"))
         self.assertEqual(connect.status, "refused")
-        stop = self.engine.execute(Action("noctario.test_stop", {"label": "a"}, origin="agent"))
+        stop = self.engine.execute(Action("test.emergency_stop", {"label": "a"}, origin="agent"))
         self.assertEqual(stop.status, "executed", "parada de emergência: nunca bloqueada nem perguntada")
         self.assertIsNone(stop.authorization)
 

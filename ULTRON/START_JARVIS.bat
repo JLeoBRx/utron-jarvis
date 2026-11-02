@@ -3,7 +3,7 @@ setlocal
 chcp 65001 <nul >nul
 cd /d "%~dp0"
 
-rem START_JARVIS.bat                 abre o JARVIS (TARDIS, Noctario e as outras paginas pela navegacao ou F1-F7)
+rem START_JARVIS.bat                 abre o JARVIS (TARDIS e as outras paginas pela navegacao ou F1-F7)
 rem START_JARVIS.bat --console       modo console (texto), com o mesmo nucleo, memoria e permissoes da janela
 rem START_JARVIS.bat --foreground    abre a janela pelo python.exe: este terminal mostra avisos e tracebacks
 rem START_JARVIS.bat --gui-check     monta a interface sem mostra-la e diz se ela abre nesta maquina

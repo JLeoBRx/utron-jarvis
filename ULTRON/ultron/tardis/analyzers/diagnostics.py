@@ -1,12 +1,12 @@
 """Diagnóstico e coordenação — leitura do estado REAL dos módulos (determinístico, sem modelo).
 
 Diagnóstico: verificações do monitor de saúde (a última, se recente; senão uma nova dentro do prazo),
-componentes que falharam na inicialização, workers parados ou com fila acumulada, microfone, Noctário e
+componentes que falharam na inicialização, workers parados ou com fila acumulada, microfone e
 falhas recentes da própria TARDIS — cada achado com a fonte e a gravidade. Para voz e rede, PROPÕE rodar o
 diagnóstico completo (skills de leitura; o JARVIS executa só com confirmação).
 
-Coordenação: uma fotografia dos módulos agora — estado do JARVIS, workers, fila da TARDIS, voz e
-Noctário. Nada aqui altera o estado de nenhum módulo.
+Coordenação: uma fotografia dos módulos agora — estado do JARVIS, workers, fila da TARDIS e voz.
+Nada aqui altera o estado de nenhum módulo.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ STATUS_LABELS = {"FAIL": "falha", "WARN": "atenção", "UNAVAILABLE": "indispon�
 CHECK_LABELS = {"CPU": "Processador", "RAM": "Memória RAM", "GPU": "GPU", "DISK": "Disco",
                 "OLLAMA": "Modelos (Ollama)", "VOICE": "Voz", "VISION": "Visão", "NETWORK": "Rede",
                 "MEMORY": "Banco de memória", "HUD": "Interface", "SECOND_BRAIN": "Memória pessoal",
-                "TARDIS": "TARDIS", "NOCTARIO": "Noctário"}
+                "TARDIS": "TARDIS"}
 HEALTH_MAX_AGE = 120.0
 QUEUE_BACKLOG = 20
 STATE_LABELS = {"IDLE": "em repouso", "LISTENING": "escutando", "THINKING": "pensando", "SPEAKING": "falando",
@@ -47,16 +47,6 @@ def health_report(run: Run) -> tuple[dict | None, str]:
     except TimeoutError:
         return (last or None), f"a verificação de saúde não terminou em {budget:.0f} s"
     return report, "verificação de saúde feita agora"
-
-
-def _noctario_status(ctx) -> dict | None:
-    service = ctx.noctario
-    if service is None or not callable(getattr(service, "status", None)):
-        return None
-    try:
-        return dict(service.status() or {})
-    except Exception as exc:
-        return {"link": "erro", "detail": f"{type(exc).__name__}: {exc}"[:160]}
 
 
 def diagnostico(run: Run, data: dict) -> TaskResult:
@@ -111,14 +101,6 @@ def diagnostico(run: Run, data: dict) -> TaskResult:
             add("Microfone com aviso", reason, "microfone", "média")
         if voice.get("enabled") and not voice.get("capturing") and not reason:
             add("Microfone habilitado sem captura", "a captura não está ativa", "microfone", "média")
-    noctario = _noctario_status(ctx)
-    if noctario is not None:
-        sources.append("Noctário")
-        link = str(noctario.get("link") or "desconhecido")
-        if link not in ("conectado", "simulador"):
-            add(f"Noctário: {link}", str(noctario.get("detail") or "sem conexão com o robô"), "Noctário", "baixa")
-        if noctario.get("last_failure"):
-            add("Noctário: última falha registrada", str(noctario["last_failure"]), "Noctário", "média")
     if ctx.store is not None:
         hour_ago = time.time() - 3600
         failed = [t for t in ctx.store.recent(50) if t.state == "FAILED" and (t.finished or 0) >= hour_ago
@@ -190,12 +172,6 @@ def coordenacao(run: Run, data: dict) -> TaskResult:
         items.append({"title": f"Voz: microfone {mic}" + (", escutando" if voice.get("listening") else ""),
                       "detail": str(voice.get("reason") or voice.get("stt") or ""), "source": "microfone"})
         sources.append("microfone")
-    noctario = _noctario_status(ctx)
-    if noctario is not None:
-        snapshot["noctario"] = noctario
-        items.append({"title": f"Noctário: {noctario.get('link', 'desconhecido')}",
-                      "detail": str(noctario.get("state_label") or noctario.get("detail") or ""), "source": "Noctário"})
-        sources.append("Noctário")
     if not items:
         raise TaskFailed("NO_DATA", "nenhum módulo disponível para coordenar")
     summary = "; ".join(i["title"] for i in items) + "."

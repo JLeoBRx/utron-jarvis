@@ -269,8 +269,8 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
             created REAL NOT NULL, source TEXT NOT NULL DEFAULT 'usuario')""",
         "CREATE INDEX IF NOT EXISTS idx_project_notes ON project_notes(project, created)",
     ]),
-    # v6 — Noctário: voltas gravadas da telemetria (amostras comprimidas, parâmetros, cruzamentos, origem
-    # robô/simulador) e o registro de cada comando enviado (solicitado, resultado, latência).
+    # v6 — tabelas do antigo módulo do robô (removido do JARVIS). A migração continua aqui para que bancos
+    # existentes e novos tenham o MESMO esquema; os dados já gravados nelas são preservados e não são lidos.
     (6, [
         """CREATE TABLE IF NOT EXISTS noctario_runs (
             id TEXT PRIMARY KEY,

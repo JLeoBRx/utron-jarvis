@@ -1,10 +1,9 @@
 """TARDIS integrada ao JARVIS: "JARVIS, consulte a TARDIS", sugestões que só rodam com "sim", categorias que
-pedem confirmação própria (robô), cancelamento, modo "operação" do rotor e a SALA DE CONTROLE na plataforma
+pedem confirmação própria (apagar dados), cancelamento, modo "operação" do rotor e a SALA DE CONTROLE na plataforma
 (Qt offscreen, Ollama simulado por HTTP, banco temporário).
 
-Não é teste de GPU, de janela real do Windows, de microfone nem de robô: a skill ``noctario.set_params`` é
-trocada aqui por um falso que só registra o pedido, para provar que a TARDIS PROPÕE e o JARVIS pede
-confirmação antes de qualquer comando (a skill real é testada em ``test_noctario.py``).
+Não é teste de GPU, de janela real do Windows nem de microfone: uma skill de exclusão FALSA (só registra o
+pedido) prova que a TARDIS PROPÕE e o JARVIS pede confirmação própria antes de executar.
 """
 import threading
 import time
@@ -24,19 +23,19 @@ def responder(payload):
     return LLM_HTML if "TARDIS" in system else "Resposta local."
 
 
-class FakeRobotParams(Skill):
-    """Falso de teste: registra o pedido, não fala com robô nenhum."""
+class FakePurge(Skill):
+    """Falso de teste: registra o pedido de exclusão, não apaga nada."""
 
-    name = "noctario.set_params"
+    name = "test.purge"
     description = "teste"
-    category = "devices"
-    inputs = schema({"kd": {"type": "number"}, "kp": {"type": "number"}})
+    category = "second_brain"
+    inputs = schema({"older_than_days": {"type": "number"}})
     risk = Risk.MEDIUM
-    permission = "robo"
+    permission = "apagar_dados"
     calls = []
 
     def execute(self, ctx, **args) -> SkillResult:
-        FakeRobotParams.calls.append(args)
+        FakePurge.calls.append(args)
         return SkillResult(True, "parâmetros enviados (falso de teste)", [], {"args": args})
 
     def verify(self, ctx, args, result):
@@ -53,13 +52,13 @@ class IntentsTest(unittest.TestCase):
             "pergunte à TARDIS como organizar meu estudo": ("tardis.consult", {"kind": "consulta",
                                                                               "question": "como organizar meu estudo"}),
             "TARDIS, organize minha memória": ("tardis.consult", {"kind": "organizacao"}),
-            "peça à TARDIS um plano para montar o robô": ("tardis.consult", {"kind": "planejamento",
-                                                                            "goal": "montar o robô"}),
+            "peça à TARDIS um plano para montar a bancada": ("tardis.consult", {"kind": "planejamento",
+                                                                              "goal": "montar a bancada"}),
             "TARDIS, diagnostique o sistema": ("tardis.consult", {"kind": "diagnostico"}),
-            "peça à TARDIS para analisar a telemetria do Noctário": ("tardis.consult", {"kind": "telemetria"}),
+            "peça à TARDIS para analisar a telemetria do sistema": ("tardis.consult", {"kind": "telemetria"}),
             "TARDIS, quais são minhas rotinas?": ("tardis.consult", {"kind": "rotinas"}),
             "TARDIS, estado dos módulos": ("tardis.consult", {"kind": "coordenacao"}),
-            "mostre a memória de projeto do Noctario": ("tardis.consult", {"kind": "projeto", "project": "Noctario"}),
+            "mostre a memória de projeto do Phoenix": ("tardis.consult", {"kind": "projeto", "project": "Phoenix"}),
             "anote na TARDIS que o Kd 0,1 funcionou melhor": ("tardis.note", {"text": "o Kd 0,1 funcionou melhor",
                                                                              "kind": "nota"}),
             "anote na TARDIS uma decisão: usar pista de 3 metros": ("tardis.note", {"text": "usar pista de 3 metros",
@@ -90,7 +89,7 @@ class CoreIntegrationTest(unittest.TestCase):
         manager.settings.auto_backup = False
         cls.core = NeuralCore(manager, voice=False, perception=False, plugins=False,
                               memory_db=helpers.make_memory().db)
-        cls.core.registry.register(FakeRobotParams(), replace=True)
+        cls.core.registry.register(FakePurge(), replace=True)
         cls.responses = []
         cls.core.bus.subscribe(EventType.RESPONSE_READY, lambda e: cls.responses.append(e.payload), name="t")
         cls.core.boot()
@@ -143,10 +142,10 @@ class CoreIntegrationTest(unittest.TestCase):
         self.assertIsNotNone(sb.get(copy.id).archived_at)
         self.assertIsNone(sb.get(first.id).archived_at)
 
-    def test_3_robot_proposal_still_needs_its_own_confirmation(self):
+    def test_3_deletion_proposal_still_needs_its_own_confirmation(self):
         def analyzer(run, data):
-            return TaskResult("Oscilação alta (dados de teste).", actions=[
-                ProposedAction("ajustar no Noctário: kd = 0.115", "noctario.set_params", {"kd": 0.115},
+            return TaskResult("Registros antigos (dados de teste).", actions=[
+                ProposedAction("apagar registros de teste antigos", "test.purge", {"older_than_days": 90},
                                "hipótese de teste")])
         engine = self.core.tardis
         original = engine._analyzers["telemetria"]
@@ -155,21 +154,21 @@ class CoreIntegrationTest(unittest.TestCase):
         sub = self.core.bus.subscribe(self.EventType.AUTHORIZATION_REQUIRED, lambda e: requests.append(e.payload),
                                       name="t.auth")
         try:
-            response = self.ask("peça à TARDIS para analisar a telemetria do Noctário")
-            self.assertIn("A TARDIS propõe: ajustar no Noctário", response["text"])
+            response = self.ask("peça à TARDIS para analisar a telemetria do sistema")
+            self.assertIn("A TARDIS propõe: apagar registros de teste antigos", response["text"])
             time.sleep(0.3)
-            self.assertEqual(self.core._suggestion["action"], "", "comando ao robô não é pré-aprovado")
-            FakeRobotParams.calls.clear()
+            self.assertEqual(self.core._suggestion["action"], "", "exclusão não é pré-aprovada")
+            FakePurge.calls.clear()
             self.core.submit("sim", source="text")
             end = time.time() + 10
             while time.time() < end and self.core.authorizations.pending() is None:
                 time.sleep(0.02)
-            self.assertIsNotNone(self.core.authorizations.pending(), "o executor pede a confirmação do robô")
-            self.assertEqual(FakeRobotParams.calls, [], "nada foi enviado ao robô antes da confirmação")
+            self.assertIsNotNone(self.core.authorizations.pending(), "o executor pede a confirmação da exclusão")
+            self.assertEqual(FakePurge.calls, [], "nada foi apagado antes da confirmação")
             self.core.authorizations.resolve(False, by="teste")
             time.sleep(0.5)
-            self.assertEqual(FakeRobotParams.calls, [], "negado: nada foi enviado")
-            self.assertTrue(requests and requests[-1].get("permission") == "robo", requests[-1:])
+            self.assertEqual(FakePurge.calls, [], "negado: nada foi apagado")
+            self.assertTrue(requests and requests[-1].get("permission") == "apagar_dados", requests[-1:])
         finally:
             engine._analyzers["telemetria"] = original
             self.core.bus.unsubscribe(sub) if hasattr(self.core.bus, "unsubscribe") else None
@@ -201,7 +200,7 @@ class CoreIntegrationTest(unittest.TestCase):
 
     def test_5_project_note_goes_through_the_executor(self):
         outcome = self.core.run_skill("tardis.note", {"text": "decidimos usar fita branca de 19 mm",
-                                                      "project": "Noctario", "kind": "decisao"})
+                                                      "project": "Phoenix", "kind": "decisao"})
         self.assertTrue(outcome["success"] and outcome["verified"], outcome)
         refused = self.core.run_skill("tardis.note", {"text": "o token da API é abc123"})
         self.assertFalse(refused["success"])

@@ -1,6 +1,6 @@
 """Controlador da interface: liga o Neural Core à PLATAFORMA JARVIS ULTIMATE sem misturar responsabilidades.
 
-Uma janela (``PlatformWindow``) com seis módulos — JARVIS · TARDIS · NOCTÁRIO · ATIVIDADES ·
+Uma janela (``PlatformWindow``) com cinco módulos — JARVIS · TARDIS · ATIVIDADES ·
 CONFIGURAÇÕES · DIAGNÓSTICOS — e o orbe compacto. As páginas pesadas (TARDIS, Diagnósticos,
 Atividades, Configurações) nascem na primeira visita e nunca são destruídas: trocar de página
 preserva câmera, região, filtros e textos.
@@ -39,7 +39,7 @@ from ..health.monitor import format_report
 from . import quality
 from .brain_view import BrainView
 from .orb import OrbWindow
-from .platform import NAV_KEYS, PlatformWindow, UnavailablePage
+from .platform import NAV_KEYS, PlatformWindow
 from .scene import NeuralScene
 from .window import app_icon
 
@@ -108,7 +108,6 @@ class HudController(QtCore.QObject):
         self.window.set_factory("diagnosticos", self._make_diagnostics)
         self.window.set_factory("atividades", self._make_activity)
         self.window.set_factory("configuracoes", self._make_settings)
-        self.window.set_factory("noctario", self._make_noctario)
         self.tray = self._make_tray()
         self._inbox: deque = deque()
         self._inbox_lock = threading.Lock()
@@ -347,15 +346,6 @@ class HudController(QtCore.QObject):
         self.settings_page = SettingsPage(self.core)
         return self.settings_page
 
-    def _make_noctario(self):
-        service = getattr(self.core, "noctario", None)
-        if service is not None:
-            from .noctario_page import NoctarioPage
-            return NoctarioPage(self.core)
-        return UnavailablePage("NOCTÁRIO — SEM CONEXÃO",
-                               "O serviço do Noctário não está ativo nesta execução: nenhum dado do robô é exibido "
-                               "sem conexão real. Endereço, porta e modo de conexão ficam em CONFIGURAÇÕES > NOCTÁRIO.")
-
     # ================================================================ ligação com o Core
     def _wire(self) -> None:
         w = self.window
@@ -372,7 +362,6 @@ class HudController(QtCore.QObject):
         w.systems_requested.connect(lambda: self.open_systems())
         w.closing.connect(self._closed_to_tray)
         w.interrupt_requested.connect(self.escape)
-        w.emergency_requested.connect(lambda: self.emergency_stop("F12"))
         w.stop_requested.connect(self.stop)
         w.conversation_command.connect(lambda text: self.core.submit(text, source="text"))
         w.chip_clicked.connect(self._chip_clicked)
@@ -451,9 +440,8 @@ class HudController(QtCore.QObject):
             self.open_systems(section or (view if view in ("voice", "network", "autonomy") else None))
         elif view in NAV_KEYS:
             self.open_page(view, section)
-        elif view in ("settings", "activity", "robot"):
-            self.open_page({"settings": "configuracoes", "activity": "atividades", "robot": "noctario"}[view],
-                           section)
+        elif view in ("settings", "activity"):
+            self.open_page({"settings": "configuracoes", "activity": "atividades"}[view], section)
 
     def _pull_state(self) -> None:
         with self._dirty_lock:
@@ -765,18 +753,6 @@ class HudController(QtCore.QObject):
         cancelled = self.core.cancel("cancelado pelo usuário (PARAR)")
         self.window.conversation.add_system("cancelado" if cancelled else "não havia nada em andamento")
 
-    def emergency_stop(self, by: str = "interface") -> dict:
-        """PARADA DE EMERGÊNCIA do Noctário (F12, botão): direto no transporte, sem fila nem modelo."""
-        service = getattr(self.core, "noctario", None)
-        if service is None:
-            outcome = {"sent": False, "detail": "serviço do Noctário inativo — use o botão físico"}
-        else:
-            outcome = service.estop(origin=by)
-        text = ("PARADA DE EMERGÊNCIA enviada ao Noctário" if outcome.get("sent") else
-                f"PARADA DE EMERGÊNCIA NÃO enviada: {outcome.get('detail', '')}")
-        self.window.conversation.add_system(text)
-        return outcome
-
     def _chip_clicked(self, key: str) -> None:
         if key == "mic":
             if self.core.privacy_shield:
@@ -787,8 +763,6 @@ class HudController(QtCore.QObject):
             self.window.input.voice.toggle()
         elif key == "ai":
             self.open_page("configuracoes", "ia")
-        elif key == "noct":
-            self.open_page("noctario")
         elif key == "net":
             self.open_systems("network")
         elif key == "obs":
@@ -888,7 +862,7 @@ class HudController(QtCore.QObject):
         header = menu.addAction("J.A.R.V.I.S.")
         header.setEnabled(False)
         menu.addAction("Abrir o JARVIS", lambda: self.open_page("jarvis"))
-        for key, label in (("tardis", "TARDIS — segundo cérebro"), ("noctario", "Noctário — robô"),
+        for key, label in (("tardis", "TARDIS — segundo cérebro"),
                            ("atividades", "Atividades"), ("configuracoes", "Configurações"),
                            ("diagnosticos", "Diagnósticos")):
             menu.addAction(label, lambda k=key: self.open_page(k))

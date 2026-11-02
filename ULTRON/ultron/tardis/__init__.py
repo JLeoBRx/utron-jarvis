@@ -1,5 +1,5 @@
 """TARDIS — o segundo cérebro do JARVIS: análise, planejamento, organização, consulta contextual,
-rotinas, telemetria do Noctário, diagnóstico, coordenação e memória de projeto.
+rotinas, telemetria do sistema, diagnóstico, coordenação e memória de projeto.
 
 É um MÓDULO LÓGICO separado (fila, protocolo, analisadores e memória de projeto próprios). Não é um
 segundo modelo de IA: quando precisa de linguagem natural, usa o MESMO modelo do JARVIS com instruções

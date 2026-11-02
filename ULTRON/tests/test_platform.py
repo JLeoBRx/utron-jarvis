@@ -103,7 +103,9 @@ class PlatformTest(unittest.TestCase):
 
     def test_02_shortcuts_and_window_title(self):
         from PySide6 import QtGui
-        expected = {"F1": "jarvis", "F2": "tardis", "F4": "noctario", "F5": "atividades", "F6": "configuracoes",
+
+        from ultron.hud.platform import NAV_KEYS
+        expected = {"F1": "jarvis", "F2": "tardis", "F5": "atividades", "F6": "configuracoes",
                     "F3": "diagnosticos", "F7": "diagnosticos"}
         shortcuts = {s.key().toString(): s for s in self.window.findChildren(QtGui.QShortcut)
                      if s.parent() is self.window}
@@ -120,11 +122,12 @@ class PlatformTest(unittest.TestCase):
         shortcuts["F1"].activated.emit()
         fired = []
         self.window.interrupt_requested.connect(lambda: fired.append("Esc"))
-        self.window.emergency_requested.connect(lambda: fired.append("F12"))
         shortcuts["Esc"].activated.emit()
-        shortcuts["F12"].activated.emit()
         self.pump(0.05)
-        self.assertEqual(fired, ["Esc", "F12"], "atalhos ligados a sinais disparam de verdade")
+        self.assertEqual(fired, ["Esc"], "atalhos ligados a sinais disparam de verdade")
+        self.assertNotIn("F4", shortcuts, "a página do robô foi removida")
+        self.assertNotIn("F12", shortcuts, "sem parada de emergência de robô")
+        self.assertNotIn("noctario", NAV_KEYS)
 
     def test_03_holographic_transition_follows_the_effects_setting(self):
         self.manager.update(heavy_effects=True)
@@ -150,7 +153,7 @@ class PlatformTest(unittest.TestCase):
 
         base = chips({})
         self.assertEqual(base["mic"].value, "—", "voz desligada nesta execução: sem número inventado")
-        self.assertEqual(base["noct"].value, "SEM CONEXÃO")
+        self.assertNotIn("noct", base, "sem indicador do robô")
         self.assertNotIn("bat", base, "sem bateria lida: o indicador não aparece")
         self.assertEqual(base["net"].value, "—")
         offline = chips({"models": {"ollama_alive": False, "error": "recusado"}})
@@ -167,7 +170,6 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(chips({"observer": {"mode": "observer", "paused": True}})["obs"].value, "PAUSADO")
         self.assertTrue(chips({})["session"].value.endswith("LOCAL"))
         self.window.refresh_chips()
-        self.assertEqual(self.window.chips.value("noct"), "SEM CONEXÃO")
 
     def test_05_covering_the_screen_suspends_observation(self):
         from PySide6 import QtCore
@@ -286,13 +288,8 @@ class PlatformTest(unittest.TestCase):
         captions = next(b for b in page.findChildren(QtWidgets.QCheckBox) if b.text().startswith("Legendas"))
         captions.click()
         self.assertEqual(self.manager.settings.captions, captions.isChecked())
-        address = next(w for w in page.findChildren(QtWidgets.QLineEdit)
-                       if w.placeholderText() == "AA:BB:CC:DD:EE:FF")
-        address.setText("isto não é um endereço")
-        address.editingFinished.emit()
-        self.assertEqual(self.manager.settings.noctario_address, "")
-        self.assertIn("recusado", page.status.text())
-        self.assertEqual(address.text(), "", "o controle volta ao valor efetivo")
+        self.assertFalse(any(w.placeholderText() == "AA:BB:CC:DD:EE:FF"
+                             for w in page.findChildren(QtWidgets.QLineEdit)), "sem campos do robô")
         page.permission_boxes["arquivos"].setCurrentIndex(page.permission_boxes["arquivos"].findData("bloquear"))
         page._choose_permission("arquivos")
         self.assertIn("arquivos=bloquear", self.manager.settings.permission_policy)
@@ -484,7 +481,6 @@ class VoiceNavigationTest(unittest.TestCase):
                  "mostre o histórico de atividades": ("control", {"open_view": "atividades"}),
                  "abra o console de eventos": ("control", {"open_view": "diagnosticos", "section": "eventos"}),
                  "abra o log do jarvis": ("control", {"open_view": "diagnosticos", "section": "log"}),
-                 "abra o noctário": ("control", {"open_view": "noctario"}),
                  "volte para o jarvis": ("control", {"open_view": "jarvis"})}
         for phrase, (kind, args) in cases.items():
             intent = engine.classify(phrase)

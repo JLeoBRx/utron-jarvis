@@ -62,8 +62,8 @@ PANEL_HELP = {
     "arquivo": "Organização da memória pessoal: atrasados, conflitos, duplicados, tarefas sem data e registros "
                "aguardando revisão. A memória espacial abre aqui.",
     "rotinas": "Lembretes futuros, registros recorrentes e automações configuradas.",
-    "telemetria": "Análise das voltas gravadas do Noctário: tempo, erro, oscilação, saturação e perdas de linha. "
-                  "Sem voltas gravadas (robô ou simulador rotulado), não há o que analisar.",
+    "telemetria": "Telemetria do próprio JARVIS: CPU e memória do processo, latência real dos modelos e das "
+                  "respostas, fluidez da interface, Event Bus e workers. Sem métrica coletada, diz que não há dado.",
     "diagnostico": "Verificação de saúde, componentes, workers, voz e Noctário (diagnóstico) e a fotografia do "
                    "estado de cada módulo agora (coordenação).",
 }
@@ -358,17 +358,18 @@ class TardisRoomPage(QtWidgets.QWidget):
 
     def _controls_telemetria(self) -> QtWidgets.QWidget:
         page, lay = self._form()
-        analyze = _button("ANALISAR VOLTAS", "Métricas das voltas gravadas do Noctário", primary=True)
+        analyze = _button("ANALISAR SISTEMA", "Métricas medidas do JARVIS: processo, modelos, interface, eventos e workers",
+                          primary=True)
         analyze.clicked.connect(lambda: self.submit("telemetria", {}))
         lay.addWidget(analyze, 0, QtCore.Qt.AlignLeft)
-        lay.addWidget(_label("Sugestões são hipóteses explicadas; nenhuma é aplicada sem o seu APLICAR e a "
-                             "confirmação de comandos ao robô. Nenhuma promete tempo de volta.", "RoomNote"))
+        lay.addWidget(_label("Pontos de atenção são hipóteses explicadas a partir das medições; nenhuma configuração "
+                             "é alterada pela TARDIS.", "RoomNote"))
         return page
 
     def _controls_diagnostico(self) -> QtWidgets.QWidget:
         page, lay = self._form()
         row = QtWidgets.QHBoxLayout()
-        diagnose = _button("DIAGNOSTICAR", "Saúde, componentes, workers, voz e Noctário", primary=True)
+        diagnose = _button("DIAGNOSTICAR", "Saúde, componentes, workers e voz", primary=True)
         diagnose.clicked.connect(lambda: self.submit("diagnostico", {}))
         coordinate = _button("ESTADO DOS MÓDULOS", "Fotografia do estado de cada módulo agora")
         coordinate.clicked.connect(lambda: self.submit("coordenacao", {}))

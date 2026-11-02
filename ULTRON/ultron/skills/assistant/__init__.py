@@ -112,8 +112,7 @@ class ActivityRecent(Skill):
                    "(com estado, resultado e horário). Filtros opcionais: tipo e texto.")
     category = "diagnostics"
     inputs = schema({"limit": {"type": "integer", "minimum": 1, "maximum": 30},
-                     "kind": {"type": "string", "enum": ["pedido", "acao", "lembrete", "erro", "sistema", "tardis",
-                                                         "noctario"]},
+                     "kind": {"type": "string", "enum": ["pedido", "acao", "lembrete", "erro", "sistema", "tardis"]},
                      "search": {"type": "string", "maxLength": 80, "minLength": 0}})
     risk = Risk.NONE
 

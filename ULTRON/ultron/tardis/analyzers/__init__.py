@@ -40,8 +40,7 @@ class TardisContext:
     registry: Any = None
     store: Any = None
     engine: Any = None
-    noctario: Any = None
-    noctario_runs: Callable[[int], list] | None = None
+    metrics: Any = None                    # PerformanceMonitor do núcleo (telemetria REAL do sistema)
     extras: dict = field(default_factory=dict)
 
     def has_skill(self, name: str) -> bool:

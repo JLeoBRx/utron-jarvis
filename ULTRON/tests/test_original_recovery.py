@@ -301,13 +301,15 @@ class SettingsTest(unittest.TestCase):
     def test_new_fields_are_validated(self):
         manager = SettingsManager(helpers.temp_dir() / "settings.json")
         s = manager.load()
-        s.apply({"permission_policy": ["robo=permitir", "apagar_dados=confirmar", "inventada=permitir", "consultar=x"]})
-        self.assertEqual(s.permission_policy, ("robo=permitir", "apagar_dados=confirmar"))
+        s.apply({"permission_policy": ["arquivos=confirmar", "apagar_dados=confirmar", "inventada=permitir",
+                                       "robo=permitir", "consultar=x"]})
+        self.assertEqual(s.permission_policy, ("arquivos=confirmar", "apagar_dados=confirmar"),
+                         "categorias inexistentes (inclusive a do módulo removido) são ignoradas")
         self.assertEqual(s.apply({"openai_base_url": "http://exemplo.com/v1"}), [], "API externa só por https")
-        self.assertEqual(s.apply({"noctario_address": "nao-e-mac"}), [])
-        s.apply({"noctario_address": "24:6F:28:AA:BB:CC", "observer_mode": "assistant", "ai_provider": "openai"})
-        self.assertEqual((s.noctario_address, s.observer_mode, s.ai_provider),
-                         ("24:6F:28:AA:BB:CC", "assistant", "openai"))
+        self.assertEqual(s.apply({"noctario_address": "24:6F:28:AA:BB:CC"}), [], "chave antiga ignorada sem erro")
+        self.assertFalse(hasattr(s, "noctario_address"))
+        s.apply({"observer_mode": "assistant", "ai_provider": "openai"})
+        self.assertEqual((s.observer_mode, s.ai_provider), ("assistant", "openai"))
         self.assertEqual(s.apply({"observer_mode": "autonomo"}), [], "modo inexistente recusado")
 
     def test_original_env_vars_select_the_provider(self):
@@ -325,14 +327,14 @@ class SettingsTest(unittest.TestCase):
         folder = helpers.temp_dir()
         manager = SettingsManager(folder / "settings.json")
         manager.load()
-        manager.update(mic_name="Microfone USB", volume=0.4, noctario_address="24:6F:28:AA:BB:CC", start_page="tardis")
+        manager.update(mic_name="Microfone USB", volume=0.4, audio_output_name="Fone USB", start_page="tardis")
         backup = manager.reset_to_defaults()
         self.assertTrue(backup and backup.is_file(), "cópia do arquivo anterior")
         self.assertEqual(json.loads(backup.read_text(encoding="utf-8"))["volume"], 0.4)
         s = manager.settings
         self.assertEqual((s.volume, s.start_page), (0.9, "jarvis"), "padrões restaurados")
-        self.assertEqual((s.mic_name, s.noctario_address), ("Microfone USB", "24:6F:28:AA:BB:CC"),
-                         "microfone e endereço do robô mantidos")
+        self.assertEqual((s.mic_name, s.audio_output_name), ("Microfone USB", "Fone USB"),
+                         "microfone e saída de áudio mantidos")
 
 
 if __name__ == "__main__":

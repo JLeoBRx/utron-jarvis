@@ -50,8 +50,6 @@ SENSITIVE = {
     "data_egress": "envio de dados para fora do computador",
     "credentials": "acesso a credenciais ou informação sensível",
     "third_party": "ação irreversível ou que afeta terceiros",
-    "robot_motion": "movimento do robô Noctário",
-    "robot_config": "alteração de parâmetros do robô Noctário",
 }
 
 

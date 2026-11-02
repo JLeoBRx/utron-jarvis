@@ -161,20 +161,20 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(self.store.get(done.id).state, "DONE")
 
     def test_project_memory_notes(self):
-        first = self.store.add_note("Kd 0,1 oscilou menos na curva", project="Noctario", kind="parametro",
+        first = self.store.add_note("Kd 0,1 oscilou menos na curva", project="Phoenix", kind="parametro",
                                     data={"kd": 0.1})
-        self.store.add_note("usar pista de 3 metros", project="Noctario", kind="decisao")
+        self.store.add_note("usar pista de 3 metros", project="Phoenix", kind="decisao")
         self.store.add_note("comprar sensores extras", project="Atlas")
         with self.assertRaises(ValueError):
             self.store.add_note("a senha do wifi é 1234")
         with self.assertRaises(ValueError):
             self.store.add_note("texto", kind="segredo")
-        noct = self.store.notes(project="Noctario")
+        noct = self.store.notes(project="Phoenix")
         self.assertEqual(len(noct), 2)
         self.assertEqual(self.store.notes(kind="decisao")[0]["kind_label"], "decisão")
         self.assertEqual(self.store.notes(search="curva")[0]["id"], first)
         self.assertEqual(self.store.notes(search="curva")[0]["data"], {"kd": 0.1})
-        self.assertEqual(self.store.projects(), ["Atlas", "Noctario"])
+        self.assertEqual(self.store.projects(), ["Atlas", "Phoenix"])
 
 
 # ====================================================================== analisadores
@@ -285,81 +285,34 @@ class OrganizationAnalyzerTest(unittest.TestCase):
         self.assertIn("Nenhum lembrete futuro", result.summary)
 
 
-def lap(lap_id, *, duration=60.0, freq=0.0, amplitude=0.0, rate=50.0, params=None, losses=None, pwm=None,
-        source="robo", result="concluida", crossings=(12.0, 28.0, 45.0, 58.0)):
-    """Volta de TESTE: erro senoidal de frequência conhecida (não é telemetria de robô)."""
-    params = {"kp": 0.0125, "kd": 0.1, "base_pwm": 220, "max_pwm": 220, "error_range": 3500, **(params or {})}
-    n = int(duration * rate)
-    samples = []
-    for i in range(n):
-        t = i / rate
-        error = amplitude * math.sin(math.tau * freq * t) if freq else amplitude
-        left, right = pwm(t) if pwm else (180.0, 180.0)
-        samples.append({"t": t, "error": error, "pwm_l": left, "pwm_r": right})
-    out = {"id": lap_id, "duration_s": duration, "params": params, "samples": samples, "source": source,
-           "result": result, "crossings": list(crossings)}
-    if losses is not None:
-        out["losses"] = losses
-    return out
-
-
 class TelemetryAnalyzerTest(unittest.TestCase):
-    def test_without_service_or_laps_there_is_nothing_to_analyze(self):
+    """Telemetria do SISTEMA: só números medidos pelo PerformanceMonitor do núcleo."""
+
+    def test_without_the_monitor_there_is_nothing_to_analyze(self):
         with self.assertRaises(TaskFailed) as raised:
             telemetry_analyzer.telemetria(make_run("telemetria"), {})
         self.assertEqual(raised.exception.code, "NO_DATA")
-        ctx = TardisContext(noctario_runs=lambda limit: [])
-        with self.assertRaises(TaskFailed) as raised:
-            telemetry_analyzer.telemetria(make_run("telemetria", ctx), {})
-        self.assertIn("nenhuma volta", str(raised.exception))
 
-    def test_metrics_are_measured_from_the_samples(self):
-        metrics = telemetry_analyzer.lap_metrics(lap("v1", duration=20.0, freq=3.0, amplitude=1000.0))
-        self.assertAlmostEqual(metrics["error_rms"], 1000.0 / math.sqrt(2), delta=5.0)
-        self.assertAlmostEqual(metrics["error_rms_norm"], 0.202, delta=0.005)
-        self.assertAlmostEqual(metrics["dominant_hz"], 3.0, delta=0.1)
-        self.assertAlmostEqual(metrics["zero_cross_hz"], 6.0, delta=0.2, msg="dois cruzamentos por ciclo")
-        self.assertEqual(metrics["saturation"], 0.0)
-        self.assertEqual(metrics["crossings"], 4)
-        self.assertEqual(metrics["crossing_intervals"], [12.0, 16.0, 17.0, 13.0])
-        self.assertIsNone(metrics["losses"], "sem campo de perdas: não é estimado")
+    def test_measured_series_become_items_and_explained_hypotheses(self):
+        from ultron.core.metrics import PerformanceMonitor
+        metrics = PerformanceMonitor()
+        for value in (0.8, 1.2, 25.0, 30.0, 28.0):
+            metrics.record("model.request", value)
+        for _ in range(12):
+            metrics.record("ui.lag", 0.3)
+        result = telemetry_analyzer.telemetria(make_run("telemetria", TardisContext(metrics=metrics)), {})
+        titles = [item["title"] for item in result.items]
+        self.assertTrue(any(t.startswith("Pedido ao modelo: mediana") for t in titles), titles)
+        self.assertTrue(any("Modelo lento" in t for t in titles), "p95 de 30 s é ponto de atenção")
+        self.assertTrue(any("Interface atrasando" in t for t in titles))
+        self.assertIn("model.request", result.sources)
+        self.assertEqual(result.actions, [], "a TARDIS não altera configuração nenhuma")
 
-    def test_losses_and_saturation(self):
-        samples_lap = lap("v2", duration=10.0, pwm=lambda t: (220.0, 120.0) if t < 4 else (150.0, 150.0))
-        for i, sample in enumerate(samples_lap["samples"]):
-            sample["lost"] = 100 <= i < 110 or 300 <= i < 305
-        metrics = telemetry_analyzer.lap_metrics(samples_lap)
-        self.assertAlmostEqual(metrics["saturation"], 0.4, delta=0.01)
-        self.assertEqual(metrics["losses"], 2)
-
-    def test_oscillation_hypothesis_is_explained_and_only_proposed(self):
-        laps = [lap("v2", duration=62.0, freq=4.0, amplitude=1400.0)]
-        ctx = TardisContext(noctario_runs=lambda limit: laps, registry=Registry("noctario.set_params"))
-        result = telemetry_analyzer.telemetria(make_run("telemetria", ctx), {})
-        self.assertTrue(any("Kd +15%" in s["title"] for s in result.data["suggestions"]))
-        self.assertEqual(result.actions[0].skill, "noctario.set_params")
-        self.assertEqual(result.actions[0].args, {"kd": 0.115})
-        self.assertIn("hipótese", result.actions[0].reason)
-        self.assertIn("Nenhuma sugestão garante", result.summary)
-        no_skill = TardisContext(noctario_runs=lambda limit: laps)
-        self.assertEqual(telemetry_analyzer.telemetria(make_run("telemetria", no_skill), {}).actions, [],
-                         "sem a skill do robô, nada é proposto")
-
-    def test_simulated_laps_are_labeled_and_never_become_robot_actions(self):
-        laps = [lap("s1", freq=4.0, amplitude=1400.0, source="simulador")]
-        ctx = TardisContext(noctario_runs=lambda limit: laps, registry=Registry("noctario.set_params"))
-        result = telemetry_analyzer.telemetria(make_run("telemetria", ctx), {})
-        self.assertIn("NÃO são dados do robô", result.summary)
-        self.assertEqual(result.actions, [])
-        self.assertTrue(result.data["simulated"])
-
-    def test_slower_lap_points_back_to_the_best_measured_parameters(self):
-        laps = [lap("v3", duration=70.0, params={"kp": 0.02}), lap("v2", duration=64.0)]
-        ctx = TardisContext(noctario_runs=lambda limit: laps, registry=Registry("noctario.set_params"))
-        result = telemetry_analyzer.telemetria(make_run("telemetria", ctx), {})
-        self.assertEqual(result.data["best"], "v2")
-        self.assertEqual(result.actions[0].args, {"kp": 0.0125})
-        self.assertIn("melhor", result.data["suggestions"][0]["title"])
+    def test_nothing_recorded_means_no_invented_numbers(self):
+        from ultron.core.metrics import PerformanceMonitor
+        result = telemetry_analyzer.telemetria(make_run("telemetria", TardisContext(metrics=PerformanceMonitor())), {})
+        self.assertFalse(any(item["title"].startswith(("Pedido ao modelo", "Atraso da interface"))
+                             for item in result.items), "sem medição, sem linha de latência")
 
 
 class FakeHealth:
@@ -579,8 +532,8 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(self.engine.health()["status"], "UNKNOWN")
         self.engine.start()
         self.assertEqual(self.engine.health()["status"], "OK")
-        note = self.engine.add_note("Kd 0,12 na curva longa", project="Noctario", kind="parametro")
-        self.assertEqual(self.store.notes(project="Noctario")[0]["id"], note)
+        note = self.engine.add_note("Kd 0,12 na curva longa", project="Phoenix", kind="parametro")
+        self.assertEqual(self.store.notes(project="Phoenix")[0]["id"], note)
         self.assertTrue(any(a["kind"] == "tardis" and "Memória de projeto" in a["title"]
                             for a in self.activity.recent(5)))
 

@@ -191,7 +191,7 @@ class ViewTest(unittest.TestCase):
         self.assertTrue(captions, "a legenda é lida a cada quadro")
         self.assertGreater(view.paint_count, 0)
 
-    def test_tardis_and_noctario_events_map_to_states(self):
+    def test_tardis_and_component_events_map_to_states(self):
         from ultron.hud.avatar.view import AvatarView
         view = AvatarView()
         view.on_state({"runtime_state": "IDLE", "boot": {"done": 1, "total": 1}})
@@ -202,10 +202,10 @@ class ViewTest(unittest.TestCase):
         view.on_event("TARDIS_TASK_FINISHED", {"id": "t1"})
         view.step(0.05)
         self.assertEqual(view.resolved.key, "aguardando")
-        view.on_event("NOCTARIO_LINK", {"link": "perdido", "requested": True})
+        view.on_event("NOCTARIO_LINK", {"link": "perdido", "requested": False})   # evento do módulo removido
         view.step(0.05)
-        self.assertEqual(view.resolved.key, "aguardando", "desconexão pedida pelo usuário não é erro")
-        view.on_event("NOCTARIO_LINK", {"link": "perdido", "requested": False})
+        self.assertEqual(view.resolved.key, "aguardando", "evento de módulo removido não muda o estado")
+        view.on_event("COMPONENT_FAILED", {"component": "voz", "error": "teste"})
         view.step(0.05)
         self.assertEqual(view.resolved.key, "erro")
 

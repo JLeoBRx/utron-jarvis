@@ -1,6 +1,6 @@
 """PLATAFORMA JARVIS ULTIMATE — uma janela, seis módulos.
 
-    JARVIS · TARDIS · NOCTÁRIO · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
+    JARVIS · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
 
 * Páginas criadas sob demanda (na primeira visita) e nunca destruídas: trocar de página só muda o que
   está à frente; câmera e região do TARDIS, filtros, rolagens e textos digitados ficam como estavam.
@@ -8,7 +8,7 @@
   varredura enquanto a nova surge por baixo. Sem "efeitos pesados" (ou no perfil econômico) a troca é
   imediata. A transição só pinta uma imagem já capturada: não custa nada ao núcleo.
 * Barra superior (como no JARVIS original): mini-reator e identidade, navegação (F1–F7), estado com
-  LED e níveis REAIS de áudio, indicadores de microfone, voz, IA, Noctário, rede, bateria, Observador e
+  LED e níveis REAIS de áudio, indicadores de microfone, voz, IA, rede, bateria, Observador e
   sessão, relógio e data em pt-BR. Indicador sem dado real mostra "—"; nada é estimado.
 * Barra inferior: entrada de texto global (vale em qualquer página), MIC, VOZ, ENVIAR e as barras de
   decisão (autorização e sugestão) — exceto quando a página tem as próprias barras (TARDIS, Sistemas).
@@ -34,10 +34,9 @@ from .window import DecisionBar, InputBar, app_icon
 NAV = (
     ("jarvis", "JARVIS", ("F1",), "#00D9FF", "Assistente: conversa, voz e núcleo"),
     ("tardis", "TARDIS", ("F2",), "#FFB347", "Segundo cérebro: memória pessoal, lembretes e organização"),
-    ("noctario", "NOCTÁRIO", ("F4",), "#3DFFA8", "Robô seguidor de linha: conexão, telemetria e comandos"),
     ("atividades", "ATIVIDADES", ("F5",), "#67F3FF", "Histórico de atividades: pedidos, ações, confirmações e falhas"),
-    ("configuracoes", "CONFIGURAÇÕES", ("F6",), "#67F3FF", "Voz, áudio, inteligência, privacidade, permissões, "
-                                                           "aparência e Noctário"),
+    ("configuracoes", "CONFIGURAÇÕES", ("F6",), "#67F3FF", "Voz, áudio, inteligência, privacidade, permissões "
+                                                           "e aparência"),
     ("diagnosticos", "DIAGNÓSTICOS", ("F3", "F7"), "#67F3FF", "Voz, rede local, autonomia, desempenho, eventos e log"),
 )
 NAV_KEYS = tuple(item[0] for item in NAV)
@@ -142,30 +141,6 @@ def compute_chips(core, state: dict, *, now: float | None = None, covering: bool
         chips.append(Chip("ai", "IA", "OFFLINE", "error", f"Ollama não respondeu: {models.get('error') or 'sem conexão'}"))
     else:
         chips.append(Chip("ai", "IA", "—", "off", "Modelo ainda não verificado"))
-    # Noctário
-    service = getattr(core, "noctario", None) if core is not None else None
-    if service is None:
-        chips.append(Chip("noct", "NOCTÁRIO", "SEM CONEXÃO", "off", "Serviço do Noctário não iniciado: nenhum dado "
-                                                                     "do robô é exibido sem conexão real."))
-    else:
-        status = service.status()
-        link = status.get("link", "desconectado")
-        robot_state = status.get("state") or "—"
-        sim = "SIM · " if status.get("simulated") else ""
-        if link == "conectado":
-            value = sim + robot_state
-            level = "error" if robot_state == "ESTOP" else "warn" if status.get("simulated") or robot_state == "LOST" \
-                else "ok"
-            requested = status.get("requested") or {}
-            pending = f" · pedido '{requested['label']}': {requested['status']}" \
-                if requested.get("label") and requested.get("status") != "confirmado" else ""
-            tip = (f"{status.get('transport', '')} · estado informado pelo robô: {status.get('state_label', '')}"
-                   f"{pending} · F12: PARADA DE EMERGÊNCIA")
-        else:
-            value = sim + ("SEM CONEXÃO" if link == "desconectado" else status.get("link_label", link).upper())
-            level = {"conectando": "info", "perdido": "error"}.get(link, "off")
-            tip = "Sem conexão: nenhum dado do robô é exibido. " + (status.get("detail") or "")
-        chips.append(Chip("noct", "NOCTÁRIO", value, level, tip.strip()))
     # rede
     network = state.get("network_state") or {}
     telemetry = state.get("telemetry") or {}
@@ -467,7 +442,7 @@ class ChipBar(QtWidgets.QWidget):
     """Indicadores compactos (LED + rótulo + valor), com dicas e clique."""
 
     clicked = QtCore.Signal(str)
-    PRIORITY = ("mic", "tts", "ai", "noct", "net", "bat", "obs", "session")
+    PRIORITY = ("mic", "tts", "ai", "net", "bat", "obs", "session")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -825,7 +800,6 @@ class PlatformWindow(QtWidgets.QWidget):
     page_changed = QtCore.Signal(str)
     chip_clicked = QtCore.Signal(str)
     interrupt_requested = QtCore.Signal()          # Esc
-    emergency_requested = QtCore.Signal()          # F12 — parada de emergência do Noctário
     stop_requested = QtCore.Signal()               # PARAR (conversa)
     conversation_command = QtCore.Signal(str)      # STATUS / HORAS
 
@@ -895,7 +869,6 @@ class PlatformWindow(QtWidgets.QWidget):
             for sequence in keys:
                 QtGui.QShortcut(QtGui.QKeySequence(sequence), self, activated=lambda k=key: self.navigate(k))
         QtGui.QShortcut(QtGui.QKeySequence("F11"), self, activated=self.toggle_fullscreen)
-        QtGui.QShortcut(QtGui.QKeySequence("F12"), self, activated=self.emergency_requested.emit)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+M"), self, activated=self.input.mic.toggle)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+L"), self, activated=self.conversation.clear)
         self.escape = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self, activated=self.interrupt_requested.emit)
@@ -1005,8 +978,6 @@ class PlatformWindow(QtWidgets.QWidget):
             handler = getattr(page, "platform_event", None)
             if handler is not None:
                 handler(kind, payload, at)
-        if kind in ("NOCTARIO_LINK", "NOCTARIO_STATE"):          # o indicador do robô acompanha na hora
-            self.refresh_chips()
 
     def on_state(self, state: dict, names=None) -> None:
         self.state = state

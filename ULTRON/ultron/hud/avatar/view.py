@@ -53,7 +53,6 @@ class _AvatarCore:
         self.bottom_reserved = 16
         self._boot_progress = 0.0
         self._tardis_tasks: set[str] = set()
-        self._requested_noctario_disconnect = False
 
     # ------------------------------------------------------------ dados reais (do controlador)
     def on_state(self, state: dict) -> None:
@@ -99,14 +98,6 @@ class _AvatarCore:
             self.animator.component_lost()
         elif kind == "REMINDER_DUE" and not payload.get("silent"):
             s.alert_until, s.alert_text = now + ALERT_WINDOW, str(payload.get("notice") or payload.get("title") or "")
-        elif kind == "NOCTARIO_ALERT":
-            s.alert_until, s.alert_text = now + ALERT_WINDOW, str(payload.get("text") or "Noctário")
-        elif kind == "NOCTARIO_LINK":
-            if payload.get("link") == "perdido" and not payload.get("requested"):
-                s.error_until, s.error_text = now + ERROR_WINDOW, "link do Noctário perdido"
-                self.animator.component_lost()
-            elif payload.get("link") == "conectado":
-                self.animator.component_started()
         elif kind in TARDIS_EVENTS_START and payload.get("origin") == "jarvis":
             self._tardis_tasks.add(str(payload.get("id")))
             s.tardis_text = str(payload.get("kind_label") or payload.get("kind") or "")

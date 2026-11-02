@@ -1,9 +1,9 @@
 # JARVIS — Referência de comandos (ações executáveis)
 
 Gerado por `tools/gerar_comandos.py` a partir do registro real de skills (`ultron/skills/`); não edite à
-mão. São **120 ações** em 22 grupos. Você não chama estes nomes: fala ou digita o pedido ("abra o
-bloco de notas", "anote uma ideia…", "pare o Noctário") e o JARVIS escolhe a ação — os exemplos de frases
-estão no `README_JARVIS.md` (§§ 4–7) e o mapa dos comandos do JARVIS original em
+mão. São **102 ações** em 21 grupos. Você não chama estes nomes: fala ou digita o pedido ("abra o
+bloco de notas", "anote uma ideia…") e o JARVIS escolhe a ação — os exemplos de frases
+estão no `README_JARVIS.md` (§§ 4–6) e o mapa dos comandos do JARVIS original em
 `docs/inventario/comandos.md`.
 
 Como cada ação passa pelo executor (`ultron/agent/execution.py`), na ordem: validação estrita dos
@@ -13,7 +13,7 @@ do resultado. Nomes fora deste registro (shell, PowerShell, `eval`, desligar Def
 recusados antes de qualquer coisa.
 
 Colunas: **risco** (base; algumas ações sobem o risco conforme os argumentos); **permissão** — a categoria
-em CONFIGURAÇÕES > PERMISSÕES (*consultar*, *alterar configurações*, *executar programas e comandos do sistema*, *modificar arquivos e dados pessoais*, *apagar dados*, *comandos ao robô Noctário*); **modelo** — "sim" se o modelo de linguagem pode escolher a
+em CONFIGURAÇÕES > PERMISSÕES (*consultar*, *alterar configurações*, *executar programas e comandos do sistema*, *modificar arquivos e dados pessoais*, *apagar dados*); **modelo** — "sim" se o modelo de linguagem pode escolher a
 ação sozinho num passo agêntico; "não" = só por pedido direto seu; **requer** — sistema ou biblioteca
 necessários (sem eles a ação responde que está indisponível, não finge).
 
@@ -149,29 +149,6 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 |---|---|---|---|---|---|
 | `web.open_url` | Abrir um endereço HTTP/HTTPS no navegador. | baixo | executar programas e comandos do sistema | sim | — |
 | `web.search` | Pesquisar na web (Google ou YouTube). | baixo | executar programas e comandos do sistema | sim | — |
-
-## Noctário (robô)
-
-| Ação | O que faz | Risco | Permissão | Modelo | Requer |
-|---|---|---|---|---|---|
-| `noctario.alerts` | Alertas recentes do Noctário (perda de linha, link, parada de emergência, falhas). | nenhum | consultar | sim | — |
-| `noctario.calibrate` | Recalibrar os 8 sensores (manual: passe a barra sobre a linha durante o tempo; automático: o robô gira no lugar). | moderado | comandos ao robô Noctário | não | — |
-| `noctario.clear` | Sair da parada de emergência (o robô fica pronto, parado). | baixo | comandos ao robô Noctário | não | — |
-| `noctario.connect` | Conectar ao Noctário (porta, endereço ou simulador configurados). Não dá partida. | baixo | alterar configurações | sim | — |
-| `noctario.crossings` | Quantos cruzamentos o Noctário contou e quantos faltam até o destino. | nenhum | consultar | sim | — |
-| `noctario.defaults` | Restaurar os parâmetros padrão do Noctário (só com o robô parado; não grava até SALVAR). | moderado | comandos ao robô Noctário | não | — |
-| `noctario.disconnect` | Desconectar do Noctário. Sem link, vale a política do firmware (parar ou terminar o percurso). | baixo | alterar configurações | sim | — |
-| `noctario.emergency_stop` | PARADA DE EMERGÊNCIA do Noctário: corta os motores imediatamente. | nenhum | parada de emergência: nunca bloqueada nem condicionada | sim | — |
-| `noctario.motor_test` | Teste de bancada dos motores (rodas fora do chão), por tempo limitado. | moderado | comandos ao robô Noctário | não | — |
-| `noctario.params` | Parâmetros atuais do Noctário, lidos do robô. | nenhum | consultar | sim | — |
-| `noctario.reset_crossings` | Zerar a contagem de cruzamentos do Noctário. | baixo | comandos ao robô Noctário | não | — |
-| `noctario.save_params` | Gravar os parâmetros atuais na memória do Noctário (valem depois de religar). | baixo | comandos ao robô Noctário | não | — |
-| `noctario.sensors` | Leitura avulsa dos 8 sensores calibrados, da posição da linha e do contador de cruzamentos. | nenhum | consultar | sim | — |
-| `noctario.set_params` | Ajustar parâmetros do Noctário (Kp, Kd, PWM base e máximo, rampas, cruzamentos...), com limites. | moderado | comandos ao robô Noctário | não | — |
-| `noctario.start` | Dar a partida no percurso do Noctário (movimento físico). | moderado | comandos ao robô Noctário | não | — |
-| `noctario.status` | Estado do Noctário: link, estado confirmado pelo robô, pedido em andamento, cruzamentos e falhas. | nenhum | consultar | sim | — |
-| `noctario.stop` | Parar o Noctário com a rampa de frenagem (fim do percurso pedido). | nenhum | parada de emergência: nunca bloqueada nem condicionada | sim | — |
-| `noctario.telemetry` | Ligar, desligar ou mudar a taxa da telemetria do Noctário (0 a 50 Hz). | baixo | alterar configurações | sim | — |
 
 ## O próprio JARVIS
 

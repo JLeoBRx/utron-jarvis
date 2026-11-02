@@ -362,3 +362,11 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * `requirements.txt`: `PySide6-Addons` (mesma versão do Essentials). Testes: `tests/test_scene3d.py` (inclui a
   cena real num processo próprio: Windows nativo e Linux com Xvfb no CI).
 
+
+## Operação Phoenix — Fase A: auditoria e remoção do Noctário
+* Auditoria e plano técnico: `PHOENIX_AUDITORIA_E_PLANO.md`.
+* O Noctário saiu do produto (página, F4, F12, indicador, serviço no NeuralCore, intenções de voz, skills,
+  categoria de permissão, configurações, firmware, testes exclusivos, `pyserial`, jobs de CI). Manifesto
+  completo: `REMOCAO_NOCTARIO.md`. Dados do usuário e tabelas antigas do banco preservados.
+* TARDIS > TELEMETRIA agora mede o próprio JARVIS (processo, latência real dos modelos e respostas, interface,
+  Event Bus, workers), com pontos de atenção explicados e nenhuma alteração automática.

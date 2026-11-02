@@ -41,7 +41,7 @@ KINDS: dict[str, KindSpec] = {spec.key: spec for spec in (
     KindSpec("planejamento", "planejamento", 120.0, "planejamento"),
     KindSpec("organizacao", "organização", 20.0, "arquivo"),
     KindSpec("rotinas", "rotinas", 10.0, "rotinas"),
-    KindSpec("telemetria", "telemetria do Noctário", 20.0, "telemetria"),
+    KindSpec("telemetria", "telemetria do sistema", 20.0, "telemetria"),
     KindSpec("diagnostico", "diagnóstico", 30.0, "diagnostico"),
     KindSpec("coordenacao", "coordenação de módulos", 5.0, "diagnostico"),
     KindSpec("projeto", "memória de projeto", 10.0, "analise"),
