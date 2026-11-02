@@ -6,8 +6,9 @@
 import * as THREE from 'three';
 
 export const PALETTE = {
-  ink: 0x020611, deep: 0x061428, cyan: 0x38e1ff, glow: 0x9ef4ff, electric: 0x2b8cff,
-  ice: 0xdcefff, amber: 0xffb347, coral: 0xff5d73, dim: 0x3d5873,
+  // os mesmos valores de ultron/hud/design/tokens.json (o teste confere)
+  ink: 0x030712, deep: 0x071426, cyan: 0x00d9ff, glow: 0x67f3ff, electric: 0x168bff,
+  ice: 0xdceeff, amber: 0xffb547, coral: 0xff5d73, dim: 0x3d5873, ultron: 0xff1f3d, ultronGlow: 0xff5a6b,
 };
 
 /** Registro do que precisa ser liberado da GPU ao encerrar (geometrias, materiais, texturas). */

@@ -1,0 +1,44 @@
+/* Gerado por tools/gerar_tokens.py a partir de ultron/hud/design/tokens.json — não edite à mão. */
+:root {
+  --color-space: #030712;
+  --color-abyss: #071426;
+  --color-deep: #0B1F3A;
+  --color-tech: #075985;
+  --color-cyan: #00D9FF;
+  --color-glow: #67F3FF;
+  --color-electric: #168BFF;
+  --color-ice: #DCEEFF;
+  --color-dim-text: #7F9BB7;
+  --color-alert: #FFB547;
+  --color-error: #FF5D73;
+  --color-ultron: #FF1F3D;
+  --color-ultron-wine: #4A0712;
+  --color-ultron-metal: #8C929C;
+  --color-ultron-glow: #FF5A6B;
+  --glass-fill: rgba(6, 20, 40, 0.42);
+  --glass-edge: rgba(120, 220, 255, 0.22);
+  --glass-blur: 10px;
+  --font-family: "Segoe UI", "Bahnschrift", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: Consolas, "Cascadia Mono", Menlo, monospace;
+  --font-label-spacing: 3px;
+  --font-size-xs: 10px;
+  --font-size-s: 12px;
+  --font-size-m: 15px;
+  --font-size-l: 20px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --space-xs: 4px;
+  --space-s: 8px;
+  --space-m: 14px;
+  --space-l: 22px;
+  --space-xl: 32px;
+  --motion-fast: 160ms;
+  --motion-base: 300ms;
+  --motion-slow: 600ms;
+  --motion-ease: cubic-bezier(.2,.7,.2,1);
+  --state-online: #3DFFA8;
+  --state-offline: #7F9BB7;
+  --state-pending: #FFB547;
+  --state-failed: #FF5D73;
+}

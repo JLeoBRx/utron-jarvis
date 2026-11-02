@@ -151,6 +151,27 @@ class WebFilesTest(unittest.TestCase):
             self.assertEqual(done.returncode, 0, f"{path.name}: {done.stderr[-400:]}")
 
 
+class DesignTokensTest(unittest.TestCase):
+    """Uma identidade só: desktop (Qt), cena 3D e web leem os mesmos tokens."""
+
+    def test_tokens_match_the_qt_palette_the_scene_and_the_generated_css(self):
+        import subprocess as sp
+        tokens = json.loads((ROOT / "ultron" / "hud" / "design" / "tokens.json").read_text(encoding="utf-8"))
+        from ultron.hud import palette
+        for key, value in palette.HEX.items():
+            self.assertEqual(tokens["color"][key].lower(), value.lower(), f"cor {key} diverge do Qt")
+        materials = (WEB / "js" / "materials.js").read_text(encoding="utf-8")
+        for key, token in (("cyan", "cyan"), ("glow", "glow"), ("electric", "electric"), ("amber", "alert")):
+            self.assertIn(f"{key}: 0x{tokens['color'][token][1:].lower()}", materials, f"cor {key} da cena 3D")
+        css = (WEB / "css" / "scene.css").read_text(encoding="utf-8")
+        self.assertIn("var(--color-cyan)", css)
+        self.assertNotRegex(css.split("}")[0], r"#[0-9a-fA-F]{6}", "a camada de interface não define cor própria")
+        done = sp.run([sys.executable, str(ROOT / "tools" / "gerar_tokens.py"), "--check"], capture_output=True,
+                      text=True, stdin=sp.DEVNULL)
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn('href="css/tokens.css"', (WEB / "index.html").read_text(encoding="utf-8"))
+
+
 class _FakeScene:
     """Mesma interface pública da Scene3DView, sem QtWebEngine (lógica do controlador apenas)."""
 

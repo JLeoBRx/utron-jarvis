@@ -1,18 +1,19 @@
 /* Camada de interface sobre a cena 3D: vidro escuro, bordas finas, tipografia técnica legível.
    Paleta: preto azulado, azul profundo, ciano holográfico, azul elétrico, branco azulado; âmbar só em alerta. */
 :root {
-  --ink: #020611;
-  --deep: #061428;
-  --cyan: #38e1ff;
-  --glow: #9ef4ff;
-  --electric: #2b8cff;
-  --ice: #dcefff;
-  --dim: #6f8fae;
-  --amber: #ffb347;
-  --coral: #ff6b7d;
-  --glass: rgba(6, 20, 40, 0.42);
-  --edge: rgba(120, 220, 255, 0.22);
-  --font: "Segoe UI", "Bahnschrift", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  /* tudo vem dos tokens (ultron/hud/design/tokens.json → css/tokens.css): a mesma identidade do desktop e da web */
+  --ink: var(--color-space);
+  --deep: var(--color-abyss);
+  --cyan: var(--color-cyan);
+  --glow: var(--color-glow);
+  --electric: var(--color-electric);
+  --ice: var(--color-ice);
+  --dim: var(--color-dim-text);
+  --amber: var(--color-alert);
+  --coral: var(--color-error);
+  --glass: var(--glass-fill);
+  --edge: var(--glass-edge);
+  --font: var(--font-family);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; color: var(--ice);
@@ -44,7 +45,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; 
 .card::before { content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 2px;
   background: linear-gradient(var(--cyan), transparent); border-radius: 2px; }
 
-#caption { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+#caption { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%);
   max-width: min(72%, 900px); padding: 10px 18px; font-size: 15px; line-height: 1.45; text-align: center;
   transition: opacity .35s, transform .35s; }
 #caption .said { color: #ffffff; text-shadow: 0 0 12px rgba(120, 230, 255, 0.55); }

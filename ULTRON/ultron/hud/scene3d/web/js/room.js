@@ -392,6 +392,30 @@ export class TardisRoom {
       g.add(cap);
       return { g, parts, y };
     };
+    // filamentos de energia azul em hélice em volta do núcleo âmbar: correm para cima com a atividade REAL
+    const strands = [];
+    for (let k = 0; k < 5; k++) {
+      const pts = [], along = [];
+      for (let i = 0; i <= 160; i++) {
+        const f = i / 160, a = k * Math.PI * 2 / 5 + f * Math.PI * 2 * 5;
+        const r = k % 2 ? 0.16 : 0.115;
+        pts.push(Math.cos(a) * r, ROTOR_Y0 + 0.2 + f * (ROTOR_H - 0.45), Math.sin(a) * r);
+        along.push(f);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      g.setAttribute('along', new THREE.Float32BufferAttribute(along, 1));
+      disposer.track(g);
+      strands.push(g);
+    }
+    this.strandMat = disposer.track(new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uFlow: { value: 0.1 }, uBright: { value: 0.4 }, uColor: { value: new THREE.Color(0x3aa8ff) } },
+      vertexShader: 'attribute float along; varying float vA; void main(){ vA=along; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader: 'uniform float uTime; uniform float uFlow; uniform float uBright; uniform vec3 uColor; varying float vA; void main(){ float h=fract(vA*3.0-uTime*uFlow); float pulse=smoothstep(0.75,1.0,h); gl_FragColor=vec4(uColor*(1.4+pulse*2.2),(0.3+1.2*pulse)*uBright); }',
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    this.strands = new THREE.Group();
+    for (const g of strands) this.strands.add(new THREE.Line(g, this.strandMat));
+    this.group.add(this.strands);
     this.ringLow = ringSet(ROTOR_Y0 + 0.45, 1);
     this.ringHigh = ringSet(ROTOR_Y0 + ROTOR_H - 0.45, -1);
     this.group.add(glass, this.core, this.coreGlow, this.tubes, this.ringLow.g, this.ringHigh.g);
@@ -543,6 +567,10 @@ export class TardisRoom {
     this.ringLow.parts.forEach((r, i) => { r.rotation.z = this.spinA * (i % 2 ? -1.4 : 1.1); });
     this.ringHigh.parts.forEach((r, i) => { r.rotation.z = -this.spinA * (i % 2 ? -1.2 : 0.9); });
     this.tubes.rotation.y = this.spinA * 0.3;
+    this.strands.rotation.y = -this.spinA * 0.6;
+    this.strandMat.uniforms.uTime.value = time;
+    this.strandMat.uniforms.uFlow.value = 0.08 + st.speed * 1.4;
+    this.strandMat.uniforms.uBright.value = (0.25 + 0.75 * st.brightness) * avail * (st.fault > 0.5 ? 0.3 : 1);
     const b = st.brightness * avail;
     this.coreMat.color.copy(st.color); this.coreMat.opacity = 0.25 + 0.45 * b;
     this.coreGlow.material.color.copy(st.color); this.coreGlow.material.opacity = 0.06 + 0.24 * b * (0.85 + 0.15 * Math.sin(this.phase));
