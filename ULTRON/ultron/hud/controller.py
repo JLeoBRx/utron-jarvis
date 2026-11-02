@@ -63,6 +63,10 @@ class HudController(QtCore.QObject):
     def __init__(self, core, *, scene: NeuralScene | None = None):
         super().__init__()
         self.core = core
+        # Cache do estado central, compartilhado por TODAS as páginas e atualizado no lugar (_pull_state).
+        # Criado antes de qualquer peça da interface: a bandeja monta o menu (e o submenu do Observador,
+        # que lê este cache) já na construção, quando o sistema tem bandeja.
+        self.state_cache: dict = core.state.as_dict()
         settings = core.settings()
         self.profile = quality.get(getattr(settings, "performance_profile", quality.DEFAULT))
         self.scene = scene or NeuralScene(profile=self.profile)
@@ -91,7 +95,6 @@ class HudController(QtCore.QObject):
         self._wake_pending = False
         self._dirty: set[str] = set()
         self._dirty_lock = threading.Lock()
-        self.state_cache: dict = core.state.as_dict()
         self.dropped_events = 0
         self.notifications_shown = 0
         self._quitting = False
@@ -665,7 +668,9 @@ class HudController(QtCore.QObject):
     def _fill_observer_menu(self, menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
         """Modos do Observador e pausa (barra de automação do original), relidos do estado real."""
         menu.clear()
-        observer = self.state_cache.get("observer") or {}
+        observer = self.state_cache.get("observer")
+        if not isinstance(observer, dict):
+            observer = {}            # antes do boot o núcleo ainda não publicou o Observador: vale a configuração
         mode = observer.get("mode") or getattr(self.core.settings(), "observer_mode", "off")
         group = QtGui.QActionGroup(menu)
         for value, label in (("off", "Desligado"), ("assistant", "Assistente (sugere na tela)"),
@@ -846,23 +851,53 @@ class HudController(QtCore.QObject):
             app.quit()
 
 
+_QT_LEVELS = {QtCore.QtMsgType.QtDebugMsg: logging.DEBUG, QtCore.QtMsgType.QtInfoMsg: logging.DEBUG,
+              QtCore.QtMsgType.QtWarningMsg: logging.INFO, QtCore.QtMsgType.QtCriticalMsg: logging.ERROR,
+              QtCore.QtMsgType.QtFatalMsg: logging.CRITICAL}
+
+
+def log_qt_messages() -> None:
+    """Mensagens do Qt vão para o registro do JARVIS. Sem console (pythonw) elas se perderiam — inclusive a
+    fatal (plataforma gráfica que não carrega), que o Qt emite pouco antes de encerrar o processo."""
+    qt_log = logging.getLogger("ultron.qt")
+
+    def handler(kind, _context, message) -> None:
+        qt_log.log(_QT_LEVELS.get(kind, logging.INFO), "%s", message)
+
+    QtCore.qInstallMessageHandler(handler)
+
+
 def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     """Cria a interface, inicia o Core em segundo plano e roda o laço do Qt."""
     from . import theme
 
+    log_qt_messages()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("JARVIS")
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(theme.STYLESHEET)
     app.setWindowIcon(app_icon())
+    log.info("interface: Qt %s, plataforma %s, bandeja do sistema %s", QtCore.qVersion(), app.platformName(),
+             "disponível" if QtWidgets.QSystemTrayIcon.isSystemTrayAvailable() else "indisponível")
     controller = HudController(core)
     controller.show(minimized=minimized)
+    log.info("interface aberta%s", " (recolhida no orbe)" if minimized else "")
     from ..platform import control
-    control.clear_stop_request()
-    stop_watch = QtCore.QTimer(controller)                 # --stop pela linha de comando: saída normal
-    stop_watch.timeout.connect(lambda: (control.clear_stop_request(), controller.quit())
-                               if control.stop_requested() else None)
-    stop_watch.start(1500)
+    # Pedidos antigos já foram descartados no registro do processo (control.register). Um --stop ou um
+    # "mostrar" que chegue ENQUANTO a janela monta vale: apagá-lo aqui fazia o --stop se perder.
+    control.set_mode("janela")
+
+    def watch_requests() -> None:                          # pedidos de outra abertura ou da linha de comando
+        if control.stop_requested():                       # --stop: saída normal
+            control.clear_stop_request()
+            controller.quit()
+        elif control.show_requested():                     # START_JARVIS.bat de novo: a janela aparece
+            control.clear_show_request()
+            controller.expand()
+
+    stop_watch = QtCore.QTimer(controller)
+    stop_watch.timeout.connect(watch_requests)
+    stop_watch.start(1000)
     if boot:
         threading.Thread(target=core.boot, name="ultron-boot", daemon=True).start()
     app.aboutToQuit.connect(core.shutdown)

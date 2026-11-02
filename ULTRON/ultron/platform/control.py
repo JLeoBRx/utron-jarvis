@@ -16,6 +16,8 @@ from ..config import paths
 
 PID_FILE = "jarvis.pid"
 STOP_FILE = "parar.solicitado"
+SHOW_FILE = "mostrar.solicitado"      # outra abertura pediu à janela em execução que apareça
+MODE_FILE = "jarvis.modo"              # "janela" ou "console": como a instância em execução está aberta
 
 
 def pid_path() -> Path:
@@ -26,9 +28,26 @@ def stop_path() -> Path:
     return paths.data_file(STOP_FILE)
 
 
-def register(pid: int | None = None) -> None:
+def register(pid: int | None = None, *, mode: str = "") -> None:
     pid_path().write_text(str(pid or os.getpid()), encoding="ascii")
-    clear_stop_request()
+    if mode:
+        set_mode(mode)
+    clear_stop_request()                  # pedidos que sobraram de uma execução anterior
+    clear_show_request()
+
+
+def set_mode(mode: str) -> None:
+    try:
+        paths.data_file(MODE_FILE).write_text(mode, encoding="ascii")
+    except OSError:
+        pass
+
+
+def running_mode() -> str:
+    try:
+        return paths.data_file(MODE_FILE).read_text(encoding="ascii").strip()
+    except OSError:
+        return ""
 
 
 def unregister() -> None:
@@ -36,6 +55,7 @@ def unregister() -> None:
         path = pid_path()
         if path.is_file() and path.read_text(encoding="ascii").strip() == str(os.getpid()):
             path.unlink()
+            paths.data_file(MODE_FILE).unlink(missing_ok=True)
     except OSError:
         pass
 
@@ -72,6 +92,33 @@ def clear_stop_request() -> None:
 
 def stop_requested() -> bool:
     return stop_path().is_file()
+
+
+def request_show() -> None:
+    paths.data_file(SHOW_FILE).write_text(str(time.time()), encoding="ascii")
+
+
+def show_requested() -> bool:
+    return paths.data_file(SHOW_FILE).is_file()
+
+
+def clear_show_request() -> None:
+    try:
+        paths.data_file(SHOW_FILE).unlink()
+    except OSError:
+        pass
+
+
+def bring_to_front(timeout: float = 4.0, *, sleep=time.sleep) -> bool:
+    """Pede à janela em execução que apareça; True se ela atendeu (apagou o pedido) dentro do prazo."""
+    request_show()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not show_requested():
+            return True
+        sleep(0.2)
+    clear_show_request()
+    return False
 
 
 def stop(timeout: float = 15.0, *, sleep=time.sleep) -> tuple[bool, str]:

@@ -298,3 +298,29 @@ Trabalho do proprietário sobre `d16c9d1`, integrado sem alterações (avanço r
 * A cobertura depois: 75 % no total; skills de arquivos 36 % → 61 %, perguntas sobre a memória 21 % → 84 %,
   calibração da voz 22 % → 58 %. Os testes da linha de comando rodam `main.py` em processos separados,
   fora da medição.
+
+## JARVIS 2.0 — a janela não abria no Windows; modo console completo
+Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 perguntas: `AUDITORIA_INICIALIZACAO.md`.
+* **Causa**: `HudController` criava a bandeja do sistema antes de `state_cache`; com bandeja (todo Windows de
+  mesa) o menu chamava o submenu do Observador e a interface caía com `AttributeError: 'HudController' object
+  has no attribute 'state_cache'` — com o `pythonw`, sem mensagem nenhuma. Os testes não pegavam porque o Qt
+  offscreen não tem bandeja. Corrigido (o mesmo cache, criado antes) e coberto por teste que declara a
+  bandeja disponível — o teste reproduz o traceback sem a correção.
+* **Falha da interface** não some mais: traceback no registro, motivo na tela (terminal ou caixa de mensagem
+  do Windows), oferta do modo console (no terminal, com o mesmo núcleo; sem terminal, numa janela nova depois
+  de liberar a instância). Mensagens do Qt, inclusive as fatais, vão para o registro.
+* **Já em execução**: abrir de novo traz a janela para a frente, ou explica o que fazer.
+* **`--stop` enviado enquanto a janela montava era perdido** (a janela apagava o pedido ao terminar de abrir):
+  corrigido; teste novo reprova sem a correção.
+* **Diagnóstico por etapas** (`ultron/diagnose.py`), cada uma com prazo e impressa ao terminar, incluindo a
+  interface montada de verdade (`--gui-check`, processo separado). Antes ele só imprimia no fim — parecia
+  travado em "Diagnostico do sistema:" — e, com a saída redirecionada, caía com `UnicodeEncodeError` (achado
+  pelo CI no Windows). Nenhum caractere derruba mais a saída do programa.
+* **Modo console** (`START_JARVIS.bat --console`, `ultron/console.py`): o mesmo núcleo, banco, memória, TARDIS,
+  permissões e executor; cabeçalho com o estado real, prompt com o nome configurado, confirmações, Ctrl+C
+  cancela, `sair` e `--stop` encerram em ordem; segunda abertura recusada com aviso.
+* `START_JARVIS.bat --foreground` (a janela com o terminal mostrando erros) e `--gui-check`.
+* Teste do Noctário que lia o histórico de operações antes de ele ser gravado: agora espera a gravação.
+* Testes: `test_startup.py` (9, processos reais: janela com bandeja, segunda abertura, `--stop` durante a
+  abertura, falha da interface, console com conversa, memória, TARDIS e autorização, `--stop`, reabertura,
+  diagnóstico com etapa sem resposta, saída sem quebra de codificação) e `test_platform.TrayStartupTest`.

@@ -391,6 +391,91 @@ class PlatformTest(unittest.TestCase):
             self.controller.quit = original
 
 
+@unittest.skipUnless(helpers.qt_available(), "PySide6 (com bibliotecas do sistema) necessário")
+class TrayStartupTest(unittest.TestCase):
+    """Num Windows de mesa há bandeja do sistema: o menu dela (com o submenu do Observador) é montado JÁ na
+    construção da interface. Sem bandeja (offscreen, CI), esse caminho nunca rodava — e a interface caía no
+    Windows com ``AttributeError: 'HudController' object has no attribute 'state_cache'``. Aqui a bandeja é
+    declarada disponível para percorrer o caminho do Windows."""
+
+    def setUp(self):
+        from PySide6 import QtWidgets
+
+        from ultron.config.settings import SettingsManager
+        from ultron.core.neural_core import NeuralCore
+
+        self.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        self.fake = FakeOllama(["qwen2.5:3b"], responder=lambda payload: "Resposta local.")
+        self.fake.__enter__()
+        manager = SettingsManager(helpers.temp_dir() / "settings.json")
+        manager.load()
+        manager.settings.ollama_url = self.fake.url
+        manager.settings.network_discovery = False
+        manager.settings.auto_backup = False
+        self.core = NeuralCore(manager, voice=False, perception=False, plugins=False,
+                               memory_db=helpers.make_memory().db)
+        self.controller = None
+        tray = QtWidgets.QSystemTrayIcon
+        self._available = tray.__dict__["isSystemTrayAvailable"]
+        tray.isSystemTrayAvailable = staticmethod(lambda: True)
+
+    def tearDown(self):
+        from PySide6 import QtWidgets
+        QtWidgets.QSystemTrayIcon.isSystemTrayAvailable = self._available
+        if self.controller is not None:
+            self.controller.quit()
+        self.core.shutdown()
+        self.pump_until(lambda: False, 0.2)
+        self.fake.__exit__(None, None, None)
+
+    def pump_until(self, condition, seconds):
+        from PySide6 import QtCore
+        end = time.time() + seconds
+        while time.time() < end:
+            self.app.processEvents(QtCore.QEventLoop.AllEvents, 20)
+            if condition():
+                return True
+            time.sleep(0.005)
+        return False
+
+    @staticmethod
+    def observer_actions(menu) -> dict:
+        from PySide6 import QtWidgets
+        submenu = next(m for m in menu.findChildren(QtWidgets.QMenu) if m.title() == "Observador")
+        return {a.text(): a for a in submenu.actions() if a.text()}
+
+    def test_interface_opens_with_a_system_tray_and_the_observer_menu_follows_the_real_state(self):
+        from ultron.hud.controller import HudController
+        before_boot = self.core.state.as_dict()
+        self.controller = HudController(self.core)               # caía aqui, em _make_tray()
+        self.assertIsNotNone(self.controller.tray, "bandeja criada")
+        menu = self.controller.tray.contextMenu()
+        labels = [a.text() for a in menu.actions()]
+        for expected in ("Abrir o JARVIS", "Observador", "Iniciar com o Windows", "Sair"):
+            self.assertIn(expected, labels)
+        actions = self.observer_actions(menu)
+        self.assertTrue(actions["Desligado"].isChecked(), "antes do boot vale a configuração (desligado)")
+        self.assertFalse(actions["Pausar o Observador"].isEnabled())
+        cache = self.controller.state_cache
+        self.assertEqual({k: cache[k] for k in before_boot}, before_boot, "o cache nasce do estado real")
+
+        threading.Thread(target=self.core.boot, daemon=True).start()
+        self.assertTrue(self.pump_until(lambda: self.core.booted, 30))
+        self.core.set_observer("assistant")
+        self.assertTrue(self.pump_until(
+            lambda: (self.controller.state_cache.get("observer") or {}).get("mode") == "assistant", 5))
+        self.assertIs(self.controller.state_cache, cache, "o mesmo cache, atualizado no lugar")
+        menu.aboutToShow.emit()                                 # o menu é relido a cada abertura
+        actions = self.observer_actions(menu)
+        self.assertTrue(actions["Assistente (sugere na tela)"].isChecked())
+        self.assertTrue(actions["Pausar o Observador"].isEnabled())
+
+        self.controller.state_cache["observer"] = None          # dado ausente ou malformado não derruba
+        menu.aboutToShow.emit()
+        self.assertEqual(len([a for a in self.observer_actions(menu).values() if a.isCheckable()]), 3)
+        self.core.set_observer("off")
+
+
 class VoiceNavigationTest(unittest.TestCase):
     def test_pages_open_by_voice_and_old_commands_keep_their_meaning(self):
         from ultron.cognition.intent_engine import IntentEngine

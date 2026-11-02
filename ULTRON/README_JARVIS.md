@@ -63,11 +63,13 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 
 | Comando | Efeito |
 |---|---|
-| `START_JARVIS.bat` | abre o JARVIS (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz) |
-| `START_JARVIS.bat --console` | modo console (texto) |
+| `START_JARVIS.bat` | abre o JARVIS (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz). Se ele já estiver aberto, traz a janela para a frente |
+| `START_JARVIS.bat --console` | **modo console**: conversa pelo terminal com o MESMO núcleo, memória, TARDIS, permissões e confirmações da janela (`sair` encerra; "cancelar" ou Ctrl+C interrompe; "sim"/"não" respondem às confirmações) |
+| `START_JARVIS.bat --foreground` | abre a janela pelo `python.exe`, com o terminal visível mostrando avisos e erros (para investigar quando a janela não abre) |
+| `START_JARVIS.bat --gui-check` | monta a interface sem mostrá-la e diz se ela abre nesta máquina |
 | `START_JARVIS.bat --status` | diz se está em execução |
 | `START_JARVIS.bat --stop` | pede ao JARVIS em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
-| `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | modo de diagnóstico: componentes ausentes, saúde, voz em 8 etapas, backups |
+| `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | diagnóstico **por etapas** (`[OK]`/`[AVISO]`/`[FALHA]`/`[TEMPO]`): configurações, banco, núcleo, Ollama, modelos, memória, TARDIS, voz em 8 etapas, percepção, plugins, Noctário, sistema e a interface gráfica montada de verdade. Cada etapa tem prazo; a que não responde é nomeada e as outras continuam |
 | `START_JARVIS.bat --voice-test` | teste de voz falando ("Jarvis, que horas são?") |
 | `START_JARVIS.bat --backup` | backup do banco agora |
 | `START_JARVIS.bat --autostart` / `--no-autostart` | liga/desliga o início com o Windows |
@@ -558,6 +560,8 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 | As configurações voltaram ao padrão | o `settings.json` estava ilegível; o original foi guardado como `settings.ilegivel-AAAAMMDD-HHMMSS.json` na mesma pasta |
 | "Não consegui gravar na memória do JARVIS" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
 | Demora para responder / quero parar | *"cancelar"*, *"pare"* ou Esc interrompem na hora, mesmo com o modelo ainda carregando |
+| A janela não abre | o JARVIS agora mostra o motivo numa mensagem e oferece o modo console (`START_JARVIS.bat --console`). Para ver o erro no terminal: `START_JARVIS.bat --foreground`; para conferir sem abrir: `START_JARVIS.bat --gui-check`. O erro completo fica em `%LOCALAPPDATA%\ULTRON\logs\ultron.log`. Histórico do defeito corrigido: `AUDITORIA_INICIALIZACAO.md` |
+| "O JARVIS já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
 
 ## 13. Documentos
 

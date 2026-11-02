@@ -149,9 +149,9 @@ jobs:
         run: |
           python -c "import zipfile; zipfile.ZipFile('JARVIS_FINAL_WINDOWS.zip').extractall('_jarvis_install_test')"
           Set-Location _jarvis_install_test/JARVIS
-          function Invoke-Bat([string]$Line, [int]$Expected = 0, [switch]$AnyCode) {
+          function Invoke-Bat([string]$Line, [int]$Expected = 0, [switch]$AnyCode, [string]$Stdin = "NUL") {
             # cada comando vai num .cmd próprio: nenhuma aspa passa pelo PowerShell
-            Set-Content -Path _passo.cmd -Encoding ascii -Value "@call $Line < NUL 2>&1", "@exit %errorlevel%"
+            Set-Content -Path _passo.cmd -Encoding ascii -Value "@call $Line < $Stdin 2>&1", "@exit %errorlevel%"
             Write-Host "::group::$Line"
             $out = (& cmd.exe /d /c _passo.cmd) | Out-String
             $code = $LASTEXITCODE
@@ -214,6 +214,28 @@ jobs:
           Assert-Text $out "encerrado" "START_JARVIS.bat --stop"
           $out = Invoke-Bat "START_JARVIS.bat --status"
           if ($out -match "processo \d+") { Write-Host "::error::o JARVIS continuou em execucao"; exit 1 }
+
+          # modo console pelo START_JARVIS.bat --console: conversa, memória, autorização negada e "sair"
+          Set-Content -Path _entrada.txt -Encoding ascii -Value "que horas sao?", "anote uma ideia: horta vertical", "o que anotei sobre horta?", "encerre o jarvis", "nao", "sair"
+          $out = Invoke-Bat "START_JARVIS.bat --console" -Stdin "_entrada.txt"
+          Assert-Text $out "CONSOLE INTERFACE" "console: cabecalho"
+          Assert-Text $out "S\S{1,3}o \d{2}:\d{2}" "console: horas"
+          Assert-Text $out "Ideia registrada" "console: memoria gravada"
+          Assert-Text $out "Encontrei 1 registro" "console: memoria consultada"
+          Assert-Text $out "CONFIRMA" "console: pedido de autorizacao"
+          Assert-Text $out "autorizado: encerre o jarvis" "console: autorizacao negada"
+          Assert-Text $out "At\S{1,3} logo" "console: sair"
+          $out = Invoke-Bat "START_JARVIS.bat --status"
+          if ($out -match "processo \d+") { Write-Host "::error::o console continuou em execucao"; exit 1 }
+
+          # a interface com a plataforma NATIVA do Windows (sem offscreen): janela, páginas e menu da bandeja
+          $savedPlatform = $env:QT_QPA_PLATFORM
+          Remove-Item Env:QT_QPA_PLATFORM
+          $out = Invoke-Bat "START_JARVIS.bat --gui-check" -AnyCode
+          $env:QT_QPA_PLATFORM = $savedPlatform
+          $native = ($out -split "`n" | Where-Object { $_ -match "INTERFACE (OK|FALHOU)" }) -join " "
+          if ($native -match "INTERFACE OK") { Write-Host "interface nativa: $native" }
+          else { Write-Host "::warning::interface nativa neste runner: $native (sem area de trabalho interativa?)" }
 
           $out = Invoke-Bat "DIAGNOSTICO_JARVIS.bat" -AnyCode
           Assert-Text $out "Skills: \d+/\d+" "DIAGNOSTICO_JARVIS.bat"

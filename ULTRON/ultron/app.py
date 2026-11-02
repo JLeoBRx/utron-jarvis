@@ -58,6 +58,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--test-openai", action="store_true", help="testa a conexão com a OpenAI e sai")
     parser.add_argument("--autostart-check", action="store_true",
                         help="confere a entrada de início automático com o Windows e sai")
+    parser.add_argument("--gui-check", action="store_true",
+                        help="monta a interface sem mostrá-la (sem iniciar serviços), diz se abriu e sai")
     parser.add_argument("--status", action="store_true", help="diz se o JARVIS está em execução e sai")
     parser.add_argument("--stop", action="store_true", help="encerra a instância em execução (normalmente) e sai")
     parser.add_argument("--profile", help="perfil de configuração (default, performance, privacy, silent, developer)")
@@ -170,35 +172,42 @@ def _wait_voice_ready(core, timeout: float = 30.0) -> None:
 
 
 def run_diagnose(args: argparse.Namespace) -> int:
-    from .health.monitor import format_report
-    from .voice.diagnostics import VoiceDiagnostics
-    from .voice.diagnostics import format_report as voice_report
+    """Diagnóstico por etapas, cada uma impressa ao terminar e com prazo próprio (``ultron/diagnose.py``)."""
+    from . import diagnose
+    return diagnose.run(args, make_core=_make_core, wait_voice=_wait_voice_ready, version=__version__)
 
-    core = _make_core(args)
-    statuses = core.boot()
-    _wait_voice_ready(core)
-    report = core.diagnose()
-    print(f"JARVIS {__version__} — diagnóstico")
-    print("Componentes: " + ", ".join(f"{k}={v}" for k, v in statuses.items()))
-    print(format_report(report["health"]))
-    models = report["models"]
-    print(f"Ollama: {'ativo' if models['ollama_alive'] else 'indisponível'} {models.get('version', '')}"
-          f" · instalados: {', '.join(models['installed']) or 'nenhum'}"
-          + (f" · ausentes: {', '.join(models['missing'])}" if models["missing"] else ""))
-    for task, sel in models["selections"].items():
-        print(f"  {task}: {sel['model'] or '—'} ({sel['reason']})" + (f" → {sel['install_hint']}"
-                                                                     if sel.get("install_hint") else ""))
-    privacy = report["privacy"]
-    print(f"Privacidade: {privacy.get('mode')} · Ollama local: {privacy.get('ollama_local')}")
-    print("Plugins: " + (", ".join(f"{p['name']} ({p['status']}{': ' + p['reason'] if p['reason'] else ''})"
-                                   for p in report["plugins"]) or "nenhum"))
-    print(f"Skills: {report['skills']['available']}/{report['skills']['total']} disponíveis")
-    if core.enable_voice:
-        print(voice_report(VoiceDiagnostics(core).run(interactive=False, probe_response=True)))
-    else:
-        print("Voz: desativada nesta execução (--no-voice).")
-    core.shutdown()
-    return 1 if report["health"]["overall"] == "FAIL" else 0
+
+def run_gui_check(args: argparse.Namespace) -> int:
+    """Monta a interface completa SEM mostrá-la e sem iniciar o núcleo (nada de microfone, rede ou robô): prova
+    que janela, páginas, avatar e o menu da bandeja sobem nesta máquina. Usado pelo diagnóstico, num processo
+    separado, para que até uma falha que derrube o Qt seja informada."""
+    import traceback
+    started = time.perf_counter()
+    try:
+        from PySide6 import QtCore, QtWidgets
+
+        from .hud.controller import HudController, log_qt_messages
+        log_qt_messages()
+        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        tray = QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
+        core = _make_core(args)
+        controller = HudController(core)
+        menu = controller._menu()                     # o menu da bandeja/orbe, como no Windows com bandeja
+        menu.aboutToShow.emit()
+        end = time.monotonic() + 0.5
+        while time.monotonic() < end:
+            app.processEvents(QtCore.QEventLoop.AllEvents, 50)
+        info = (f"Qt {QtCore.qVersion()}, plataforma {app.platformName()}, bandeja do sistema "
+                f"{'disponível' if tray else 'indisponível'}, rosto {controller.avatar_reason}, "
+                f"montada em {time.perf_counter() - started:.1f} s")
+        controller.quit()
+    except Exception as exc:
+        logging.getLogger("ultron").exception("verificação da interface falhou")
+        traceback.print_exc(file=sys.stdout)
+        print(f"INTERFACE FALHOU: {type(exc).__name__}: {exc}", flush=True)
+        return 1
+    print(f"INTERFACE OK: {info}", flush=True)
+    return 0
 
 
 def run_voice_test(args: argparse.Namespace) -> int:
@@ -246,10 +255,15 @@ def run_microphones(args: argparse.Namespace) -> int:
     return 0 if not args.mic else 1
 
 
-def run_headless(args: argparse.Namespace) -> int:
+def run_headless(args: argparse.Namespace, core=None) -> int:
+    """``--console``/``--headless``: a conversa pelo terminal (``ultron/console.py``); ``--say``: um pedido e sai.
+    Os dois usam o MESMO núcleo da interface gráfica (``core`` já criado é reaproveitado, sem iniciar outro)."""
     from .core.events import EventType
 
-    core = _make_core(args)
+    core = core or _make_core(args)
+    if not args.say:
+        from .console import Console
+        return Console(core).run()
     done = threading.Event()
 
     def show(event) -> None:
@@ -261,53 +275,14 @@ def run_headless(args: argparse.Namespace) -> int:
 
     core.bus.subscribe(EventType.RESPONSE_READY, show, name="console")
     core.bus.subscribe(EventType.AUTHORIZATION_REQUIRED,
-                       lambda e: print(f"[autorização] {e.payload.get('description')} — responda sim/não", flush=True),
+                       lambda e: print(f"[autorização] {e.payload.get('description')} — com --say não há como "
+                                       "responder; use START_JARVIS.bat --console", flush=True),
                        name="console.auth")
-
-    def shutdown_requested(_event) -> None:         # "encerre o JARVIS" (já confirmado pelo executor)
-        def finish() -> None:
-            time.sleep(1.0)                          # a resposta "Encerrando, senhor." chega antes
-            core.shutdown()
-            from .platform import control
-            control.unregister()
-            os._exit(0)
-
-        threading.Thread(target=finish, name="ultron-console-exit", daemon=True).start()
-
-    core.bus.subscribe(EventType.SHUTDOWN_REQUESTED, shutdown_requested, name="console.shutdown")
     core.boot()
-    if not args.say:
-        from .platform import control
-
-        def watch_stop() -> None:                   # --stop: encerra normalmente, mesmo esperando entrada
-            while core.booted:
-                if control.stop_requested():
-                    control.clear_stop_request()
-                    print("\nEncerrando a pedido (--stop)…", flush=True)
-                    core.shutdown()
-                    control.unregister()
-                    os._exit(0)
-                time.sleep(1.5)
-
-        threading.Thread(target=watch_stop, name="ultron-stop-watch", daemon=True).start()
-    if args.say:
-        done.clear()
-        core.submit(args.say, source="text")
-        done.wait(float(getattr(core.settings(), "llm_timeout", 120.0)) + 30)
-        time.sleep(0.3)
-        core.shutdown()
-        return 0
-    print("JARVIS em modo console. Digite um comando (\"sair\" para encerrar; \"diagnóstico de voz\" testa a voz).",
-          flush=True)
-    try:
-        while True:
-            line = input("› ").strip()
-            if line.lower() in ("sair", "exit", "quit"):
-                break
-            if line:
-                core.submit(line, source="text")
-    except (EOFError, KeyboardInterrupt):
-        pass
+    done.clear()
+    core.submit(args.say, source="text")
+    done.wait(float(getattr(core.settings(), "llm_timeout", 120.0)) + 30)
+    time.sleep(0.3)
     core.shutdown()
     return 0
 
@@ -404,7 +379,37 @@ def run_data_command(args: argparse.Namespace) -> int:
         db.close()
 
 
+def _safe_output() -> None:
+    """Nenhum caractere derruba a saída. Num console do Windows o Python já escreve Unicode; redirecionada (arquivo,
+    pipe, o instalador) a página de código pode não ter "→" — vira "?" em vez de ``UnicodeEncodeError`` (o
+    diagnóstico do instalador caía assim no Windows)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _safe_output()
+    code = 1
+    try:
+        code = _main(argv)
+        return code
+    except BaseException as exc:
+        if os.environ.get("JARVIS_PAUSE_ON_ERROR") == "1" and not isinstance(exc, SystemExit):
+            import traceback
+            traceback.print_exc()
+        raise
+    finally:
+        if code != 0 and os.environ.get("JARVIS_PAUSE_ON_ERROR") == "1":
+            try:
+                input("\nO JARVIS terminou com erro (detalhes acima e no registro). Pressione Enter para fechar.")
+            except (EOFError, KeyboardInterrupt, RuntimeError, OSError):
+                pass
+
+
+def _main(argv: list[str] | None) -> int:
     args = parse_args(argv)
     setup_logging(args.debug)
     log = logging.getLogger("ultron")
@@ -420,6 +425,8 @@ def main(argv: list[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
     if args.list_mics or args.mic:
         return run_microphones(args)
+    if args.gui_check:                               # não inicia o núcleo: não disputa a instância
+        return run_gui_check(args)
     from .platform import control, single_instance
     if args.import_models:
         from .platform.models_import import import_models
@@ -458,15 +465,8 @@ def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
         finally:
             single_instance.release()
     if not single_instance.acquire():
-        if single_instance.blocked_by_legacy:
-            print("O JARVIS original (versão anterior, jarvis_hud.py) está aberto. Feche-o antes: os dois "
-                  "disputariam o microfone.")
-            log.warning("JARVIS original em execução (mutex %s); esta instância não foi iniciada",
-                        single_instance.LEGACY_NAME)
-        else:
-            print("O JARVIS já está em execução.")
-        return 0
-    control.register()
+        return _already_running(args, log)
+    control.register(mode="console" if (args.headless or args.say) else "janela")
     try:
         if args.headless or args.say:
             return run_headless(args)
@@ -475,12 +475,113 @@ def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
                 raise ImportError("PySide6 não instalado")
             from .hud import run_hud
         except ImportError as exc:
-            log.warning("interface indisponível (%s); modo console", exc)
-            print(f"Interface gráfica indisponível ({exc}). Iniciando em modo console.")
-            return run_headless(args)
+            return _interface_failed(args, None, exc, log)
         core = _make_core(args)
         minimized = args.boot or bool(getattr(core.settings(), "hud_start_minimized", False))
-        return run_hud(core, minimized=minimized)
+        try:
+            return run_hud(core, minimized=minimized)
+        except Exception as exc:                     # a janela não montou: registra, explica e oferece o console
+            return _interface_failed(args, core, exc, log)
     finally:
         control.unregister()
         single_instance.release()
+
+
+def _tell(title: str, text: str, *, kind: str = "error") -> None:
+    """No console, imprime; sem console (pythonw), mostra numa caixa de mensagem do sistema."""
+    from .platform import notice
+    if sys.stdout is not None:                       # python.exe (terminal, arquivo ou pipe)
+        print(text, flush=True)
+    else:                                            # pythonw: ninguém leria o print
+        notice.show(title, text, kind=kind)
+
+
+def _already_running(args: argparse.Namespace, log: logging.Logger) -> int:
+    """Outra instância segura a instância única. Abrir de novo traz a janela para a frente; se ela não responder
+    (ou estiver em modo console), diz o que fazer — em vez de não acontecer nada."""
+    from .platform import control, single_instance
+    if single_instance.blocked_by_legacy:
+        text = ("O JARVIS original (versão anterior, jarvis_hud.py) está aberto. Feche-o antes: os dois disputariam "
+                "o microfone.")
+        log.warning("JARVIS original em execução (mutex %s); esta instância não foi iniciada",
+                    single_instance.LEGACY_NAME)
+        _tell("J.A.R.V.I.S. — já em execução", text, kind="warning")
+        return 0
+    pid = control.running_pid()
+    mode = control.running_mode()
+    wants_window = not (args.headless or args.say)
+    if wants_window and mode != "console" and control.bring_to_front():
+        log.info("JARVIS já em execução (processo %s): janela trazida para a frente", pid)
+        print("O JARVIS já estava aberto: a janela foi trazida para a frente.", flush=True)
+        return 0
+    which = f" (processo {pid})" if pid else ""
+    if mode == "console":
+        text = (f"O JARVIS já está aberto em modo console{which}. Use aquela janela de terminal ou encerre-o com "
+                "\"sair\" (ou START_JARVIS.bat --stop) antes de abrir de novo.")
+    else:
+        text = (f"O JARVIS já está em execução{which}"
+                + (", mas a janela dele não respondeu ao pedido para aparecer" if wants_window else "")
+                + ".\nPara encerrá-lo: START_JARVIS.bat --stop (ou bandeja > Sair). Se ele não responder, finalize o "
+                  "pythonw.exe do JARVIS pelo Gerenciador de Tarefas — os dados ficam íntegros.")
+    log.warning("outra instância em execução%s (modo %s); esta não foi iniciada", which, mode or "desconhecido")
+    _tell("J.A.R.V.I.S. — já em execução", text, kind="warning")
+    return 0
+
+
+def _interface_failed(args: argparse.Namespace, core, exc: BaseException, log: logging.Logger) -> int:
+    """A interface gráfica não abriu: o erro completo vai para o registro, o motivo aparece para o usuário e o
+    modo console é oferecido — com o MESMO núcleo (no terminal) ou numa janela de console nova (sem terminal,
+    depois de liberar a instância: nunca duas ao mesmo tempo). Dados e sessão não são tocados."""
+    from .platform import control, notice, single_instance
+    log.error("a interface gráfica não abriu", exc_info=(type(exc), exc, exc.__traceback__))
+    if core is not None:
+        core.bus.unsubscribe_prefix("hud")           # nada da janela que não montou fica ligado ao núcleo
+        core.hud_health = None
+        core.hud_probe = lambda: False
+    logfile = paths.logs_dir() / "ultron.log"
+    text = (f"A interface gráfica do JARVIS não abriu.\n\nMotivo: {type(exc).__name__}: {exc}\n\n"
+            f"O erro completo foi registrado em:\n{logfile}\n\n"
+            "Seus dados (memória, lembretes e configurações) não foram alterados.")
+    if notice.has_console():
+        print(text, flush=True)
+        try:
+            answer = input("\nAbrir o JARVIS em modo console agora? [S/n] ").strip().casefold()
+        except (EOFError, KeyboardInterrupt):
+            answer = "n"
+        if answer in ("", "s", "sim", "y", "yes"):
+            control.set_mode("console")
+            return run_headless(args, core=core)
+        print("Para usar pelo terminal: START_JARVIS.bat --console", flush=True)
+        return 4
+    if sys.stdout is not None:                       # saída redirecionada, sem ninguém para responder
+        print(text + "\nPara usar pelo terminal: START_JARVIS.bat --console", flush=True)
+        return 4
+    if notice.show("J.A.R.V.I.S. — a interface não abriu",
+                   text + "\n\nAbrir o JARVIS em modo console (pelo terminal) agora?", ask=True):
+        if core is not None and core.booted:
+            core.shutdown()
+        control.unregister()
+        single_instance.release()                    # a janela de console assume a instância única
+        _open_console_window(args)
+    return 4
+
+
+def _open_console_window(args: argparse.Namespace) -> None:
+    """Abre ``main.py --headless`` numa janela de console nova (lista de argumentos, nunca texto de comando);
+    se o console sair com erro, a janela espera um Enter antes de fechar (``JARVIS_PAUSE_ON_ERROR``)."""
+    import subprocess
+    exe = sys.executable
+    if exe.lower().endswith("pythonw.exe"):
+        exe = exe[: -len("pythonw.exe")] + "python.exe"
+    command = [exe, str(paths.project_root() / "main.py"), "--headless"]
+    for flag in ("no_voice", "no_perception", "no_plugins", "debug"):
+        if getattr(args, flag, False):
+            command.append("--" + flag.replace("_", "-"))
+    if args.profile:
+        command += ["--profile", args.profile]
+    env = {**os.environ, "JARVIS_PAUSE_ON_ERROR": "1"}       # a janela nova não some se o console falhar
+    if sys.platform == "win32":
+        subprocess.Popen(command, cwd=str(paths.project_root()), env=env,
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+    else:
+        subprocess.Popen(command, cwd=str(paths.project_root()), env=env, start_new_session=True)

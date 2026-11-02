@@ -84,6 +84,14 @@ class EventBus:
             if sub in self._subs:
                 self._subs.remove(sub)
 
+    def unsubscribe_prefix(self, prefix: str) -> int:
+        """Remove as assinaturas cujo nome começa com ``prefix`` (ex.: "hud" quando a interface não abriu)."""
+        with self._lock:
+            gone = [sub for sub in self._subs if sub.name.startswith(prefix)]
+        for sub in gone:
+            self.unsubscribe(sub)
+        return len(gone)
+
     # ------------------------------------------------------------ publicação
     def publish(self, type_: EventType, payload: dict | None = None, *, source: str = "") -> Event:
         event = Event(type_, dict(payload or {}), source)

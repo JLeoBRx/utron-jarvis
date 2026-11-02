@@ -75,11 +75,14 @@ class CommandLineTest(unittest.TestCase):
 
     def test_4_diagnose_reports_what_is_missing_without_a_model(self):
         code, out = self.run_jarvis("--diagnose", "--no-voice", "--no-perception", "--no-plugins")
-        self.assertIn(code, (0, 1))
         self.assertIn("— diagnóstico", out)
-        self.assertIn("Ollama: indisponível", out, "sem servidor, o relatório diz isso em vez de inventar")
+        self.assertIn("[FALHA] Ollama: indisponível", out, "sem servidor, o relatório diz isso em vez de inventar")
         self.assertIn("Voz: desativada nesta execução (--no-voice).", out)
         self.assertRegex(out, r"Skills: \d+/\d+ disponíveis")
+        for step in ("Configurações", "Banco de dados", "Núcleo", "Memória", "TARDIS", "Interface gráfica"):
+            self.assertRegex(out, rf"\[OK\] +{step}:", f"etapa {step}")
+        self.assertIn("Resumo:", out)
+        self.assertEqual(code, 1, "o Ollama ausente conta como falha no resumo")
 
 
 class WindowsScriptsTest(unittest.TestCase):

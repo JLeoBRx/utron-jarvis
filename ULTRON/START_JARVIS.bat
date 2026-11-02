@@ -4,7 +4,9 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 rem START_JARVIS.bat                 abre o JARVIS (TARDIS, Noctario e as outras paginas pela navegacao ou F1-F7)
-rem START_JARVIS.bat --console       modo console (texto)
+rem START_JARVIS.bat --console       modo console (texto), com o mesmo nucleo, memoria e permissoes da janela
+rem START_JARVIS.bat --foreground    abre a janela pelo python.exe: este terminal mostra avisos e tracebacks
+rem START_JARVIS.bat --gui-check     monta a interface sem mostra-la e diz se ela abre nesta maquina
 rem START_JARVIS.bat --diagnose      saude completa + voz (8 etapas) e sai
 rem START_JARVIS.bat --voice-test    teste de voz falando ("Jarvis, que horas sao?")
 rem START_JARVIS.bat --mics          lista os microfones
@@ -27,13 +29,14 @@ set "VPY=.venv\Scripts\python.exe"
 set "VPYW=.venv\Scripts\pythonw.exe"
 
 if /i "%~1"=="--console" goto console_mode
+if /i "%~1"=="--foreground" goto foreground_mode
 if /i "%~1"=="--mics" goto list_mics
 if /i "%~1"=="--autostart" goto autostart_on
 if /i "%~1"=="--no-autostart" goto autostart_off
 
 rem comandos que escrevem uma resposta e saem: com o pythonw (sem console) a resposta se perderia
 set "TEXT_COMMAND="
-for %%A in (--diagnose --voice-test --list-mics --mic --status --stop --backup --list-backups --restore-backup --export --import-models --say --set-openai-key --use-openai --use-ollama --test-openai --autostart-check --headless --version --help -h) do (
+for %%A in (--diagnose --voice-test --list-mics --mic --status --stop --backup --list-backups --restore-backup --export --import-models --say --set-openai-key --use-openai --use-ollama --test-openai --autostart-check --gui-check --headless --version --help -h) do (
     if /i "%~1"=="%%A" set "TEXT_COMMAND=1"
 )
 if defined TEXT_COMMAND goto text_command
@@ -51,6 +54,15 @@ exit /b %CODE%
 :console_mode
 "%VPY%" main.py --headless
 exit /b %errorlevel%
+
+:foreground_mode
+echo Abrindo o JARVIS com este terminal visivel (avisos e erros aparecem aqui; feche pela bandeja ^> Sair).
+"%VPY%" main.py
+set "CODE=%errorlevel%"
+echo.
+echo O JARVIS terminou com codigo %CODE%. Registro: %LOCALAPPDATA%\ULTRON\logs\ultron.log
+pause
+exit /b %CODE%
 
 :list_mics
 "%VPY%" main.py --list-mics

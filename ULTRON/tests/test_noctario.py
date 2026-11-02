@@ -414,7 +414,11 @@ class SimulatorServiceTest(unittest.TestCase):
         self.assertEqual(self.service.fw, "simulador-1.0")
         self.assertIn("SIMULADOR", self.service.health()["detail"])
         self.assertTrue(wait_until(lambda: self.service.params.get("tel") == 25, 3), self.service.params)
-        tel_ops = [op for op in self.service.store.ops(10) if op["verb"] == "TEL"]
+
+        def tel_ops():                       # o ACK chega pela thread de leitura antes de quem pediu gravar a operação
+            return [op for op in self.service.store.ops(10) if op["verb"] == "TEL"]
+        self.assertTrue(wait_until(tel_ops, 3), "operação TEL registrada")
+        tel_ops = tel_ops()
         self.assertEqual((tel_ops[0]["origin"], tel_ops[0]["outcome"], tel_ops[0]["source"]),
                          ("configuração", "ACK", "simulador"))
         self.assertTrue(wait_until(lambda: len(self.service.recent_series(5)) > 5, 3), "telemetria chegando")
