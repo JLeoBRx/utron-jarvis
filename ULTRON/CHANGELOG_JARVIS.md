@@ -320,9 +320,18 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
   permissões e executor; cabeçalho com o estado real, prompt com o nome configurado, confirmações, Ctrl+C
   cancela, `sair` e `--stop` encerram em ordem; segunda abertura recusada com aviso.
 * `START_JARVIS.bat --foreground` (a janela com o terminal mostrando erros) e `--gui-check`.
+* **O `chcp` do Windows consumia a entrada redirecionada**: no CI, `START_JARVIS.bat --console` com a entrada
+  vinda de um arquivo recebia fim de entrada no primeiro prompt. Sondas no Windows isolaram a causa (o mesmo
+  `.bat` sem o `chcp` conversou; com ele, não). Todos os `.bat` usam agora `chcp 65001 <nul >nul`; teste confere.
 * **Processos filhos não leem mais a entrada do usuário**: a verificação da GPU chamava o PowerShell sem
   `stdin`, e ele consumia a entrada padrão quando ela era redirecionada — no CI do Windows, as linhas enviadas
   ao console sumiam antes do primeiro prompt. Todas as chamadas agora fecham a entrada; teste confere.
+* **Voz com áudio muito curto**: o efeito de voz quebrava ("could not broadcast input array") quando a
+  síntese devolvia quase nada — a voz do Windows sem vozes SAPI instaladas, no CI. Agora qualquer comprimento
+  passa e áudio vazio é informado como tal.
+* **Boca no limite entre quadros**: por ponto flutuante, um instante logo depois do fim da fala misturava o
+  quadro anterior e a boca "abria" em 1e-15 no silêncio; o teste da voz Piper real falhou uma vez no CI do
+  Windows por isso. Corrigido, com teste determinístico.
 * Teste do Noctário que lia o histórico de operações antes de ele ser gravado: agora espera a gravação.
 * Testes: `test_startup.py` (9, processos reais: janela com bandeja, segunda abertura, `--stop` durante a
   abertura, falha da interface, console com conversa, memória, TARDIS e autorização, `--stop`, reabertura,

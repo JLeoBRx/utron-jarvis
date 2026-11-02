@@ -68,6 +68,19 @@ nele é idêntico ao reproduzido.
    enviadas ao modo console sumiam antes do primeiro prompt. Todas as chamadas de processo agora fecham a
    entrada (teste confere o código inteiro).
 
+9. **`chcp` e a entrada**: no Windows, o `chcp 65001` do início dos `.bat` consome a entrada padrão quando ela
+   vem redirecionada (confirmado por sondas no CI: o mesmo `.bat` sem o `chcp` conversou, com ele não). Todos os
+   `.bat` usam `chcp 65001 <nul >nul`; num terminal comum não havia efeito, mas scripts e atalhos que
+   redirecionam a entrada passam a funcionar.
+10. **Voz e boca** (achados pelo CI no Windows): o efeito de voz quebrava com áudio muito curto, e a boca
+    "abria" em 1e-15 no limite entre quadros logo após a fala. Ambos corrigidos, com testes.
+
+Verificado no CI do Windows (execução 56): instalação pelo `INSTALL_JARVIS.bat` a partir do ZIP, diagnóstico
+por etapas até o fim, `START_JARVIS.bat --version/--status/--backup/--list-backups/--say`, a **janela aberta
+pelo `pythonw` e fechada com `--stop`**, o **console** com conversa, memória, confirmação negada e `sair`, e a
+**interface montada com a plataforma nativa do Windows e a bandeja do sistema disponível** — o caminho que
+derrubava a sua janela.
+
 ## O que continua sem verificação no seu PC
 
 A janela real com a sua bandeja, o seu microfone e a sua voz. Os testes declaram a bandeja disponível no Qt

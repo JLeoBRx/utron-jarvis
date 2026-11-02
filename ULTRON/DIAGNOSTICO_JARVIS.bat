@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
+chcp 65001 <nul >nul
 title JARVIS - Diagnostico
 cd /d "%~dp0"
 

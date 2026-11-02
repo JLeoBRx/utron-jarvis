@@ -97,6 +97,14 @@ class WindowsScriptsTest(unittest.TestCase):
             self.assertNotIn(b"\n", data.replace(b"\r\n", b""),
                              f"{script.name}: com LF sozinho o cmd.exe pode não achar os rótulos do goto")
 
+    def test_chcp_never_reads_the_input(self):
+        """No Windows o chcp consome a entrada padrão redirecionada: no CI, as linhas enviadas ao console pelo
+        START_JARVIS.bat sumiam antes do primeiro prompt (com o chcp de entrada fechada, o console conversou)."""
+        for script in sorted(helpers.ROOT.glob("*.bat")):
+            for line in script.read_text(encoding="ascii").splitlines():
+                if line.strip().lower().startswith("chcp"):
+                    self.assertIn("<nul", line.replace(" ", "").lower(), f"{script.name}: {line.strip()}")
+
     def test_commands_that_answer_with_text_run_in_a_console(self):
         """``START_JARVIS.bat`` abre a janela pelo pythonw, que não tem console: um comando que responde com
         texto (backup, restauração, status…) rodaria sem mostrar nada. Todo comando "… e sai" do programa precisa

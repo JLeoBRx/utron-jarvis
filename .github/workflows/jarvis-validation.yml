@@ -217,27 +217,8 @@ jobs:
 
           # modo console pelo START_JARVIS.bat --console: conversa, memória, autorização negada e "sair"
           Set-Content -Path _entrada.txt -Encoding ascii -Value "que horas sao?", "anote uma ideia: horta vertical", "o que anotei sobre horta?", "encerre o jarvis", "nao", "sair"
-          # o mesmo roteiro desligando uma parte por vez: mostra qual delas (se alguma) consome a entrada no Windows
-          $mainData = $env:JARVIS_DATA_DIR
-          $probeIndex = 0
-          # o preâmbulo do START_JARVIS.bat (setlocal, chcp 65001, cd) com o python direto, tudo ligado
-          Set-Content -Path _sonda_preambulo.bat -Encoding ascii -Value "@echo off", "setlocal", "chcp 65001 >nul", "cd /d `"%~dp0`"", "`".venv\Scripts\python.exe`" main.py --headless"
-          Set-Content -Path _sonda_sem_chcp.bat -Encoding ascii -Value "@echo off", "setlocal", "cd /d `"%~dp0`"", "`".venv\Scripts\python.exe`" main.py --headless"
-          foreach ($probeLine in ".venv\Scripts\python.exe main.py --headless --no-voice --no-perception --no-plugins",
-                                 ".venv\Scripts\python.exe main.py --headless --no-voice",
-                                 ".venv\Scripts\python.exe main.py --headless --no-perception",
-                                 ".venv\Scripts\python.exe main.py --headless --no-plugins",
-                                 ".venv\Scripts\python.exe main.py --headless",
-                                 "_sonda_preambulo.bat", "_sonda_sem_chcp.bat") {
-            $probeIndex++
-            $env:JARVIS_DATA_DIR = "$mainData-sonda$probeIndex"           # cada sonda com dados próprios
-            $probe = Invoke-Bat $probeLine -Stdin "_entrada.txt" -AnyCode
-            $verdict = if ($probe -match "Ideia registrada") { "conversou" } else { "NAO conversou" }
-            Write-Host "sonda ${probeLine}: $verdict"
-          }
-          $env:JARVIS_DATA_DIR = $mainData
+          # (o chcp do Windows consumia a entrada redirecionada: este passo pega a regressão)
           $out = Invoke-Bat "START_JARVIS.bat --console" -Stdin "_entrada.txt"
-          Get-Content -Tail 40 "$env:JARVIS_DATA_DIR\logs\ultron.log" | Select-String -Pattern "console:|WARNING|ERROR|CRITICAL" | ForEach-Object { Write-Host "log: $_" }
           Assert-Text $out "CONSOLE INTERFACE" "console: cabecalho"
           Assert-Text $out "S\S{1,3}o \d{2}:\d{2}" "console: horas"
           Assert-Text $out "Ideia registrada" "console: memoria gravada"
