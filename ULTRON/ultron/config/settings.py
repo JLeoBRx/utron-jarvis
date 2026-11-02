@@ -157,6 +157,7 @@ class Settings:
     captions: bool = True                     # legendas sincronizadas com a fala
     heavy_effects: bool = True                # brilho, partículas e varredura (desligue em máquinas modestas)
     render_backend: str = "cpu"               # cpu (padrão, roda em qualquer máquina) | gpu (OpenGL, opcional)
+    scene3d: str = "auto"                     # auto (central 3D quando há QtWebEngine e WebGL 2) | desligado (2D)
     orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
     audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)
     audio_output_index: int = -1
@@ -201,7 +202,7 @@ class Settings:
         "theme": THEMES, "stt_engine": STT_ENGINES, "performance_profile": PERFORMANCE_PROFILES,
         "mic_backend": MIC_BACKENDS, "voice_profile": ("jarvis", "neutral"),
         "observer_mode": OBSERVER_MODES, "ai_provider": AI_PROVIDERS, "start_page": START_PAGES,
-        "avatar_mode": ("face", "neural"), "render_backend": ("cpu", "gpu"),
+        "avatar_mode": ("face", "neural"), "render_backend": ("cpu", "gpu"), "scene3d": ("auto", "desligado"),
         "noctario_transport": NOCTARIO_TRANSPORTS,
     }
 

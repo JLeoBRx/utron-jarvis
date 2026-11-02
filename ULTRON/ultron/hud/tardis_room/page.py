@@ -183,6 +183,9 @@ class TardisRoomPage(QtWidgets.QWidget):
         self._last_tick = time.perf_counter()
         self._paint_ema = 0.0
         self._painted = 0
+        self.scene3d = None                    # a cena 3D da interface, emprestada enquanto a sala está à frente
+        self._scene3d_sent = 0.0
+        self._scene3d_events = -1
         self._build()
         self._clock = QtCore.QTimer(self)
         self._clock.setTimerType(QtCore.Qt.PreciseTimer)
@@ -390,6 +393,8 @@ class TardisRoomPage(QtWidgets.QWidget):
         self.controls.adjustSize()
         if rotate:
             self.scene.select(key)
+            if self.scene3d is not None:
+                self.scene3d.select_panel(key)
             self._wake()
         latest = next((t for t in self._tasks() if KINDS[t.kind].panel == key), None)
         if latest is not None:
@@ -399,9 +404,67 @@ class TardisRoomPage(QtWidgets.QWidget):
         if section in PANELS:
             self.select_panel(section)
 
+    # ------------------------------------------------------------ cena 3D (a mesma do JARVIS, emprestada)
+    def attach_scene3d(self, view) -> None:
+        """A sala passa a ser desenhada pela cena 3D (console, rotor, telas); o desenho 2D fica parado."""
+        if self.scene3d is view:
+            return
+        if self.scene3d is not None:
+            self.detach_scene3d()
+        self.scene3d = view
+        self.view.hide()
+        self.layout().insertWidget(0, view, 1)
+        view.show()
+        view.panel_selected.connect(self._scene3d_panel)
+        view.select_panel(self.scene.selected)
+        self._scene3d_events = -1
+        self._push_scene3d(force=True)
+        self._wake()
+
+    def detach_scene3d(self):
+        view, self.scene3d = self.scene3d, None
+        if view is None:
+            return None
+        try:
+            view.panel_selected.disconnect(self._scene3d_panel)
+        except (RuntimeError, TypeError):
+            pass
+        self.layout().removeWidget(view)
+        self.view.show()
+        return view
+
+    def _scene3d_panel(self, key: str) -> None:
+        """Clique num painel do console 3D = clique na aba do painel (mesmo caminho)."""
+        if key in PANELS:
+            self.select_panel(key)
+
+    def scene3d_snapshot(self) -> dict:
+        """O que o motor da TARDIS informou, para a sala 3D (modo, estilo do rotor, painéis, telas)."""
+        sc, style = self.scene, self.scene.style
+        return {"available": self.engine is not None, "mode": sc.mode, "label": style.label,
+                "speed": style.speed, "amplitude": style.amplitude, "brightness": style.brightness, "spin": style.spin,
+                "color": [round(c) for c in style.color], "fault": sc.fault, "fault_text": sc.fault_text,
+                "queued": sc.queued, "running": (sc.running or {}).get("kind_label") if sc.running else None,
+                "panels": {k: {"level": round(p.level, 3), "flash": round(p.flash, 3), "fault": round(p.fault, 3),
+                               "running": p.running, "last": p.last} for k, p in sc.panels.items()},
+                "screens": {slot: [title, [str(line) for line in lines], [round(c) for c in rgb]]
+                            for slot, (title, lines, rgb) in sc.screens.items()}}
+
+    def _push_scene3d(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        changed = self.scene.events != self._scene3d_events
+        busy = self.scene.in_motion()
+        if not force and not changed and (not busy or now - self._scene3d_sent < 0.2) and now - self._scene3d_sent < 2.0:
+            return
+        self._scene3d_events = self.scene.events
+        self._scene3d_sent = now
+        self.scene3d.push_room(self.scene3d_snapshot())
+
     def _escape(self) -> None:
         if self.scene.selected:
             self.scene.select("")
+            if self.scene3d is not None:
+                self.scene3d.select_panel("")
             self._wake()
         else:
             self.escape_unhandled.emit()
@@ -649,6 +712,12 @@ class TardisRoomPage(QtWidgets.QWidget):
             self._painted = self.view.paint_count
             last = self.view.frame_times[-1]
             self._paint_ema = last if not self._paint_ema else self._paint_ema * 0.85 + last * 0.15
+        if self.scene3d is not None:                 # a cena 3D anima sozinha; aqui só seguem os dados reais
+            self._push_scene3d()
+            self.target_fps = 0
+            if self._clock.interval() != 100:
+                self._clock.setInterval(100)
+            return
         fps = self._fps()
         self.target_fps = fps
         interval = max(7, int(1000 / fps))

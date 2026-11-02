@@ -1,0 +1,46 @@
+{
+  "ferramenta": "python tools/benchmark_scene3d.py --seconds 14",
+  "data": "2026-11-02",
+  "ambiente": "contêiner de desenvolvimento Linux, 4 CPUs, Xvfb, SEM placa de vídeo: WebGL 2 por software (Mesa llvmpipe, --ignore-gpu-blocklist); janela 1280x760; estado 'falando' (cena ativa)",
+  "renderizador": "WebGL 2: llvmpipe (LLVM 20.1.2, 256 bits) · three r170 · 5718 vértices no holograma",
+  "aviso": "renderização por SOFTWARE: os quadros por segundo NÃO representam uma placa de vídeo. Servem para provar que a qualidade adaptativa desce (coluna 'redução') e quanto custa o lado Python. Meça no seu computador com a mesma ferramenta.",
+  "comparacao_thread_interface": "rosto 2D (Fase 4, docs/benchmarks/avatar_fase4.json): 12-19 ms de pintura por quadro na thread da interface; cena 3D: o desenho fica no processo do Chromium e a thread da interface gasta só o envio dos sinais (coluna 'python ms/passo', ~0,7-0,9 ms)",
+  "resultados": [
+    {
+      "perfil": "economy",
+      "q/s mediana": 9.25,
+      "alvo": 30,
+      "redução": 2,
+      "desenhos": 75,
+      "triângulos": 57007,
+      "python ms/passo": 0.799
+    },
+    {
+      "perfil": "balanced",
+      "q/s mediana": 3.7,
+      "alvo": 45,
+      "redução": 3,
+      "desenhos": 75,
+      "triângulos": 57007,
+      "python ms/passo": 0.846
+    },
+    {
+      "perfil": "high",
+      "q/s mediana": 3,
+      "alvo": 60,
+      "redução": 3,
+      "desenhos": 75,
+      "triângulos": 57007,
+      "python ms/passo": 0.737
+    },
+    {
+      "perfil": "cinematic",
+      "q/s mediana": 1.6,
+      "alvo": 60,
+      "redução": 2,
+      "desenhos": 88,
+      "triângulos": 57020,
+      "python ms/passo": 0.823
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S. — central 3D</title>
+<link rel="stylesheet" href="css/scene.css">
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="hud" aria-live="polite">
+  <div id="state" class="glass">
+    <span class="dot"></span>
+    <div class="txt"><div id="state-label">INICIALIZANDO</div><div id="state-detail"></div></div>
+  </div>
+  <div id="cards"></div>
+  <div id="caption" class="glass hidden"><span class="said"></span><span class="rest"></span></div>
+  <div id="views" class="glass">
+    <button data-view="frente" title="Enquadramento frontal (duplo clique na cena também volta)">FRENTE</button>
+    <button data-view="nucleo" title="Núcleo de inteligência (ORBE) em detalhe">NÚCLEO</button>
+    <button data-view="exterior" title="A cabine da TARDIS por fora">CABINE</button>
+  </div>
+  <div id="notice" class="glass hidden"></div>
+  <div id="perf" class="hidden"></div>
+</div>
+<div id="veil"></div>
+
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<!-- Sem módulos ES ou sem WebGL, o lado Python não recebe "pronto" e volta para a vista 2D, dizendo por quê. -->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

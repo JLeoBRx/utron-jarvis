@@ -35,6 +35,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3
+          # QtWebEngine (cena 3D) e um servidor X virtual para abri-la de verdade
+          sudo apt-get install -y xvfb libgl1-mesa-dri libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 \
+            libxkbfile1 libxshmfence1 libgbm1 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-shape0 libxcb-xkb1 libasound2t64
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -44,6 +48,12 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: python TEST_JARVIS.py
+      - name: Real 3D scene (QtWebEngine + WebGL under Xvfb)
+        env:
+          JARVIS_TEST_SCENE3D: "1"
+          QTWEBENGINE_DISABLE_SANDBOX: "1"
+          QTWEBENGINE_CHROMIUM_FLAGS: "--ignore-gpu-blocklist"
+        run: xvfb-run -a -s "-screen 0 1280x800x24" python TEST_JARVIS.py test_scene3d
       - name: Static checks
         run: |
           python -m compileall -q ultron tests tools main.py TEST_JARVIS.py

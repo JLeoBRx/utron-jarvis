@@ -25,7 +25,9 @@ PATH*), **Ollama** (ollama.com/download). 8 GB de RAM ou mais recomendados.
 ### Instalação nova
 1. Extraia `JARVIS_FINAL.zip` (pasta `JARVIS`).
 2. Execute **`INSTALL_JARVIS.bat`**. Ele:
-   * cria `.venv` (nunca apaga um existente) e instala `requirements.txt`;
+   * cria `.venv` (nunca apaga um existente) e instala `requirements.txt` — inclusive o
+     `PySide6-Addons` (QtWebEngine, ~122 MB no Windows) da **central 3D**; numa instalação existente,
+     `ATUALIZAR_JARVIS.bat` instala o que faltar;
    * verifica os modelos locais em `assets\` — o pacote **não** inclui modelos grandes. Se
      você tem uma instalação anterior, informe a pasta dela e os modelos que faltam são
      copiados (nada é sobrescrito ou apagado); senão, ele mostra de onde baixar;
@@ -141,7 +143,32 @@ tela?") continuam funcionando.
 **Modo privacidade**, **Observador** (modos, pausar/retomar), **Iniciar com o Windows** (só por
 clique; se o Registro recusar, a marcação volta), qualidade visual, diagnóstico e Sair.
 
-### O rosto holográfico (página JARVIS)
+### A central 3D (página JARVIS e sala da TARDIS)
+
+Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo `requirements.txt`) e
+**WebGL 2**, a página JARVIS e a sala da TARDIS viram uma **cena 3D única** (Three.js embutido, sem internet):
+
+* **holograma de corpo inteiro** do JARVIS (cabeça, pescoço, ombros, tronco, braços, mãos com dedos, quadril,
+  pernas, pés) sobre uma base de projeção com anéis, feixe e partículas; linhas topológicas, nós luminosos,
+  casca translúcida e esqueleto interno. Respira, olha, pisca, gesticula com a energia real da fala e mexe a
+  boca pela trilha labial do áudio real — **cada movimento vem de um estado real** (tabela abaixo; detalhes em
+  `AUDITORIA_VISUAL_3D.md`);
+* o **ORBE** (núcleo de inteligência) flutua ao lado: rede neural de três camadas com pulsos, filamentos,
+  anéis orbitais e partículas que entram (escuta) ou saem (fala) do núcleo. Botão **NÚCLEO** amplia com
+  órbita/zoom; sem sinal do JARVIS ele apaga e diz "SEM CONEXÃO";
+* a **cabine azul** da TARDIS no convés (portas, janelas, letreiro iluminado, lâmpada que pulsa com o modo
+  real do motor). **ENTRAR NA TARDIS** (ou clique na cabine) passa pela porta para a sala de controle;
+* na página **TARDIS**, a mesma cena mostra a sala por dentro: rotor do tempo, console de seis painéis com
+  botões, alavancas, mostradores, luzes e uma tela por painel — tudo ligado às tarefas REAIS do motor;
+  escolher uma aba à direita (ou clicar no painel 3D) leva a câmera ao painel.
+
+Mouse: arrastar gira, rolar aproxima, duplo clique volta ao enquadramento; clique na cabeça do holograma
+liga/desliga o microfone. CONFIGURAÇÕES > APARÊNCIA > **Cena 3D**: Automática ou Desligada (vista 2D). Se a
+cena não puder abrir (sem QtWebEngine, sem WebGL 2, falha da placa de vídeo), a interface usa o rosto 2D
+abaixo e DIAGNÓSTICOS diz por quê; depois de uma falha, Desligada → Automática tenta de novo. Para medir no
+seu computador: `python tools/benchmark_scene3d.py`.
+
+### O rosto holográfico 2D (reserva da central 3D)
 
 Um rosto robótico 3D renderizado **em tempo real** (não é imagem nem vídeo): malha esculpida com
 iluminação, olhos com íris, sobrancelhas, nariz, orelhas, colar com reator, plataforma de projeção,
@@ -561,6 +588,8 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 | "Não consegui gravar na memória do JARVIS" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
 | Demora para responder / quero parar | *"cancelar"*, *"pare"* ou Esc interrompem na hora, mesmo com o modelo ainda carregando |
 | A janela não abre | o JARVIS agora mostra o motivo numa mensagem e oferece o modo console (`START_JARVIS.bat --console`). Para ver o erro no terminal: `START_JARVIS.bat --foreground`; para conferir sem abrir: `START_JARVIS.bat --gui-check`. O erro completo fica em `%LOCALAPPDATA%\ULTRON\logs\ultron.log`. Histórico do defeito corrigido: `AUDITORIA_INICIALIZACAO.md` |
+| A central 3D não aparece (rosto 2D no lugar) | DIAGNÓSTICOS e `START_JARVIS.bat --gui-check` dizem o motivo ("cena 3D …"). Sem `PySide6-Addons`: `ATUALIZAR_JARVIS.bat`. Depois de uma falha da placa de vídeo, CONFIGURAÇÕES > APARÊNCIA > Cena 3D: Desligada e depois Automática tenta de novo |
+| A central 3D está lenta | perfil Econômico ou Equilibrado (a qualidade também desce sozinha); `python tools/benchmark_scene3d.py` mede no seu computador |
 | "O JARVIS já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
 
 ## 13. Documentos

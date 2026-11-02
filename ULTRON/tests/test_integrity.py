@@ -18,10 +18,14 @@ class ImportTest(unittest.TestCase):
         failed = []
         names = [m.name for m in pkgutil.walk_packages(ultron.__path__, "ultron.")
                  if not m.name.endswith("__main__")]          # __main__ inicia o programa de verdade
+        from ultron.hud.scene3d import webengine_import_error
+        optional = {"ultron.hud.scene3d.view"} if webengine_import_error() else set()   # QtWebEngine é opcional
         for name in names:
             try:
                 importlib.import_module(name)
             except Exception as exc:                      # registra todos antes de falhar
+                if name in optional and isinstance(exc, ImportError):
+                    continue                              # sem PySide6-Addons a interface usa a vista 2D
                 failed.append(f"{name}: {type(exc).__name__}: {exc}")
         self.assertGreater(len(names), 100)
         self.assertEqual(failed, [])

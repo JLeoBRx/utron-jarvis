@@ -52,6 +52,22 @@ PAINT_BUDGET_LOADED = 0.30     # com a CPU do sistema acima de 85%
 SHUTDOWN_DELAY_MS = 1500       # "Encerrando, senhor." é dito antes de fechar
 
 
+class _ScenePlaceholder(QtWidgets.QWidget):
+    """Fundo da página JARVIS enquanto a cena 3D está emprestada à sala da TARDIS (uma cena, um motor)."""
+
+    paint_count = 0
+    bottom_reserved = 16
+
+    def __init__(self):
+        super().__init__()
+        self.frame_times: deque = deque(maxlen=2)
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        self.setStyleSheet("background: #020611;")
+
+    def in_motion(self) -> bool:
+        return False
+
+
 class HudController(QtCore.QObject):
     _wake = QtCore.Signal()
     _settings_changed = QtCore.Signal(object)
@@ -73,6 +89,9 @@ class HudController(QtCore.QObject):
         self.scene.profile = self.profile
         self.view = BrainView(self.scene)                       # núcleo neural (vista alternativa)
         self.avatar_reason = ""
+        self.scene3d = None                         # central 3D (Three.js no QtWebEngine), quando disponível
+        self.scene3d_reason = ""                    # por que a central 3D não está em uso (vazio = em uso)
+        self.tardis_page = None                     # página TARDIS: sala de controle + ARQUIVO
         self.avatar = self._make_avatar(getattr(settings, "render_backend", "cpu"))
         face = getattr(settings, "avatar_mode", "face") == "face"
         self.window = PlatformWindow(self.avatar if face else self.view, core=core, effects=self._effects_enabled)
@@ -80,7 +99,8 @@ class HudController(QtCore.QObject):
         (self.view if face else self.avatar).hide()
         self.orb = OrbWindow(self.scene)
         self.second = None                          # ARQUIVO da TARDIS: memória espacial (sob demanda)
-        self.tardis_page = None                     # página TARDIS: sala de controle + ARQUIVO
+        self._placeholder = _ScenePlaceholder()     # ocupa a página JARVIS enquanto a cena 3D está na TARDIS
+        self.window.page_changed.connect(self._page_changed)
         self.systems = None                         # Diagnósticos / Painel de Sistemas (idem)
         self.activity_page = None
         self.settings_page = None
@@ -136,7 +156,97 @@ class HudController(QtCore.QObject):
 
     # ================================================================ avatar
     def _make_avatar(self, backend: str):
-        """Rosto holográfico: GPU (OpenGL) quando pedido e disponível; senão CPU — e diz por quê."""
+        """A vista do JARVIS: a central 3D quando possível; senão o rosto 2D (GPU ou CPU) — e diz por quê."""
+        view = self._make_scene3d()
+        if view is None:
+            view = self._make_avatar_2d(backend)
+        view.face_clicked.connect(lambda: self.window.input.mic.toggle())
+        view.set_profile(self.profile.name, effects=self._effects_enabled())
+        view.captions_enabled = bool(getattr(self.core.settings(), "captions", True))
+        view.on_state(self.core.state.as_dict())
+        return view
+
+    def _make_scene3d(self):
+        """Central 3D (holograma de corpo inteiro, ORBE, cabine e sala da TARDIS) — ou None com o motivo."""
+        from . import scene3d
+        ok, reason = scene3d.availability(self.core.settings(), platform_name=QtGui.QGuiApplication.platformName())
+        if ok:
+            try:
+                from .scene3d.view import Scene3DView
+                speaker = self.core.speaker
+                view = Scene3DView(profile_name=self.profile.name, effects=self._effects_enabled(),
+                                   mouth=speaker.mouth, caption=speaker.caption, audible=speaker.audible)
+                view.unavailable.connect(self._scene3d_failed)
+                view.action_requested.connect(self._scene3d_request)
+                view.became_ready.connect(self._scene3d_ready)
+                self.scene3d, self.scene3d_reason = view, ""
+                self.avatar_reason = "cena 3D (abrindo)"
+                return view
+            except Exception as exc:                          # nunca impede a interface de abrir
+                log.exception("cena 3D: falha ao criar a vista")
+                reason = f"falha ao criar a vista 3D: {exc}"
+                scene3d.mark_failed(reason)
+        self.scene3d, self.scene3d_reason = None, reason
+        log.info("cena 3D não usada: %s", reason)
+        return None
+
+    def _scene3d_ready(self, info: dict) -> None:
+        self.avatar_reason = f"cena 3D — WebGL 2 ({info.get('renderer', '?')})"
+
+    def _scene3d_failed(self, reason: str) -> None:
+        """A cena 3D caiu (sem WebGL, contexto perdido, processo encerrado...): volta para 2D sem perder nada."""
+        view = self.scene3d
+        if view is None:
+            return
+        self.scene3d, self.scene3d_reason = None, reason
+        room = self.tardis_page.room if self.tardis_page is not None else None
+        if room is not None and room.scene3d is view:
+            room.detach_scene3d()
+        self.avatar = self._make_avatar_2d(getattr(self.core.settings(), "render_backend", "cpu"))
+        self.avatar.face_clicked.connect(lambda: self.window.input.mic.toggle())
+        self.avatar.set_profile(self.profile.name, effects=self._effects_enabled())
+        self.avatar.captions_enabled = bool(getattr(self.core.settings(), "captions", True))
+        self.avatar.on_state(self.state_cache)
+        page = self.window.jarvis_page
+        if page.central in (view, self._placeholder):
+            face = getattr(self.core.settings(), "avatar_mode", "face") == "face"
+            page.set_central(self.avatar if face else self.view)
+        view.dispose()
+        view.hide()
+        view.setParent(None)
+        view.deleteLater()
+        self._show_message("JARVIS · vista 3D indisponível", f"{reason}. A interface continua na vista 2D.")
+
+    def _scene3d_request(self, action: str) -> None:
+        """Pedidos da página 3D (cliques do usuário): os mesmos caminhos dos botões da interface."""
+        if action == "tardis":
+            self.open_tardis()
+        elif action == "jarvis":
+            self.open_page("jarvis")
+
+    def _page_changed(self, key: str) -> None:
+        """Uma só cena 3D: no JARVIS ela é o convés; na TARDIS, a sala de controle (passa pela porta)."""
+        view = self.scene3d
+        if view is None:
+            return
+        room = self.tardis_page.room if self.tardis_page is not None else None
+        page = self.window.jarvis_page
+        animate = self._effects_enabled()
+        if key == "tardis" and room is not None:
+            if room.scene3d is not view:
+                if page.central is view:
+                    page.set_central(self._placeholder)
+                room.attach_scene3d(view)
+            view.set_mode("tardis", animate=animate)
+        elif key == "jarvis" and (room is None or room.scene3d is view or page.central is self._placeholder):
+            if room is not None and room.scene3d is view:
+                room.detach_scene3d()
+            face = getattr(self.core.settings(), "avatar_mode", "face") == "face"
+            page.set_central(view if face else self.view)
+            view.set_mode("jarvis", animate=animate)
+
+    def _make_avatar_2d(self, backend: str):
+        """Rosto holográfico 2D: GPU (OpenGL) quando pedido e disponível; senão CPU — e diz por quê."""
         from .avatar.view import AvatarView, create_gl_view
         speaker = self.core.speaker
         sources = {"mouth": speaker.mouth, "caption": speaker.caption, "audible": speaker.audible}
@@ -151,10 +261,6 @@ class HudController(QtCore.QObject):
         if view is None:
             view = AvatarView(**sources)
             self.avatar_reason = self.avatar_reason or "CPU"
-        view.face_clicked.connect(lambda: self.window.input.mic.toggle())
-        view.set_profile(self.profile.name, effects=self._effects_enabled())
-        view.captions_enabled = bool(getattr(self.core.settings(), "captions", True))
-        view.on_state(self.core.state.as_dict())
         return view
 
     def central(self):
@@ -163,15 +269,31 @@ class HudController(QtCore.QObject):
 
     def _apply_avatar_settings(self, changed: list) -> None:
         settings = self.core.settings()
-        if "render_backend" in changed:
+        if "scene3d" in changed:
+            from . import scene3d
+            if getattr(settings, "scene3d", "auto") == "auto":
+                scene3d.clear_marker()                  # nova tentativa pedida pelo usuário
+        if {"render_backend", "scene3d"} & set(changed) and not (self.scene3d is not None and
+                                                              getattr(settings, "scene3d", "auto") == "auto"):
             old = self.avatar
             self.avatar_reason = ""
             self.avatar = self._make_avatar(getattr(settings, "render_backend", "cpu"))
             self.avatar.on_state(self.state_cache)
-            if self.central() is old:
-                self.window.jarvis_page.set_central(self.avatar)
-            old.setParent(None)
-            old.deleteLater()
+            page = self.window.jarvis_page
+            if page.central in (old, self._placeholder):
+                page.set_central(self.avatar)
+                if self.window.current_key == "tardis":
+                    self._page_changed("tardis")
+            room = self.tardis_page.room if self.tardis_page is not None else None
+            if room is not None and room.scene3d is old:
+                room.detach_scene3d()
+            if old is not self.avatar:
+                if hasattr(old, "dispose"):
+                    old.dispose()
+                if old is self.scene3d:
+                    self.scene3d = None
+                old.setParent(None)
+                old.deleteLater()
         if "avatar_mode" in changed:
             face = getattr(settings, "avatar_mode", "face") == "face"
             self.window.jarvis_page.set_central(self.avatar if face else self.view)
@@ -306,6 +428,11 @@ class HudController(QtCore.QObject):
                 QtCore.QTimer.singleShot(SHUTDOWN_DELAY_MS, self.quit)    # já confirmado pelo executor
             elif kind == EventType.UI_REQUEST.value:
                 self._ui_request(payload)
+            elif kind == "TARDIS_STATE" and self.scene3d is not None:
+                room = self.tardis_page.room if self.tardis_page is not None else None
+                if room is None or room.scene3d is not self.scene3d:      # na sala, a própria sala envia tudo
+                    self.scene3d.push_room({"mode": str(payload.get("mode") or "repouso"),
+                                            "fault": bool(payload.get("fault")), "available": True})
             if kind in AUTO_EXPAND and not self.window.isVisible() \
                     and getattr(self.core.settings(), "hud_auto_expand", True):
                 self.expand()
@@ -414,7 +541,8 @@ class HudController(QtCore.QObject):
         self._tick_times.append(dt)
         central = self.central()
         hub1 = self.window.isVisible() and not self.window.isMinimized() and central.isVisible()
-        if central is self.avatar and hub1:
+        shown = self.window.isVisible() and not self.window.isMinimized() and self.avatar.isVisible()
+        if shown:                                         # rosto 2D na página JARVIS, ou a cena 3D (JARVIS ou TARDIS)
             self.avatar.step(dt)
         else:
             self.avatar.update_state()                    # o estado vale mesmo com outra página à frente
@@ -429,7 +557,7 @@ class HudController(QtCore.QObject):
             moving = self.avatar.in_motion() if central is self.avatar else self.scene.in_motion()
             fps = quality.effective_fps(self.profile, self._hud_fps(), active=moving,
                                         background=self._tardis_in_front())
-            if central.paint_count != self._painted and central.frame_times:   # custo real da pintura
+            if getattr(central, "paint_count", 0) != self._painted and getattr(central, "frame_times", None):
                 self._painted = central.paint_count
                 last = central.frame_times[-1]
                 self._paint_ema = last if not self._paint_ema else self._paint_ema * 0.85 + last * 0.15
@@ -464,7 +592,7 @@ class HudController(QtCore.QObject):
         if metrics is None:
             return
         metrics.record("ui.lag", lag)
-        frames = list(self.central().frame_times)[-30:]
+        frames = list(getattr(self.central(), "frame_times", ()))[-30:]
         for value in frames[-min(len(frames), max(1, int(self.target_fps * 0.2) or 1)):]:
             metrics.record("ui.frame", value)
         metrics.gauge("ui.fps", round(self.frame_rate, 1))
@@ -492,9 +620,16 @@ class HudController(QtCore.QObject):
         if not self.frame_rate:
             return {"status": "OK", "detail": "medindo taxa de quadros"}
         paint = self._paint_ema * 1000
-        view = "rosto holográfico" if self.central() is self.avatar else "núcleo neural"
+        view = ("cena 3D" if self.scene3d is not None else "rosto holográfico") if self.central() in (
+            self.avatar, self._placeholder) else "núcleo neural"
         detail = f"{self.frame_rate:.0f} quadros/s (alvo {self.target_fps}) · pintura {paint:.1f} ms · " \
                  f"perfil {self.profile.name} · página {self.window.current_key} · {view} ({self.avatar_reason})"
+        scene = self.scene3d
+        if scene is not None and scene.stats.get("fps"):        # quadros medidos pela própria página 3D
+            detail += f" · cena 3D {scene.stats['fps']} q/s (alvo {scene.stats.get('target')}, " \
+                      f"redução {scene.stats.get('level', 0)})"
+        elif self.scene3d_reason:
+            detail += f" · cena 3D não usada: {self.scene3d_reason}"
         lag = getattr(self.core, "metrics", None)
         lag_stats = lag.stats("ui.lag") if lag is not None else {}
         slow = lag_stats.get("n", 0) >= 10 and lag_stats.get("p95", 0) > 0.25
@@ -841,6 +976,8 @@ class HudController(QtCore.QObject):
         self.window.hide_to_tray = False
         for timer in (self._frame, self._state_timer, self._telemetry_timer, self._heartbeat_timer):
             timer.stop()
+        if self.scene3d is not None:
+            self.scene3d.dispose()                      # sem relatórios tardios; o marcador de abertura sai
         self.window.shutdown()                          # para relógios e leitores de todas as páginas
         self.window.hide()
         self.orb.hide()
@@ -872,6 +1009,8 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     from . import theme
 
     log_qt_messages()
+    from .scene3d import prepare_qt
+    prepare_qt()                                           # antes da QApplication: exigência do QtWebEngine
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("JARVIS")
     app.setQuitOnLastWindowClosed(False)

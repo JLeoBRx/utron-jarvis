@@ -336,3 +336,29 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * Testes: `test_startup.py` (9, processos reais: janela com bandeja, segunda abertura, `--stop` durante a
   abertura, falha da interface, console com conversa, memória, TARDIS e autorização, `--stop`, reabertura,
   diagnóstico com etapa sem resposta, saída sem quebra de codificação) e `test_platform.TrayStartupTest`.
+
+## JARVIS 2.0 — central 3D premium (holograma de corpo inteiro, ORBE e TARDIS)
+* **Cena 3D única** (Three.js r170 embutido, MIT) num `QWebEngineView` na página JARVIS, emprestada à página
+  TARDIS — um motor só; o resto da interface continua Qt. Auditoria, decisões e evidências:
+  `AUDITORIA_VISUAL_3D.md`.
+* **Holograma de corpo inteiro** (esqueleto de 51 ossos, dedos com três falanges, malha contínua com dobra
+  suave nas juntas, *skinning* na GPU), base de projeção com anéis, feixe e partículas; animações por estado
+  REAL (os mesmos 12 estados resolvidos pelo `states.resolve`), boca pela trilha labial do áudio real, gestos
+  só com energia real da fala.
+* **ORBE 3D** (vista NÚCLEO): rede neural coerente (vizinhos mais próximos em três cascas), pulsos, filamentos,
+  anéis orbitais com marcas, partículas que entram/saem do núcleo; estado SEM CONEXÃO quando o Python não
+  envia sinal. O botão ORBE (orbe flutuante 2D) não mudou.
+* **TARDIS**: cabine azul por fora (portas que abrem, janelas, letreiro, lâmpada pelo modo real) e sala por
+  dentro (paredes de roundels, galeria, console de 6 painéis com botões, alavancas, mostradores, luzes e telas;
+  rotor do tempo com vidro, anéis e cilindros). Painéis e rotor seguem só tarefas e modos REAIS do motor;
+  passagem pela porta entre JARVIS e TARDIS.
+* **Desempenho**: teto de quadros por perfil, qualidade adaptativa medida, instâncias, materiais
+  compartilhados, partículas na GPU, perda de contexto WebGL tratada; `tools/benchmark_scene3d.py`.
+* **Reserva 2D automática** (sem QtWebEngine, sem WebGL 2, página sem resposta, processo de desenho encerrado,
+  contexto perdido): volta ao rosto 2D na hora, com o motivo no registro, em DIAGNÓSTICOS e no `--gui-check`.
+  CONFIGURAÇÕES > APARÊNCIA > **Cena 3D** (Automática/Desligada).
+* **Segurança**: página só local (interceptador bloqueia qualquer outro endereço), navegação restrita, ações
+  da página limitadas a `tardis`, `jarvis` e `mic` e decididas pelo Python.
+* `requirements.txt`: `PySide6-Addons` (mesma versão do Essentials). Testes: `tests/test_scene3d.py` (inclui a
+  cena real num processo próprio: Windows nativo e Linux com Xvfb no CI).
+

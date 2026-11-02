@@ -187,7 +187,10 @@ def run_gui_check(args: argparse.Namespace) -> int:
         from PySide6 import QtCore, QtWidgets
 
         from .hud.controller import HudController, log_qt_messages
+        from .hud.scene3d import prepare_qt, set_persist
         log_qt_messages()
+        prepare_qt()
+        set_persist(False)                            # verificar não liga nem desliga a cena 3D da instalação
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         tray = QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
         core = _make_core(args)
@@ -197,8 +200,19 @@ def run_gui_check(args: argparse.Namespace) -> int:
         end = time.monotonic() + 0.5
         while time.monotonic() < end:
             app.processEvents(QtCore.QEventLoop.AllEvents, 50)
+        # a cena 3D abre a página e o WebGL em outro processo: espera ela dizer "pronta" ou falhar (com prazo)
+        scene = controller.scene3d
+        end = time.monotonic() + 30.0
+        while scene is not None and not scene.is_ready and not scene.failed and time.monotonic() < end:
+            app.processEvents(QtCore.QEventLoop.AllEvents, 50)
+        if scene is not None and scene.is_ready:
+            scene3d = f"pronta, WebGL 2 ({scene.info.get('renderer', '?')})"
+        elif scene is not None:
+            scene3d = f"indisponível ({scene.failed or 'sem resposta em 30 s'}) — a vista 2D assume"
+        else:
+            scene3d = f"não usada ({controller.scene3d_reason})"
         info = (f"Qt {QtCore.qVersion()}, plataforma {app.platformName()}, bandeja do sistema "
-                f"{'disponível' if tray else 'indisponível'}, rosto {controller.avatar_reason}, "
+                f"{'disponível' if tray else 'indisponível'}, rosto {controller.avatar_reason}, cena 3D {scene3d}, "
                 f"montada em {time.perf_counter() - started:.1f} s")
         controller.quit()
     except Exception as exc:

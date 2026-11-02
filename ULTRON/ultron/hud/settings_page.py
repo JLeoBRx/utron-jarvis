@@ -597,8 +597,12 @@ class SettingsPage(QtWidgets.QWidget):
         self.check(form, "heavy_effects", "Efeitos pesados (brilho, transições holográficas, varreduras)")
         self.combo(form, "avatar_mode", "Vista do JARVIS", [("face", "Rosto holográfico"),
                                                             ("neural", "Núcleo neural")])
-        self.combo(form, "render_backend", "Renderização 3D", [("cpu", "CPU (funciona em qualquer máquina)"),
-                                                               ("gpu", "GPU — OpenGL (volta para CPU se falhar)")])
+        self.combo(form, "scene3d", "Cena 3D (holograma de corpo inteiro, ORBE e TARDIS)",
+                   [("auto", "Automática — liga com QtWebEngine e WebGL 2"), ("desligado", "Desligada (vista 2D)")],
+                   "Se a cena 3D falhar, a interface volta sozinha para a vista 2D e registra o motivo. Para tentar "
+                   "de novo depois de uma falha: escolha Desligada e depois Automática")
+        self.combo(form, "render_backend", "Desenho da vista 2D", [("cpu", "CPU (funciona em qualquer máquina)"),
+                                                                   ("gpu", "GPU — OpenGL (volta para CPU se falhar)")])
         self.number(form, "hud_fps", "Quadros por segundo (máximo)", 15, 144, step=5)
         self.check(form, "ambient_sound", "Som ambiente discreto do TARDIS")
 
