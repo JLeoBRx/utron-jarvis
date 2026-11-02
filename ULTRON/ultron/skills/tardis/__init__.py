@@ -31,7 +31,7 @@ class Consult(Skill):
     name = "tardis.consult"
     description = ("Consultar a TARDIS, o segundo cérebro do JARVIS: consulta contextual na memória (kind consulta, "
                    "com question), planejamento de um objetivo (planejamento, com goal), organização da memória "
-                   "pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do Noctário (telemetria), "
+                   "pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do sistema (telemetria), "
                    "diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto "
                    "(projeto). Devolve o resultado com as fontes; não executa ações.")
     category = "assistant"
@@ -93,7 +93,7 @@ class Consult(Skill):
 class Note(Skill):
     name = "tardis.note"
     description = ("Gravar na memória de projeto da TARDIS uma nota, uma decisão ou um parâmetro (ex.: 'decisão: "
-                   "usar Kd 0,12 no Noctário'). Nunca senhas, tokens ou dados sensíveis.")
+                   "usar o perfil HÍBRIDO no projeto Phoenix'). Nunca senhas, tokens ou dados sensíveis.")
     category = "memory"
     inputs = schema({"text": string(600), "project": string(80), "kind": string(12, enum=list(NOTE_KINDS))},
                     ("text",))

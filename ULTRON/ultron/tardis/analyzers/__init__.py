@@ -2,7 +2,7 @@
 e devolve um ``TaskResult`` — ou levanta ``TaskFailed`` com o motivo quando não há dado suficiente.
 
 O que um analisador PODE usar está em ``TardisContext``: leitura do Segundo Cérebro, da memória, do
-histórico de atividades, da saúde, da voz, dos modelos, do Noctário e da memória de projeto. Nenhum
+histórico de atividades, da saúde, da voz, dos modelos, das métricas e da memória de projeto. Nenhum
 analisador executa skills: ações viram ``ProposedAction`` (o JARVIS executa só com confirmação).
 """
 from __future__ import annotations

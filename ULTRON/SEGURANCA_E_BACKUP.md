@@ -34,8 +34,6 @@ Antes de qualquer reinstalação no Windows, feche o JARVIS normalmente e faça 
 2. Faça as próximas alterações em branch separada.
 3. Antes de atualizar a instalação Windows, use `ATUALIZAR_JARVIS.bat`, que solicita encerramento normal e backup do banco.
 4. Guarde uma cópia externa do banco e das configurações antes de reinstalar ou restaurar.
-5. No Noctário, mantenha rodas suspensas e botão físico de corte acessível durante ensaios de bancada.
-6. A parada Bluetooth não substitui o corte físico da alimentação dos motores.
 
 ## Limite de segurança
 

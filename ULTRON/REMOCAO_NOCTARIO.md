@@ -43,3 +43,20 @@ commit com o módulo completo é `34f1fa0`); nada foi apagado da pasta de dados 
   `ARQUITETURA_ULTIMATE.md`, rascunhos da Fase 8) mantêm as menções ao Noctário como registro do que existiu;
   serão revistos na entrega final da Operação Phoenix.
 * Autorizações permanentes antigas de categorias do robô ficam no arquivo do usuário e são ignoradas.
+
+## Complemento (revisão durante a Fase C)
+
+Uma nova varredura (`grep -i noct` fora de `assets/` e dos documentos históricos) achou menções que tinham
+escapado da primeira passada; todas eram texto, nenhuma era código ativo:
+
+| Onde | O que era | Agora |
+|---|---|---|
+| `TEST_JARVIS.py` | `pyserial` listado como dependência ("Noctário pela porta COM") | removido da lista |
+| `ultron/diagnose.py` | "Noctário" na lista de etapas dependentes (nenhuma etapa com esse nome existia mais) | removido |
+| `ultron/hud/settings_page.py` | RESTAURAR PADRÕES dizia manter o "endereço do Noctário" | texto corrigido |
+| `ultron/hud/tardis_room/page.py` | descrição dos painéis TELEMETRIA e DIAGNÓSTICO e exemplos dos campos | telemetria do sistema; exemplos novos |
+| `ultron/skills/tardis`, `ultron/skills/assistant` | exemplos nas descrições das ferramentas (vão para o modelo e para `COMANDOS_JARVIS.md`) | exemplos novos; `COMANDOS_JARVIS.md` regenerado |
+| `ultron/hud/avatar/states.py`, `ultron/core/activity.py`, `ultron/tardis/analyzers/__init__.py`, `ultron/memory/store.py` | comentários | atualizados |
+| `RECURSOS_EXTERNOS.md` | seção "5. Noctário (robô)" e duas menções | removidas |
+| `SEGURANCA_E_BACKUP.md` | duas regras de bancada do robô | removidas |
+| `tests/test_original_recovery.py` | exemplo de nota de sessão | exemplo novo |

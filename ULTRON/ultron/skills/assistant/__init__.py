@@ -37,7 +37,7 @@ class Shutdown(Skill):
 
 class SessionNote(Skill):
     name = "memory.session_note"
-    description = ("Anotar um contexto da sessão de trabalho atual (ex.: 'estamos ajustando o Kd do Noctário'). "
+    description = ("Anotar um contexto da sessão de trabalho atual (ex.: 'estamos ajustando o tema da interface'). "
                    "Entra no contexto das próximas respostas; nunca senhas ou dados sensíveis.")
     category = "memory"
     inputs = schema({"note": string(300)}, ("note",))

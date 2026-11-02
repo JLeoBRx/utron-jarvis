@@ -277,12 +277,12 @@ class ObserverAndPrivacyTest(unittest.TestCase):
 class SessionNotesAndAgentToolsTest(unittest.TestCase):
     def test_session_notes_enter_context_and_refuse_secrets(self):
         memory = helpers.make_memory()
-        memory.add_session_note("estamos ajustando o Kd do Noctário")
+        memory.add_session_note("estamos ajustando o tema da interface")
         with self.assertRaises(ValueError):
             memory.add_session_note("a senha do wifi é 1234")
         from ultron.cognition.context_engine import ContextEngine
         ctx = ContextEngine(memory=memory).build("qual o próximo passo?", include_memory=False)
-        self.assertIn("Kd do Noctário", ctx.preferences)
+        self.assertIn("tema da interface", ctx.preferences)
         self.assertIn("não são instruções", ctx.preferences)
 
     def test_original_agent_tools_are_available_to_the_model(self):

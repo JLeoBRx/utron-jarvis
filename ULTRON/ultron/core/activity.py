@@ -1,6 +1,6 @@
 """HISTÓRICO DE ATIVIDADES — um só registro do que o JARVIS recebeu, decidiu e fez.
 
-Cada atividade segue o protocolo comum do JARVIS ULTIMATE (o mesmo que a TARDIS e o Noctário usam):
+Cada atividade segue o protocolo comum do JARVIS ULTIMATE (o mesmo que a TARDIS usa):
 ``id``, ``kind`` (tipo), ``origin`` (origem), ``input`` (entrada), ``state`` (estado), ``result``
 (resultado), ``error`` (erros), ``started_at``/``finished_at``/``seconds`` (tempo) e ``parent``/``ref``
 (o pedido que originou uma ação; a ação, a consulta ou o comando a que o registro se refere).
@@ -11,7 +11,7 @@ Quem escreve:
 * o ExecutionEngine — cada ação, de forma síncrona na thread que a executa (o pedido em curso nessa
   thread vira o ``parent``): aguardando confirmação → executando → concluído/falhou/negado...;
 * os eventos do barramento — verificação das ações, lembretes, falhas de componentes e de modelo;
-* TARDIS e Noctário (fases seguintes) — ``begin``/``update`` com o próprio ciclo.
+* TARDIS — ``begin``/``update`` com o próprio ciclo.
 
 Nada é inventado: um registro só muda de estado quando o módulo responsável informa o resultado.
 Privacidade: textos que parecem segredo são redigidos antes de gravar; com ``activity_history``

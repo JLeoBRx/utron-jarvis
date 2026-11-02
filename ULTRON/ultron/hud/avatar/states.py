@@ -3,11 +3,11 @@
 Prioridade (ARQUITETURA_ULTIMATE.md §7), da maior para a menor:
 
  1. Modo de privacidade        — modo privacidade ativo (microfone fechado)
- 2. Erro de integração         — componente falhou, modelo indisponível, link do Noctário perdido sem pedido,
+ 2. Erro de integração         — componente falhou, modelo indisponível,
                                  ``runtime_state=ERROR`` (janela de 8 s)
  3. Aguardando confirmação     — autorização pendente
  4. Falando                    — áudio da fala saindo agora (posição real de reprodução)
- 5. Apresentando alerta        — lembrete devido, alerta do Noctário, aviso de saúde (janela de 6 s); também
+ 5. Apresentando alerta        — lembrete devido, aviso de saúde (janela de 6 s); também
                                  TINGE os estados de prioridade menor
  6. Reconhecendo a fala        — parciais do reconhecimento nos últimos 0,8 s com a escuta aberta
  7. Escutando                  — escuta aberta (palavra de ativação ou continuação)

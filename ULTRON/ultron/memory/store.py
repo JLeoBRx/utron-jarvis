@@ -236,7 +236,7 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         "CREATE INDEX IF NOT EXISTS idx_net_status ON network_devices(status)",
     ]),
     # v4 — HISTÓRICO DE ATIVIDADES (JARVIS ULTIMATE): o ciclo de vida estruturado de cada pedido, ação,
-    # confirmação, consulta à TARDIS e comando ao Noctário. A tabela ``audit`` continua como trilha de
+    # confirmação, consulta à TARDIS (e, até a remoção do Noctário, comandos ao robô). A tabela ``audit`` continua como trilha de
     # auditoria de baixo nível (só acrescenta texto); aqui o MESMO registro muda de estado
     # (recebido → executando → concluído/falhou), com origem, entrada, resultado, erro e duração.
     (4, [

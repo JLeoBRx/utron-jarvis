@@ -230,7 +230,7 @@ def run(args: argparse.Namespace, *, make_core: Callable, wait_voice: Callable, 
         report.skipped("Núcleo", "configurações ou banco de dados com falha")
 
     dependents = ("Ollama", "Modelos de IA", "Memória", "TARDIS", "Comandos", "Voz", "Percepção", "Plugins",
-                  "Noctário", "Sistema")
+                  "Sistema")
     if core_ready:
         health: dict = {}
         try:                                         # cada verificação de saúde já tem prazo próprio

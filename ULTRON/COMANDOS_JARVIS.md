@@ -122,7 +122,7 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 | `memory.profile` | Ler o perfil e as preferências do usuário (nome, tratamento, cidade, idioma, editor...). | nenhum | consultar | sim | — |
 | `memory.recall` | Consultar a memória (fatos, experiências, procedimentos e conceitos). | nenhum | consultar | sim | — |
 | `memory.remember` | Guardar um fato informado pelo usuário (nunca senhas ou dados financeiros). | baixo | modificar arquivos e dados pessoais | sim | — |
-| `memory.session_note` | Anotar um contexto da sessão de trabalho atual (ex.: 'estamos ajustando o Kd do Noctário'). Entra no contexto das próximas respostas; nunca senhas ou dados sensíveis. | baixo | modificar arquivos e dados pessoais | sim | — |
+| `memory.session_note` | Anotar um contexto da sessão de trabalho atual (ex.: 'estamos ajustando o tema da interface'). Entra no contexto das próximas respostas; nunca senhas ou dados sensíveis. | baixo | modificar arquivos e dados pessoais | sim | — |
 | `memory.set_preference` | Atualizar uma preferência do usuário (address_me_as, city, language, preferred_browser, preferred_editor, profile_name, projects_root, verbosity). | baixo | alterar configurações | sim | — |
 
 ## Memória pessoal (segundo cérebro)
@@ -192,8 +192,8 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
-| `tardis.consult` | Consultar a TARDIS, o segundo cérebro do JARVIS: consulta contextual na memória (kind consulta, com question), planejamento de um objetivo (planejamento, com goal), organização da memória pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do Noctário (telemetria), diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto (projeto). Devolve o resultado com as fontes; não executa ações. | nenhum | consultar | sim | — |
-| `tardis.note` | Gravar na memória de projeto da TARDIS uma nota, uma decisão ou um parâmetro (ex.: 'decisão: usar Kd 0,12 no Noctário'). Nunca senhas, tokens ou dados sensíveis. | baixo | modificar arquivos e dados pessoais | sim | — |
+| `tardis.consult` | Consultar a TARDIS, o segundo cérebro do JARVIS: consulta contextual na memória (kind consulta, com question), planejamento de um objetivo (planejamento, com goal), organização da memória pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do sistema (telemetria), diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto (projeto). Devolve o resultado com as fontes; não executa ações. | nenhum | consultar | sim | — |
+| `tardis.note` | Gravar na memória de projeto da TARDIS uma nota, uma decisão ou um parâmetro (ex.: 'decisão: usar o perfil HÍBRIDO no projeto Phoenix'). Nunca senhas, tokens ou dados sensíveis. | baixo | modificar arquivos e dados pessoais | sim | — |
 
 ## Teclado e mouse
 

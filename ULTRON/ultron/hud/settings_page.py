@@ -6,7 +6,7 @@ mudam o que sai do computador (OpenAI, modo padrão de privacidade, modelos exte
 confirmação explícita com o que muda. A chave da OpenAI vai para o cofre do sistema e nunca é
 exibida inteira. "Iniciar com o Windows" altera o Registro só por clique do usuário e mostra o estado
 real lido de volta. "Restaurar padrões" guarda uma cópia do arquivo antes e mantém microfone, saída
-de áudio, calibração da voz, endereço do Noctário e fuso.
+de áudio, calibração da voz e fuso.
 """
 from __future__ import annotations
 
@@ -623,7 +623,7 @@ class SettingsPage(QtWidgets.QWidget):
     def _build_reset(self, form) -> None:
         form.addRow(_label("Volta todas as configurações ao padrão. Antes, uma cópia do arquivo atual é guardada "
                            "(settings.backup-AAAAMMDD-HHMMSS.json). São mantidos: microfone, saída de áudio, "
-                           "calibração da voz, endereço do Noctário e fuso horário. Memórias, lembretes, histórico e "
+                           "calibração da voz e fuso horário. Memórias, lembretes, histórico e "
                            "modelos não são tocados.", "PanelDim"))
         reset = _button("RESTAURAR PADRÕES", primary=True)
         reset.clicked.connect(self.reset_defaults)

@@ -9,13 +9,13 @@ quê (DIAGNÓSTICOS, `START_JARVIS.bat --diagnose` ou `TEST_JARVIS.py --env` mos
 
 Legenda da última coluna: **CI** = executado no CI do GitHub (Linux e Windows Server 2025, sem microfone,
 áudio, GPU ou área de trabalho); **simulado** = coberto por testes com um substituto (servidor local, porta
-virtual, simulador); **não verificado** = depende do seu computador ou do robô.
+virtual, simulador); **não verificado** = depende do seu computador.
 
 ## 1. Inteligência
 
 | Recurso | Para quê | Como configurar | Sem ele | Verificado |
 |---|---|---|---|---|
-| **Ollama** (serviço local, `http://127.0.0.1:11434`) | o cérebro do JARVIS: conversa, planejamento, escolha de ferramentas, análises da TARDIS (o **mesmo** modelo, com instruções próprias) | instale de ollama.com/download; `ollama pull qwen2.5:3b` (texto) e `ollama pull qwen2.5vl:3b` (visão) — o `INSTALL_JARVIS.bat` oferece; endereço em `ollama_url` ou `JARVIS_OLLAMA_URL`; o JARVIS tenta abrir o Ollama sozinho (`ollama_autostart`) | "Ollama indisponível": continuam funcionando os comandos diretos (abrir programas, horas, lembretes, notas, memória pessoal, Noctário, diagnóstico); a TARDIS responde "sem modelo: análise determinística" | simulado (servidor HTTP que imita a API); o modelo real não roda aqui |
+| **Ollama** (serviço local, `http://127.0.0.1:11434`) | o cérebro do JARVIS: conversa, planejamento, escolha de ferramentas, análises da TARDIS (o **mesmo** modelo, com instruções próprias) | instale de ollama.com/download; `ollama pull qwen2.5:3b` (texto) e `ollama pull qwen2.5vl:3b` (visão) — o `INSTALL_JARVIS.bat` oferece; endereço em `ollama_url` ou `JARVIS_OLLAMA_URL`; o JARVIS tenta abrir o Ollama sozinho (`ollama_autostart`) | "Ollama indisponível": continuam funcionando os comandos diretos (abrir programas, horas, lembretes, notas, memória pessoal, diagnóstico); a TARDIS responde "sem modelo: análise determinística" | simulado (servidor HTTP que imita a API); o modelo real não roda aqui |
 | **OpenAI** (opcional; serviço na internet, cobrado) | cérebro alternativo, com pesquisa na web | `CONFIGURAR_OPENAI.bat` ou CONFIGURAÇÕES > INTELIGÊNCIA: a chave vai para o **Gerenciador de Credenciais do Windows** (ou a variável `OPENAI_API_KEY`), nunca para o `settings.json`; exige confirmação explícita porque **os dados saem do computador**; volta: `START_JARVIS.bat --use-ollama` | nada muda: o padrão é o Ollama local (LOCAL MODE) | simulado (provedor falso); nunca chamado com uma chave real |
 | **Geração de imagens** (opcional) | "imagine/gere uma imagem de…" | Stable Diffusion WebUI local em `127.0.0.1:7860` com `--api`, ou `diffusers` + `torch` (ver `requirements-optional.txt`; pesado, GPU recomendada) | a ação responde que não há modelo de imagem; o resto da imaginação (conceitos, cenários) funciona | não verificado |
 
@@ -34,7 +34,7 @@ virtual, simulador); **não verificado** = depende do seu computador ou do robô
 | Recurso | Para quê | Como configurar | Sem ele | Verificado |
 |---|---|---|---|---|
 | **Python 3.11** (3.10–3.13) | executar o JARVIS | python.org, marcando *Add python.exe to PATH*; o `INSTALL_JARVIS.bat` cria o `.venv` | não instala | CI: instalação pelo `INSTALL_JARVIS.bat` a partir do ZIP extraído (Windows Server 2025) |
-| **Interface** (PySide6 6.8) | janela, avatar, TARDIS, painel do Noctário | `requirements.txt` | modo console (texto) | CI (Qt offscreen); a tela real, a bandeja e as notificações **não** |
+| **Interface** (PySide6 6.8) | janela, avatar, TARDIS, ORBE | `requirements.txt` | modo console (texto) | CI (Qt offscreen); a tela real, a bandeja e as notificações **não** |
 | **UI Automation** (`pywinauto`), **volume** (`pycaw`, `comtypes`), **teclado/mouse** (`pyautogui`) | elementos de janelas, volume verificável, teclas de mídia | `requirements.txt` | cada ação informa a biblioteca que falta | não verificado (exigem área de trabalho interativa) |
 | **Lixeira** (`send2trash`) | toda exclusão vai para a Lixeira | `requirements.txt` | a exclusão é recusada (nunca apaga direto) | simulado (Lixeira falsa) |
 | **Gerenciador de Credenciais** (`keyring`) | guardar a chave da OpenAI | automático no Windows | a chave só pela variável de ambiente; nunca em arquivo | simulado (cofre falso) |
@@ -50,15 +50,3 @@ virtual, simulador); **não verificado** = depende do seu computador ou do robô
 | **Teste de internet** (1.1.1.1:443 e 8.8.8.8:53) | "estou conectado?" | desligado no LOCAL MODE | responde que o teste está desligado | conferido por teste (são as únicas conexões TCP do código) |
 | **Base IEEE de fabricantes** (`standards-oui.ieee.org`) | nomes de fabricantes dos aparelhos | só por pedido seu ("atualize os fabricantes"), com autorização | usa a lista embutida | não verificado |
 | **Navegador e sites** | "pesquise…", "abra o YouTube" | abre o navegador padrão; o JARVIS não lê páginas por conta própria | — | não verificado |
-
-## 5. Noctário (robô)
-
-| Recurso | Para quê | Como configurar | Sem ele | Verificado |
-|---|---|---|---|---|
-| **ESP32 DevKit + TB6612FNG + 8 sensores QTR + sensor de cruzamento + LED** (pinagem em `firmware/noctario/README.md`) | o robô | montagem conforme o README do firmware | a página mostra **SEM CONEXÃO — nenhum dado do robô**; o simulador continua disponível, sempre rotulado | firmware compilado para a ESP32 no CI e núcleo testado no PC; **gravar na placa e o robô real: não verificados** |
-| **PlatformIO** (ou Arduino IDE com o core ESP32) | compilar e gravar o firmware | `cd firmware/noctario && pio run -t upload` | — | CI compila (`firmware.bin`); gravação não |
-| **Bluetooth Clássico (SPP)** pareado no Windows | link PC ↔ robô | parear "Noctario"; em CONFIGURAÇÕES > NOCTÁRIO: *Porta COM do Bluetooth* (`pyserial`) ou *Bluetooth direto* (endereço do robô) | sem link vale a política do firmware (padrão: parar, cão de guarda de 1,5 s) | simulado (porta serial virtual, servidor local); Bluetooth real **não** |
-| **Botão físico de emergência** que corte a alimentação dos motores | segurança | na montagem | — | **obrigatório**: a parada pelo Bluetooth não o substitui |
-
-Pontos que só a bancada confirma (ajustáveis pela interface, sem regravar): ordem física dos sensores e
-sentido de cada motor. Roteiro da primeira vez: `firmware/noctario/README.md`.

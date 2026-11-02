@@ -6,7 +6,7 @@ Acesso direto à TARDIS, sem passar pelo JARVIS: cada painel do console tem os s
 * PLANEJAMENTO: decompor um objetivo em etapas (exige o modelo; sem ele, falha com o motivo);
 * ARQUIVO: organização da memória pessoal e a entrada da memória espacial;
 * ROTINAS: lembretes futuros, recorrências e automações;
-* TELEMETRIA: as voltas gravadas do Noctário (sem voltas, a análise diz que não há dado);
+* TELEMETRIA: as métricas reais do próprio JARVIS (modelo, pedidos, interface, memória do processo);
 * DIAGNÓSTICO: verificação dos módulos e o estado de cada um agora (coordenação).
 
 O resultado mostra o resumo, os itens com a fonte de cada um, o modelo usado e as ações PROPOSTAS. Uma
@@ -64,7 +64,7 @@ PANEL_HELP = {
     "rotinas": "Lembretes futuros, registros recorrentes e automações configuradas.",
     "telemetria": "Telemetria do próprio JARVIS: CPU e memória do processo, latência real dos modelos e das "
                   "respostas, fluidez da interface, Event Bus e workers. Sem métrica coletada, diz que não há dado.",
-    "diagnostico": "Verificação de saúde, componentes, workers, voz e Noctário (diagnóstico) e a fotografia do "
+    "diagnostico": "Verificação de saúde, componentes, workers e voz (diagnóstico) e a fotografia do "
                    "estado de cada módulo agora (coordenação).",
 }
 SEVERITY_COLORS = {"alta": "#FF5D73", "média": "#FFB347", "baixa": "#7F9BB7"}
@@ -286,7 +286,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         page, lay = self._form()
         row = QtWidgets.QHBoxLayout()
         self.question = QtWidgets.QLineEdit()
-        self.question.setPlaceholderText("Pergunta (ex.: o que decidi sobre o Kd do Noctário?)")
+        self.question.setPlaceholderText("Pergunta (ex.: o que decidi sobre o projeto Phoenix?)")
         self.question.setMaxLength(400)
         self.question.returnPressed.connect(self._consult)
         ask = _button("CONSULTAR", "Consulta contextual com fontes", primary=True)
@@ -325,7 +325,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         page, lay = self._form()
         row = QtWidgets.QHBoxLayout()
         self.goal = QtWidgets.QLineEdit()
-        self.goal.setPlaceholderText("Objetivo (ex.: montar a pista de testes do Noctário)")
+        self.goal.setPlaceholderText("Objetivo (ex.: publicar o JARVIS com segurança)")
         self.goal.setMaxLength(400)
         self.goal.returnPressed.connect(self._plan)
         plan = _button("PLANEJAR", "Decompor em etapas (nada é executado)", primary=True)
