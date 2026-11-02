@@ -189,9 +189,13 @@ class Console:
                 line = self.read(f"{self.name} > ")
             except EOFError:                            # entrada fechada: encerra como "sair"
                 self._at_prompt = False
+                log.info("console: fim da entrada (EOF) — encerrando")
+                self._write("")
+                self._write("(fim da entrada)")
                 return
             except KeyboardInterrupt:
                 self._at_prompt = False
+                log.info("console: Ctrl+C no prompt — encerrando")
                 self.say()
                 return
             with self._lock:
