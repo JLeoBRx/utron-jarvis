@@ -453,5 +453,19 @@ class RealSpeechIntegrationTest(unittest.TestCase):
         self.assertTrue(any(line.startswith("Ouvido:") for line in out), out)
 
 
+class ShortAudioTest(unittest.TestCase):
+    def test_voice_effects_accept_audio_of_any_length(self):
+        """A voz do Windows sem vozes instaladas devolve áudio quase vazio; os efeitos da voz do JARVIS caíam com
+        "could not broadcast input array" (visto no CI do Windows). Qualquer comprimento passa, sem NaN."""
+        import numpy as np
+
+        from ultron.voice import dsp
+        from ultron.voice.profile import VoiceProfile
+        for n in (0, 1, 2, 3, 50, 263, 264, 300, 2000):
+            signal = np.random.default_rng(n).standard_normal(n).astype(np.float32) * 0.1
+            out = dsp.process(signal, 22050, VoiceProfile())
+            self.assertTrue(np.all(np.isfinite(out)), n)
+
+
 if __name__ == "__main__":
     unittest.main()

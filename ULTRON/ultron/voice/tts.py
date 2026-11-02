@@ -370,6 +370,8 @@ class Speaker:
                 samples, rate, segments = self.synth.synthesize_segments(text, length_scale=length_scale)
             else:
                 samples, rate = self.synth.synthesize(text, length_scale=length_scale)
+            if len(samples) < rate * 0.05:              # a voz não gerou áudio (ex.: Windows sem vozes SAPI)
+                raise RuntimeError(f"a voz {getattr(self.synth, 'name', '')} não produziu áudio para esta frase")
             samples = dsp.process(samples, rate, profile)
             if rate != self.output.rate:
                 samples = dsp.resample(samples, self.output.rate / rate)

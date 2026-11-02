@@ -220,12 +220,20 @@ jobs:
           # o mesmo roteiro desligando uma parte por vez: mostra qual delas (se alguma) consome a entrada no Windows
           $mainData = $env:JARVIS_DATA_DIR
           $probeIndex = 0
-          foreach ($flags in "--no-voice --no-perception --no-plugins", "--no-voice", "--no-perception", "--no-plugins") {
+          # o preâmbulo do START_JARVIS.bat (setlocal, chcp 65001, cd) com o python direto, tudo ligado
+          Set-Content -Path _sonda_preambulo.bat -Encoding ascii -Value "@echo off", "setlocal", "chcp 65001 >nul", "cd /d `"%~dp0`"", "`".venv\Scripts\python.exe`" main.py --headless"
+          Set-Content -Path _sonda_sem_chcp.bat -Encoding ascii -Value "@echo off", "setlocal", "cd /d `"%~dp0`"", "`".venv\Scripts\python.exe`" main.py --headless"
+          foreach ($probeLine in ".venv\Scripts\python.exe main.py --headless --no-voice --no-perception --no-plugins",
+                                 ".venv\Scripts\python.exe main.py --headless --no-voice",
+                                 ".venv\Scripts\python.exe main.py --headless --no-perception",
+                                 ".venv\Scripts\python.exe main.py --headless --no-plugins",
+                                 ".venv\Scripts\python.exe main.py --headless",
+                                 "_sonda_preambulo.bat", "_sonda_sem_chcp.bat") {
             $probeIndex++
             $env:JARVIS_DATA_DIR = "$mainData-sonda$probeIndex"           # cada sonda com dados próprios
-            $probe = Invoke-Bat ".venv\Scripts\python.exe main.py --headless $flags" -Stdin "_entrada.txt" -AnyCode
+            $probe = Invoke-Bat $probeLine -Stdin "_entrada.txt" -AnyCode
             $verdict = if ($probe -match "Ideia registrada") { "conversou" } else { "NAO conversou" }
-            Write-Host "console com ${flags}: $verdict"
+            Write-Host "sonda ${probeLine}: $verdict"
           }
           $env:JARVIS_DATA_DIR = $mainData
           $out = Invoke-Bat "START_JARVIS.bat --console" -Stdin "_entrada.txt"

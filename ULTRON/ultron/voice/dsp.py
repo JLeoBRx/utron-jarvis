@@ -58,7 +58,7 @@ def low_shelf(signal: np.ndarray, gain_db: float, corner_hz: float, rate: int) -
 
 
 def envelope(signal: np.ndarray, rate: int, window_s: float = 0.012) -> np.ndarray:
-    size = max(1, int(rate * window_s))
+    size = max(1, min(int(rate * window_s), len(signal)))    # áudio mais curto que a janela: mesmo tamanho
     kernel = np.ones(size, dtype=np.float32) / size
     return np.convolve(np.abs(signal), kernel, mode="same").astype(np.float32)
 
@@ -83,6 +83,8 @@ def doubling(signal: np.ndarray, amount: float, rate: int) -> np.ndarray:
         return signal
     layer = resample(signal, 1.012)[: len(signal)]           # camada levemente mais grave
     delay = int(rate * 0.014)
+    if len(signal) <= delay:                                   # curto demais para a camada atrasada
+        return signal
     out = signal.copy()
     out[delay:] += layer[: len(signal) - delay] * amount
     return out
