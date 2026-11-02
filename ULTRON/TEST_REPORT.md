@@ -1,83 +1,155 @@
 # JARVIS — Relatório de testes
 
+Situação na Fase 7 do JARVIS ULTIMATE (JARVIS original + TARDIS + Noctário).
+
 ## 1. Resultado
 
 | Ambiente | Resultado |
 |---|---|
-| Python 3.13.16, Linux (contêiner, 4 vCPUs), PySide6 6.8.1 offscreen | **197 testes, 197 OK, 0 falhas, 0 pulados** (32 s) |
-| Python 3.11.17, mesmo ambiente | **197 testes, 197 OK, 0 falhas, 0 pulados** (31 s) |
-| `JARVIS_FINAL.zip` extraído numa pasta nova (sem os modelos de voz, como é distribuído), Python 3.13 | **197 testes, 196 OK, 0 falhas, 1 pulado** — o pulado é o teste de fala real Piper → Vosk, que exige os modelos em `assets/` |
+| Python 3.13.16, Linux (contêiner, 4 vCPUs), PySide6 6.8.1 offscreen | **404 testes, 404 OK, 0 falhas, 0 pulados** (~2 min) |
+| Python 3.11.17, mesmo ambiente | **404 testes, 404 OK, 0 falhas, 0 pulados** (~2 min) |
+| Windows Server 2025 (CI do GitHub; núcleo 10.0.26100, o mesmo do Windows 11 24H2), Python 3.11.9 | **404 testes, 404 OK, 0 falhas, 0 pulados** (178 s) |
+| Núcleo do firmware do Noctário (g++, C++17, `-Wall -Wextra -Werror`) | `test_core` aprovado (10 grupos) e igual ao simulador linha a linha (31 071 ciclos) |
+| CI no GitHub (`.github/workflows/jarvis-validation.yml`): Windows + Python 3.11, Linux + Python 3.11/3.13, testes C++ e **compilação real do firmware para a ESP32 (PlatformIO)**, pacote ZIP extraído e testado | ver §6 |
 
-Evolução durante a missão: 131 (auditoria) → 141 (Fase C) → 180 (Fases D/F) → 187 (G) → 194 (H)
-→ 197 (I). Nenhum teste foi desativado, pulado ou afrouxado para passar; quando um teste
-novo falhou, a causa foi corrigida no código (ex.: falha de rede que escapava do `scan()`)
-ou no próprio teste quando a suposição dele estava errada (ex.: título com "senha" é recusado
-de propósito).
-
-O teste do pacote extraído encontrou um defeito real que a árvore de desenvolvimento escondia:
-o diagnóstico de voz conferia os arquivos do modelo no disco antes de olhar o reconhecedor já
-carregado e em uso, e acusava "modelo ausente" com a escuta funcionando. A ordem foi corrigida
-(`ultron/voice/diagnostics.py`) e o caso ganhou um teste próprio, que falha sem a correção.
+Evolução: 197 (fim da missão JARVIS) → 263 (Fase 3) → 328 (Fase 5) → 364 (Fase 6) → 365 (integração da
+PR #2) → **404 (Fase 7)**. Nenhum teste foi desativado, pulado ou afrouxado para passar. Quando um teste novo
+falhou, a causa foi corrigida no código (§3) ou na suposição errada do próprio teste — os dois casos estão
+registrados.
 
 ## 2. Como rodar
 
 ```
-python TEST_JARVIS.py            todos os testes + relatório do ambiente
-python TEST_JARVIS.py --quick    sem os testes lentos
-python TEST_JARVIS.py --env      só o relatório do ambiente (componentes ausentes)
-python -m unittest discover -s tests
+python TEST_JARVIS.py              todos os testes + relatório do ambiente
+python TEST_JARVIS.py --quick      sem os testes lentos
+python TEST_JARVIS.py --env        só o relatório do ambiente (componentes ausentes)
+python -m pytest tests             o mesmo, pelo pytest
+
+cd firmware/noctario/test/host && make && ./test_core      núcleo do firmware no PC (precisa de g++)
+cd firmware/noctario && pio run                            firmware para a ESP32 (precisa do PlatformIO)
 ```
 
-Os testes usam pastas temporárias (`JARVIS_DATA_DIR`/`ULTRON_DATA_DIR` apontam para elas antes
-de qualquer import): **nenhum dado real do usuário é lido ou alterado**. O Ollama é simulado
-por um servidor HTTP local (`tests/fake_ollama.py`). A interface roda com
-`QT_QPA_PLATFORM=offscreen`.
+Os testes usam pastas temporárias (`JARVIS_DATA_DIR`/`ULTRON_DATA_DIR` apontam para elas antes de qualquer
+import): **nenhum dado real do usuário é lido ou alterado**. O Ollama é um servidor HTTP local de teste
+(`tests/fake_ollama.py`); o robô é o simulador ou um "robô de teste" roteirizado; a interface roda com
+`QT_QPA_PLATFORM=offscreen`. Os testes de segurança conferem as pastas protegidas do sistema SEM escrever
+nelas (a recusa vem antes da execução), trocam a pasta do programa por uma cópia temporária e usam uma
+Lixeira falsa.
 
-## 3. O que cada módulo cobre
+## 3. Fase 7 — campanha de testes e o que ela encontrou
 
-| Módulo | Cobertura |
+Antes da campanha, a cobertura de linhas foi medida (`coverage.py`, a suíte inteira): **74 %**. Os
+menos cobertos incluíam exatamente o que a Fase 7 pede — skills de arquivos (36 %), linha de comando
+(`app.py`, 9 %), perguntas sobre a memória pessoal (21 %), calibração da voz (22 %). Foram escritos
+**39 testes novos**:
+
+| Arquivo | O que prova |
 |---|---|
-| `test_core.py` | identidade e personalidade JARVIS, ciclo de vida (falha de componente isolada), workers, cancelamento, configurações e validação |
-| `test_event_bus.py` | entrega, isolamento de assinante com erro, fila cheia com descarte contado e aviso agregado |
-| `test_executor.py` | executor, autonomia por risco/origem/nível, autorização (sim/não/expiração), pré-aprovação exata e única, timeout, erros classificados, falha nunca vira sucesso, **autorização permanente escopada** (escopo exato, expiração, nunca para sensível/crítico/irreversível/proativo, arquivo adulterado ignorado, persistência, revogação) |
-| `test_planner.py` | intenções em português (incluindo memória pessoal, conflitos, exportação, backup, TARDIS, autonomia), objetivos persistentes, planejamento e preparação real de projeto |
-| `test_memory.py`, `test_world_model.py` | memória (fatos, episódios, procedimentos, preferências, segredos recusados), World Model |
-| `test_second_brain.py` | CRUD completo, lixeira/restauração/exclusão definitiva, busca sem acentos e filtros, segredos recusados, **data ambígua pergunta e não grava**, hoje/atrasados, **persistência após reinício**, aviso antecipado e no horário sem duplicata, repetição limitada, **lembrete perdido com o programa fechado avisado uma vez após reinício**, rotina diária e recuperação sem rajada, adiar/concluir, horário de silêncio, agendador sem IA, captura explícita/automática (hipóteses e dados sensíveis recusados), **conflitos de agenda**, exportação JSON/CSV sem sobrescrever, **backup/rotação/restauração** com verificação de integridade |
-| `test_tardis.py` | os dois hubs com o núcleo real: regiões com dados reais (incluindo conflito), **evento real chega aos dois hubs**, voltar ao CORE preserva o estado do TARDIS (relógio parado quando oculto), ações pelo núcleo verificadas, perfis aplicados aos dois hubs, painel de Sistemas, **encerramento sem threads restantes** |
-| `test_hud.py` | malha neural, câmera, profundidade, inicialização guiada por componentes reais, anel de subsistemas, módulos só com dados reais, grafo, repouso calmo, **identidade dos estados** (halo pelo nível real do microfone, leitura velha ignorada, anéis pela voz, ondas só por análise real, memória em azul, arco do plano = plano real, contorno de erro), renderização e orbe |
-| `test_performance.py` | perfis ordenados e limitados pelo `hud_fps`, cadência de fundo, verificação de saúde de rotina não anima, mudança real anima, giro de repouso lento, assinatura de saúde, fluxo do TARDIS em repouso × atividade, só eventos reais põem o TARDIS em movimento, **percepção adaptativa à ausência do usuário**, cache da camada estrutural do TARDIS |
-| `test_voice.py` | formas da palavra de ativação, nomes só no início, formas fracas só com comando, calibração, continuação, eco/autoescuta, *barge-in*, pausa, contadores, silêncio absoluto, texto injetado (diagnóstico), falhas do microfone com nova tentativa, **reamostragem**, escolha de microfone, ausência das bibliotecas de áudio, perfil de voz (inteligibilidade), mixer e sons ligados a eventos reais, e **fala sintetizada real (Piper) reconhecida pelo Vosk real** através do pipeline (pulado se os modelos não estiverem em `assets/`) |
-| `test_jarvis_voice.py` | migração de configurações (ULTRON → JARVIS) com cópia de segurança, **diagnóstico de voz de ponta a ponta** (8 etapas), modelo avaliado pelo reconhecedor em uso (não pelos arquivos no disco), microfone ausente, **voz e texto ao mesmo tempo** |
-| `test_network.py` | escopo só privado, limites de sub-rede, tabelas de vizinhos (Windows/Linux, IPv6), SSDP restrito ao mesmo IP privado, inventário (estados observados, leitura passiva, dados do usuário preservados, outra rede), campos desconhecidos não inventados, exportação, **categorias de observação, gateway, administração e "descobrir ≠ administrar"** |
-| `test_integrity.py` | **todos os 146 módulos importam**, código compila, skills obrigatórias registradas, **falha de varredura de rede registrada** (e trava liberada), **`--stop` com processo real** (saída normal, PID limpo) |
-| `test_recovery.py`, `test_verifier.py`, `test_model_router.py`, `test_imagination.py`, `test_plugins.py` | recuperação limitada, verificação independente, roteamento de modelos, imaginação, plugins (falha isolada, permissões) |
+| `test_security.py` (17) | código sem shell, `eval`/`exec`, `os.system` ou `pickle`, processos só com lista de argumentos (varredura do código-fonte, conferida contra exemplos ruins); TLS nunca desligado; a rede não sonda portas (a única conexão TCP é o teste de conectividade com 2 endereços fixos, desligado no modo local); skills proibidas não existem nem rodam; **o modelo só executa ferramentas oferecidas no pedido**; o planejador nunca vê as reservadas; **pastas protegidas** (sistema, inicialização automática, programa e dados do JARVIS) recusadas antes de pedir autorização, inclusive por link simbólico; exclusão só pela Lixeira e nunca da pasta pessoal ou da raiz; **cópias de segurança nunca sobrescritas**; criar/mover/copiar nunca sobrescreve; conteúdo de arquivo e da tela rotulado como dado; programas e scripts só abrem com autorização; texto da janela entra no prompt numa linha, entre aspas; saída da visão saneada; credenciais só no cofre do sistema |
+| `test_failures.py` (7) | `settings.json` ilegível → padrões e o original guardado; **banco danificado → início para com mensagem clara (código 3) e o arquivo intacto**; backup restaura banco danificado e guarda a cópia danificada; backup que falha (disco cheio) não deixa arquivo pela metade; **banco somente leitura → a conversa continua e a resposta diz o que não foi gravado**; modelo que quebra → resposta honesta; sensor que falha → marcado com o motivo e recupera |
+| `test_transitions.py` (6) | para sucesso, skill que quebra, autorização negada, autorização sem resposta, **cancelar com o modelo ainda carregando** e modelo que quebra: a sequência real de estados termina em IDLE e o rosto volta a "aguardando interação"; durante a espera do "sim" o rosto pede confirmação; a falha do modelo acende a janela de erro de 8 s |
+| `test_cli.py` (4) | comandos documentados executados de verdade em processos separados: `--version`, `--status`, `--say`, `--backup`, `--list-backups`, `--restore-backup`, `--export` (nunca sobrescreve), `--diagnose` sem modelo |
+| `test_second_brain.py` (+3) | perguntas sobre a memória pessoal respondidas **só** com registros salvos; sem registro, "não encontrei"; referência ambígua pergunta |
+| `test_voice.py` (+1) | CALIBRAR com Piper e Vosk reais: as formas conhecidas ficam, palavra comum nunca vira forma forte (o Vosk pequeno ouve o "Jarvis" sintetizado como "aves") |
+| `test_model_router.py` (+1) | cancelar antes do primeiro token libera quem esperava na hora |
 
-## 4. Real × simulado
+**Defeitos reais encontrados pelos testes novos e corrigidos** (cada um com teste que falha sem a correção):
 
-**Real neste ambiente:** núcleo completo, banco SQLite em arquivo, Event Bus, workers e
-agendador, lembretes com relógio simulado (mas banco e lógica reais), os dois hubs Qt
-renderizando (offscreen), síntese Piper → reconhecimento Vosk com os modelos reais (áudio
-gerado, sem microfone), processo filho real para `--stop`, importação de todos os módulos.
+1. **Arquivos**: as skills podiam criar, alterar, mover ou apagar arquivos dentro do sistema operacional, da
+   inicialização automática e do próprio JARVIS — um `.py` gravado na pasta de plugins rodaria na próxima
+   partida (o carregador executa todo `.py` dali). Agora isso é recusado **antes** de qualquer pedido de
+   autorização (gancho `refuse_reason` no executor); ler e listar continuam livres.
+2. **Cópias de segurança**: a segunda edição sobrescrevia `.ultron.bak` e o conteúdo original do usuário
+   se perdia. Agora `x.ultron.bak`, `x.ultron.1.bak`… — nenhuma é sobrescrita.
+3. **Cancelar com o modelo carregando**: o JARVIS ficava "pensando" até o primeiro token (com um modelo
+   real, dezenas de segundos). O cancelamento agora encerra a conexão e libera na hora.
+4. **Modelo que quebra no meio do pedido**: a resposta dizia, mas o rosto e o histórico não mostravam a
+   falha (nada publicava `MODEL_UNAVAILABLE`). Agora publicam.
+5. **Banco danificado**: o início caía com um traceback (e, sem console, a janela simplesmente não abria).
+   Agora para com mensagem clara, código 3, arquivo intacto e os comandos de restauração.
+6. **`settings.json` ilegível**: a próxima gravação o substituía. Agora o original é guardado antes.
+7. **Banco que recusa gravação**: "Falha interna (OperationalError)". Agora a resposta diz que nada foi
+   gravado e o que conferir.
+8. **Backup que falha no meio** deixava um `.partial` para trás. Agora é removido.
+9. **Prompt**: um título de janela com quebras de linha podia simular uma seção nova dentro do prompt do
+   sistema. Agora entra numa linha só, entre aspas, rotulado como dado.
+10. **No Windows** (achados pelo CI, §6): o cancelamento dependia do comportamento do socket, os testes da
+    linha de comando liam a codificação errada e o `TEST_JARVIS.py` caía ao imprimir falhas.
 
-**Simulado (e marcado como tal nos testes):** microfone (`FakeStream`), resultado do
-reconhecimento (`ScriptedSTT`), síntese e saída de áudio (`FakeSynth`, `FakeOutput`), Ollama
-(`fake_ollama.py`), varredura de rede (resultados fixos; nenhuma rede física é varrida),
-falha de adaptador de rede (injetada).
+Cobertura depois (mesma medição): **75 %** no total (o código cresceu com as correções); skills de arquivos
+36 % → 61 %, perguntas sobre a memória 21 % → 84 %, calibração da voz 22 % → 58 %. A linha de comando
+(`app.py`) continua com número baixo na medição porque os testes dela rodam `main.py` em processos
+separados, que o `coverage` não acompanha — os comandos em si estão testados.
 
-**Não verificável aqui (precisa do Windows real):** microfone físico e privacidade do
-Windows, reconhecimento da sua voz, reprodução de áudio, notificações da bandeja do Windows,
-`winreg` (início automático), UI Automation/pywinauto, GPU, tela real em alta resolução, os
-scripts `.bat` (validados estaticamente: blocos balanceados, parênteses escapados, ASCII
-com CRLF). Roteiro de validação no Windows: `DIAGNOSTICO_JARVIS.bat`,
-`START_JARVIS.bat --voice-test`, abrir o TARDIS (F2), criar um lembrete para 2 minutos e
-fechar/reabrir o JARVIS antes do horário.
+Nas Fases 5 e 6 os testes novos já tinham encontrado: F12 e Esc da plataforma que nunca disparavam
+(PySide6 6.8), ferramentas não oferecidas executadas pelo modo agêntico, "Feito e verificado" quando nada
+rodava, frases que só mencionam o robô virando comando a ele, NaN aceito na validação de argumentos,
+`STOP` do teste de bancada gravado como volta falsa.
 
-## 5. Verificações estáticas
+## 4. O que cada módulo cobre
+
+| Área | Arquivos de teste |
+|---|---|
+| Núcleo, eventos, estados, configurações | `test_core` (15), `test_event_bus` (7), `test_integrity` (7: todos os módulos importam, código compila, skills registradas, `--stop` com processo real, ZIP com caminho malicioso recusado) |
+| Agente: execução, autorização, permissões, recuperação, verificação | `test_executor` (12), `test_permissions` (10), `test_recovery` (7), `test_verifier` (5), `test_planner` (8), `test_activity` (7) |
+| Segurança, falhas, transições, linha de comando | `test_security` (17), `test_failures` (7), `test_transitions` (6), `test_cli` (4) |
+| Memória pessoal e modelo do mundo | `test_memory` (8), `test_second_brain` (25), `test_world_model` (5) |
+| Voz, boca e legendas | `test_voice` (27), `test_jarvis_voice` (5), `test_lipsync` (8) |
+| Interface: plataforma, avatar, cérebro, desempenho | `test_platform` (21), `test_avatar` (12), `test_hud` (22), `test_performance` (10) |
+| TARDIS | `test_tardis_logic` (33), `test_tardis_room` (12), `test_tardis` (7) |
+| Noctário | `test_noctario` (33: protocolo, transportes, serviço, skills pelo núcleo, painel), `test_noctario_firmware` (3: testes C++, camada Arduino conferida contra as assinaturas, firmware ≡ simulador) |
+| Modelos e provedores | `test_model_router` (9), `test_openai_provider` (6) |
+| Rede, imaginação, plugins, original recuperado | `test_network` (14), `test_imagination` (6), `test_plugins` (4), `test_original_recovery` (22) |
+
+## 5. Real × simulado
+
+**Real neste ambiente:** núcleo completo, banco SQLite em arquivo, Event Bus, workers, agendador,
+lembretes (relógio controlado, banco e lógica reais), plataforma Qt renderizando (offscreen), avatar,
+sala da TARDIS, síntese Piper → reconhecimento Vosk com os modelos do pacote (áudio gerado, **sem
+microfone**), processos reais da linha de comando, núcleo do firmware compilado com g++ e comparado ao
+simulador.
+
+**Simulado (e dito assim nos testes):** microfone e áudio de saída, resultado do reconhecimento em parte
+dos testes, Ollama (servidor HTTP local), OpenAI, o robô (simulador com pista de teste inventada, ou robô
+roteirizado), Bluetooth, rede física, cofre de credenciais e Lixeira (falsos), disco cheio e banco
+somente leitura (falhas injetadas).
+
+**Não verificável aqui:** microfone físico e a privacidade do Windows, reconhecimento da sua voz,
+reprodução de áudio, bandeja e notificações do Windows, `winreg` (início automático), UI Automation, GPU,
+os scripts `.bat` em `cmd.exe`, **o robô de verdade** (gravar o firmware, Bluetooth, ordem física dos
+sensores, sentido dos motores, cruzamentos na pista, parada física, tempo de volta). Roteiros:
+`DIAGNOSTICO_JARVIS.bat`, `START_JARVIS.bat --voice-test` e, para o robô, a bancada em
+`firmware/noctario/README.md`.
+
+## 6. CI no GitHub
+
+Disparado manualmente na branch `claude/adoring-brahmagupta-vcejpt`. O job do Windows roda no runner
+`windows-latest` do GitHub — **Windows Server 2025** (10.0.26100), sem microfone, alto-falante, GPU ou
+área de trabalho interativa: ele prova o Python, o Qt (offscreen), o SQLite, os processos e os caminhos
+do Windows, não o hardware de um PC.
+
+| Execução | Linux 3.11 / 3.13 (suíte, estáticos, ZIP extraído) | Firmware (C++ no PC e ESP32) | Windows (Server 2025, Python 3.11.9) |
+|---|---|---|---|
+| [41364163195](https://github.com/JLeoBRx/utron-jarvis/actions/runs/41364163195) — `8c01d70` | aprovado | aprovado; `firmware.bin` gerado | **6 falhas** (abaixo) |
+| [41365361463](https://github.com/JLeoBRx/utron-jarvis/actions/runs/41365361463) — `746d7f7` | aprovado | aprovado; `firmware.bin` gerado | **aprovado: 404/404, 0 pulados** (178 s); ZIP extraído: aprovado no modo `--quick` (7 pulados: os testes lentos e os que usam os modelos de voz, que o ZIP não traz) |
+
+O Windows encontrou o que o Linux não mostra:
+
+1. **Cancelar com o modelo carregando** (2 testes): a correção dependia de encerrar o socket de outra thread,
+   o que no Windows não acorda quem está bloqueado nele. Agora uma thread lê a resposta numa fila e quem
+   pediu espera na fila, olhando o cancelamento a cada 50 ms — conferido também com o encerramento do
+   socket desligado, ou seja, sem depender do sistema.
+2. **Linha de comando** (4 testes): num pipe, o Windows escreve em cp1252 e os testes liam UTF-8; o
+   processo filho agora recebe `PYTHONIOENCODING=utf-8` (no console de verdade nada muda).
+3. **O próprio `TEST_JARVIS.py`** caía ao imprimir as falhas (um caractere que a cp1252 não tem) e o resumo
+   nunca saía; agora a saída redirecionada é UTF-8 e nenhum caractere derruba o relatório.
+
+## 7. Verificações estáticas
 
 | Verificação | Resultado |
 |---|---|
 | `pyflakes ultron tests tools TEST_JARVIS.py TEST_ULTRON.py main.py` | limpo |
 | `compileall` (pacote, testes, ferramentas) | OK |
-| Importação de todos os módulos do pacote (146) | OK (`test_integrity`) |
-| Scripts `.bat` | ASCII + CRLF, blocos balanceados, parênteses escapados dentro de blocos (verificação estática; não há `cmd.exe` neste ambiente) |
-| Pacote `JARVIS_FINAL.zip` | validado por `tools/build_release.py --check` (conteúdo obrigatório presente; sem `.venv`, caches, bancos, configurações, logs ou modelos grandes) e testado depois de extraído numa pasta nova: 197 testes, 0 falhas, 1 pulado (fala real sem os modelos) |
+| Varredura do código (`test_security`): shell, `eval`/`exec`, `os.system`, `pickle`, comando em texto, TLS desligado | nada encontrado |
+| Importação de todos os módulos do pacote | OK (`test_integrity`) |
+| Pacote ZIP | validado por `tools/build_release.py --check` e testado depois de extraído numa pasta nova (no CI) |

@@ -369,9 +369,11 @@ limites e confirmação, grava as voltas e as entrega à TARDIS. **O controle PD
 interface só pede, lê e registra. Firmware, pinagem e a primeira vez na bancada:
 `firmware/noctario/README.md`; protocolo: `firmware/noctario/PROTOCOLO_NOCT1.md`.
 
-> O código original do Noctário não foi fornecido: o firmware foi escrito a partir da especificação e
-> tem itens **A CONFIRMAR** (ordem dos sensores, sentido dos motores, nível do sensor de cruzamento,
-> ritmo do laço, política sem link) — todos ajustáveis pela interface, sem regravar.
+> Os sketches originais (`Noctario_JARVIS.ino`, 20/10, e a variante `Nefarious_6`, 28/10) foram
+> comparados: pinagem, linha branca, sensor de cruzamento ativo em LOW e laço de 100 Hz estão confirmados
+> e já são o padrão. Ainda dependem da bancada a ordem física dos sensores e o sentido de cada motor —
+> ajustáveis pela interface, sem regravar. O firmware compila para a ESP32 no CI; gravar na placa e
+> ensaiar no robô (rodas suspensas, botão físico ao alcance) é o passo seguinte.
 
 **Conectar.** Pareie o robô ("Noctario") no Windows. Em CONFIGURAÇÕES > NOCTÁRIO escolha *Porta COM do
 Bluetooth* (a porta de saída criada pelo Windows), *Bluetooth direto* (endereço do robô) ou *Simulador*.
@@ -507,7 +509,14 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
   autorizações"*.
 * *"Pare"* cancela o que estiver em andamento. Toda ação fica registrada (DIAGNÓSTICOS >
   AUTONOMIA).
-* Texto da tela, de arquivos e de páginas é **dado**, nunca instrução.
+* Texto da tela, de arquivos e de páginas é **dado**, nunca instrução: entra no contexto do modelo numa
+  linha só, entre aspas e rotulado como dado observado.
+* **Arquivos**: o JARVIS não cria, altera, move nem apaga nada nas pastas do sistema operacional, da
+  inicialização automática e do próprio JARVIS (programa, plugins e memória pessoal) — nem com "sim": a
+  recusa vem antes do pedido de autorização. Ler e listar continuam livres. Excluir vai sempre para a
+  Lixeira; editar guarda uma cópia `.ultron.bak` (as anteriores nunca são sobrescritas).
+* O modelo de linguagem só executa as ferramentas oferecidas naquele pedido; as reservadas a pedidos
+  diretos (mover o robô, por exemplo) não são oferecidas e são recusadas se ele as inventar.
 * O JARVIS não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
   invasão, captura de credenciais, exploração ou interceptação.
 
@@ -545,6 +554,10 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 | Interface pesada | perfil Econômico; feche o TARDIS quando não estiver usando |
 | Lembrete não tocou | horário de silêncio? central de notificações (TARDIS > LEMBRETES) |
 | Algo estranho depois de atualizar | `DIAGNOSTICO_JARVIS.bat`; se preciso, restaure o backup feito pela atualização |
+| "O banco de memória do JARVIS não abriu" | o arquivo não foi alterado. Com o JARVIS fechado: `START_JARVIS.bat --list-backups` e `START_JARVIS.bat --restore-backup ARQUIVO` (o banco danificado fica guardado ao lado) |
+| As configurações voltaram ao padrão | o `settings.json` estava ilegível; o original foi guardado como `settings.ilegivel-AAAAMMDD-HHMMSS.json` na mesma pasta |
+| "Não consegui gravar na memória do JARVIS" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
+| Demora para responder / quero parar | *"cancelar"*, *"pare"* ou Esc interrompem na hora, mesmo com o modelo ainda carregando |
 
 ## 13. Documentos
 

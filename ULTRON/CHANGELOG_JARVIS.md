@@ -256,3 +256,45 @@ finais em `PERFORMANCE_REPORT.md`.
   qualquer comportamento no robô real.
 * Testes: `test_noctario.py` (33), `test_noctario_firmware.py` (3) e `firmware/noctario/test/host`
   (10 grupos); `test_platform.py`, `test_permissions.py` e `test_tardis_room.py` atualizados.
+
+## PR #2 integrada — segurança do repositório, CI e os sketches originais do Noctário
+Trabalho do proprietário sobre `d16c9d1`, integrado sem alterações (avanço rápido, a pedido):
+* cópia de segurança integral antes das Fases 7 e 8 (branch `safety/backup-before-phase-7-8-20261029`,
+  manifesto em `SEGURANCA_BACKUP/`), guia `SEGURANCA_E_BACKUP.md` e `.gitignore` que impede enviar bancos,
+  credenciais, `.env`, caches e builds;
+* CI (`.github/workflows/jarvis-validation.yml`): Python 3.11 e 3.13 no Linux, **Windows** (runner do GitHub,
+  Windows Server 2025: dependências e suíte), testes C++ do firmware, **compilação real do firmware para a
+  ESP32 (PlatformIO)** e pacotes ZIP extraídos numa pasta limpa e testados; `CI_E_RELEASE.md`;
+* PyAudio opcional (o `sounddevice` basta), Qt limitado à série 6.8 testada, backend de áudio desconhecido
+  recusado, caminhos de ZIP no estilo Windows (`..\`) recusados em qualquer sistema;
+* Noctário alinhado aos sketches originais: sensor de cruzamento ativo em **LOW** e laço de **100 Hz**
+  como padrão, migração da NVS antiga preservando a calibração; simulador e testes acompanham.
+
+## Fase 7 — Testes de segurança, falhas, transições, voz e linha de comando
+* Cobertura medida antes de escrever testes (74 % das linhas); os testes novos miraram os menos cobertos e
+  o que a fase pede: **39 testes novos** — `test_security.py` (17), `test_failures.py` (7),
+  `test_transitions.py` (6), `test_cli.py` (4), perguntas sobre a memória pessoal (+3), calibração da voz
+  com Piper e Vosk reais (+1), cancelamento do modelo (+1). Total: **404 testes**, todos aprovados em
+  Python 3.13 e 3.11. Detalhes, o que é real e o que é simulado: `TEST_REPORT.md`.
+* **Defeitos encontrados pelos testes e corrigidos:**
+  * as skills de arquivos podiam criar, alterar, mover ou apagar dentro do sistema operacional, da
+    inicialização automática e do próprio JARVIS — um `.py` gravado na pasta de plugins seria executado na
+    próxima partida. Agora é recusado antes de qualquer autorização (novo gancho `refuse_reason`, conferido
+    pelo executor); ler e listar continuam livres;
+  * a segunda edição de um arquivo sobrescrevia a cópia `.ultron.bak` (o original do usuário se perdia);
+  * "cancelar" com o modelo ainda carregando deixava o JARVIS preso até o primeiro token; agora a conexão
+    é encerrada e ele volta ao repouso na hora;
+  * o modelo que quebra no meio do pedido não acendia o estado de erro do rosto nem entrava no histórico;
+  * banco de memória danificado derrubava o início com um traceback (sem console, a janela simplesmente
+    não abria); agora a mensagem diz o que houve, que o arquivo não foi tocado e como restaurar (código 3);
+  * `settings.json` ilegível era substituído na gravação seguinte; agora o original é guardado antes;
+  * banco que recusa gravação respondia "Falha interna (OperationalError)"; backup que falhava deixava
+    um `.partial`;
+  * um título de janela com quebras de linha podia simular uma seção nova no prompt do sistema;
+  * achados pelo CI no **Windows** (Server 2025, o runner do GitHub): o cancelamento dependia de encerrar
+    o socket de outra thread (no Windows isso não acorda quem espera; agora a espera é numa fila e não
+    depende do sistema), os testes da linha de comando liam UTF-8 de um pipe em cp1252, e o
+    `TEST_JARVIS.py` caía ao imprimir as falhas. Depois das correções: 404/404 também no Windows.
+* A cobertura depois: 75 % no total; skills de arquivos 36 % → 61 %, perguntas sobre a memória 21 % → 84 %,
+  calibração da voz 22 % → 58 %. Os testes da linha de comando rodam `main.py` em processos separados,
+  fora da medição.
