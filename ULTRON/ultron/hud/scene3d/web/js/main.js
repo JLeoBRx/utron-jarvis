@@ -28,7 +28,7 @@ function fail(reason) {
 }
 
 let engine;
-const state = { mode: 'jarvis', view: 'frente', jarvisView: 'frente', selected: '', transition: false, effects: true,
+const state = { mode: 'jarvis', view: 'frente', jarvisView: 'frente', selected: '', transition: false, effects: true, compact: false,
                 sigAt: performance.now(), connected: true, sig: null, debug: params.has('perf') };
 const hud = new Hud({ onView: (v) => onViewButton(v) });
 let world;
@@ -50,7 +50,8 @@ orb.group.position.set(1.95, 1.7, -0.95); orb.group.scale.setScalar(0.4);
 room.group.position.set(0, 0, -60);
 scene.add(deck.group, avatar.group, box.group, orb.group, room.group);
 const DECK = [deck.group, avatar.group, box.group, orb.group];
-const FOG = { jarvis: [new THREE.Color(0x020611), 0.045], tardis: [new THREE.Color(0x07070a), 0.028], nucleo: [new THREE.Color(0x01040b), 0.2] };
+const FOG = { jarvis: [new THREE.Color(0x020611), 0.045], tardis: [new THREE.Color(0x07070a), 0.028], nucleo: [new THREE.Color(0x01040b), 0.2],
+              compacto: [new THREE.Color(0x01040b), 0.0] };
 
 function showInterior(on) {
   room.group.visible = on;
@@ -67,6 +68,10 @@ const orbPos = () => orb.group.getWorldPosition(new THREE.Vector3());
 rig.define('frente', (aspect) => {
   const d = fitDistance(camera, 2.45, 2.7, aspect);
   return { pos: V(0.32, 1.3, d), target: V(0, 1.0, 0), min: 2.0, max: 10, minPolar: 0.85, maxPolar: 1.66 };
+});
+rig.define('lateral', (aspect) => {
+  const d = fitDistance(camera, 2.45, 1.6, aspect);
+  return { pos: V(d, 1.25, 0.35), target: V(0, 1.0, 0), min: 2.0, max: 10, minPolar: 0.85, maxPolar: 1.66 };
 });
 rig.define('nucleo', () => {
   const o = orbPos();
@@ -233,6 +238,33 @@ function projectionCards() {
   return [];
 }
 
+// ---------------------------------------------------------------- ORBE minimizado (janela flutuante)
+// A mesma cena, emprestada à janela do orbe: só o núcleo, enquadrado de perto, sem a camada de interface.
+rig.define('compacto', () => {
+  const o = orbPos();
+  return { pos: o.clone().add(V(0, 0.03, 1.75)), target: o, rotate: false, zoom: false };
+});
+function setCompact(on) {
+  if (on === state.compact) return;
+  state.compact = on;
+  document.body.classList.toggle('compact', on);
+  if (on) {
+    state.beforeCompact = state.view;
+    room.group.visible = false;
+    for (const g of DECK) g.visible = g === orb.group;
+    orb.setExpanded(false); orb.setCompact(true);
+    rig.go('compacto', { instant: true });
+    engine.setBloomScale(0);              // janela pequena: o brilho de tela cheia tomaria tudo
+    rig.controls.enabled = false;
+  } else {
+    showInterior(state.mode === 'tardis');
+    orb.setCompact(false);
+    engine.setBloomScale(1);
+    rig.controls.enabled = true;
+    go(state.mode === 'tardis' ? (state.selected ? 'painel' : 'tardis') : (state.beforeCompact || 'frente'), { instant: true });
+  }
+}
+
 const receivers = {
   init(m) {
     if (m.profile) engine.setProfile(m.profile, m.effects !== false);
@@ -240,7 +272,9 @@ const receivers = {
     state.debug = state.debug || !!m.debug;
     if (m.selected) selectPanel(m.selected);
     if (m.mode) { state.mode = m.mode === 'tardis' ? 'jarvis' : 'tardis'; setMode(m.mode, false); }
+    if (m.compact) setCompact(true);
   },
+  compact(m) { setCompact(!!m.on); },
   sig: applySig,
   mode(m) { setMode(m.mode, m.animate !== false); },
   view(m) { if (!state.transition) go(m.view); },
@@ -299,13 +333,14 @@ engine.add({
     } else if (state.connected && !DEMO && hud.el.notice.textContent.startsWith('Sem sinal')) hud.notice('');
     rig.update(dt, time, { drift: state.effects && !state.transition });
     // foco: na vista do NÚCLEO o fundo recua na névoa; na TARDIS, névoa quente e rala
-    const [fogColor, fogDensity] = FOG[room.group.visible ? 'tardis' : (state.view === 'nucleo' && !state.transition ? 'nucleo' : 'jarvis')];
+    const [fogColor, fogDensity] = FOG[state.compact ? 'compacto' : room.group.visible ? 'tardis' :
+                                       (state.view === 'nucleo' && !state.transition ? 'nucleo' : 'jarvis')];
     const fk = 1 - Math.exp(-dt * 2.5);
     scene.fog.color.lerp(fogColor, fk); scene.fog.density += (fogDensity - scene.fog.density) * fk;
     engine.renderer.setClearColor(scene.fog.color, 1);
+    if (orb.group.visible) orb.update(dt, time);
     if (deck.group.visible) {
       avatar.update(dt, time);
-      orb.update(dt, time);
       box.update(dt, time);
       look.color.copy(avatar.color); look.glow = avatar.p.glow; look.focus = state.view === 'nucleo';
       deck.update(dt, time, look);
@@ -314,7 +349,7 @@ engine.add({
       const az = Math.atan2(camera.position.x - I.x, camera.position.z - I.z);
       room.update(dt, time, az);
     }
-    hud.setCards(projectionCards());
+    hud.setCards(state.compact ? [] : projectionCards());
     hud.placeCards(camera, engine.container.clientWidth, engine.container.clientHeight);
     const s = state.sig ? state.sig.state : 'aguardando';
     engine.active = state.transition || rig.moving || rig.interacting ||
@@ -366,9 +401,11 @@ function startDemo() {
   setInterval(tick, 100);
   if (params.get('mode') === 'tardis') { if (params.get('panel')) selectPanel(params.get('panel')); setMode('tardis', false); }
   if (params.get('view')) go(params.get('view'), { instant: true });
+  if (params.get('compact')) setCompact(true);
   const cam = (params.get('cam') || '').split(',').map(Number);
   if (cam.length === 6 && cam.every(Number.isFinite)) {                    // enquadramento livre (capturas de tela)
     rig.userMoved = true;
+    rig.controls.minDistance = 0.1;
     camera.position.set(cam[0], cam[1], cam[2]); rig.controls.target.set(cam[3], cam[4], cam[5]); rig.controls.update();
   }
 }

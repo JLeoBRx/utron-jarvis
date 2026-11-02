@@ -256,6 +256,9 @@ export class Orb {
   }
 
   setExpanded(on) { this.expandTarget = on ? 1 : 0; }
+
+  /** ORBE minimizado: halo e ondas contidos (na janela pequena eles cobririam o fundo inteiro). */
+  setCompact(on) { this.compact = !!on; }
   get label() { return ORB_LABEL[this.state] || ''; }
 
   update(dt, time) {
@@ -280,7 +283,8 @@ export class Orb {
     this.nucleus.scale.setScalar(s);
     this.coreGlow.scale.setScalar(0.45 + 0.25 * p.core + voice * 0.35 + mic * 0.2);
     this.coreGlow.material.color.copy(this.accent); this.coreGlow.material.opacity = 0.35 + 0.6 * p.core;
-    this.halo.material.color.copy(this.color); this.halo.material.opacity = 0.06 + 0.14 * p.core + voice * 0.12;
+    const roomy = this.compact ? 0.22 : 1;
+    this.halo.material.color.copy(this.color); this.halo.material.opacity = (0.06 + 0.14 * p.core + voice * 0.12) * roomy;
     this.spin += dt * 0.08 * p.rings;
     this.network.rotation.y = this.spin;
     this.network.rotation.x = Math.sin(t * 0.07) * 0.2;
@@ -295,7 +299,7 @@ export class Orb {
       w.t = (w.t + dt * 0.45 * (1 + voice + mic)) % 1;
       const radius = p.waves < 0 ? 1.15 - w.t * 0.95 : 0.2 + w.t * 1.0;
       w.mesh.scale.setScalar(radius);
-      w.mat.uniforms.uA.value = Math.abs(p.waves) * 0.35 * Math.sin(w.t * Math.PI);
+      w.mat.uniforms.uA.value = Math.abs(p.waves) * 0.35 * Math.sin(w.t * Math.PI) * (this.compact ? 0.35 : 1);
     }
     this.body.scale.setScalar(1 + this.expanded * 0.6);
   }

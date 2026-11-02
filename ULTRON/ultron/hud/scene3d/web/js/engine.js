@@ -27,6 +27,7 @@ export class Engine {
     this.visible = true;
     this.lost = false;
     this.effects = true;
+    this.bloomScale = 1;                 // ORBE minimizado: brilho contido (sobrevive à reconstrução)
     this.active = false;                 // há movimento real (fala, escuta, operação): usa o teto de fps
     this.frames = [];
     this.lastFrame = 0;
@@ -93,14 +94,21 @@ export class Engine {
       { type: THREE.HalfFloatType, samples: this.profile.antialias ? 4 : 0 });
     const composer = new EffectComposer(this.renderer, target);
     composer.addPass(new RenderPass(this.scene, this.camera));
-    const strength = this.effects ? this.profile.bloom : 0;
+    const strength = (this.effects ? this.profile.bloom : 0) * this.bloomScale;
     this.bloom = null;
-    if (strength > 0) {
+    if (strength > 0.02) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(Math.max(1, size.x) / 2, Math.max(1, size.y) / 2), strength, 0.5, 0.42);
       composer.addPass(this.bloom);
     }
     composer.addPass(new OutputPass());
     this.composer = composer;
+  }
+
+  setBloomScale(k) {
+    if (k === this.bloomScale) return;
+    this.bloomScale = k;
+    this._buildComposer();
+    this.resize();
   }
 
   _disposeComposer() {

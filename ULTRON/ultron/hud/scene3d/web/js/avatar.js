@@ -8,7 +8,7 @@
 // * Movimento: procedural, por estado REAL resolvido pelo JARVIS (nada é simulado aqui): respiração, apoio,
 //   olhar, piscadas, gestos pela energia real da fala, mãos na execução, boca pela trilha labial do áudio.
 import * as THREE from 'three';
-import { holoUniforms, holoLineMaterial, holoPointsMaterial, holoShellMaterial, glowMaterial, glowTexture,
+import { holoUniforms, holoLineMaterial, holoPointsMaterial, holoShellMaterial, holoCircuitMaterial, glowMaterial, glowTexture,
          disposer, canvasTexture, PALETTE } from './materials.js';
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -33,18 +33,19 @@ export function headRadius(theta, y) {
   let r = 0.80 * profile * section;
   const f3 = Math.pow(Math.max(0, c), 3);
   r *= 1 - 0.07 * f3 * gauss(y, -0.2, 0.6);
-  r += 0.055 * f3 * gauss(y, Y_BROW, 0.05) * gauss(theta, 0, 0.55);
+  r += 0.07 * f3 * gauss(y, Y_BROW, 0.045) * gauss(theta, 0, 0.6);           // arco da sobrancelha marcado
   for (const side of [-1, 1]) {
     r -= 0.085 * gauss(theta, side * EYE_THETA, 0.14) * gauss(y, Y_EYE, 0.075);
-    r += 0.045 * gauss(theta, side * 0.63, 0.15) * gauss(y, -0.20, 0.11);
-    r -= 0.035 * gauss(theta, side * 0.52, 0.12) * gauss(y, -0.48, 0.12);
+    r += 0.06 * gauss(theta, side * 0.64, 0.13) * gauss(y, -0.20, 0.10);       // maçã do rosto (plano sintético)
+    r -= 0.05 * gauss(theta, side * 0.52, 0.12) * gauss(y, -0.48, 0.12);       // bochecha cavada
+    r += 0.028 * gauss(theta, side * 0.78, 0.12) * gauss(y, -0.78, 0.09);      // ângulo da mandíbula
   }
   const k = clamp((Y_BROW - 0.03 - y) / (Y_BROW - 0.03 - Y_NOSE), 0, 1);
   let nose = 0.17 * Math.pow(k, 1.1) * (y > Y_NOSE - 0.05 ? 1 : 0) * gauss(y, Y_NOSE + 0.02, 0.6);
   if (y < Y_NOSE) nose = 0.17 * gauss(y, Y_NOSE, 0.05);
   r += nose * gauss(theta, 0, 0.065 + 0.05 * k);
   r += 0.030 * gauss(theta, 0, 0.32) * gauss(y, Y_MOUTH, 0.07);
-  r += 0.045 * gauss(theta, 0, 0.26) * gauss(y, -0.90, 0.10);
+  r += 0.055 * gauss(theta, 0, 0.24) * gauss(y, -0.90, 0.09);                 // queixo
   return r;
 }
 
@@ -159,13 +160,24 @@ class BodyGeometry {
     return ids;
   }
 
+  /** Linha avulsa (contorno anatômico, sulco do rosto): [{ p, a, b, t }] — sem casca, só traço e nós. */
+  polyline(points, weight = 0.9, { every = 3 } = {}) {
+    let prev = -1;
+    points.forEach((q, k) => {
+      const id = this.vert(q.p, q.a, q.b ?? q.a, q.t ?? 1, weight);
+      if (prev >= 0) this.lines.push(prev, id);
+      if (k % every === 0) this.points.push(id);
+      prev = id;
+    });
+  }
+
   /**
    * Membro contínuo ao longo de uma cadeia de ossos — sem emendas nas juntas: perto de cada junta o vértice
    * mistura os dois ossos (dobra suave). ``parts``: [{ bone, len, rings, profile(t) → [rx, rz], shift? }].
    * ``capStart``/``capEnd`` fecham as pontas em cúpula (ombro, ponta dos dedos); ``dir`` = sentido do osso.
    */
   chain(parts, { segs = 14, blend = 0.2, capStart = 0, capEnd = 0, startBone = null, endBone = null, dir = -1,
-                 fadeStart = 0, accent = 3, ringEvery = 1, meridianEvery = 2, pointEvery = 3 } = {}) {
+                 fadeStart = 0, fadeEnd = 0, accent = 3, ringEvery = 2, meridianEvery = 2, pointEvery = 3 } = {}) {
     const idx = parts.map((p) => this.rig.index(p.bone));
     const before = startBone ? this.rig.index(startBone) : null, after = endBone ? this.rig.index(endBone) : null;
     const total = parts.reduce((s, p) => s + p.len, 0);
@@ -181,7 +193,8 @@ class BodyGeometry {
         b = k < parts.length - 1 ? idx[k + 1] : after; w = 0.5 + 0.5 * (1 - smooth(1 - blend, 1, tt));
       }
       const along = (parts.slice(0, k).reduce((s, p) => s + p.len, 0) + tt * part.len) / total;
-      const fade = fadeStart > 0 ? 0.25 + 0.75 * smooth(0, fadeStart, along) : 1;
+      const fade = (fadeStart > 0 ? 0.25 + 0.75 * smooth(0, fadeStart, along) : 1) *
+                   (fadeEnd > 0 ? 0.15 + 0.85 * (1 - smooth(1 - fadeEnd, 1, along)) : 1);
       const weight = (n++ % accent === 0 ? 0.9 : 0.55) * fade;
       const row = [];
       for (let j = 0; j < segs; j++) {
@@ -280,37 +293,120 @@ const TORSO_W = [[0.80, 0.150], [0.90, 0.168], [0.98, 0.160], [1.06, 0.140], [1.
 const TORSO_D = [[0.80, 0.098], [0.90, 0.110], [0.98, 0.104], [1.06, 0.092], [1.14, 0.095], [1.22, 0.104],
                  [1.30, 0.114], [1.38, 0.110], [1.445, 0.095], [1.49, 0.075], [1.52, 0.062], [1.545, 0.052]];
 
-function buildTorso(geo, rig) {
+/** Ponto da superfície do tronco: altura ``y`` (m) e ângulo ``ang`` (π/2 = frente, 3π/2 = costas). Devolve a
+ *  posição no modelo e os ossos que o seguem (mesma função da malha, das linhas anatômicas e dos circuitos). */
+function torsoPoint(rig, y, ang, lift = 0) {
   const bones = { hips: rig.index('hips'), spine: rig.index('spine'), chest: rig.index('chest'), neck: rig.index('neck') };
+  const w = interp(TORSO_W, y), d = interp(TORSO_D, y);
+  const n = 2.15 + 0.35 * gauss(y, 1.30, 0.10);              // seções arredondadas; peito um pouco mais cheio
+  let a, b, t;
+  if (y < 1.04) { a = bones.hips; b = bones.spine; t = 1 - smooth(0.98, 1.08, y); }
+  else if (y < 1.26) { a = bones.spine; b = bones.chest; t = 1 - smooth(1.18, 1.28, y); }
+  else if (y < 1.49) { a = bones.chest; b = bones.neck; t = 1 - smooth(1.47, 1.53, y); }
+  else { a = bones.neck; b = bones.chest; t = smooth(1.48, 1.53, y); }
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  let x = w * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
+  let z = d * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+  if (sa > 0) {                                                // frente: peitoral e abdômen
+    z += 0.014 * gauss(y, 1.31, 0.05) * gauss(Math.abs(x), 0.075, 0.05);
+    z += 0.006 * gauss(y, 1.08, 0.08) * gauss(x, 0, 0.06);
+  } else {                                                     // costas: escápulas e glúteos
+    z -= 0.010 * gauss(y, 1.36, 0.06) * gauss(Math.abs(x), 0.08, 0.05);
+    z -= 0.018 * gauss(y, 0.86, 0.06) * gauss(Math.abs(x), 0.07, 0.06);
+  }
+  const len = Math.hypot(x, z) || 1;
+  return { p: new THREE.Vector3(x + x / len * lift, y, z + z / len * lift), a, b, t };
+}
+
+function buildTorso(geo, rig) {
   const rings = 30, segs = 28, ids = [];
   for (let i = 0; i < rings; i++) {
     const y = lerp(0.80, 1.545, i / (rings - 1));
-    const w = interp(TORSO_W, y), d = interp(TORSO_D, y);
-    const n = 2.15 + 0.35 * gauss(y, 1.30, 0.10);              // seções arredondadas; peito um pouco mais cheio
-    // osso dominante por altura, com transição suave
-    let a, b, t;
-    if (y < 1.04) { a = bones.hips; b = bones.spine; t = 1 - smooth(0.98, 1.08, y); }
-    else if (y < 1.26) { a = bones.spine; b = bones.chest; t = 1 - smooth(1.18, 1.28, y); }
-    else if (y < 1.49) { a = bones.chest; b = bones.neck; t = 1 - smooth(1.47, 1.53, y); }
-    else { a = bones.neck; b = bones.chest; t = smooth(1.48, 1.53, y); }
     const row = [];
     for (let j = 0; j < segs; j++) {
-      const ang = (j / segs) * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang);
-      let x = w * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-      let z = d * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
-      if (sa > 0) {                                                // frente: peitoral e abdômen
-        z += 0.014 * gauss(y, 1.31, 0.05) * gauss(Math.abs(x), 0.075, 0.05);
-        z += 0.006 * gauss(y, 1.08, 0.08) * gauss(x, 0, 0.06);
-      } else {                                                     // costas: escápulas e glúteos
-        z -= 0.010 * gauss(y, 1.36, 0.06) * gauss(Math.abs(x), 0.08, 0.05);
-        z -= 0.018 * gauss(y, 0.86, 0.06) * gauss(Math.abs(x), 0.07, 0.06);
-      }
-      const weight = ((i % 3 === 0) ? 0.9 : 0.55) * (0.3 + 0.7 * smooth(0.80, 0.9, y));
-      row.push(geo.vert(new THREE.Vector3(x, y, z), a, b, t, weight));
+      const q = torsoPoint(rig, y, (j / segs) * Math.PI * 2);
+      const weight = ((i % 6 === 0) ? 0.75 : 0.42) * (0.3 + 0.7 * smooth(0.80, 0.9, y));
+      row.push(geo.vert(q.p, q.a, q.b, q.t, weight));
     }
     ids.push(row);
   }
-  geo.grid(ids, { pointEvery: 3, meridianEvery: 2 });
+  // malha mais rala: a anatomia fica a cargo das linhas de contorno e dos circuitos
+  geo.grid(ids, { pointEvery: 4, meridianEvery: 2, ringEvery: 3 });
+}
+
+/** Contornos anatômicos do tronco (esterno, peitorais, clavículas, abdômen, linhas em V, coluna, escápulas):
+ *  as linhas seguem a forma do corpo em vez de anéis horizontais. ``u`` = ângulo a partir da frente. */
+function buildAnatomy(geo, rig) {
+  const at = (y, u, lift = 0.0015) => torsoPoint(rig, y, Math.PI / 2 - u, lift);
+  const curve = (pts, weight = 0.95, steps = 10) => {
+    const out = [];
+    for (let k = 0; k < pts.length - 1; k++) {
+      for (let s = 0; s < steps; s++) {
+        const f = s / steps, [y0, u0] = pts[k], [y1, u1] = pts[k + 1];
+        out.push(at(lerp(y0, y1, f), lerp(u0, u1, f)));
+      }
+    }
+    const last = pts[pts.length - 1];
+    out.push(at(last[0], last[1]));
+    geo.polyline(out, weight);
+  };
+  const mirror = (pts, weight) => { curve(pts, weight); curve(pts.map(([y, u]) => [y, -u]), weight); };
+  curve([[1.17, 0], [1.30, 0], [1.44, 0]], 0.9);                                      // esterno
+  mirror([[1.268, 0.04], [1.252, 0.28], [1.27, 0.52], [1.32, 0.76], [1.39, 0.96]]);    // borda do peitoral
+  mirror([[1.47, 0.06], [1.462, 0.38], [1.45, 0.78], [1.44, 1.06]], 0.85);             // clavícula
+  curve([[0.97, 0], [1.10, 0], [1.24, 0]], 0.8);                                       // linha alba
+  mirror([[0.99, 0.24], [1.10, 0.25], [1.23, 0.24]], 0.8);                             // reto abdominal
+  for (const y of [1.075, 1.135, 1.195]) curve([[y, -0.24], [y + 0.004, 0], [y, 0.24]], 0.7, 8);
+  mirror([[1.07, 0.6], [0.99, 0.42], [0.905, 0.14]], 0.85);                            // linhas em V (oblíquos)
+  for (const [y, u] of [[1.24, 0.9], [1.19, 0.95], [1.14, 1.0]]) mirror([[y, u], [y - 0.03, u + 0.16]], 0.6);  // serrátil
+  curve([[0.93, Math.PI], [1.2, Math.PI], [1.49, Math.PI]], 0.8);                      // coluna
+  mirror([[1.44, Math.PI - 0.25], [1.40, Math.PI - 0.75], [1.31, Math.PI - 0.62], [1.27, Math.PI - 0.3],
+          [1.36, Math.PI - 0.18], [1.44, Math.PI - 0.25]], 0.65);                      // escápulas
+}
+
+/** Trilhas de circuito no tronco: caminhos em ângulo reto (determinísticos) com pulsos que correm por elas. */
+function buildCircuits(rig, u) {
+  const pos = [], a = [], b = [], w = [], weight = [], along = [], idx = [];
+  let seed = 7;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const push = (q, dist) => {
+    pos.push(q.p.x, q.p.y, q.p.z); a.push(q.a); b.push(q.b); w.push(q.t); weight.push(0.95); along.push(dist);
+    return pos.length / 3 - 1;
+  };
+  const starts = [[1.40, 0.18], [1.36, 0.5], [1.30, 0.32], [1.22, 0.12], [1.12, 0.36], [1.02, 0.18], [1.42, 0.85],
+                  [1.18, 0.7], [1.34, Math.PI - 0.12], [1.15, Math.PI - 0.4], [1.0, Math.PI - 0.2]];
+  for (const [y0, u0] of starts) {
+    for (const side of [1, -1]) {
+      let y = y0, uu = u0, dist = 0, vertical = rand() < 0.5;
+      let prev = push(torsoPoint(rig, y, Math.PI / 2 - side * uu, 0.002), dist);
+      let last = new THREE.Vector3().copy(torsoPoint(rig, y, Math.PI / 2 - side * uu, 0.002).p);
+      for (let leg = 0; leg < 4; leg++) {
+        const steps = 4 + Math.floor(rand() * 6);
+        const dy = (rand() < 0.5 ? -1 : 1) * 0.012, du = (rand() < 0.5 ? -1 : 1) * 0.045;
+        for (let k = 0; k < steps; k++) {
+          if (vertical) y = clamp(y + dy, 0.92, 1.46); else uu = clamp(uu + du, 0.04, Math.PI - 0.04);
+          const q = torsoPoint(rig, y, Math.PI / 2 - side * uu, 0.002);
+          dist += q.p.distanceTo(last); last.copy(q.p);
+          const id = push(q, dist);
+          idx.push(prev, id); prev = id;
+        }
+        vertical = !vertical;
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('skinA', new THREE.Float32BufferAttribute(a, 1));
+  g.setAttribute('skinB', new THREE.Float32BufferAttribute(b, 1));
+  g.setAttribute('skinW', new THREE.Float32BufferAttribute(w, 1));
+  g.setAttribute('weight', new THREE.Float32BufferAttribute(weight, 1));
+  g.setAttribute('along', new THREE.Float32BufferAttribute(along, 1));
+  g.setIndex(idx);
+  disposer.track(g);
+  const lines = new THREE.LineSegments(g, holoCircuitMaterial(u, { opacity: 0.85 }));
+  lines.frustumCulled = false;
+  lines.renderOrder = 2;
+  return lines;
 }
 
 function buildHead(geo, rig) {
@@ -329,12 +425,40 @@ function buildHead(geo, rig) {
       const hx = r * Math.sin(th), hz = r * Math.cos(th);
       const p = rig.toModel('head', hx * HEAD_SCALE, y * HEAD_SCALE, hz * HEAD_SCALE);
       const jw = clamp((Y_MOUTH + 0.01 - y) / 0.10, 0, 1) * clamp(1 - (Math.abs(hx) - 0.45) / 0.25, 0, 1);
-      const accent = (Math.abs(th) < 0.5 && y < 0.3 && y > -0.95) ? 0.85 : 0.55;
+      const accent = (Math.abs(th) < 0.5 && y < 0.3 && y > -0.95) ? 0.5 : 0.36;   // grade discreta: os sulcos falam mais alto
       row.push(jw > 0.01 ? geo.vert(p, jaw, head, jw, accent) : geo.vert(p, head, head, 1, accent));
     }
     ids.push(row);
   }
-  geo.grid(ids, { pointEvery: 3, meridianEvery: 2 });
+  geo.grid(ids, { pointEvery: 7, meridianEvery: 2, ringEvery: 2 });
+  // sulcos do rosto de androide: placas e cristas que seguem a forma (não anéis)
+  const at = (th, y) => {
+    const r = headRadius(th, y) + 0.012;
+    const hx = r * Math.sin(th), hz = r * Math.cos(th);
+    const p = rig.toModel('head', hx * HEAD_SCALE, y * HEAD_SCALE, hz * HEAD_SCALE);
+    const jw = clamp((Y_MOUTH + 0.01 - y) / 0.10, 0, 1) * clamp(1 - (Math.abs(hx) - 0.45) / 0.25, 0, 1);
+    return jw > 0.01 ? { p, a: jaw, b: head, t: jw } : { p, a: head, b: head, t: 1 };
+  };
+  const seam = (pts, weight = 1.0, steps = 8) => {
+    const out = [];
+    for (let k = 0; k < pts.length - 1; k++) {
+      for (let q = 0; q < steps; q++) {
+        const f = q / steps;
+        out.push(at(lerp(pts[k][0], pts[k + 1][0], f), lerp(pts[k][1], pts[k + 1][1], f)));
+      }
+    }
+    out.push(at(...pts[pts.length - 1]));
+    geo.polyline(out, weight, { every: 8 });
+  };
+  const both = (pts, weight) => { seam(pts, weight); seam(pts.map(([th, y]) => [-th, y]), weight); };
+  seam([[0, 0.92], [0, 0.6], [0, 0.32]], 0.9);                                       // crista central da testa
+  both([[0.07, 0.30], [0.25, 0.22], [0.52, 0.16], [0.82, 0.08]]);                   // arco das sobrancelhas
+  both([[0.16, 0.34], [0.34, 0.5], [0.6, 0.72], [1.0, 0.82]], 0.75);                // placa frontal
+  both([[0.55, -0.06], [0.6, -0.3], [0.52, -0.55], [0.4, -0.84]], 0.9);             // sulco da maçã ao queixo
+  both([[0.2, -0.12], [0.36, -0.13], [0.5, -0.08]], 0.8);                            // olheira (placa sob o olho)
+  both([[0.13, -0.40], [0.2, -0.52], [0.25, -0.66]], 0.85);                          // sulco nasolabial
+  both([[1.35, -0.3], [1.0, -0.62], [0.6, -0.88], [0.2, -0.99], [0.0, -1.0]], 0.9);  // linha da mandíbula
+  both([[0.95, 0.35], [1.3, 0.55], [1.7, 0.62], [2.3, 0.55]], 0.7);                  // têmporas
   // olhos (íris em anel), lábios e linhas de relevo do rosto
   for (const side of ['L', 'R']) {
     const e = rig.index('eye' + side), ring = [];
@@ -369,8 +493,10 @@ function buildHead(geo, rig) {
 
 function buildLimbs(geo, rig, info) {
   // pescoço: sobe do peito até dentro da cabeça (antes descia para dentro do tórax e aparecia como um bloco)
-  geo.chain([{ bone: 'neck', len: 0.16, rings: 8, profile: (t) => [0.057 - 0.006 * t, 0.060 - 0.008 * t] }],
-            { dir: 1, segs: 18, startBone: 'chest', endBone: 'head', fadeStart: 0.35, blend: 0.3 });
+  geo.chain([{ bone: 'neck', len: 0.16, rings: 9, profile: (t) => [0.058 - 0.013 * t, 0.063 - 0.016 * t],
+               shift: (t, a) => [0, -0.006 * t * Math.max(0, -Math.sin(a))] }],
+            { dir: 1, segs: 18, startBone: 'chest', endBone: 'head', fadeStart: 0.35, fadeEnd: 0.4, blend: 0.3,
+              ringEvery: 3, meridianEvery: 1 });
   for (const s of ['L', 'R']) {
     const side = s === 'L' ? 1 : -1;
     // braço inteiro numa peça: deltoide em cúpula, bíceps, antebraço afinando até o punho e a palma
@@ -581,11 +707,12 @@ export class Avatar {
     this.u.boneTex.value = this.rig.texture;
     const geo = new BodyGeometry(this.rig);
     buildTorso(geo, this.rig);
+    buildAnatomy(geo, this.rig);
     buildHead(geo, this.rig);
     buildLimbs(geo, this.rig, info);
     const body = geo.build(this.u);
     this.counts = body.counts;
-    this.root.add(body.shell, body.lines, body.points, ...buildSkeletonLines(this.rig, this.u));
+    this.root.add(body.shell, body.lines, body.points, buildCircuits(this.rig, this.u), ...buildSkeletonLines(this.rig, this.u));
     this.projector = new Projector(this.group, particleScale);
     this.root.position.y = 0.14;
     this.state = 'inicializando';
@@ -604,6 +731,39 @@ export class Avatar {
     this.camera = null;
     this.headWorld = new THREE.Vector3();
     this._dataPanels = this._buildDataPanels();
+    this._buildFaceLights();
+  }
+
+  /** Olhos amendoados luminosos (seguem as pálpebras: escala do osso do olho) e a gema da testa. */
+  _buildFaceLights() {
+    const almond = new THREE.Shape();
+    const w = 0.0115, h = 0.0052;
+    almond.moveTo(-w, 0);
+    almond.quadraticCurveTo(-w * 0.2, h * 1.9, w, h * 0.25);
+    almond.quadraticCurveTo(w * 0.1, -h * 1.6, -w, 0);
+    const eyeGeo = disposer.track(new THREE.ShapeGeometry(almond, 10));
+    this.eyeMat = glowMaterial(PALETTE.glow, 0.85);
+    this.irisMat = disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true,
+                                                              opacity: 0.9, blending: THREE.AdditiveBlending,
+                                                              depthWrite: false }));
+    for (const side of ['L', 'R']) {
+      const bone = this.rig.map['eye' + side];
+      const eye = new THREE.Mesh(eyeGeo, this.eyeMat);
+      eye.position.z = 0.0045;
+      if (side === 'R') eye.scale.x = -1;
+      const iris = new THREE.Sprite(this.irisMat);
+      iris.scale.setScalar(0.011); iris.position.z = 0.006;
+      bone.add(eye, iris);
+    }
+    const yGem = 0.42;
+    const gem = new THREE.Mesh(disposer.track(new THREE.OctahedronGeometry(0.0065, 0)), glowMaterial(PALETTE.glow, 0.95));
+    gem.scale.set(0.8, 1.25, 0.45);
+    gem.position.set(0, yGem * HEAD_SCALE, headRadius(0, yGem) * HEAD_SCALE + 0.002);
+    const halo = new THREE.Sprite(disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: PALETTE.glow,
+      transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })));
+    halo.scale.setScalar(0.04); halo.position.copy(gem.position).add(new THREE.Vector3(0, 0, 0.002));
+    this.rig.map.head.add(gem, halo);
+    this.gem = { gem, halo };
   }
 
   setParticleScale(s) { this.projector.setParticleScale(s); }
@@ -743,6 +903,15 @@ export class Avatar {
     this.root.position.y = 0.14 + Math.sin(t * 0.9) * 0.008 + breath * 0.002;
     R.update();
 
+    // ---------- olhos e gema: cor da íris do estado; apagados na privacidade; a gema respira com a voz real
+    const lit = this.state === 'privacidade' ? 0.12 : (0.55 + 0.45 * p.glow);
+    this.eyeMat.color.copy(this.accent); this.eyeMat.opacity = 0.9 * lit;
+    this.irisMat.color.copy(this.accent).lerp(_white, 0.35); this.irisMat.opacity = 0.85 * lit;
+    this.gem.gem.material.color.copy(this.accent);
+    this.gem.halo.material.color.copy(this.accent);
+    this.gem.halo.material.opacity = (0.35 + 0.3 * p.pulse + 0.4 * voice) * lit;
+    this.gem.halo.scale.setScalar(0.034 + 0.02 * voice + 0.006 * Math.sin(t * 2.0));
+
     // ---------- luz e energia
     const u = this.u;
     u.uTime.value = time;
@@ -767,3 +936,4 @@ export class Avatar {
     this._dataPanels.halo.scale.setScalar(1 + 0.25 * Math.sin(time * 4));
   }
 }
+const _white = new THREE.Color(0xffffff);

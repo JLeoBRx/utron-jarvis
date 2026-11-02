@@ -201,6 +201,8 @@ class HudController(QtCore.QObject):
         room = self.tardis_page.room if self.tardis_page is not None else None
         if room is not None and room.scene3d is view:
             room.detach_scene3d()
+        if self.orb.scene_view is view:
+            self.orb.detach_scene()                     # o orbe volta ao desenho 2D
         self.avatar_reason = ""                         # era "cena 3D (abrindo)": agora vale o desenho 2D
         self.avatar = self._make_avatar_2d(getattr(self.core.settings(), "render_backend", "cpu"))
         self.avatar.face_clicked.connect(lambda: self.window.input.mic.toggle())
@@ -530,7 +532,8 @@ class HudController(QtCore.QObject):
         self._tick_times.append(dt)
         central = self.central()
         hub1 = self.window.isVisible() and not self.window.isMinimized() and central.isVisible()
-        shown = self.window.isVisible() and not self.window.isMinimized() and self.avatar.isVisible()
+        shown = self.avatar.isVisible() and ((self.window.isVisible() and not self.window.isMinimized())
+                                             or self.orb.scene_view is self.avatar)   # também no ORBE 3D
         if shown:                                         # rosto 2D na página JARVIS, ou a cena 3D (JARVIS ou TARDIS)
             self.avatar.step(dt)
         else:
@@ -638,6 +641,7 @@ class HudController(QtCore.QObject):
 
     def expand(self) -> None:
         self.orb.hide()
+        self._return_scene_from_orb()
         self.window.showNormal() if self.window.isMinimized() else self.window.show()
         self.window.raise_()
         self.window.activateWindow()
@@ -646,9 +650,37 @@ class HudController(QtCore.QObject):
     def collapse(self) -> None:
         self.window.hide()
         if not self.orb.isVisible():
+            self._lend_scene_to_orb()
             if self.orb.pos() == QtCore.QPoint(0, 0):
                 self._place_orb()
             self.orb.show()
+
+    def _lend_scene_to_orb(self) -> None:
+        """ORBE 3D minimizado: a MESMA cena (um motor) vai para a janela flutuante, em modo compacto. Sem cena
+        pronta, o orbe 2D de sempre."""
+        view = self.scene3d
+        if view is None or not view.is_ready or self.orb.scene_view is view:
+            return
+        room = self.tardis_page.room if self.tardis_page is not None else None
+        if room is not None and room.scene3d is view:
+            room.detach_scene3d()
+        page = self.window.jarvis_page
+        if page.central is view:
+            page.set_central(self._placeholder)
+        self.orb.attach_scene(view)
+        view.set_compact(True)
+
+    def _return_scene_from_orb(self) -> None:
+        view = self.orb.detach_scene() if self.orb.scene_view is not None else None
+        if view is None:
+            return
+        view.set_compact(False)
+        room = self.tardis_page.room if self.tardis_page is not None else None
+        if self.window.current_key == "tardis" and room is not None:
+            room.attach_scene3d(view)
+        else:
+            face = getattr(self.core.settings(), "avatar_mode", "face") == "face"
+            self.window.jarvis_page.set_central(view if face else self.view)
 
     def _place_orb(self) -> None:
         """Onde o usuário deixou o orbe da última vez (se ainda estiver numa tela), senão no canto."""

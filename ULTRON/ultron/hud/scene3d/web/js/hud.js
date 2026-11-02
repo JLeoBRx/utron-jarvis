@@ -24,6 +24,7 @@ export class Hud {
     this.mode = mode;
     const sets = {
       jarvis: [['frente', 'FRENTE', 'Enquadramento frontal do corpo inteiro (duplo clique na cena também volta)'],
+               ['lateral', 'LATERAL', 'O holograma de perfil, corpo inteiro'],
                ['nucleo', 'NÚCLEO', 'O ORBE — núcleo de inteligência — ampliado: gire e aproxime com o mouse'],
                ['exterior', 'CABINE', 'A cabine da TARDIS por fora'],
                ['entrar', 'ENTRAR NA TARDIS', 'Abre a sala de controle (página TARDIS)']],

@@ -179,6 +179,37 @@ export function holoShellMaterial(u, { opacity = 0.32, skinned = false, power = 
   }));
 }
 
+/** Trilhas de circuito: linhas que levam pulsos de energia ao longo do próprio traçado (atributo ``along``,
+ *  distância acumulada). O fluxo acelera com os pulsos do estado (pensar, executar) e com a voz real. */
+export function holoCircuitMaterial(u, { opacity = 0.75, skinned = true } = {}) {
+  const vertexShader = skinnedVertex(COMMON_VARY + /* glsl */`
+    attribute float weight; attribute float along;
+    varying float vW; varying float vAlong;
+    void main() {
+      /*POS*/
+      vY = sp.y; vW = weight; vAlong = along;
+      vec4 mv = modelViewMatrix * sp;
+      vDepth = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`, skinned);
+  const fragmentShader = COMMON_VARY + ENERGY + /* glsl */`
+    uniform float uOpacity; varying float vW; varying float vAlong;
+    void main() {
+      if (vY > uReveal) discard;
+      float e = energy(vY);
+      float speed = 0.35 + uPulse * 1.6 + uVoice * 1.2;
+      float head = fract(vAlong * 2.2 - uTime * speed);
+      float dash = smoothstep(0.80, 0.98, head) * (1.0 - smoothstep(0.98, 1.0, head));
+      vec3 col = mix(uColor, uAccent, 0.35 + dash * 0.65);
+      float a = uOpacity * vW * uFade * (0.16 + 0.85 * dash) * e;
+      gl_FragColor = vec4(col * (1.0 + dash * 1.1), a);
+    }`;
+  return disposer.track(new THREE.ShaderMaterial({
+    uniforms: { ...u, uOpacity: { value: opacity } }, vertexShader, fragmentShader,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+}
+
 /** Material aditivo simples (anéis, feixes, painéis holográficos). */
 export function glowMaterial(color, opacity = 0.6, { map = null, side = THREE.DoubleSide } = {}) {
   return disposer.track(new THREE.MeshBasicMaterial({

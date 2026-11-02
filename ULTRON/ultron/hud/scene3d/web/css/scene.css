@@ -79,3 +79,6 @@ body.error #state .dot { background: var(--coral); box-shadow: 0 0 10px var(--co
   .card { min-width: 120px; max-width: 180px; font-size: 10px; }
   #caption { font-size: 13px; max-width: 92%; }
 }
+
+/* ORBE minimizado: só o núcleo, sem camada de interface (a janela flutuante cuida do mouse) */
+body.compact #hud, body.compact #veil { display: none; }

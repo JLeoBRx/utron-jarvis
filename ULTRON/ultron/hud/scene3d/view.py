@@ -122,6 +122,7 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
         self.info: dict = {}
         self.stats: dict = {}
         self.mode = "jarvis"
+        self.compact = False
         self.selected = ""
         self.mic_state = ""
         self.system: dict = {}
@@ -181,7 +182,7 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
                  time.monotonic() - self._started, self.info.get("renderer", "?"), self.info.get("three", "?"),
                  (self.info.get("avatar") or {}).get("vertices", "?"))
         self._send({"type": "init", "profile": self.profile_name, "effects": self.effects, "mode": self.mode,
-                    "selected": self.selected, "debug": self.debug}, force=True)
+                    "selected": self.selected, "debug": self.debug, "compact": self.compact}, force=True)
         for msg in list(self._pending.values()):
             self._send(msg, force=True)
         self._pending.clear()
@@ -324,6 +325,12 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
             return
         self.mode = mode
         self._send({"type": "mode", "mode": mode, "animate": bool(animate)})
+
+    def set_compact(self, on: bool) -> None:
+        """ORBE minimizado: a página mostra só o núcleo, sem interface por cima (a janela flutuante cuida do
+        mouse). Desligar devolve a vista anterior sem perder estado."""
+        self.compact = bool(on)
+        self._send({"type": "compact", "on": self.compact})
 
     def select_panel(self, key: str) -> None:
         self.selected = key or ""

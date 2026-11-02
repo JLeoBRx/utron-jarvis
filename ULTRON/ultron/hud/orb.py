@@ -1,5 +1,9 @@
 """Orbe compacto: a forma recolhida do JARVIS (sempre visível, arrastável).
 
+Com a central 3D ativa, o orbe mostra o ORBE 3D da PRÓPRIA cena (a mesma vista, emprestada enquanto a janela
+principal está recolhida — um motor só): janela redonda por máscara, uma camada transparente por cima recebe
+o mouse (arrastar, duplo clique, menu) e desenha o aro. Sem a cena 3D, o desenho 2D abaixo continua valendo.
+
 O orbe mostra o mesmo estado real da cena: o cérebro em miniatura (a mesma malha, no
 mesmo giro), brilho do núcleo pelo estado de runtime, anel de profundidade cognitiva,
 nível do microfone ao escutar e âmbar quando há uma autorização pendente. Clique duplo
@@ -20,12 +24,49 @@ STATE_LEVEL = {"IDLE": 0.5, "LISTENING": 0.7, "THINKING": 0.6, "PLANNING": 0.65,
                "DREAMING": 0.3, "NETWORK": 0.6, "AWAITING_AUTHORIZATION": 0.9, "ERROR": 0.6, "BOOTING": 0.5}
 
 
+class _OrbOverlay(QtWidgets.QWidget):
+    """Por cima da cena 3D: passa o mouse para o orbe e desenha o aro (esconde o serrilhado da máscara)."""
+
+    def __init__(self, orb: "OrbWindow"):
+        super().__init__(orb)
+        self.orb = orb
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        self.setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
+        self.setCursor(QtCore.Qt.OpenHandCursor)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt)
+        self.orb.mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802 (Qt)
+        self.orb.mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 (Qt)
+        self.orb.mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event) -> None:  # noqa: N802 (Qt)
+        self.orb.mouseDoubleClickEvent(event)
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
+        s = min(self.width(), self.height())
+        c = QtCore.QPointF(self.width() / 2, self.height() / 2)
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setBrush(QtCore.Qt.NoBrush)
+        p.setPen(QtGui.QPen(theme.with_alpha(theme.BG, 1.0), 4.0))
+        p.drawEllipse(c, s / 2 - 1.5, s / 2 - 1.5)
+        tone = theme.ALERT if self.orb.scene.runtime_state == "AWAITING_AUTHORIZATION" else theme.PRIMARY
+        p.setPen(QtGui.QPen(theme.with_alpha(tone, 0.75), 1.4))
+        p.drawEllipse(c, s / 2 - 3.5, s / 2 - 3.5)
+        p.end()
+
+
 class OrbWindow(QtWidgets.QWidget):
     expand_requested = QtCore.Signal()
     menu_requested = QtCore.Signal(QtCore.QPoint)
     moved = QtCore.Signal(QtCore.QPoint)
 
     SIZE = 104
+    SIZE_3D = 136                       # o núcleo 3D precisa de um pouco mais de área para ser legível
 
     def __init__(self, scene: NeuralScene):
         super().__init__(None, QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
@@ -35,12 +76,45 @@ class OrbWindow(QtWidgets.QWidget):
         self.setToolTip("JARVIS — clique duplo para expandir")
         self._drag: QtCore.QPoint | None = None
         self._dragged = False
+        self.scene_view = None                      # a cena 3D emprestada (None = desenho 2D)
+        self.overlay = _OrbOverlay(self)
+        self.overlay.hide()
+
+    # ------------------------------------------------------------ cena 3D emprestada
+    def attach_scene(self, view) -> None:
+        """Recebe a vista 3D da janela principal (recolhida). O centro do orbe fica onde estava."""
+        center = self.geometry().center()
+        self.scene_view = view
+        self.setFixedSize(self.SIZE_3D, self.SIZE_3D)
+        if center != QtCore.QPoint(0, 0) and self.pos() != QtCore.QPoint(0, 0):
+            self.move(center - QtCore.QPoint(self.SIZE_3D // 2, self.SIZE_3D // 2))
+        view.setParent(self)
+        view.setMinimumSize(1, 1)
+        view.setGeometry(self.rect())
+        view.show()
+        self.overlay.setGeometry(self.rect())
+        self.overlay.show()
+        self.overlay.raise_()
+        self.setMask(QtGui.QRegion(self.rect().adjusted(1, 1, -1, -1), QtGui.QRegion.Ellipse))
+
+    def detach_scene(self):
+        """Devolve a vista 3D (a janela principal vai reaparecer); o orbe volta ao desenho 2D."""
+        view, self.scene_view = self.scene_view, None
+        if view is not None:
+            view.setMinimumSize(480, 360)
+        self.overlay.hide()
+        self.clearMask()
+        center = self.geometry().center()
+        self.setFixedSize(self.SIZE, self.SIZE)
+        self.move(center - QtCore.QPoint(self.SIZE // 2, self.SIZE // 2))
+        return view
 
     def place_default(self) -> None:
         screen = QtGui.QGuiApplication.primaryScreen()
         if screen is not None:
             area = screen.availableGeometry()
-            self.move(area.right() - self.SIZE - 24, area.bottom() - self.SIZE - 24)
+            size = self.width()
+            self.move(area.right() - size - 24, area.bottom() - size - 24)
 
     # ------------------------------------------------------------ interação
     def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt)
@@ -65,6 +139,10 @@ class OrbWindow(QtWidgets.QWidget):
 
     # ------------------------------------------------------------ desenho
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
+        if self.scene_view is not None:             # a cena 3D desenha; o aro vem da camada de cima
+            if self.overlay.isVisible():
+                self.overlay.update()
+            return
         scene = self.scene
         s = self.SIZE
         c = QtCore.QPointF(s / 2, s / 2)

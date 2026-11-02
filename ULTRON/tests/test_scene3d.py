@@ -177,6 +177,7 @@ class _FakeScene:
                 self.is_ready, self.failed, self.stats, self.info = True, "", {}, {}
                 self.mode, self.selected, self.rooms, self.disposed = "jarvis", "", [], False
                 self.modes = []
+                self.compact = False
 
             def set_mode(self, mode, *, animate=True):
                 self.mode = mode
@@ -184,6 +185,9 @@ class _FakeScene:
 
             def select_panel(self, key):
                 self.selected = key
+
+            def set_compact(self, on):
+                self.compact = on
 
             def push_room(self, snapshot):
                 self.rooms.append(snapshot)
@@ -277,6 +281,59 @@ class ControllerSceneTest(unittest.TestCase):
         self.assertIsNone(room.scene3d)
         self.assertTrue(room.view.isVisibleTo(room))
         self.assertEqual(scene.modes[-2:], ["tardis", "jarvis"])
+
+    def test_minimized_orb_borrows_the_same_scene_and_gives_it_back(self):
+        from PySide6 import QtCore, QtTest
+        c = self.controller
+        scene = c.scene3d
+        c.collapse()
+        self.pump(lambda: c.orb.isVisible())
+        self.assertIs(c.orb.scene_view, scene, "o ORBE minimizado usa a MESMA cena (sem segundo motor)")
+        self.assertTrue(scene.compact)
+        self.assertIs(c.central(), c._placeholder)
+        self.assertEqual(c.orb.width(), c.orb.SIZE_3D)
+        self.assertFalse(c.orb.mask().isEmpty(), "janela redonda por máscara")
+        moved, menus = [], []
+        c.orb.moved.connect(moved.append)
+        c.orb.menu_requested.disconnect()                     # o menu real é modal; aqui só conta o pedido
+        c.orb.menu_requested.connect(menus.append)
+        start = c.orb.pos()
+        QtTest.QTest.mousePress(c.orb.overlay, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, QtCore.QPoint(50, 50))
+        QtTest.QTest.mouseMove(c.orb.overlay, QtCore.QPoint(80, 75))
+        QtTest.QTest.mouseRelease(c.orb.overlay, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, QtCore.QPoint(80, 75))
+        self.pump(lambda: moved)
+        self.assertNotEqual(c.orb.pos(), start, "arrastar move o orbe")
+        self.assertEqual(tuple(int(v) for v in c.core.settings().orb_position), (c.orb.pos().x(), c.orb.pos().y()),
+                         "a posição fica guardada")
+        QtTest.QTest.mouseClick(c.orb.overlay, QtCore.Qt.RightButton, QtCore.Qt.NoModifier, QtCore.QPoint(50, 50))
+        self.assertEqual(len(menus), 1, "botão direito pede o menu")
+        QtTest.QTest.mouseDClick(c.orb.overlay, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, QtCore.QPoint(50, 50))
+        self.pump(lambda: c.window.isVisible())
+        self.assertIs(c.central(), scene, "duplo clique devolve a cena à página JARVIS")
+        self.assertFalse(scene.compact)
+        self.assertIsNone(c.orb.scene_view)
+        self.assertEqual(c.orb.width(), c.orb.SIZE)
+        c.open_tardis()
+        self.pump(lambda: c.tardis_page.room.scene3d is scene)
+        c.collapse()
+        self.assertIs(c.orb.scene_view, scene)
+        c.expand()
+        self.assertIs(c.tardis_page.room.scene3d, scene, "volta para onde estava (sala da TARDIS)")
+
+    def test_minimized_orb_falls_back_to_2d_when_the_scene_is_not_ready_or_fails(self):
+        c = self.controller
+        scene = c.scene3d
+        scene.is_ready = False
+        c.collapse()
+        self.assertIsNone(c.orb.scene_view, "cena não pronta: orbe 2D de sempre")
+        c.expand()
+        scene.is_ready = True
+        c.collapse()
+        self.assertIs(c.orb.scene_view, scene)
+        scene.unavailable.emit("contexto perdido (teste)")
+        self.pump(lambda: c.scene3d is None)
+        self.assertIsNone(c.orb.scene_view, "a cena caiu: o orbe volta ao desenho 2D na hora")
+        self.assertEqual(c.orb.width(), c.orb.SIZE)
 
     def test_page_request_opens_the_tardis_through_the_normal_path(self):
         c = self.controller
