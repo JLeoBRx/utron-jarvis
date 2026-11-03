@@ -242,6 +242,7 @@ class HudController(QtCore.QObject):
 
     def _page_changed(self, key: str) -> None:
         """Uma só cena 3D: no JARVIS ela é o convés; na TARDIS, a sala de controle (passa pela porta)."""
+        self._tardis_sounds(key)
         view = self.scene3d
         if view is None:
             return
@@ -260,6 +261,19 @@ class HudController(QtCore.QObject):
             face = getattr(self.core.settings(), "avatar_mode", "face") == "face"
             page.set_central(view if face else self.view)
             view.set_mode("jarvis", animate=animate)
+
+    def _tardis_sounds(self, key: str) -> None:
+        """Portas ao entrar e sair da sala; ambiente da sala só com a página TARDIS à frente."""
+        audio = getattr(self.core, "neural_audio", None)
+        if audio is None or not hasattr(audio, "door"):
+            return
+        inside = key == "tardis"
+        was_inside = getattr(self, "_in_tardis", False)
+        self._in_tardis = inside
+        if inside != was_inside:
+            audio.door(True)
+            QtCore.QTimer.singleShot(1100, lambda: audio.door(False))
+        audio.set_room(inside)
 
     def _make_avatar_2d(self, backend: str):
         """Rosto holográfico 2D: GPU (OpenGL) quando pedido e disponível; senão CPU — e diz por quê."""

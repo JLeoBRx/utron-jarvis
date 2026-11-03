@@ -165,6 +165,8 @@ class Settings:
     hud_auto_expand: bool = True
     sound_effects: bool = True
     sfx_volume: float = 0.35
+    tardis_sfx: bool = True                   # sons da TARDIS (originais; arquivos autorizados do usuário substituem)
+    tardis_sfx_volume: float = 0.6
     start_page: str = "jarvis"                # página aberta ao iniciar
     avatar_mode: str = "face"                 # face (rosto holográfico) | neural (núcleo neural)
     captions: bool = True                     # legendas sincronizadas com a fala
@@ -205,7 +207,7 @@ class Settings:
         "filesystem_interval": (2.0, 3600.0), "network_interval": (5.0, 3600.0),
         "discovery_interval": (60.0, 86400.0), "discovery_max_hosts": (1, 1024),
         "authorization_timeout": (5.0, 300.0), "dream_idle_minutes": (1.0, 1440.0),
-        "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
+        "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "tardis_sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
         "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
         "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
         "audio_output_index": (-1, 64), "activity_keep": (100, 100000),

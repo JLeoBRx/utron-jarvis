@@ -445,3 +445,11 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * `tests/test_voice_prosody.py` (10): normalização, planejamento, perfis, estilo por persona e síntese REAL pelo
   Piper — pausas, alinhamento da boca e inteligibilidade do ULTRON reconhecida pelo Vosk.
 
+## Aprimoramento 3 — Sons da TARDIS (originais, substituíveis por arquivos autorizados)
+* `ultron/audio/tardis_sfx.py`: materialização, desmaterialização, portas, rotor, alerta e ambiente sintetizados
+  (determinísticos, ~0,1 s para gerar todos); WAV do usuário em `sons_tardis` substitui o original (qualquer taxa,
+  mono/estéreo); arquivo ilegível volta ao original com aviso. Nenhum áudio protegido incluído.
+* `NeuralAudio`: gatilhos por eventos reais (tarefa da TARDIS começou/terminou/falhou, modo do rotor), portas ao
+  entrar/sair da sala, ambiente da sala como leito; `tardis_sfx`, `tardis_sfx_volume`.
+* `tests/test_tardis_sfx.py` (5).
+

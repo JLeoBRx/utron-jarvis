@@ -461,6 +461,17 @@ comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
   (modelo local ou nuvem, com o nome), hipótese ou indisponível — e avisa trocas de provedor ("a nuvem falhou;
   respondido pelo modelo local").
 
+### Sons da TARDIS
+
+Efeitos **originais** (sintetizados pelo próprio JARVIS — o áudio da série é protegido e não é distribuído):
+partida da nave quando uma tarefa da TARDIS começa, chegada quando ela termina com resultado, rotor ganhando energia,
+alerta quando uma tarefa falha, portas ao entrar e sair da sala e o ambiente da sala (só com a página TARDIS à frente
+e "Som ambiente" ligado). CONFIGURAÇÕES > APARÊNCIA: **Sons da TARDIS** (liga/desliga) e **volume próprio**; o
+liga/desliga geral dos efeitos também vale. Para usar um arquivo com licença, coloque o `.wav` na pasta
+`sons_tardis` dos dados do JARVIS (`%LOCALAPPDATA%\ULTRON\sons_tardis`) com um destes nomes: `materializacao`,
+`desmaterializacao`, `porta_abrir`, `porta_fechar`, `rotor`, `alerta`, `ambiente` — ele substitui o efeito original
+ao reiniciar (a tela mostra a origem de cada som).
+
 ### Voz do JARVIS (e do ULTRON)
 
 * **Prosódia** (`ultron/voice/prosody.py`): o texto vira fala em português (abreviações, horas, moedas, por cento,

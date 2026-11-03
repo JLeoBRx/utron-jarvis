@@ -683,7 +683,13 @@ class SettingsPage(QtWidgets.QWidget):
         self.combo(form, "render_backend", "Desenho da vista 2D", [("cpu", "CPU (funciona em qualquer máquina)"),
                                                                    ("gpu", "GPU — OpenGL (volta para CPU se falhar)")])
         self.number(form, "hud_fps", "Quadros por segundo (máximo)", 15, 144, step=5)
-        self.check(form, "ambient_sound", "Som ambiente discreto do TARDIS")
+        self.check(form, "ambient_sound", "Som ambiente discreto da TARDIS (só com a página TARDIS à frente)")
+        self.check(form, "tardis_sfx", "Sons da TARDIS: partida e chegada das tarefas, rotor, portas, alertas")
+        self.number(form, "tardis_sfx_volume", "Volume dos sons da TARDIS", 0.0, 1.0, step=0.05, decimals=2)
+        self.sfx_origin = _label("", "PanelDim")
+        self.sfx_origin.setWordWrap(True)
+        self._refreshers.append(self._refresh_sfx_origin)
+        form.addRow("Origem dos sons", self.sfx_origin)
         self._build_ultron(form)
 
     def _build_operator_policy(self, form) -> None:
@@ -733,6 +739,18 @@ class SettingsPage(QtWidgets.QWidget):
         history = _label("", "PanelDim")
         self._refreshers.append(lambda: history.setText(ultron_history_text(self.ultron_history())))
         form.addRow("Ocorrências", history)
+
+    def _refresh_sfx_origin(self) -> None:
+        from ..config import paths
+        audio = getattr(self.core, "neural_audio", None)
+        origin = getattr(audio, "tardis_origin", {}) or {}
+        custom = sorted(f"{k} ({v})" for k, v in origin.items() if v != "original")
+        folder = paths.data_file("sons_tardis")
+        self.sfx_origin.setText(("Arquivos seus em uso: " + ", ".join(custom) + ". ") if custom else
+                                "Efeitos originais do JARVIS (sintetizados). ")
+        self.sfx_origin.setToolTip(f"Para usar um som com licença, coloque o .wav em {folder} "
+                                   "(materializacao, desmaterializacao, porta_abrir, porta_fechar, rotor, alerta, "
+                                   "ambiente) e reinicie o JARVIS.")
 
     # ------------------------------------------------------------ HISTÓRICO E REGISTROS
     def _build_records(self, form) -> None:

@@ -118,6 +118,13 @@ def pulse_low() -> np.ndarray:
     return _norm(a + 0.8 * b, 0.75)
 
 
+def _fade_out(x: np.ndarray, seconds: float = 0.8) -> np.ndarray:
+    n = min(len(x), int(RATE * seconds))
+    x = x.copy()
+    x[-n:] *= np.linspace(1, 0, n, dtype=np.float32) ** 2
+    return x
+
+
 def double_pulse() -> np.ndarray:
     first = neural_pulse(88.0)
     gap = np.zeros(int(RATE * 0.12), dtype=np.float32)
@@ -129,6 +136,14 @@ CUES: dict[str, Callable[[], np.ndarray]] = {
     "surge": energy_surge, "pulse_low": pulse_low, "double_pulse": double_pulse,
     "click0": lambda: data_click(0), "click1": lambda: data_click(1), "click2": lambda: data_click(2),
 }
+
+# TARDIS (sons originais em ``tardis_sfx``): evento → (som, ganho, intervalo mínimo)
+TARDIS_CUES: dict[EventType, tuple[str, float, float]] = {
+    EventType.TARDIS_TASK_STARTED: ("desmaterializacao_curta", 0.55, 12.0),   # a nave "parte" atrás da resposta
+    EventType.TARDIS_TASK_FINISHED: ("materializacao", 0.6, 20.0),           # e "chega" com o resultado
+    EventType.TARDIS_TASK_FAILED: ("alerta", 0.7, 5.0),
+}
+ROTOR_MODES = frozenset({"processando", "operacao", "jarvis"})
 
 # evento → (som, ganho, intervalo mínimo entre repetições em segundos)
 EVENT_CUES: dict[EventType, tuple[str, float, float]] = {
@@ -168,12 +183,22 @@ class NeuralAudio:
         self.played = 0
         self.reason = ""
         self.ambient = False
+        self.room = False                      # página TARDIS à frente (ambiente da sala, se ligado)
+        self.tardis_origin: dict[str, str] = {}
+        self._hum: np.ndarray | None = None
+        self._rotor_mode = "repouso"
 
     # ------------------------------------------------------------ ciclo de vida
     def start(self) -> None:
         started = time.perf_counter()
         self._sounds = {name: build() for name, build in CUES.items()}
+        from ..config import paths
+        from . import tardis_sfx
+        tardis, self.tardis_origin = tardis_sfx.load(paths.data_file("sons_tardis"))
+        self._sounds.update(tardis)
+        self._sounds["desmaterializacao_curta"] = _fade_out(tardis["desmaterializacao"][: int(RATE * 2.6)])
         hum = low_hum()
+        self._hum = hum
         log.debug("sons neurais sintetizados em %.0f ms", (time.perf_counter() - started) * 1000)
         if self.output is None or not getattr(self.output, "mixes_effects", False):
             backend = getattr(self.output, "backend", "none")
@@ -181,6 +206,8 @@ class NeuralAudio:
         else:
             self.output.set_bed(hum)
         self._subs = [self._bus.subscribe(list(EVENT_CUES), self._on_event, name="neural_audio.cues"),
+                      self._bus.subscribe(list(TARDIS_CUES) + [EventType.TARDIS_STATE], self._on_tardis,
+                                          name="neural_audio.tardis"),
                       self._bus.subscribe(EventType.STATE_CHANGED, self._on_state, name="neural_audio.bed")]
 
     def stop(self) -> None:
@@ -232,6 +259,41 @@ class NeuralAudio:
             return                                            # fim de fase: silêncio
         name, gain, gap = cue
         self.play(name, gain, min_gap=gap)
+
+    # ------------------------------------------------------------ TARDIS
+    def _tardis_enabled(self) -> bool:
+        return self._enabled() and bool(getattr(self._settings(), "tardis_sfx", True))
+
+    def tardis(self, name: str, gain: float = 1.0, *, min_gap: float = 0.0) -> bool:
+        """Toca um som da TARDIS no volume próprio (``tardis_sfx_volume``)."""
+        if not self._tardis_enabled():
+            return False
+        volume = float(getattr(self._settings(), "tardis_sfx_volume", 0.6))
+        return self.play(name, gain * volume / max(0.05, float(getattr(self._settings(), "sfx_volume", 0.35))),
+                         min_gap=min_gap)
+
+    def _on_tardis(self, event) -> None:
+        if event.type == EventType.TARDIS_STATE:
+            mode = str(event.get("mode") or "")
+            previous, self._rotor_mode = self._rotor_mode, mode
+            if mode in ROTOR_MODES and previous not in ROTOR_MODES:
+                self.tardis("rotor", 0.7, min_gap=10.0)              # o rotor ganhando energia de verdade
+            return
+        cue = TARDIS_CUES.get(event.type)
+        if cue is not None:
+            self.tardis(cue[0], cue[1], min_gap=cue[2])
+
+    def door(self, opening: bool = True) -> bool:
+        return self.tardis("porta_abrir" if opening else "porta_fechar", 0.8, min_gap=0.4)
+
+    def set_room(self, on: bool) -> None:
+        """Ambiente da sala da TARDIS como leito (só com a página TARDIS à frente e ``ambient_sound`` ligado)."""
+        self.room = bool(on)
+        if self.output is not None and hasattr(self.output, "set_bed") and not self.reason:
+            room = self._sounds.get("ambiente")
+            use_room = self.room and room is not None and self._tardis_enabled()
+            self.output.set_bed(room if use_room else self._hum)
+        self.set_ambient(self.room and bool(getattr(self._settings(), "ambient_sound", False)))
 
     def _on_state(self, event) -> None:
         if "runtime_state" not in (event.get("changed") or ()) or self._state is None:
