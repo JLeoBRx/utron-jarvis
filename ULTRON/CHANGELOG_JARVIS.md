@@ -453,3 +453,16 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
   entrar/sair da sala, ambiente da sala como leito; `tardis_sfx`, `tardis_sfx_volume`.
 * `tests/test_tardis_sfx.py` (5).
 
+## Aprimoramento 4/5 — Holograma humanoide e a TARDIS habitada
+* `materials.js`: `holoSolidMaterial` (superfície sólida holográfica com luz principal, preenchimento, brilho especular,
+  borda e trama de tecido; escreve profundidade) e `hairMaterial` (fios com balanço no shader).
+* `avatar_dress.js` (novo): jaqueta (gola, zíper, recortes, punhos, caimento lateral), calça, calçados, cabelo
+  masculino (~2 400 fios + massa sólida) e sobrancelhas em ossos próprios — tudo no MESMO esqueleto do corpo.
+* `avatar.js`: pele sólida (as linhas ficam por cima, só onde visíveis), expressões (sobrancelhas, apertar os olhos),
+  íris que seguem o olhar, olhar para o usuário (câmera) ao ouvir/falar, boca que abre de verdade; no ULTRON roupas
+  grafite metálicas.
+* TARDIS: o MESMO holograma é levado para dentro da sala (junto ao console), olha o painel real em uso e opera o
+  console enquanto o motor trabalha; mobiliário integrado; giroscópio no rotor; pintura com desgaste na cabine.
+* Verificado no Chromium (Playwright) e no QtWebEngine real (Xvfb): 0 erros de JavaScript, sala e holograma
+  desenhados; o desempenho no computador do usuário (GPU real) ainda não foi medido.
+

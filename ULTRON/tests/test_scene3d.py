@@ -137,6 +137,26 @@ class WebFilesTest(unittest.TestCase):
         self.assertIn("DEMONSTRAÇÃO fora do JARVIS", main)
         self.assertIn("não são dados reais", main)
 
+    def test_humanoid_android_and_tardis_presence(self):
+        """Holograma humanoide (pele sólida, roupas, cabelo, sobrancelhas, olhar para o usuário) e o MESMO holograma
+        dentro da TARDIS, junto ao console, olhando o painel real em uso."""
+        avatar = (WEB / "js" / "avatar.js").read_text(encoding="utf-8")
+        dress = (WEB / "js" / "avatar_dress.js").read_text(encoding="utf-8")
+        room = (WEB / "js" / "room.js").read_text(encoding="utf-8")
+        main = (WEB / "js" / "main.js").read_text(encoding="utf-8")
+        for name in ("buildClothes", "buildHair", "buildBrows", "dressUltron"):
+            self.assertIn(f"export function {name}", dress)
+            self.assertIn(name, avatar)
+        self.assertIn("holoSolidMaterial", avatar, "pele sólida (não só linhas)")
+        self.assertIn("avatar.camera = camera", main, "olha para o usuário")
+        self.assertIn("export const JARVIS_SPOT", room)
+        self.assertIn("focusPoint(", room)
+        self.assertIn("function placeAvatar(inRoom)", main)
+        self.assertIn("room.group.add(avatar.group)", main, "o mesmo objeto, não uma cópia")
+        self.assertEqual(main.count("new Avatar("), 1, "um só holograma")
+        self.assertIn("_buildFurniture", room)
+        self.assertIn("_buildGyro", room)
+
     def test_page_requests_are_whitelisted_in_python(self):
         view = (ROOT / "ultron" / "hud" / "scene3d" / "view.py").read_text(encoding="utf-8")
         self.assertIn('REQUESTS = frozenset({"tardis", "jarvis", "mic", "restore"})', view)

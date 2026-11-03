@@ -1,8 +1,9 @@
-// Protocolo ULTRON na cena: transição cinematográfica de identidade — SÓ APARÊNCIA.
+// Protocolo ULTRON na cena: transição cinematográfica de identidade (a parte visual; voz, tom e o perfil
+// ULTRON_OPERATOR ficam no núcleo, em Python).
 //
 // Entra em ~2,5 s (interferência, cores migrando para vermelho/vinho/metal, postura do holograma mais dura,
 // olhos vermelhos, ORBE vermelho, TARDIS e convés em alerta) e sai em ~1,2 s. As mensagens são de um
-// personagem fictício e vêm junto do rótulo "evento visual — nenhuma ação real no sistema"; o botão
+// personagem e vêm junto do rótulo honesto enviado pelo Python (identidade apenas, ou operador ativo); o botão
 // RESTAURAR JARVIS (e Esc) pede ao Python o fim do evento. Nada aqui fala com o sistema operacional.
 import * as THREE from 'three';
 

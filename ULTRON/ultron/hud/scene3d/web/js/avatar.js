@@ -10,7 +10,8 @@
 import * as THREE from 'three';
 import { ULTRON_RED, ULTRON_GLOW } from './ultron.js';
 import { holoUniforms, holoLineMaterial, holoPointsMaterial, holoShellMaterial, holoCircuitMaterial, glowMaterial, glowTexture,
-         disposer, canvasTexture, PALETTE } from './materials.js';
+         disposer, canvasTexture, PALETTE, holoSolidMaterial } from './materials.js';
+import { buildClothes, buildHair, buildBrows, dressUltron } from './avatar_dress.js';
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -253,6 +254,7 @@ function buildSkeleton(rig) {
   for (const [side, s] of [['L', 1], ['R', -1]]) {
     const ex = Math.sin(EYE_THETA) * 0.71 * HEAD_SCALE * s, ez = Math.cos(EYE_THETA) * 0.71 * HEAD_SCALE;
     B('eye' + side, 'head', [ex, Y_EYE * HEAD_SCALE, ez]);
+    B('brow' + side, 'head', [ex * 1.05, (Y_BROW + 0.04) * HEAD_SCALE, ez * 1.04]);   // expressões
     B('clav' + side, 'chest', [0.03 * s, 0.19, -0.005]);
     B('arm' + side, 'clav' + side, [0.155 * s, 0.015, -0.01], [0, 0, 0.13 * s]);
     B('fore' + side, 'arm' + side, [0, -0.30, 0], [-0.12, 0, 0]);
@@ -717,7 +719,21 @@ export class Avatar {
     buildLimbs(geo, this.rig, info);
     const body = geo.build(this.u);
     this.counts = body.counts;
-    this.root.add(body.shell, body.lines, body.points, buildCircuits(this.rig, this.u), ...buildSkeletonLines(this.rig, this.u));
+    // pele SÓLIDA de androide (escreve profundidade: o que está atrás do corpo não aparece através dele); as linhas
+    // topológicas ficam por cima, mais discretas, só onde a superfície é visível
+    this.skinMat = holoSolidMaterial(this.u, { base: 0x9fd6ea, tint: 0.3, opacity: 0.95, gloss: 0.45, rimPower: 3.0,
+                                               rim: 0.55, glow: 0.03 });
+    this.skinMat.polygonOffset = true; this.skinMat.polygonOffsetFactor = 1; this.skinMat.polygonOffsetUnits = 2;
+    body.shell.material = this.skinMat;
+    body.lines.material.uniforms.uOpacity.value = 0.2;
+    body.points.material.uniforms.uOpacity.value = 0.3;
+    const tools = { BodyGeometry, torsoPoint, headRadius, HEAD_SCALE };
+    this.dress = buildClothes(this.rig, this.u, tools);
+    this.hair = buildHair(this.rig, this.u, tools);
+    this.brows = buildBrows(this.rig, this.u, tools);
+    this.counts.hair = this.hair.count;
+    this.root.add(body.shell, body.lines, body.points, buildCircuits(this.rig, this.u), ...buildSkeletonLines(this.rig, this.u),
+                  ...this.dress.objects, this.hair.cap, this.hair.strands, this.brows);
     this.projector = new Projector(this.group, particleScale);
     this.root.position.y = 0.14;
     this.state = 'inicializando';
@@ -751,6 +767,7 @@ export class Avatar {
     this.irisMat = disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true,
                                                               opacity: 0.9, blending: THREE.AdditiveBlending,
                                                               depthWrite: false }));
+    this.irises = [];
     for (const side of ['L', 'R']) {
       const bone = this.rig.map['eye' + side];
       const eye = new THREE.Mesh(eyeGeo, this.eyeMat);
@@ -759,7 +776,16 @@ export class Avatar {
       const iris = new THREE.Sprite(this.irisMat);
       iris.scale.setScalar(0.011); iris.position.z = 0.006;
       bone.add(eye, iris);
+      this.irises.push(iris);
     }
+    // boca: abertura escura que aparece com a mandíbula (a fala real abre a boca de verdade)
+    const mouthShape = new THREE.Shape();
+    mouthShape.absellipse(0, 0, 0.019, 0.006, 0, Math.PI * 2, false, 0);
+    this.mouthHole = new THREE.Mesh(disposer.track(new THREE.ShapeGeometry(mouthShape, 20)),
+      disposer.track(new THREE.MeshBasicMaterial({ color: 0x02070d, transparent: true, opacity: 0, depthWrite: false })));
+    this.mouthHole.position.set(0, -0.0045, 0.0035);
+    this.mouthHole.renderOrder = 6;
+    this.rig.map.mouth.add(this.mouthHole);
     const yGem = 0.42;
     const gem = new THREE.Mesh(disposer.track(new THREE.OctahedronGeometry(0.0065, 0)), glowMaterial(PALETTE.glow, 0.95));
     gem.scale.set(0.8, 1.25, 0.45);
@@ -851,8 +877,28 @@ export class Avatar {
     const lk = 1 - Math.exp(-dt * 2.2);
     this.look.x += (this.lookTarget.x * p.look - this.look.x) * lk;
     this.look.y += (this.lookTarget.y * p.look - this.look.y) * lk;
-    let yaw = this.look.x - 0.55 * p.tardis - 0.18 * p.think;
+    let yaw = this.look.x - 0.55 * p.tardis * (this.inRoom ? 0 : 1) - 0.18 * p.think;
     let pitch = this.look.y + 0.13 * p.think + 0.05 * p.slump - 0.03 * p.attend;
+    // na TARDIS: olha o painel real em uso (ou o escolhido, ou o rotor) — a inteligência que opera a nave
+    if (this.inRoom && this.focus) {
+      this.root.updateMatrixWorld();
+      _v.copy(this.focus); this.root.worldToLocal(_v); _v.sub(_h.set(0, 1.68, 0));
+      const w = clamp(0.55 + 0.45 * Math.max(p.tardis, p.work, this.operating ? 1 : 0), 0, 1) * (1 - 0.7 * p.talk);
+      yaw = lerp(yaw, clamp(Math.atan2(_v.x, _v.z), -0.9, 0.9), w);
+      pitch = lerp(pitch, clamp(-Math.atan2(_v.y, Math.hypot(_v.x, _v.z)), -0.2, 0.55), w);
+    }
+    // olhar para o usuário (a câmera é o ponto de vista dele) ao ouvir, falar e pedir confirmação
+    const meet = clamp(p.attend + 0.8 * p.talk, 0, 1) * (1 - p.tardis) * (1 - 0.6 * p.think);
+    if (this.camera && meet > 0.01) {
+      this.root.updateMatrixWorld();
+      _v.copy(this.camera.position);
+      this.root.worldToLocal(_v);
+      _v.sub(_h.set(0, 1.68, 0));
+      const toYaw = clamp(Math.atan2(_v.x, _v.z), -0.6, 0.6);
+      const toPitch = clamp(-Math.atan2(_v.y, Math.hypot(_v.x, _v.z)), -0.35, 0.3);
+      yaw = lerp(yaw, toYaw, meet * 0.85);
+      pitch = lerp(pitch, toPitch, meet * 0.7);
+    }
     let roll = 0.07 * p.attend * Math.sin(t * 0.35) + 0.05 * p.think;
     if (voice > 0) {                                         // acenos ligados à energia real da fala
       pitch += (voice - 0.35) * 0.06 * p.talk;
@@ -862,6 +908,8 @@ export class Avatar {
     R.rot('head', pitch, yaw, roll);
     const jaw = clamp(this.mouth.open || 0, 0, 1);
     R.rot('jaw', jaw * 0.32, 0, 0);
+    this.mouthHole.material.opacity = smooth(0.04, 0.25, jaw) * 0.92;
+    this.mouthHole.scale.set(0.75 + 0.35 * (this.mouth.wide || 0) - 0.25 * (this.mouth.round || 0), 0.3 + 2.4 * jaw, 1);
     const wide = 1 + 0.28 * (this.mouth.wide || 0) - 0.22 * (this.mouth.round || 0);
     R.map.mouth.scale.set(wide, 1 + 0.4 * jaw, 1);
 
@@ -869,8 +917,17 @@ export class Avatar {
     if (time > this.blinkAt) { this.blink = 1; this.blinkAt = time + 2.4 + Math.random() * 4.2; }
     this.blink = Math.max(0, this.blink - dt * 7);
     const lid = Math.max(0.06, 1 - Math.sin(Math.min(1, this.blink) * Math.PI) * 0.94);
-    const eyes = this.state === 'privacidade' ? 0.06 : lid;
+    const squint = 0.18 * p.think + 0.3 * uk + 0.1 * p.work;              // foco: olhos um pouco mais fechados
+    const eyes = this.state === 'privacidade' ? 0.06 : lid * (1 - squint);
     for (const s of ['L', 'R']) R.map['eye' + s].scale.set(1, eyes, 1);
+    for (const iris of this.irises) iris.position.set(clamp(yaw * 0.006, -0.004, 0.004), clamp(-pitch * 0.004, -0.002, 0.002), 0.006);
+    // sobrancelhas: erguem na atenção e na pergunta; baixam e aproximam no foco e no ULTRON
+    const raise = 0.0035 * p.attend + 0.005 * p.ask + 0.002 * voice * p.talk - 0.003 * p.think - 0.0045 * uk - 0.002 * p.slump;
+    for (const s of ['L', 'R']) {
+      const brow = R.map['brow' + s], side = s === 'L' ? 1 : -1;
+      brow.position.copy(brow.userData.bindP).add(_h.set(-side * 0.0012 * (p.think + uk), raise, 0));
+      brow.quaternion.copy(brow.userData.bindQ).multiply(_q2.setFromEuler(_e2.set(0, 0, side * (0.12 * (p.think + uk) - 0.06 * p.ask))));
+    }
 
     // ---------- braços: repouso, gesto na fala, trabalho na execução, palmas na confirmação, pensamento
     const g = this.gesture;
@@ -888,10 +945,12 @@ export class Avatar {
       const gest = g[s];
       const sway = Math.sin(t * 0.7 + (side > 0 ? 0 : 1.7)) * 0.02 * p.sway;
       const thinkHand = s === 'R' ? p.think : 0;
-      const fwd = -(0.55 * p.work + 0.42 * gest + 0.28 * p.ask + 0.62 * thinkHand) + sway;
+      this._op = lerp(this._op || 0, this.inRoom && this.operating ? 1 : 0, 1 - Math.exp(-dt * 1.5));
+      const operate = this._op * (s === 'R' ? 1 : 0.6) * (0.75 + 0.25 * Math.sin(t * 0.8 + (s === 'R' ? 0 : 2)));
+      const fwd = -(0.55 * p.work + 0.42 * gest + 0.28 * p.ask + 0.62 * thinkHand + 0.5 * operate) + sway;
       const abd = side * (0.06 * p.ask + 0.04 * gest - 0.05 * p.work - 0.12 * thinkHand);
       R.rot('arm' + s, fwd, side * (0.2 * thinkHand), abd);
-      const elbow = 0.02 + 0.95 * p.work + 0.9 * gest + 0.35 * p.ask + 1.65 * thinkHand + 0.04 * breath;
+      const elbow = 0.02 + 0.95 * p.work + 0.9 * gest + 0.35 * p.ask + 1.65 * thinkHand + 0.04 * breath + 0.6 * operate;
       R.rot('fore' + s, -elbow, side * (0.5 * gest + 0.6 * p.work), 0);
       const typing = p.work * Math.sin(t * 9 + (side > 0 ? 0 : 1.3)) * 0.12;
       R.rot('hand' + s, -0.1 * gest + typing - 0.2 * thinkHand, side * 0.6 * p.ask, side * (0.15 * gest));
@@ -920,6 +979,9 @@ export class Avatar {
     this.gem.halo.material.opacity = (0.35 + 0.3 * p.pulse + 0.4 * voice) * lit;
     this.gem.halo.scale.setScalar(0.034 + 0.02 * voice + 0.006 * Math.sin(t * 2.0));
 
+    // ---------- roupas e cabelo: ULTRON deixa tudo grafite e metálico; o cabelo balança com o movimento
+    if (uk !== this._dressK) { dressUltron(this.dress, this.hair, uk); this._dressK = uk; }
+    this.hair.material.uniforms.uSway.value = 0.6 + 0.8 * voice + 0.6 * p.sway + 0.5 * p.work;
     // ---------- luz e energia
     const u = this.u;
     u.uTime.value = time;
@@ -945,3 +1007,4 @@ export class Avatar {
   }
 }
 const _white = new THREE.Color(0xffffff);
+const _v = new THREE.Vector3(), _h = new THREE.Vector3(), _q2 = new THREE.Quaternion(), _e2 = new THREE.Euler();

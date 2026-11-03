@@ -180,6 +180,90 @@ export function holoShellMaterial(u, { opacity = 0.32, skinned = false, power = 
   }));
 }
 
+/**
+ * Superfície SÓLIDA holográfica com luz: pele de androide e roupas. Escreve profundidade (o que está atrás do corpo
+ * não aparece através dele), luz principal de cima/frente + preenchimento, borda (Fresnel) na cor do estado, uma
+ * trama fina opcional (tecido) e linhas de varredura discretas. ``base`` é a cor do material; ``tint`` quanto a cor
+ * do estado do JARVIS (ou do ULTRON) tinge o material.
+ */
+export function holoSolidMaterial(u, { opacity = 0.9, skinned = true, base = 0x9fdcf2, tint = 0.55, rimPower = 2.2,
+                                       weave = 0.0, gloss = 0.35, rim = 0.85, glow = 0.08 } = {}) {
+  const vertexShader = skinnedVertex(COMMON_VARY + /* glsl */`
+    varying vec3 vN; varying vec3 vV; varying vec3 vP;
+    void main() {
+      /*POS*/
+      vY = sp.y; vP = sp.xyz;
+      ${skinned ? 'vec3 n = mat3(skinM) * normal;' : 'vec3 n = normal;'}
+      vN = normalize(normalMatrix * n);
+      vec4 mv = modelViewMatrix * sp;
+      vV = normalize(-mv.xyz); vDepth = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`, skinned);
+  const fragmentShader = COMMON_VARY + ENERGY + /* glsl */`
+    uniform float uOpacity; uniform vec3 uBase; uniform float uTint; uniform float uRimPower; uniform float uWeave;
+    uniform float uGloss; uniform vec3 uKey; uniform float uRim; uniform float uSelfGlow;
+    varying vec3 vN; varying vec3 vV; varying vec3 vP;
+    void main() {
+      if (vY > uReveal) discard;
+      vec3 n = normalize(vN); vec3 v = normalize(vV);
+      if (dot(n, v) < 0.0) n = -n;
+      float key = max(dot(n, normalize(uKey)), 0.0);
+      float fill = 0.5 + 0.5 * n.y;
+      vec3 h = normalize(normalize(uKey) + v);
+      float spec = pow(max(dot(n, h), 0.0), 40.0) * uGloss;
+      float rim = pow(1.0 - abs(dot(n, v)), uRimPower);
+      float e = energy(vY);
+      vec3 base = mix(uBase, uColor, uTint);
+      float threads = uWeave * (0.5 + 0.5 * sin(vP.x * 900.0 + vP.y * 900.0)) * (0.5 + 0.5 * sin(vP.y * 1300.0 - vP.z * 700.0));
+      vec3 col = base * (0.10 + 0.72 * key + 0.18 * fill) * (1.0 - 0.35 * threads) + vec3(spec);
+      col += uAccent * rim * uRim * e + uColor * uSelfGlow * e;
+      float scan = 0.94 + 0.06 * sin(vY * 420.0 - uTime * 3.0);
+      float edge = smoothstep(uReveal, uReveal - 0.06, vY);
+      gl_FragColor = vec4(col * scan * (1.0 + (1.0 - edge) * 2.0), uOpacity * uFade * mix(0.82, 1.0, rim));
+    }`;
+  return disposer.track(new THREE.ShaderMaterial({
+    uniforms: { ...u, uOpacity: { value: opacity }, uBase: { value: new THREE.Color(base) }, uTint: { value: tint },
+                uRimPower: { value: rimPower }, uWeave: { value: weave }, uGloss: { value: gloss },
+                uRim: { value: rim }, uSelfGlow: { value: glow },
+                uKey: { value: new THREE.Vector3(-0.35, 0.8, 0.6) } },
+    vertexShader, fragmentShader, transparent: true, depthWrite: true, side: THREE.DoubleSide,
+  }));
+}
+
+/**
+ * Cabelo: fios (linhas) presos ao osso da cabeça. Atributos: ``strand`` (0 na raiz → 1 na ponta) e ``seed``. As
+ * pontas balançam com o tempo e com a energia (fala, movimento); a cor vai da raiz escura à ponta luminosa.
+ */
+export function hairMaterial(u, { opacity = 0.85, base = 0x2a4a62, tip = 0x9fe9ff } = {}) {
+  const vertexShader = SKIN_DECL + COMMON_VARY + /* glsl */`
+    attribute float strand; attribute float seed; attribute vec3 flow;
+    uniform float uSway; varying float vS; varying float vSeed;
+    void main() {
+      float s2 = strand * strand;
+      vec3 sway = flow * (sin(uTime * 1.3 + seed * 6.2831) * 0.0022 + sin(uTime * 2.9 + seed * 17.0) * 0.0009) * s2 * uSway;
+      vec3 pos = position + sway;
+      mat4 skinM = boneMat(skinA) * skinW + boneMat(skinB) * (1.0 - skinW);
+      vec4 sp = skinM * vec4(pos, 1.0);
+      vY = sp.y; vS = strand; vSeed = seed;
+      vec4 mv = modelViewMatrix * sp;
+      vDepth = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`;
+  const fragmentShader = COMMON_VARY + ENERGY + /* glsl */`
+    uniform float uOpacity; uniform vec3 uBase; uniform vec3 uTip; varying float vS; varying float vSeed;
+    void main() {
+      if (vY > uReveal) discard;
+      float e = energy(vY);
+      vec3 col = mix(uBase, mix(uTip, uAccent, 0.35), pow(vS, 1.6)) * (0.75 + 0.25 * fract(vSeed * 7.31));
+      gl_FragColor = vec4(col * (0.85 + 0.35 * e), uOpacity * uFade * (0.55 + 0.45 * (1.0 - vS * 0.6)));
+    }`;
+  return disposer.track(new THREE.ShaderMaterial({
+    uniforms: { ...u, uOpacity: { value: opacity }, uBase: { value: new THREE.Color(base) },
+                uTip: { value: new THREE.Color(tip) }, uSway: { value: 1.0 } },
+    vertexShader, fragmentShader, transparent: true, depthWrite: false,
+  }));
+}
+
 /** Trilhas de circuito: linhas que levam pulsos de energia ao longo do próprio traçado (atributo ``along``,
  *  distância acumulada). O fluxo acelera com os pulsos do estado (pensar, executar) e com a voz real. */
 export function holoCircuitMaterial(u, { opacity = 0.75, skinned = true } = {}) {

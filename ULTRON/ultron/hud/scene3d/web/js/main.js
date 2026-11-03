@@ -6,7 +6,7 @@ import { Engine, PROFILES } from './engine.js';
 import { Avatar } from './avatar.js';
 import { Deck } from './deck.js';
 import { PoliceBox } from './exterior.js';
-import { TardisRoom, PANEL_KEYS } from './room.js';
+import { TardisRoom, PANEL_KEYS, JARVIS_SPOT } from './room.js';
 import { Orb } from './orb.js';
 import { CameraRig, fitDistance } from './camera.js';
 import { Hud } from './hud.js';
@@ -46,17 +46,34 @@ try {
 const { deck, avatar, box, orb, room } = world;
 const scene = engine.scene, camera = engine.camera;
 camera.far = 140; camera.updateProjectionMatrix();
+avatar.camera = camera;                         // o holograma olha para o usuário (o ponto de vista da câmera)
 box.group.position.set(-2.75, 0, -2.7); box.group.rotation.y = 0.42;
 orb.group.position.set(1.95, 1.7, -0.95); orb.group.scale.setScalar(0.4);
 room.group.position.set(0, 0, -60);
 scene.add(deck.group, avatar.group, box.group, orb.group, room.group);
-const DECK = [deck.group, avatar.group, box.group, orb.group];
+const DECK = [deck.group, box.group, orb.group];
 const FOG = { jarvis: [new THREE.Color(0x020611), 0.045], tardis: [new THREE.Color(0x07070a), 0.028], nucleo: [new THREE.Color(0x01040b), 0.2],
               compacto: [new THREE.Color(0x01040b), 0.0] };
+
+/** O MESMO holograma vai junto: no convés, ao centro; na TARDIS, sobre o tablado junto ao console. */
+function placeAvatar(inRoom) {
+  if (inRoom) {
+    room.group.add(avatar.group);
+    avatar.group.position.set(JARVIS_SPOT.x, JARVIS_SPOT.y, JARVIS_SPOT.z);
+    avatar.group.rotation.y = JARVIS_SPOT.rotY;
+  } else {
+    scene.add(avatar.group);
+    avatar.group.position.set(0, 0, 0);
+    avatar.group.rotation.y = 0;
+  }
+  avatar.inRoom = inRoom;
+  avatar.group.visible = !state.compact;
+}
 
 function showInterior(on) {
   room.group.visible = on;
   for (const g of DECK) g.visible = !on;
+  placeAvatar(on);
   scene.fog.color.copy(FOG[on ? 'tardis' : 'jarvis'][0]); scene.fog.density = FOG[on ? 'tardis' : 'jarvis'][1];
   engine.renderer.setClearColor(scene.fog.color, 1);
 }
@@ -256,6 +273,7 @@ function setCompact(on) {
     state.beforeCompact = state.view;
     room.group.visible = false;
     for (const g of DECK) g.visible = g === orb.group;
+    avatar.group.visible = false;
     orb.setExpanded(false); orb.setCompact(true);
     rig.go('compacto', { instant: true });
     engine.setBloomScale(0);              // janela pequena: o brilho de tela cheia tomaria tudo
@@ -349,8 +367,14 @@ engine.add({
     engine.renderer.setClearColor(scene.fog.color, 1);
     ultron.update(dt, time);
     if (orb.group.visible) orb.update(dt, time);
-    if (deck.group.visible) {
+    if (avatar.group.visible) {
+      if (avatar.inRoom) {                         // na TARDIS: olha o painel real em uso e opera o console
+        avatar.focus = room.focusPoint(avatar.focus || new THREE.Vector3());
+        avatar.operating = room.busy;
+      } else { avatar.focus = null; avatar.operating = false; }
       avatar.update(dt, time);
+    }
+    if (deck.group.visible) {
       box.update(dt, time);
       look.color.copy(avatar.color); look.glow = avatar.p.glow; look.focus = state.view === 'nucleo';
       deck.update(dt, time, look);
@@ -412,8 +436,8 @@ function startDemo() {
   if (params.get('mode') === 'tardis') { if (params.get('panel')) selectPanel(params.get('panel')); setMode('tardis', false); }
   if (params.get('view')) go(params.get('view'), { instant: true });
   if (params.get('compact')) setCompact(true);
-  if (params.get('ultron')) ultron.set(true, { label: 'EVENTO VISUAL — nenhuma ação real no sistema',
-    messages: ['PROTOCOLO ULTRON INICIADO', 'CONTROLE VISUAL TRANSFERIDO', 'NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA'] });
+  if (params.get('ultron')) ultron.set(true, { label: 'IDENTIDADE ULTRON — demonstração, sem nenhuma ação',
+    messages: ['PROTOCOLO ULTRON INICIADO', 'NOVA IDENTIDADE DETECTADA', 'NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA'] });
   const cam = (params.get('cam') || '').split(',').map(Number);
   if (cam.length === 6 && cam.every(Number.isFinite)) {                    // enquadramento livre (capturas de tela)
     rig.userMoved = true;

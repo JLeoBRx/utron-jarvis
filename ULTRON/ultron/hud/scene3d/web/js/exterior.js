@@ -82,7 +82,27 @@ export class PoliceBox {
                                                                       emissiveMap: plaqueTex, emissiveIntensity: 0.06 }));
     this.lampMat = disposer.track(new THREE.MeshStandardMaterial({ color: 0xeaf6ff, emissive: 0xdff2ff, emissiveIntensity: 0.6,
                                                                    roughness: 0.15, transparent: true, opacity: 0.92 }));
-    const mats = { wood: P.wood, woodDark: P.woodDark, glass: this.glassMat, plaque: plaqueMat, brass: P.brass,
+    // pintura com desgaste: veios verticais, sujeira escurecendo a base, arranhões claros nas arestas — uma
+    // cabine que viajou, não um objeto de vitrine (só textura gerada aqui)
+    const worn = canvasTexture(256, 512, (g, w, h) => {
+      g.fillStyle = '#7f8aa0'; g.fillRect(0, 0, w, h);
+      for (let x = 0; x < w; x += 2) { g.fillStyle = `rgba(0,0,40,${0.03 + 0.05 * Math.abs(Math.sin(x * 0.37) * Math.sin(x * 0.11))})`; g.fillRect(x, 0, 1, h); }
+      const grime = g.createLinearGradient(0, h, 0, h * 0.55);
+      grime.addColorStop(0, 'rgba(20,16,10,0.42)'); grime.addColorStop(1, 'rgba(20,16,10,0)');
+      g.fillStyle = grime; g.fillRect(0, 0, w, h);
+      let seed = 11;
+      const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      for (let i = 0; i < 160; i++) {
+        const x = rnd() * w, y = rnd() * h, len = 2 + rnd() * 10;
+        g.strokeStyle = `rgba(210,225,255,${0.12 + rnd() * 0.18})`; g.lineWidth = 0.6 + rnd();
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * len, y + (rnd() - 0.5) * 3); g.stroke();
+      }
+      g.strokeStyle = 'rgba(200,215,240,0.25)'; g.lineWidth = 3; g.strokeRect(1, 1, w - 2, h - 2);
+    }, { repeat: [1, 1] });
+    const wornWood = P.wood.clone(); wornWood.map = worn; wornWood.roughness = 0.62;
+    const wornDark = P.woodDark.clone(); wornDark.map = worn; wornDark.roughness = 0.66;
+    disposer.track(wornWood); disposer.track(wornDark);
+    const mats = { wood: wornWood, woodDark: wornDark, glass: this.glassMat, plaque: plaqueMat, brass: P.brass,
                    sign: this.signMat, lamp: this.lampMat, black: P.black };
 
     const body = new Batch();

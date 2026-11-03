@@ -154,15 +154,23 @@ Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo
   casca translúcida e esqueleto interno. Respira, olha, pisca, gesticula com a energia real da fala e mexe a
   boca pela trilha labial do áudio real — **cada movimento vem de um estado real** (tabela abaixo; detalhes em
   `AUDITORIA_VISUAL_3D.md`);
-* vistas **FRENTE** e **LATERAL** (corpo inteiro), rosto androide (olhos, íris, nariz, boca, mandíbula, joia
-  na testa), placas anatômicas, linhas que seguem a anatomia e circuitos com pulsos;
+* vistas **FRENTE** e **LATERAL** (corpo inteiro). O holograma é um **androide humanoide sólido** (pele
+  holográfica com luz, não um esqueleto de linhas): rosto com olhos e íris que acompanham o olhar, sobrancelhas
+  que erguem na atenção e baixam no foco, boca que abre com a voz real, joia na testa; **cabelo** com volume e
+  fios que balançam; **jaqueta** (gola alta, zíper, recortes, punhos), **calça** e **calçados**; linhas
+  topológicas e circuitos por cima. Ao ouvir e falar, ele **olha para você** (a câmera). No ULTRON, roupas
+  grafite metálicas, olhos vermelhos, sobrancelhas baixas e punhos cerrados;
 * o **ORBE** (núcleo de inteligência) flutua ao lado: rede neural de três camadas com pulsos, filamentos,
   anéis orbitais e partículas que entram (escuta) ou saem (fala) do núcleo. Botão **NÚCLEO** amplia com
   órbita/zoom; sem sinal do JARVIS ele apaga e diz "SEM CONEXÃO";
 * a **cabine azul** da TARDIS no convés (portas, janelas, letreiro iluminado, lâmpada que pulsa com o modo
   real do motor). **ENTRAR NA TARDIS** (ou clique na cabine) passa pela porta para a sala de controle;
-* na página **TARDIS**, a mesma cena mostra a sala por dentro: rotor do tempo, console de seis painéis com
-  botões, alavancas, mostradores, luzes e uma tela por painel — tudo ligado às tarefas REAIS do motor;
+* na página **TARDIS**, a mesma cena mostra a sala por dentro: rotor do tempo (com giroscópio interno que gira
+  no ritmo real do motor), console de seis painéis com botões, alavancas, mostradores, luzes e uma tela por
+  painel — tudo ligado às tarefas REAIS do motor — e mobiliário integrado (bancos de couro, estante embutida,
+  bancada com monitores, cabideiro, feixes de cabos). **O mesmo holograma do JARVIS entra na sala**: fica sobre
+  o tablado, junto ao console, olha o painel escolhido ou o que está trabalhando de verdade e opera o console
+  enquanto o motor trabalha;
   escolher uma aba à direita (ou clicar no painel 3D) leva a câmera ao painel.
 
 Mouse: arrastar gira, rolar aproxima, duplo clique volta ao enquadramento; clique na cabeça do holograma

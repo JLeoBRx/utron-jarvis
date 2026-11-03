@@ -21,7 +21,13 @@ const R_MID = (R_IN + R_OUT) / 2, Y_MID = (Y_IN + Y_OUT) / 2, L = (R_OUT - R_IN)
 const TAN30 = Math.tan(Math.PI / 6);
 const ROTOR_Y0 = Y_IN + 0.04, ROTOR_H = 2.3;
 export const panelAngle = (i) => -i * Math.PI / 3;                 // ANÁLISE de frente (+z), depois em sentido horário
+// onde o holograma do JARVIS fica dentro da sala: sobre o tablado, à direita do console no enquadramento padrão,
+// virado para os painéis (3/4 para quem olha) — a inteligência que opera a nave
+const SPOT_A = 0.78, SPOT_R = 2.25;
+export const JARVIS_SPOT = { x: Math.sin(SPOT_A) * SPOT_R, y: DAIS_H, z: Math.cos(SPOT_A) * SPOT_R,
+                             rotY: SPOT_A + Math.PI - 0.95 };
 
+const lerp = (a, b, t) => a + (b - a) * t;
 const AMBER = new THREE.Color(0xffb347), RED = new THREE.Color(0xff4d5e), DIMC = new THREE.Color(0x1a2a3c);
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(),
       _s = new THREE.Vector3(1, 1, 1), _c = new THREE.Color();
@@ -74,6 +80,8 @@ export class TardisRoom {
     this._buildScreens();
     this._buildLink(particleScale);
     this._buildDoors(P);
+    this._buildFurniture(P);
+    this._buildGyro(P);
     // luzes: rotor (cor do modo), luz de serviço sobre o console, ambiente quente e fria
     this.rotorLight = new THREE.PointLight(0xffb347, 6, 9, 1.6);
     this.rotorLight.position.set(0, ROTOR_Y0 + 1.0, 0);
@@ -547,6 +555,143 @@ export class TardisRoom {
     return { pos: this.group.localToWorld(pos), target: this.group.localToWorld(target) };
   }
 
+  // ------------------------------------------------------------ mobiliário integrado (a nave é habitada)
+  _buildFurniture(P) {
+    const b = new Batch();
+    const leather = disposer.track(new THREE.MeshStandardMaterial({ color: 0x4a2618, roughness: 0.55, metalness: 0.05 }));
+    const oak = disposer.track(new THREE.MeshStandardMaterial({ color: 0x5b3c22, roughness: 0.6, metalness: 0.05 }));
+    const rubber = disposer.track(new THREE.MeshStandardMaterial({ color: 0x0c0e12, roughness: 0.85 }));
+    const coat = disposer.track(new THREE.MeshStandardMaterial({ color: 0x3b2f2a, roughness: 0.8 }));
+    const mats = { leather, oak, rubber, coat, brass: P.brass, dark: P.darkMetal, metal: P.metal, copper: P.copper,
+                   b0: disposer.track(new THREE.MeshStandardMaterial({ color: 0x6b1f1f, roughness: 0.7 })),
+                   b1: disposer.track(new THREE.MeshStandardMaterial({ color: 0x1f3b6b, roughness: 0.7 })),
+                   b2: disposer.track(new THREE.MeshStandardMaterial({ color: 0x2f5a2a, roughness: 0.7 })),
+                   b3: disposer.track(new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.7 })),
+                   b4: disposer.track(new THREE.MeshStandardMaterial({ color: 0x3a2a4a, roughness: 0.7 })) };
+    const atWall = (ang, r) => [Math.sin(ang) * r, Math.cos(ang) * r];
+    // bancos curvos de couro entre as colunas, encostados na parede (três segmentos acompanhando a curva)
+    for (const center of [Math.PI - 0.62, Math.PI + 0.62]) {
+      for (let k = -1; k <= 1; k++) {
+        const a = center + k * 0.13, [x, z] = atWall(a, ROOM_R - 0.75);
+        b.put(new THREE.BoxGeometry(1.14, 0.12, 0.55), 'leather', [x, 0.48, z], [0, a, 0]);
+        const [bx, bz] = atWall(a, ROOM_R - 0.48);
+        b.put(new THREE.BoxGeometry(1.14, 0.62, 0.12), 'leather', [bx, 0.82, bz], [-0.12, a, 0]);
+        b.put(new THREE.BoxGeometry(1.16, 0.4, 0.5), 'dark', [x, 0.22, z], [0, a, 0]);
+        b.put(new THREE.BoxGeometry(1.18, 0.03, 0.57), 'brass', [x, 0.42, z], [0, a, 0]);
+      }
+    }
+    // estante embutida atrás do rotor: livros e instrumentos (a biblioteca da nave)
+    {
+      const a = Math.PI, [x, z] = atWall(a, ROOM_R - 0.32);
+      const frame = new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0)),
+                                                new THREE.Vector3(1, 1, 1));
+      b.put(new THREE.BoxGeometry(2.2, 2.5, 0.08), 'oak', [0, 1.75, -0.18], [0, 0, 0], [1, 1, 1], frame);
+      for (const sx of [-1.1, 1.1]) b.put(new THREE.BoxGeometry(0.08, 2.5, 0.42), 'oak', [sx, 1.75, 0], [0, 0, 0], [1, 1, 1], frame);
+      let seed = 3;
+      const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      for (let shelf = 0; shelf < 5; shelf++) {
+        const y = 0.55 + shelf * 0.5;
+        b.put(new THREE.BoxGeometry(2.14, 0.04, 0.4), 'oak', [0, y, 0], [0, 0, 0], [1, 1, 1], frame);
+        let cx = -1.02;
+        while (cx < 1.0) {
+          const w = 0.03 + rnd() * 0.035, h = 0.26 + rnd() * 0.16, lean = rnd() < 0.08 ? 0.18 : 0;
+          if (rnd() < 0.07) { cx += 0.08; continue; }                  // um vão aqui e ali
+          b.put(new THREE.BoxGeometry(w, h, 0.22 + rnd() * 0.08), `b${Math.floor(rnd() * 5)}`, [cx + w / 2, y + 0.02 + h / 2, 0.02],
+                [0, 0, lean], [1, 1, 1], frame);
+          cx += w + 0.004;
+        }
+      }
+      b.put(new THREE.SphereGeometry(0.12, 20, 14), 'brass', [0.7, 2.94, 0.04], [0, 0, 0], [1, 1, 1], frame);   // globo/instrumento
+      b.put(new THREE.TorusGeometry(0.15, 0.01, 6, 28), 'copper', [0.7, 2.94, 0.04], [0.3, 0, 0.4], [1, 1, 1], frame);
+    }
+    // bancada de trabalho à esquerda: tampo, gaveteiro, banqueta e dois monitores (telas com texto do sistema)
+    {
+      const a = -Math.PI / 2 - 0.42, [x, z] = atWall(a, ROOM_R - 1.0);
+      const frame = new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0)),
+                                                new THREE.Vector3(1, 1, 1));
+      b.put(new THREE.BoxGeometry(1.8, 0.06, 0.75), 'oak', [0, 0.92, 0], [0, 0, 0], [1, 1, 1], frame);
+      for (const sx of [-0.85, 0.85]) b.put(new THREE.BoxGeometry(0.06, 0.9, 0.7), 'dark', [sx, 0.45, 0], [0, 0, 0], [1, 1, 1], frame);
+      b.put(new THREE.BoxGeometry(0.5, 0.7, 0.6), 'metal', [0.5, 0.45, 0], [0, 0, 0], [1, 1, 1], frame);
+      b.put(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 20), 'leather', [-0.2, 0.66, -0.7], [0, 0, 0], [1, 1, 1], frame);
+      b.put(new THREE.CylinderGeometry(0.025, 0.025, 0.63, 8), 'brass', [-0.2, 0.32, -0.7], [0, 0, 0], [1, 1, 1], frame);
+      b.put(new THREE.TorusGeometry(0.16, 0.012, 6, 24), 'brass', [-0.2, 0.18, -0.7], [Math.PI / 2, 0, 0], [1, 1, 1], frame);
+      const screenTex = canvasTexture(256, 160, (g, w, h) => {
+        g.fillStyle = '#04121c'; g.fillRect(0, 0, w, h);
+        g.strokeStyle = 'rgba(103,243,255,0.8)'; g.lineWidth = 3; g.strokeRect(3, 3, w - 6, h - 6);
+        g.fillStyle = 'rgba(103,243,255,0.9)'; g.font = '600 16px Segoe UI, Arial'; g.fillText('J.A.R.V.I.S.', 14, 28);
+        g.fillStyle = 'rgba(160,220,240,0.7)';
+        for (let i = 0; i < 6; i++) g.fillRect(14, 46 + i * 17, 40 + ((i * 53) % 170), 6);
+      });
+      const screenMat = glowMaterial(0xffffff, 0.85, { map: screenTex });
+      for (const [sx, ry] of [[-0.35, 0.18], [0.25, -0.12]]) {
+        b.put(new THREE.BoxGeometry(0.55, 0.36, 0.03), 'dark', [sx, 1.2, 0.2], [0, ry, 0], [1, 1, 1], frame);
+        const screen = new THREE.Mesh(disposer.track(new THREE.PlaneGeometry(0.5, 0.31)), screenMat);
+        screen.applyMatrix4(new THREE.Matrix4().multiplyMatrices(frame, local(sx, 1.2, 0.22, 0, ry, 0)));
+        this.group.add(screen);
+      }
+    }
+    // cabideiro junto à porta, com um casaco
+    {
+      const [x, z] = atWall(0.32, ROOM_R - 0.8);
+      b.put(new THREE.CylinderGeometry(0.025, 0.035, 1.9, 10), 'oak', [x, 0.95, z]);
+      b.put(new THREE.CylinderGeometry(0.22, 0.25, 0.04, 16), 'oak', [x, 0.02, z]);
+      for (let k = 0; k < 4; k++) {
+        const ha = k * Math.PI / 2;
+        b.put(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), 'brass', [x + Math.sin(ha) * 0.09, 1.82, z + Math.cos(ha) * 0.09],
+              [Math.cos(ha) * 0.9, 0, -Math.sin(ha) * 0.9]);
+      }
+      b.put(new THREE.CylinderGeometry(0.16, 0.28, 1.0, 14, 1, true), 'coat', [x + 0.12, 1.3, z], [0, 0, 0.12]);
+    }
+    // feixes de cabos do tablado às paredes (a máquina por baixo do piso)
+    for (const ang of [2.2, 2.75, 3.5, 4.05]) {
+      const pts = [];
+      for (let k = 0; k <= 10; k++) {
+        const t = k / 10, r = lerp(DAIS_R + 0.5, ROOM_R - 0.3, t);
+        pts.push(new THREE.Vector3(Math.sin(ang + 0.15 * Math.sin(t * 3)) * r, 0.05 + 0.04 * Math.sin(t * Math.PI), Math.cos(ang + 0.15 * Math.sin(t * 3)) * r));
+      }
+      b.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.045, 8), new THREE.Matrix4(), 'rubber');
+      b.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => p.clone().add(_v.set(0.1, 0.02, 0.06)))), 40, 0.028, 8),
+            new THREE.Matrix4(), 'copper');
+    }
+    b.build(mats, this.group);
+  }
+
+  // ------------------------------------------------------------ giroscópio do rotor (gira com o modo real)
+  _buildGyro(P) {
+    this.gyro = new THREE.Group();
+    this.gyro.position.y = ROTOR_Y0 + ROTOR_H * 0.52;
+    this.gyroRings = [];
+    [[0.24, P.brass], [0.205, P.steel], [0.17, P.copper]].forEach(([r, mat], i) => {
+      const ring = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(r, 0.008, 8, 64)), mat);
+      ring.rotation.set(i === 0 ? Math.PI / 2 : 0, 0, i === 2 ? Math.PI / 2 : 0);
+      const holder = new THREE.Group();
+      holder.add(ring);
+      this.gyro.add(holder);
+      this.gyroRings.push(holder);
+    });
+    this.group.add(this.gyro);
+  }
+
+  /** Para onde o holograma olha: o painel escolhido; senão o painel com tarefa real em curso; senão o rotor. */
+  focusPoint(target) {
+    let key = this.selected;
+    if (!key) {
+      let best = 0.05;
+      for (const k of PANEL_KEYS) {
+        const p = this.panels[k];
+        const level = Math.max(p.level, p.flash * 0.8, p.fault);
+        if (level > best) { best = level; key = k; }
+      }
+    }
+    if (key) {
+      const a = panelAngle(Math.max(0, PANEL_KEYS.indexOf(key)));
+      target.set(Math.sin(a) * R_MID, Y_MID + 0.05, Math.cos(a) * R_MID);
+    } else {
+      target.set(0, ROTOR_Y0 + 0.6, 0);
+    }
+    return this.group.localToWorld(target);
+  }
+
   get busy() {
     return this.engine.mode && this.engine.mode !== 'repouso' || this.st.fault > 0.02 || this.st.beam > 0.02 ||
            Object.values(this.panels).some((p) => p.level > 0.02 || p.flash > 0.02 || p.fault > 0.02);
@@ -572,6 +717,11 @@ export class TardisRoom {
     this.ringLow.parts.forEach((r, i) => { r.rotation.z = this.spinA * (i % 2 ? -1.4 : 1.1); });
     this.ringHigh.parts.forEach((r, i) => { r.rotation.z = -this.spinA * (i % 2 ? -1.2 : 0.9); });
     this.tubes.rotation.y = this.spinA * 0.3;
+    if (this.gyroRings) {                                  // giroscópio: cada anel num eixo, na velocidade real
+      this.gyroRings[0].rotation.y = this.spinA * 1.3;
+      this.gyroRings[1].rotation.x = this.spinA * 0.9 + 0.4;
+      this.gyroRings[2].rotation.z = -this.spinA * 1.1;
+    }
     this.strands.rotation.y = -this.spinA * 0.6;
     this.strandMat.uniforms.uTime.value = time;
     this.strandMat.uniforms.uFlow.value = 0.08 + st.speed * 1.4;
