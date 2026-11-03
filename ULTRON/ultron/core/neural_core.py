@@ -152,6 +152,8 @@ class NeuralCore:
         # consumo dos modelos no MESMO banco (migração v7); primeiro uso pago só com autorização do usuário
         from ..models.usage import UsageLedger
         self.usage = UsageLedger(self.memory.db, settings_getter=s)
+        from ..remote import RemoteAgent                # JARVIS WEB ORB: o MESMO núcleo, acessado de fora
+        self.remote = RemoteAgent(self, settings_getter=s)
         self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy,
                                   usage=self.usage, consent=self._cloud_consent)
         from ..models.openai_provider import OpenAIProvider
@@ -289,6 +291,8 @@ class NeuralCore:
                          source="core")
         log.info("JARVIS online em %.2fs (%d componentes, %d com falha)", seconds, len(statuses), len(failed))
         self.runtime.submit("health", self.health.check_all, name="health:boot")
+        if self.remote.start():                         # só com a ORBE remota ligada e inscrita no gateway
+            log.info("JARVIS WEB ORB: conectando ao gateway %s", self.remote.url)
         self.say(dialogue.say("online"))
         return statuses
 
@@ -298,6 +302,10 @@ class NeuralCore:
         self.booted = False
         self.bus.publish(EventType.SYSTEM_SHUTDOWN, {}, source="core")
         self.cancel("encerramento")
+        try:
+            self.remote.stop()
+        except Exception:
+            log.debug("agente remoto não parou limpo", exc_info=True)
         from ..personality import persona
         persona.reset()
         try:

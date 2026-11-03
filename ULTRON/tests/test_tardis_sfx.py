@@ -1,11 +1,9 @@
 """Sons da TARDIS: efeitos ORIGINAIS sintetizados, substituíveis por arquivos autorizados do usuário, disparados
 só por eventos reais (tarefas da TARDIS, modo do rotor, portas ao entrar/sair da sala), com volume próprio e
 liga/desliga. Nenhum alto-falante real é usado (a saída de áudio é o mixer do JARVIS sem dispositivo)."""
-import os
 import unittest
 import wave
 from pathlib import Path
-from unittest import mock
 
 import numpy as np
 

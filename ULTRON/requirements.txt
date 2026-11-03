@@ -19,6 +19,10 @@ pyttsx3>=2.90                                   # voz alternativa (SAPI) se a vo
 pywin32>=306; sys_platform == "win32"           # COM na thread da voz SAPI (como no JARVIS original)
 keyring>=24; sys_platform == "win32"            # chave da OpenAI no Gerenciador de Credenciais (nunca em arquivo)
 
+# JARVIS WEB ORB (agente da matriz-mãe: conexão de SAÍDA para o seu gateway; QR Code do pareamento)
+websockets>=12
+segno>=1.5
+
 # Percepção e controle do Windows (cada skill informa quando a sua dependência falta)
 mss>=9.0                                        # captura de tela
 Pillow>=10.0

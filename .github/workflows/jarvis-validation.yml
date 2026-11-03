@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements.txt -r gateway/requirements.txt
           python -m pip install pytest pyflakes
       - name: Run test suite
         env:
@@ -56,8 +56,8 @@ jobs:
         run: xvfb-run -a -s "-screen 0 1280x800x24" python TEST_JARVIS.py test_scene3d
       - name: Static checks
         run: |
-          python -m compileall -q ultron tests tools main.py TEST_JARVIS.py
-          python -m pyflakes ultron tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
+          python -m compileall -q ultron gateway tests tools main.py TEST_JARVIS.py
+          python -m pyflakes ultron gateway tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
       - name: Build and validate release ZIP
         run: |
           python tools/build_release.py --out ../JARVIS_FINAL.zip
@@ -91,7 +91,7 @@ jobs:
       - name: Install application dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements.txt -r gateway/requirements.txt
           python -m pip install pytest pyflakes
       - name: Run full application test suite
         env:
@@ -99,8 +99,8 @@ jobs:
         run: python TEST_JARVIS.py
       - name: Static checks
         run: |
-          python -m compileall -q ultron tests tools main.py TEST_JARVIS.py
-          python -m pyflakes ultron tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
+          python -m compileall -q ultron gateway tests tools main.py TEST_JARVIS.py
+          python -m pyflakes ultron gateway tests tools TEST_JARVIS.py TEST_ULTRON.py main.py
       - name: Build and validate Windows release package
         run: |
           python tools/build_release.py --out ../JARVIS_FINAL_WINDOWS.zip

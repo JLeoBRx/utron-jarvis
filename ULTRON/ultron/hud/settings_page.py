@@ -11,6 +11,7 @@ de áudio, calibração da voz e fuso.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -23,7 +24,8 @@ from .panels import _button, _label
 
 SECTIONS = (("geral", "GERAL E INÍCIO"), ("voz", "VOZ E ÁUDIO"), ("ia", "INTELIGÊNCIA"),
             ("privacidade", "PRIVACIDADE E OBSERVADOR"), ("permissoes", "PERMISSÕES"),
-            ("aparencia", "APARÊNCIA E DESEMPENHO"), ("registros", "HISTÓRICO E REGISTROS"),
+            ("aparencia", "APARÊNCIA E DESEMPENHO"), ("remota", "REDE REMOTA (ORBE WEB)"),
+            ("registros", "HISTÓRICO E REGISTROS"),
             ("restaurar", "RESTAURAR PADRÕES"))
 PAGE_LABELS = {"jarvis": "JARVIS", "tardis": "TARDIS", "atividades": "ATIVIDADES",
                "configuracoes": "CONFIGURAÇÕES", "diagnosticos": "DIAGNÓSTICOS"}
@@ -33,6 +35,8 @@ class SettingsPage(QtWidgets.QWidget):
     _devices_ready = QtCore.Signal(str, object)       # ("input"|"output", resultado da listagem)
     _message = QtCore.Signal(str)
     ultron_demo = QtCore.Signal()                      # botão DEMONSTRAÇÃO do Protocolo ULTRON (evento visual)
+    _pair_claim = QtCore.Signal(dict)                  # um dispositivo pediu pareamento (vem da thread do agente)
+    _remote_changed = QtCore.Signal()
 
     def __init__(self, core, parent=None, *, ask: Callable[..., bool] | None = None):
         super().__init__(parent)
@@ -60,7 +64,7 @@ class SettingsPage(QtWidgets.QWidget):
         self.forms: dict[str, QtWidgets.QFormLayout] = {}
         builders = {"geral": self._build_general, "voz": self._build_voice, "ia": self._build_ai,
                     "privacidade": self._build_privacy, "permissoes": self._build_permissions,
-                    "aparencia": self._build_appearance,
+                    "aparencia": self._build_appearance, "remota": self._build_remote,
                     "registros": self._build_records, "restaurar": self._build_reset}
         for key, label in SECTIONS:
             self.nav.addItem(label)
@@ -752,6 +756,120 @@ class SettingsPage(QtWidgets.QWidget):
                                    "(materializacao, desmaterializacao, porta_abrir, porta_fechar, rotor, alerta, "
                                    "ambiente) e reinicie o JARVIS.")
 
+    # ------------------------------------------------------------ REDE REMOTA (JARVIS WEB ORB)
+    def _build_remote(self, form) -> None:
+        form.addRow(_label("A JARVIS WEB ORB é a ORBE deste JARVIS no navegador (celular ou outro computador). Este "
+                           "computador continua sendo a MATRIZ-MÃE: inteligência, memória, voz, ferramentas e "
+                           "autorizações ficam aqui. A conexão é de SAÍDA para o seu gateway (nenhuma porta aberta no "
+                           "roteador). Ações sensíveis só se confirmam neste computador.", "PanelDim"))
+        self.line(form, "remote_gateway_url", "Endereço do gateway", placeholder="https://orb.seudominio.com")
+        self.check(form, "remote_enabled", "Conectar a matriz-mãe ao gateway", on_change=self._toggle_remote)
+        self.check(form, "remote_audio", "Enviar a voz das respostas aos dispositivos que pedirem")
+        row = QtWidgets.QHBoxLayout()
+        enroll = _button("INSCREVER NO GATEWAY…", "Digite UMA vez o segredo de inscrição do seu gateway; o token "
+                                                  "obtido fica no cofre do sistema")
+        enroll.clicked.connect(self._enroll_remote)
+        pair = _button("PAREAR DISPOSITIVO", "Mostra um QR Code e um código temporário; você confirma aqui")
+        pair.clicked.connect(self._pair_device)
+        row.addWidget(enroll); row.addWidget(pair); row.addStretch(1)
+        form.addRow("", row)
+        self.remote_state = _label("", "PanelDim")
+        self.remote_state.setWordWrap(True)
+        form.addRow("Estado", self.remote_state)
+        self.device_list = QtWidgets.QListWidget()
+        self.device_list.setMinimumHeight(110)
+        form.addRow("Dispositivos pareados", self.device_list)
+        revoke = _button("REVOGAR SELECIONADO", "Desconecta e invalida a sessão do dispositivo na hora")
+        revoke.clicked.connect(self._revoke_device)
+        form.addRow("", revoke)
+        self._refreshers.append(self._refresh_remote)
+        self._pair_claim.connect(self._confirm_pairing, QtCore.Qt.QueuedConnection)
+        self._remote_changed.connect(self._refresh_remote, QtCore.Qt.QueuedConnection)
+        remote = getattr(self.core, "remote", None)
+        if remote is not None:
+            remote.on_pair_claim = self._pair_claim.emit
+            remote.on_change = self._remote_changed.emit
+
+    def _refresh_remote(self) -> None:
+        remote = getattr(self.core, "remote", None)
+        if remote is None:
+            self.remote_state.setText("indisponível nesta execução")
+            return
+        st = remote.status()
+        if not st["configured"]:
+            text = "não inscrito: defina o endereço e use INSCREVER NO GATEWAY"
+        elif not st["enabled"]:
+            text = "inscrito; conexão desligada"
+        elif st["connected"]:
+            text = f"CONECTADO a {st['gateway']} · {st['online_devices']} dispositivo(s) com a ORBE aberta"
+        else:
+            text = f"DESCONECTADO — tentando de novo ({st['error'] or 'aguardando'})"
+        self.remote_state.setText(text)
+        self.device_list.clear()
+        for device in remote.devices:
+            item = QtWidgets.QListWidgetItem(f"{device.get('name')} — desde "
+                                             f"{time.strftime('%d/%m/%Y', time.localtime(device.get('created') or 0))}"
+                                             + (" (expirado)" if device.get("expired") else ""))
+            item.setData(QtCore.Qt.UserRole, device.get("id"))
+            self.device_list.addItem(item)
+
+    def _toggle_remote(self, on: bool) -> None:
+        self.apply(remote_enabled=bool(on))
+        remote = getattr(self.core, "remote", None)
+        if remote is not None:
+            threading.Thread(target=remote.restart if on else remote.stop, daemon=True).start()
+        self._refresh_remote()
+
+    def _enroll_remote(self) -> None:
+        remote = getattr(self.core, "remote", None)
+        url = str(self.settings.remote_gateway_url or "").strip()
+        if remote is None or not url:
+            self._say("Defina primeiro o endereço do gateway.")
+            return
+        secret, ok = QtWidgets.QInputDialog.getText(self, "Inscrever no gateway", "Segredo de inscrição do gateway "
+                                                    "(não fica gravado; vira um token no cofre do sistema):",
+                                                    QtWidgets.QLineEdit.Password)
+        if not ok or not secret.strip():
+            return
+        self._say("Inscrevendo…")
+
+        def work():
+            done, message = remote.enroll(url, secret.strip())
+            self._message.emit(message)
+            if done and self.settings.remote_enabled:
+                remote.restart()
+            self._remote_changed.emit()
+        threading.Thread(target=work, name="ultron-remote-enroll", daemon=True).start()
+
+    def _pair_device(self) -> None:
+        remote = getattr(self.core, "remote", None)
+        if remote is None or not remote.connected:
+            self._say("A matriz-mãe não está conectada ao gateway.")
+            return
+        info = remote.request_pairing()
+        if not info:
+            self._say("O gateway não respondeu ao pedido de pareamento.")
+            return
+        PairingDialog(info, parent=self).show()
+
+    def _confirm_pairing(self, info: dict) -> None:
+        remote = getattr(self.core, "remote", None)
+        if remote is None:
+            return
+        text = (f"Um dispositivo quer usar a ORBE deste JARVIS:\n\nNome: {info.get('device_name')}\n"
+                f"Navegador: {str(info.get('user_agent'))[:90]}\nIP: {info.get('ip')}\n\nEle poderá conversar com o "
+                "JARVIS e pedir tarefas com as mesmas permissões (ações sensíveis continuam exigindo confirmação "
+                "AQUI). Autorizar?")
+        remote.decide_pairing(info.get("id", ""), self._ask("Parear dispositivo", text))
+
+    def _revoke_device(self) -> None:
+        remote = getattr(self.core, "remote", None)
+        item = self.device_list.currentItem()
+        if remote is None or item is None:
+            return
+        remote.revoke(item.data(QtCore.Qt.UserRole))
+        self._say(f"Acesso revogado: {item.text()}")
+
     # ------------------------------------------------------------ HISTÓRICO E REGISTROS
     def _build_records(self, form) -> None:
         self.check(form, "activity_history", "Registrar o histórico de atividades (pedidos, ações, confirmações)")
@@ -832,3 +950,53 @@ def ultron_history_text(history: list) -> str:
     source = ULTRON_SOURCES.get(str(last.get("source")), str(last.get("source")))
     return (f"{len(history)} registrada(s); última em {when} ({source}, {seconds} s, encerrada por "
             f"{last.get('ended_by') or '—'})")
+
+
+class PairingDialog(QtWidgets.QDialog):
+    """QR Code + código temporário do pareamento (o QR leva ao link de uso único; quem confirma é este computador)."""
+
+    def __init__(self, info: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Parear dispositivo — JARVIS WEB ORB")
+        self.setStyleSheet(theme.PANEL_STYLESHEET)
+        layout = QtWidgets.QVBoxLayout(self)
+        qr = QtWidgets.QLabel()
+        qr.setAlignment(QtCore.Qt.AlignCenter)
+        image = qr_image(info.get("url", ""))
+        if image is not None:
+            qr.setPixmap(QtGui.QPixmap.fromImage(image))
+        else:
+            qr.setText("(QR Code indisponível: instale o pacote segno)")
+        layout.addWidget(qr)
+        code = _label(f"CÓDIGO: {info.get('code', '')}", "PanelTitle")
+        code.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(code)
+        minutes = max(1, round((float(info.get("expires", 0)) - time.time()) / 60))
+        hint = _label(f"Abra no celular (ou leia o QR): {info.get('url', '')}\nVálido por ~{minutes} min. Quando o "
+                      "dispositivo pedir, este computador perguntará se você autoriza.", "PanelDim")
+        hint.setWordWrap(True)
+        hint.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        layout.addWidget(hint)
+        close = _button("FECHAR")
+        close.clicked.connect(self.close)
+        layout.addWidget(close)
+
+
+def qr_image(text: str, scale: int = 8):
+    """QR Code (segno, sem rede) → QImage; None se o pacote não estiver instalado."""
+    try:
+        import segno
+    except ImportError:
+        return None
+    qr = segno.make(text, error="m")
+    matrix = list(qr.matrix_iter(scale=scale, border=3))
+    size = len(matrix)
+    image = QtGui.QImage(size, size, QtGui.QImage.Format_RGB32)
+    image.fill(QtGui.QColor("white"))
+    dark = QtGui.QColor("#030712").rgb()
+    for y, row in enumerate(matrix):
+        for x, on in enumerate(row):
+            if on:
+                image.setPixel(x, y, dark)
+    return image
+

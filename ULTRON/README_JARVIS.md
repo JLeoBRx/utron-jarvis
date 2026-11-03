@@ -492,6 +492,14 @@ ao reiniciar (a tela mostra a origem de cada som).
   `pt_BR-jeff-medium`) em `assets\voices` e escolha em CONFIGURAÇÕES > VOZ > Voz neural. Vozes neurais na nuvem
   (melhor qualidade) mandariam o texto falado para fora do computador — não estão ativas.
 
+### JARVIS WEB ORB (a ORBE no celular)
+
+Uma página com só a ORBE, ligada a ESTE JARVIS (a matriz-mãe) por um gateway seu, com conexão de SAÍDA do computador
+(nenhuma porta aberta). Conversa, voz, interromper, autorizações comuns e a identidade ULTRON chegam da matriz-mãe;
+ações sensíveis só se confirmam aqui. Pareamento por QR Code/código com confirmação NESTE computador; revogação na
+hora. CONFIGURAÇÕES › **REDE REMOTA (ORBE WEB)**. Publicação, segurança e o que depende de hospedagem/domínio:
+**`WEB_ORB.md`**.
+
 ## 6. Memória pessoal e lembretes
 
 * Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.

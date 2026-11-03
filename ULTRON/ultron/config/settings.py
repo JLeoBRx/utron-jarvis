@@ -165,6 +165,10 @@ class Settings:
     hud_auto_expand: bool = True
     sound_effects: bool = True
     sfx_volume: float = 0.35
+    # ------------------------------------------------------------ JARVIS WEB ORB (agente da matriz-mãe)
+    remote_enabled: bool = False              # conexão de SAÍDA com o gateway (nenhuma porta aberta aqui)
+    remote_gateway_url: str = ""              # ex.: https://orb.seudominio.com (o token fica no cofre do sistema)
+    remote_audio: bool = True                 # enviar a voz das respostas aos dispositivos que pedirem
     tardis_sfx: bool = True                   # sons da TARDIS (originais; arquivos autorizados do usuário substituem)
     tardis_sfx_volume: float = 0.6
     start_page: str = "jarvis"                # página aberta ao iniciar

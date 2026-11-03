@@ -466,3 +466,18 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * Verificado no Chromium (Playwright) e no QtWebEngine real (Xvfb): 0 erros de JavaScript, sala e holograma
   desenhados; o desempenho no computador do usuário (GPU real) ainda não foi medido.
 
+## Aprimoramento 6 — JARVIS WEB ORB (gateway, agente da matriz-mãe, pareamento e site da ORBE)
+* `gateway/` (serviço separado, aiohttp): site da ORBE, pareamento por QR/código com confirmação no computador,
+  sessões por cookie HttpOnly/Secure/SameSite=Strict, CSRF, origem conferida, limites de tentativas, CSP estrita,
+  auditoria sem conteúdo de conversa, banco próprio (nunca a memória pessoal). Docker (usuário sem privilégios,
+  somente leitura, HEALTHCHECK) e compose com HTTPS automático (Caddy). `WEB_ORB.md`: publicação, atualização e
+  rollback; nada foi publicado (depende de servidor e domínio do usuário).
+* `ultron/remote/agent.py`: conexão de SAÍDA com reconexão, o MESMO NeuralCore (`source="remoto"`), estado real e
+  persona para a ORBE, histórico da conversa, autorizações (sensíveis só no computador), voz pela mesma identidade
+  vocal, microfone do navegador reconhecido pelo mesmo Vosk.
+* CONFIGURAÇÕES › REDE REMOTA: endereço, inscrição (token no cofre do sistema), conexão, pareamento com QR Code,
+  confirmação, lista de dispositivos e revogação. `requirements.txt`: websockets, segno.
+* Testes: `tests/test_web_orb.py` (7) — de ponta a ponta com gateway real, agente e NeuralCore; também validado no
+  Chromium (celular) e a imagem Docker construída e executada. CI instala as dependências do gateway e passa o lint
+  também nele; imports sem uso de testes anteriores corrigidos.
+
