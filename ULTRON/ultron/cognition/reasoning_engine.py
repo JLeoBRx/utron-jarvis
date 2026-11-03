@@ -83,17 +83,20 @@ class ReasoningEngine:
         messages = self.context.messages(ctx, text, extra_system="Responda de forma curta e precisa.")
         result = self.router.chat("text", messages, options=self._options(num_predict=420),
                                   timeout=getattr(self._settings(), "llm_timeout", 120.0), cancel=cancel,
-                                  on_token=on_token)
+                                  on_token=on_token, purpose="conversa", query=text)
         return stylize(result.content) or "Sem resposta do modelo."
 
     # ------------------------------------------------------------ plano explícito
     def plan(self, goal: str, ctx: CognitiveContext, catalog: str, *, cancel=None) -> dict | None:
         self._phase("PLANNING")
-        system = self.context.system_prompt(ctx, PLAN_PROMPT + "\nSkills disponíveis:\n" + catalog)
-        result = self.router.chat("text", [{"role": "system", "content": system},
+        rules = PLAN_PROMPT + "\nSkills disponíveis:\n" + catalog
+        system = self.context.system_prompt(ctx, rules)
+        result = self.router.chat("text", [{"role": "system", "content": system,
+                                            "cloud_content": self.context.cloud_system_prompt(rules)},
                                            {"role": "user", "content": f"Objetivo: {goal}"}],
                                   fmt="json", options=self._options(temperature=0.1, num_predict=600),
-                                  timeout=getattr(self._settings(), "llm_timeout", 120.0), cancel=cancel)
+                                  timeout=getattr(self._settings(), "llm_timeout", 120.0), cancel=cancel,
+                                  purpose="planejamento", query=goal)
         data = _parse_json(result.content)
         if not data or not isinstance(data.get("steps"), list):
             return None
@@ -114,7 +117,8 @@ class ReasoningEngine:
                 break
             self._phase("EVALUATING" if step == 0 else "SELECTING")
             result = self.router.chat("text", messages, tools=tools, options=self._options(num_predict=500),
-                                      timeout=getattr(s, "llm_timeout", 120.0), cancel=cancel)
+                                      timeout=getattr(s, "llm_timeout", 120.0), cancel=cancel,
+                                      purpose="agente", query=goal)
             outcome.steps = step + 1
             if not result.tool_calls:
                 outcome.answer = stylize(result.content)

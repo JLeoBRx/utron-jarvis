@@ -103,13 +103,27 @@ class ContextEngine:
             parts.append(extra)
         return "\n".join(parts)
 
+    def cloud_system_prompt(self, extra: str = "") -> str:
+        """O prompt SEM dados pessoais (memória, preferências, ambiente, tela): o que a nuvem recebe quando o
+        usuário não ligou ``cloud_share_memory``."""
+        now = datetime.datetime.now()
+        parts = [identity.system_prompt(), f"Data e hora locais: {now:%d/%m/%Y %H:%M}.",
+                 "Você não tem acesso à memória pessoal do usuário nesta resposta; se o pedido depender dela, "
+                 "diga isso em vez de supor."]
+        if extra:
+            parts.append(extra)
+        return "\n".join(parts)
+
     def messages(self, ctx: CognitiveContext, user_text: str, *, extra_system: str = "",
                  with_dialogue: bool = True) -> list[dict]:
-        messages = [{"role": "system", "content": self.system_prompt(ctx, extra_system)}]
+        # ``cloud_content`` e ``history`` são marcas internas: o roteador as remove antes de qualquer envio (para a
+        # nuvem, sem a opção de compartilhar contexto pessoal, vai o prompt sem dados pessoais e sem o histórico)
+        messages = [{"role": "system", "content": self.system_prompt(ctx, extra_system),
+                     "cloud_content": self.cloud_system_prompt(extra_system)}]
         if with_dialogue:
             history = list(ctx.dialogue)
             if history and history[-1].get("role") == "user" and history[-1].get("content") == user_text:
                 history = history[:-1]
-            messages.extend(history[-6:])
+            messages.extend({**item, "history": True} for item in history[-6:])
         messages.append({"role": "user", "content": user_text})
         return messages

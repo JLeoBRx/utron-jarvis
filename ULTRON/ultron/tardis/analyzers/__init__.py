@@ -87,7 +87,7 @@ class Run:
         try:
             result = router.chat("text", [{"role": "system", "content": system},
                                           {"role": "user", "content": prompt}],
-                                 fmt=fmt, timeout=timeout, cancel=self)
+                                 fmt=fmt, timeout=timeout, cancel=self, purpose="tardis", query=prompt)
         except Exception as exc:                        # modelo ausente, Ollama fora, OpenAI recusada...
             reason = str(exc).split("\n")[0][:160] or type(exc).__name__
             self.note(f"modelo indisponível: {reason}")

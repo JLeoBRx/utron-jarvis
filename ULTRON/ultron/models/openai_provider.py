@@ -109,8 +109,11 @@ def to_responses_tools(tools: list | None, *, web_search: bool) -> list[dict]:
 def parse_response(body: dict, model: str, seconds: float) -> ChatResult:
     texts: list[str] = []
     calls: list[dict] = []
+    web = False
     for item in body.get("output") or []:
         kind = item.get("type")
+        if kind == "web_search_call":
+            web = True
         if kind == "message":
             for part in item.get("content") or []:
                 if part.get("type") in ("output_text", "text") and part.get("text"):
@@ -127,7 +130,7 @@ def parse_response(body: dict, model: str, seconds: float) -> ChatResult:
         texts.append(str(body["output_text"]))
     usage = body.get("usage") or {}
     return ChatResult("".join(texts).strip(), calls, f"openai:{body.get('model') or model}", seconds,
-                      int(usage.get("output_tokens") or 0))
+                      int(usage.get("output_tokens") or 0), int(usage.get("input_tokens") or 0), web)
 
 
 class OpenAIProvider:
@@ -154,14 +157,29 @@ class OpenAIProvider:
     def base_url(self) -> str:
         return str(getattr(self._settings(), "openai_base_url", "https://api.openai.com/v1")).rstrip("/")
 
+    def model_for(self, target: str) -> str:
+        """Modelo por tarefa: ``cloud_fast`` usa ``openai_model_fast`` (se definido), o resto ``openai_model``."""
+        if target == "cloud_fast":
+            fast = str(getattr(self._settings(), "openai_model_fast", "") or "")
+            if fast:
+                return fast
+        return self.model
+
     def chosen(self) -> bool:
-        return getattr(self._settings(), "ai_provider", "ollama") == "openai"
+        """A nuvem faz parte da configuração: OpenAI escolhida (como no original) ou um perfil que usa nuvem."""
+        s = self._settings()
+        return (getattr(s, "ai_provider", "ollama") == "openai"
+                or getattr(s, "intelligence_profile", "") in ("hibrido", "avancado", "economico"))
 
     def blocked_reason(self) -> str:
         """Por que a OpenAI não pode ser usada agora ("" = pode)."""
-        s = self._settings()
         if not self.chosen():
             return "provedor escolhido: Ollama local"
+        return self.cloud_blocked_reason()
+
+    def cloud_blocked_reason(self) -> str:
+        """O que falta de fato para chamar a OpenAI (chave, modelo, privacidade) — nunca presumido."""
+        s = self._settings()
         if not self._key():
             return "chave da OpenAI ausente (OPENAI_API_KEY ou CONFIGURAÇÕES > INTELIGÊNCIA)"
         if not self.model:
@@ -184,7 +202,8 @@ class OpenAIProvider:
     # ------------------------------------------------------------ chamada
     def chat(self, messages: list[dict], *, tools: list | None = None, fmt: str | dict | None = None,
              options: dict | None = None, timeout: float | None = None, cancel=None, on_token=None,
-             **_ignored) -> ChatResult:
+             model: str | None = None, **_ignored) -> ChatResult:
+        model = model or self.model
         blocked = self.blocked_reason()
         if blocked:
             raise ProviderError("BLOCKED", blocked)
@@ -198,10 +217,12 @@ class OpenAIProvider:
                 raise ProviderError("BLOCKED", decision.reason)
         instructions, items = to_responses_input(messages)
         has_images = any(isinstance(i.get("content"), list) for i in items)
-        payload: dict[str, Any] = {"model": self.model, "input": items, "store": False}
+        payload: dict[str, Any] = {"model": model, "input": items, "store": False}
         if instructions:
             payload["instructions"] = instructions
-        web = bool(getattr(self._settings(), "openai_web_search", True)) and not has_images and fmt is None
+        s = self._settings()
+        web = (bool(getattr(s, "openai_web_search", True)) and not has_images and fmt is None
+               and getattr(s, "intelligence_profile", "") != "privacidade")
         tool_list = to_responses_tools(tools, web_search=web)
         if tool_list:
             payload["tools"] = tool_list
@@ -222,7 +243,7 @@ class OpenAIProvider:
             except Exception:
                 pass
             kind = {401: "AUTH", 403: "AUTH", 404: "MODEL", 429: "QUOTA"}.get(exc.code, "NETWORK")
-            text = {"AUTH": "chave da OpenAI recusada", "MODEL": f"modelo {self.model} não encontrado na sua conta",
+            text = {"AUTH": "chave da OpenAI recusada", "MODEL": f"modelo {model} não encontrado na sua conta",
                     "QUOTA": "limite de uso ou saldo da OpenAI atingido"}.get(kind, f"erro HTTP {exc.code}")
             self.last_error = {"kind": kind, "text": text, "at": time.time()}
             raise ProviderError(kind, f"{text}{(': ' + detail[:160]) if detail else ''}") from exc
@@ -235,7 +256,7 @@ class OpenAIProvider:
         if body.get("error"):
             raise ProviderError("BAD_RESPONSE", str(body["error"])[:200])
         self.last_error = None
-        result = parse_response(body, self.model, time.perf_counter() - started)
+        result = parse_response(body, model, time.perf_counter() - started)
         if on_token and result.content:
             on_token(result.content)
         return result

@@ -67,6 +67,10 @@ class Console:
             self.say(f"JARVIS … {text}")
             return
         self.say(f"JARVIS > {text}")
+        from .cognition.provenance import line
+        source = line(payload.get("provenance") or {})
+        if source:
+            self.say(f"         ({source})")
         self.say()
         if payload.get("source") in ("text", "console"):
             self._answered.set()

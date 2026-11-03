@@ -683,14 +683,52 @@ class SecondBrainService:
             ideas.setdefault(record.id, record)
         return project, [r for r in ideas.values() if r is not None]
 
+    @staticmethod
+    def _is_decision(record: Record) -> bool:
+        text = parsing.fold(f"{record.title} {record.body}")
+        return "decisao" in [parsing.fold(t) for t in record.tags] or bool(re.search(r"\bdecid|\bdecisao\b", text))
+
     def decisions_about(self, topic: str) -> list[Record]:
         """Notas marcadas como decisão (ou que registram "decidi...") sobre o assunto."""
-        found = []
-        for record in self.search(topic, kinds=("note", "project", "task", "idea"), limit=40):
-            text = parsing.fold(f"{record.title} {record.body}")
-            if "decisao" in [parsing.fold(t) for t in record.tags] or re.search(r"\bdecid|\bdecisao\b", text):
-                found.append(record)
-        return found
+        return [r for r in self.search(topic, kinds=("note", "project", "task", "idea"), limit=40)
+                if self._is_decision(r)]
+
+    def decisions(self, *, limit: int = 20) -> list[Record]:
+        """Todas as decisões registradas (mais recentes primeiro)."""
+        return [r for r in self.list(kinds=("note", "project", "task", "idea"), order="recent", limit=400)
+                if self._is_decision(r)][:limit]
+
+    def project_decisions(self, topic: str = "", *, limit: int = 20) -> list[dict]:
+        """Decisões da memória de projeto da TARDIS (tabela ``project_notes`` do MESMO banco)."""
+        sql = "SELECT project, text, created FROM project_notes WHERE kind = 'decisao'"
+        params: list = []
+        if topic:
+            sql += " AND (project LIKE ? OR text LIKE ?)"
+            params += [f"%{topic}%", f"%{topic}%"]
+        try:
+            rows = self.db.query(sql + " ORDER BY created DESC LIMIT ?", (*params, int(limit)))
+        except Exception:                                   # banco antigo sem a tabela: só não há o que somar
+            return []
+        return [dict(row) for row in rows]
+
+    def connections(self, record: Record) -> dict[str, Any]:
+        """Como um registro (normalmente um projeto) se liga ao resto da memória: relações explícitas, itens
+        que pertencem a ele, projetos com etiquetas em comum e projetos citados no texto dos seus itens."""
+        explicit = self.related(record.id)
+        members = self.list(project=record.id, limit=200) if record.kind == "project" else []
+        tags = {parsing.fold(t) for t in record.tags}
+        shared, mentioned = [], []
+        texts = parsing.fold(" ".join([record.title, record.body] + [f"{m.title} {m.body}" for m in members]))
+        for other in self.list(kinds=("project",), limit=200):
+            if other.id == record.id:
+                continue
+            common = sorted(tags & {parsing.fold(t) for t in other.tags})
+            if common:
+                shared.append({"record": other, "tags": common})
+            title = parsing.fold(other.title).strip()
+            if len(title) >= 3 and re.search(rf"\b{re.escape(title)}\b", texts):
+                mentioned.append(other)
+        return {"explicit": explicit, "members": members, "shared_tags": shared, "mentioned": mentioned}
 
     def review_queue(self, *, limit: int = 100) -> list[Record]:
         return self.list(confirmed=False, order="recent", limit=limit)

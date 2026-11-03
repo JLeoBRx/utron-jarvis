@@ -225,6 +225,15 @@ class IntentEngine:
             return _intent("control", raw, args={"ultron": "start"})
         if re.search(r"\brestaur\w* (o )?jarvis\b", t):
             return _intent("control", raw, args={"ultron": "stop"})
+        # inteligência: consumo do mês e perfil
+        if re.search(r"\b(quanto (eu )?gastei|consumo|gasto|custo)\b.*\b(ia|inteligencia|openai|nuvem|modelos?)\b|"
+                     r"\buso da (ia|openai|nuvem|inteligencia)\b", t):
+            return _intent("control", raw, args={"ai_usage": True})
+        # ("modo privacidade" sozinho continua sendo o microfone fechado: aqui só "perfil ..." ou "modo de inteligência")
+        profile = re.search(r"\b(perfil(\s+de inteligencia)?|modo de inteligencia)\s+"
+                            r"(local|privacidade|hibrido|avancado|economico)\b", t)
+        if profile and re.search(r"\b(us\w*|ativ\w*|mud\w*|troqu\w*|troc\w*|coloqu\w*|entr\w*|lig\w*)\b", t):
+            return _intent("control", raw, args={"intelligence_profile": profile.group(3)})
         # Observador (frases do JARVIS original, commands.py): pausar/retomar/desativar/ativar
         if re.search(r"\b(pausar|pause|pausa)\b.*\bobservador\b", t):
             return _intent("control", raw, args={"observer": "pause"})
@@ -323,6 +332,11 @@ class IntentEngine:
                      r"\b(o que|que tarefas?|quais tarefas?|tenho algo|tem algo|ha algo|alguma coisa)\b.*"
                      r"\b(atrasad\w*|vencid\w*|em atraso)\b|\bo que (eu )?atrasei\b|"
                      r"\b(quais|que|minhas)\s+ideias\b|\b(quais|que)\s+(tarefas|registros|itens)?\s*dependem\b|"
+                     r"^(jarvis,?\s+)?(quais|que|minhas|meus|liste|listar|mostre|mostra|me mostre)\s+(sao\s+)?(as\s+|os\s+)?"
+                     r"(minhas\s+|meus\s+)?(notas|anotacoes|tarefas|estudos|prazos|rotinas|decisoes)\b"
+                     r"(?!.*\b(do windows|do sistema|em execucao|abertas no|processos)\b)|"
+                     r"\b(projetos|registros|itens|notas|ideias|tarefas)\s+(estao\s+|sao\s+)?(relacionad\w*|ligad\w*)\s+"
+                     r"(a|ao|aos|as|com)\b|\brelac(ao|oes)\s+entre\b|\bo que (se )?relaciona (a|ao|com)\b|"
                      r"\b(o que|que)\s+(eu\s+)?(havia|tinha|ja)?\s*decid\w*\s+(sobre|para|quanto a)\b|"
                      r"\bo que (eu )?(anotei|registrei|salvei|guardei)\b|"
                      r"\b(procure|busque|pesquise)\b.*\b(nas (minhas )?notas|no segundo cerebro|no second brain|"

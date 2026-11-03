@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
 
@@ -21,6 +22,7 @@ from ..cognition.context_engine import ContextEngine
 from ..cognition.decision_engine import DecisionEngine
 from ..cognition.goal_manager import GoalManager, InvalidTransition
 from ..cognition.intent_engine import IntentEngine, norm
+from ..cognition import provenance
 from ..cognition.planner_engine import PlannerEngine
 from ..cognition.reasoning_engine import ReasoningEngine
 from ..cognition.types import Command, Intent, Plan, PlanStep
@@ -50,6 +52,7 @@ class Response:
     success: bool | None = None
     verified: bool | None = None
     data: dict = field(default_factory=dict)
+    provenance: dict = field(default_factory=dict)     # de onde veio (memória, ação, modelo, internet...)
 
     def __post_init__(self):
         self.text = stylize(self.text)
@@ -99,9 +102,22 @@ class Orchestrator:
         self._control = control
         self._imagine = imagine
         self._progress = progress or (lambda text: None)
+        self._trace = threading.local()                # skills executadas no pedido em curso (procedência)
 
     # ------------------------------------------------------------ entrada
     def handle(self, command: Command, cancel) -> Response:
+        self._trace.skills = []
+        if hasattr(self.router, "reset_route"):
+            self.router.reset_route()
+        response = self._handle(command, cancel)
+        if not response.provenance:
+            route = self.router.last_route() if hasattr(self.router, "last_route") else {}
+            response.provenance = provenance.describe(
+                response_kind=response.kind, text=response.text, success=response.success,
+                verified=response.verified, skills=list(getattr(self._trace, "skills", [])), route=route)
+        return response
+
+    def _handle(self, command: Command, cancel) -> Response:
         text = command.text
         self.state.set_runtime_state("PERCEIVING", "interpretando pedido", source="orchestrator")
         self.state.set_cognitive_phase("ANALYZING", source="orchestrator")
@@ -281,6 +297,8 @@ class Orchestrator:
                           current_subtask={"skill": step.skill, "args": {k: str(v)[:60] for k, v in args.items()}})
         step.status = "RUNNING"
         step.attempts += 1
+        if step.skill:
+            getattr(self._trace, "skills", []).append(step.skill)
         self.planner.publish(plan)
         self.state.set_runtime_state("EXECUTING", step.description, source="orchestrator")
         self.state.set_cognitive_phase("EXECUTING", source="orchestrator")

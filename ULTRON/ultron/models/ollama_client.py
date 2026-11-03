@@ -92,7 +92,10 @@ class ChatResult:
     tool_calls: list = field(default_factory=list)
     model: str = ""
     seconds: float = 0.0
-    eval_count: int = 0
+    eval_count: int = 0               # tokens gerados
+    input_tokens: int = 0             # tokens do pedido (prompt), quando o provedor informa
+    web: bool = False                 # o provedor consultou a internet (pesquisa web da OpenAI)
+    route: dict = field(default_factory=dict)   # como o roteador escolheu este modelo (procedência)
 
     def message(self) -> dict:
         msg: dict[str, Any] = {"role": "assistant", "content": self.content}
@@ -302,6 +305,7 @@ class OllamaClient:
         parts: list[str] = []
         tool_calls: list = []
         eval_count = 0
+        prompt_count = 0
         timings: dict = {}
         for chunk in self.chat_stream(model, messages, tools=tools, fmt=fmt, options=options,
                                       timeout=timeout, cancel=cancel):
@@ -315,12 +319,13 @@ class OllamaClient:
                 tool_calls.extend(message["tool_calls"])
             if chunk.get("done"):
                 eval_count = int(chunk.get("eval_count") or 0)
+                prompt_count = int(chunk.get("prompt_eval_count") or 0)
                 timings = {k: chunk.get(k) for k in ("total_duration", "load_duration", "prompt_eval_duration",
                                                      "eval_duration") if isinstance(chunk.get(k), (int, float))}
         seconds = time.perf_counter() - started
         self.last_latency_ms = seconds * 1000.0
         self._record(seconds, timings)
-        return ChatResult("".join(parts).strip(), tool_calls, model, seconds, eval_count)
+        return ChatResult("".join(parts).strip(), tool_calls, model, seconds, eval_count, prompt_count)
 
     def _record(self, seconds: float, timings: dict) -> None:
         """Latência total da chamada e, quando o Ollama informa, o tempo de inferência separado

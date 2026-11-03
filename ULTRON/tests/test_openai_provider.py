@@ -51,7 +51,7 @@ class ConversionTest(unittest.TestCase):
 
 
 class RouterWithOpenAITest(unittest.TestCase):
-    def _router(self, openai_url, ollama_url, **settings):
+    def _router(self, openai_url, ollama_url, *, consent=True, **settings):
         manager = SettingsManager(helpers.temp_dir() / "settings.json")
         manager.load()
         values = {"ai_provider": "openai", "openai_model": "gpt-teste", "openai_base_url": openai_url,
@@ -62,8 +62,10 @@ class RouterWithOpenAITest(unittest.TestCase):
         bus.start()
         self.addCleanup(bus.stop)
         privacy = PrivacyPolicy(lambda: manager.settings)
+        # o "usuário" autoriza o primeiro uso pago (como o NeuralCore faz pelo pedido de autorização)
+        approve = (lambda description: manager.update(cloud_consent_at=time.time()) or True) if consent else None
         router = ModelRouter(OllamaClient(ollama_url), settings_getter=lambda: manager.settings, bus=bus,
-                             privacy=privacy)
+                             privacy=privacy, consent=approve)
         provider = OpenAIProvider(lambda: manager.settings, privacy=privacy, key_getter=lambda: KEY)
         router.register_provider("openai", provider)
         return router, provider, bus, manager
@@ -75,7 +77,8 @@ class RouterWithOpenAITest(unittest.TestCase):
             return {"text": "Bloco de notas aberto e verificado."}
 
         with FakeOpenAI(responder, key=KEY) as api, FakeOllama(["qwen2.5:3b"]) as ollama:
-            router, provider, _bus, _ = self._router(api.url, ollama.url)
+            # ferramentas = resultados de programas locais: vão à nuvem só com a opção explícita ligada
+            router, provider, _bus, _ = self._router(api.url, ollama.url, cloud_share_memory=True)
             selection = router.select("text")
             self.assertEqual((selection.provider, selection.model), ("openai", "openai:gpt-teste"))
             messages = [{"role": "system", "content": "Você é JARVIS."}, {"role": "user", "content": "abra o bloco"}]
@@ -114,8 +117,9 @@ class RouterWithOpenAITest(unittest.TestCase):
         with FakeOpenAI(key=KEY, status=503) as api, FakeOllama(["qwen2.5:3b"], responder=lambda p: "Do Ollama.") as ollama:
             router, provider, bus, _ = self._router(api.url, ollama.url)
             bus.subscribe(EventType.MODEL_UNAVAILABLE, lambda e: events.append(e.payload))
-            result = router.chat("text", [{"role": "user", "content": "oi"}])
+            result = router.chat("text", [{"role": "user", "content": "qual a capital da França?"}])
             self.assertEqual(result.content, "Do Ollama.", "como no original: OpenAI indisponível → Ollama local")
+            self.assertIn("a nuvem falhou", " ".join(result.route["notes"]), "a troca de provedor é dita, não silenciosa")
             self.assertEqual(provider.last_error["kind"], "NETWORK")
             deadline = time.time() + 3
             while time.time() < deadline and not events:

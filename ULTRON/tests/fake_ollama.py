@@ -6,10 +6,17 @@ exercitando serialização, *streaming*, erros e cancelamento.
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
+
+
+def _size_of(name: str) -> str:
+    """Tamanho pela etiqueta ("qwen2.5:7b" → "7B"); sem etiqueta numérica, "3B"."""
+    tag = name.split(":", 1)[1] if ":" in name else ""
+    return tag.upper() if re.fullmatch(r"\d+(\.\d+)?b", tag) else "3B"
 
 
 class FakeOllama:
@@ -48,7 +55,7 @@ class FakeOllama:
                     self._send_json({"models": [
                         {"name": m, "model": m, "size": 1000,
                          "details": {"family": m.split(":")[0], "families": [m.split(":")[0]],
-                                     "parameter_size": "3B", "quantization_level": "Q4_K_M"}}
+                                     "parameter_size": _size_of(m), "quantization_level": "Q4_K_M"}}
                         for m in owner.models]})
                 elif self.path == "/api/version":
                     self._send_json({"version": "0.0-fake"})

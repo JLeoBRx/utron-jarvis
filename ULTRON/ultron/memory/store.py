@@ -286,6 +286,18 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
             detail TEXT NOT NULL DEFAULT '', latency_ms REAL, source TEXT NOT NULL DEFAULT 'robo')""",
         "CREATE INDEX IF NOT EXISTS idx_noctario_ops_at ON noctario_ops(at)",
     ]),
+    # v7 — consumo dos modelos (Fase D da Operação Phoenix): uma linha por chamada (local ou nuvem) com
+    # provedor, modelo, finalidade, rota, tokens, duração e custo estimado. Só números — nenhum conteúdo.
+    (7, [
+        """CREATE TABLE IF NOT EXISTS model_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            at REAL NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+            purpose TEXT NOT NULL DEFAULT '', target TEXT NOT NULL DEFAULT '',
+            input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_usd REAL, seconds REAL NOT NULL DEFAULT 0, ok INTEGER NOT NULL DEFAULT 1,
+            detail TEXT NOT NULL DEFAULT '')""",
+        "CREATE INDEX IF NOT EXISTS idx_model_usage_at ON model_usage(at)",
+    ]),
 ]
 
 

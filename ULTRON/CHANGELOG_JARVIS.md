@@ -399,3 +399,21 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * `tests/test_ultron_protocol.py`: lógica, frases, console e, com a interface real (Qt offscreen), que
   configurações, permissões, autorizações permanentes e o executor ficam intactos e que a aparência volta
   exatamente como era.
+
+## Operação Phoenix — Fase D: inteligência por tarefa, consumo, autorização, procedência e memória
+* `ultron/models/profiles.py` (lógica pura): perfis LOCAL/HÍBRIDO/AVANÇADO/ECONÔMICO/PRIVACIDADE, avaliação da tarefa
+  (complexidade, finalidade, conteúdo sensível, contexto pessoal, imagens) e decisão determinística entre modelo local
+  rápido/robusto e nuvem rápida/robusta, com o motivo.
+* Roteador: nuvem só pronta de fato (chave, modelo, privacidade) e dentro do limite; **autorização no primeiro uso
+  pago** (mesmo AuthorizationManager); falha da nuvem → local **com aviso**; memória pessoal, tela, histórico,
+  ferramentas e imagens não saem sem opção explícita; modelo local robusto automático.
+* `ultron/models/usage.py` + migração v7 (`model_usage`, mesmo banco): tokens, duração, custo estimado (só com preço
+  configurado), limites mensais em US$ e tokens.
+* Procedência em cada resposta (`ultron/cognition/provenance.py`), na conversa e no console.
+* Memória: perguntas gerais ("quais ideias salvei?", "liste minhas notas"), todas as decisões (incluindo a memória
+  de projeto da TARDIS) e relações entre projetos (ligações, itens, etiquetas em comum, citações).
+* CONFIGURAÇÕES > INTELIGÊNCIA: perfil, modelos por tarefa, limites, preços, envio de contexto/imagens (com
+  confirmação), autorização do uso pago e consumo do mês. Voz: "qual o consumo da IA?", "use o perfil local".
+* `tests/test_intelligence.py` (22): roteamento, perfis, limite, consumo, autorização, privacidade do que é enviado,
+  procedência, memória — sempre com servidores falsos locais (nenhum serviço pago real foi chamado).
+

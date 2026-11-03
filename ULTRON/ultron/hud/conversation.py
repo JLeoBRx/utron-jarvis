@@ -115,12 +115,15 @@ class ConversationPanel(QtWidgets.QFrame):
                      f'<span style="color:{_USER}"><b>VOCÊ</b> ({html.escape(origin)}) ▸</span> '
                      f'{html.escape(text)}')
 
-    def add_jarvis(self, text: str, *, error: bool = False, at: float | None = None) -> None:
+    def add_jarvis(self, text: str, *, error: bool = False, at: float | None = None, source: str = "") -> None:
+        """``source``: a procedência ("fonte: memória pessoal", "fonte: inferência — modelo local ...")."""
         self.last_response = text
         color = _ERROR if error else "#DCEEFF"
+        origin = (f'<br><span style="color:{_DIM}; font-size:small">&nbsp;&nbsp;{html.escape(source)}</span>'
+                  if source else "")
         self._append(f'<span style="color:{_DIM}">[{_clock(at)}]</span> '
                      f'<span style="color:{_JARVIS}"><b>J.A.R.V.I.S.</b> ▸</span> '
-                     f'<span style="color:{color}">{html.escape(text)}</span>')
+                     f'<span style="color:{color}">{html.escape(text)}</span>{origin}')
 
     def add_system(self, text: str, *, alert: bool = False, at: float | None = None) -> None:
         self._append(f'<span style="color:{_DIM}">[{_clock(at)}] // </span>'
@@ -137,7 +140,9 @@ class ConversationPanel(QtWidgets.QFrame):
                 return
             response_kind = payload.get("kind", "answer")
             if not payload.get("partial"):
-                self.add_jarvis(text, error=response_kind == "error", at=at)
+                from ..cognition.provenance import line
+                self.add_jarvis(text, error=response_kind == "error", at=at,
+                                source=line(payload.get("provenance") or {}))
             elif response_kind == "reminder":
                 self.add_system(f"lembrete: {text}", alert=True, at=at)
             elif response_kind == "insight":

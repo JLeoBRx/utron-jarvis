@@ -432,6 +432,29 @@ suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
 
 ---
 
+### Perfis de inteligência, consumo e procedência
+
+CONFIGURAÇÕES > INTELIGÊNCIA > **Perfil**: **LOCAL** (só Ollama) · **HÍBRIDO** (local no dia a dia, nuvem para
+raciocínio pesado e planejamento) · **AVANÇADO** (nuvem para o que não for trivial) · **ECONÔMICO** (local primeiro;
+nuvem só como reserva, modelo rápido) · **PRIVACIDADE** (só local, sem pesquisa na internet). Sem escolha, vale o
+comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
+
+* **Por tarefa**: o JARVIS estima a complexidade do pedido (raciocínio, planejamento, tamanho, código) e escolhe
+  modelo local rápido, local robusto (`model_robust`, ou o maior instalado — ex.: `ollama pull qwen2.5:7b`) ou nuvem
+  rápida/robusta (`openai_model_fast` / `openai_model`).
+* **Nunca vai para a nuvem**: conteúdo sensível (senhas, documentos, banco, saúde); memória pessoal, tela, histórico
+  da conversa e resultados de ferramentas (salvo com "Enviar contexto pessoal à nuvem" ligado); imagens (salvo com
+  "Enviar imagens" ligado).
+* **Primeiro uso pago**: o JARVIS pede autorização (barra de autorização, voz "sim/não" ou console); recusado, a
+  resposta vem do modelo local e diz isso. "REVOGAR AUTORIZAÇÃO" volta a pedir.
+* **Consumo**: cada chamada fica no mesmo banco (tabela `model_usage`, só números); limite mensal em US$ e em
+  tokens (0 = nenhum gasto). O custo só é calculado com o preço configurado — sem preço, diz "custo desconhecido".
+  "Qual o consumo da IA?" responde o resumo do mês. Por voz: "use o perfil local/privacidade" (perfis com nuvem só
+  pelas configurações, com confirmação).
+* **Procedência**: cada resposta mostra de onde veio — memória pessoal, ação verificada, internet, inferência
+  (modelo local ou nuvem, com o nome), hipótese ou indisponível — e avisa trocas de provedor ("a nuvem falhou;
+  respondido pelo modelo local").
+
 ## 6. Memória pessoal e lembretes
 
 * Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.

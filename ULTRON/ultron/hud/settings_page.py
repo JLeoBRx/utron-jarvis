@@ -390,6 +390,79 @@ class SettingsPage(QtWidgets.QWidget):
         key_row.addWidget(test)
         form.addRow("Chave da OpenAI", key_row)
         self._refreshers.append(self._refresh_key)
+        self._build_profiles(form)
+
+    # ------------------------------------------------------------ perfis, roteamento e consumo (Phoenix D)
+    def _build_profiles(self, form) -> None:
+        from ..models import profiles
+        form.addRow(_label("PERFIL DE INTELIGÊNCIA E CONSUMO", "PanelTitle"))
+        items = [("", "Como antes (Ollama → LOCAL; OpenAI escolhida → AVANÇADO)")] + \
+            [(k, f"{profiles.PROFILE_LABELS[k]} — {profiles.PROFILE_HELP[k]}") for k in profiles.PROFILE_KEYS]
+        self.combo(form, "intelligence_profile", "Perfil", items, on_change=self._choose_profile,
+                   tip="Decide, tarefa a tarefa, entre modelo local rápido, local robusto e nuvem")
+        self.line(form, "model_robust", "Modelo local robusto (tarefas pesadas)", placeholder="vazio = o maior instalado")
+        self.line(form, "openai_model_fast", "Modelo da nuvem para tarefas leves", placeholder="vazio = o mesmo")
+        self.number(form, "cloud_monthly_limit_usd", "Limite mensal na nuvem (US$)", 0, 10000, step=1, decimals=2,
+                    tip="0 = nenhum gasto na nuvem")
+        self.number(form, "cloud_monthly_token_limit", "Limite mensal de tokens na nuvem", 0, 1000000000, step=100000,
+                    tip="Vale mesmo sem preço configurado; 0 = nenhum gasto")
+        for kind, label in (("fast", "rápido"), ("robust", "robusto")):
+            self.number(form, f"cloud_price_{kind}_in", f"Preço do modelo {label}: entrada (US$/milhão de tokens)",
+                        0, 1000, step=0.05, decimals=3, tip="Confira na sua conta do provedor; 0 = não configurado")
+            self.number(form, f"cloud_price_{kind}_out", f"Preço do modelo {label}: saída (US$/milhão de tokens)",
+                        0, 1000, step=0.05, decimals=3)
+        self.check(form, "cloud_share_memory", "Enviar contexto pessoal à nuvem (memória, tela, histórico, "
+                   "resultados de ferramentas)", on_change=lambda on: self._confirm_cloud("cloud_share_memory", on))
+        self.check(form, "cloud_images", "Enviar imagens e capturas de tela à nuvem",
+                   on_change=lambda on: self._confirm_cloud("cloud_images", on))
+        consent_row = QtWidgets.QHBoxLayout()
+        self.consent_state = _label("", "PanelDim")
+        revoke = _button("REVOGAR AUTORIZAÇÃO", "O próximo uso pago volta a pedir a sua autorização")
+        revoke.clicked.connect(lambda: (self.apply(cloud_consent_at=0.0), self.refresh()))
+        consent_row.addWidget(self.consent_state, 1)
+        consent_row.addWidget(revoke)
+        form.addRow("Uso pago", consent_row)
+        self.usage_state = _label("", "PanelDim")
+        self.usage_state.setWordWrap(True)
+        form.addRow("Consumo do mês", self.usage_state)
+        self._refreshers.append(self._refresh_usage)
+
+    def _choose_profile(self, value: str) -> None:
+        from ..models import profiles
+        if value in profiles.CLOUD_PROFILES and self.settings.intelligence_profile not in profiles.CLOUD_PROFILES:
+            if not self._ask("Perfil com nuvem", f"O perfil {profiles.PROFILE_LABELS[value]} pode enviar pedidos à "
+                             "OpenAI (serviço pago, com a sua chave) quando a tarefa justificar. Conteúdo sensível, "
+                             "memória pessoal, tela e imagens continuam no computador (a não ser que você ligue essas "
+                             "opções). O primeiro uso pago ainda pedirá autorização, e o limite mensal vale sempre.\n\n"
+                             "Isto muda o modo de privacidade para PADRÃO e permite modelos externos. Confirma?"):
+                self.refresh()
+                return
+            self.apply(intelligence_profile=value, privacy_mode="standard", allow_external_models=True)
+        else:
+            self.apply(intelligence_profile=value)
+        self.refresh()
+
+    def _confirm_cloud(self, field: str, on: bool) -> None:
+        if on and not self._ask("Enviar à nuvem", "Com esta opção, dados pessoais podem sair do computador quando "
+                                "uma tarefa for para a nuvem (OpenAI). Confirma?"):
+            self.refresh()
+            return
+        self.apply(**{field: bool(on)})
+
+    def _refresh_usage(self) -> None:
+        import time as _time
+        at = float(getattr(self.settings, "cloud_consent_at", 0.0) or 0.0)
+        self.consent_state.setText(_time.strftime("autorizado em %d/%m/%Y %H:%M", _time.localtime(at)) if at
+                                   else "ainda não autorizado (será pedido no primeiro uso pago)")
+        usage = getattr(self.core, "usage", None)
+        if usage is None:
+            self.usage_state.setText("—")
+            return
+        from ..models.usage import describe_month
+        try:
+            self.usage_state.setText(describe_month(usage.month(), self.settings))
+        except Exception as exc:                          # banco indisponível: diz, não inventa
+            self.usage_state.setText(f"indisponível ({exc})")
 
     def _refresh_provider(self) -> None:
         openai = getattr(self.core, "openai", None)

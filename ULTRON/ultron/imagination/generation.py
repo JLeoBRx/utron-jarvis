@@ -40,7 +40,7 @@ def generate(router, prompt: str, *, fallback: Callable[[], dict], required: tup
             result = router.chat("text", [{"role": "system", "content": CREATIVE_SYSTEM},
                                           {"role": "user", "content": prompt}],
                                  fmt="json", options={"temperature": temperature, "num_predict": num_predict},
-                                 timeout=180, cancel=cancel)
+                                 timeout=180, cancel=cancel, purpose="imaginacao", query=prompt)
             data = parse(result.content)
             if data and all(data.get(k) for k in required):
                 data["generator"] = f"llm:{result.model}"

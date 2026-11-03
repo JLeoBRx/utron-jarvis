@@ -147,7 +147,11 @@ class NeuralCore:
         self.client = ollama_client or OllamaClient(s().ollama_url, timeout=s().llm_timeout,
                                                     local_only=lambda: self.privacy.local_mode)
         self.client.metrics = self.metrics
-        self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy)
+        # consumo dos modelos no MESMO banco (migração v7); primeiro uso pago só com autorização do usuário
+        from ..models.usage import UsageLedger
+        self.usage = UsageLedger(self.memory.db, settings_getter=s)
+        self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy,
+                                  usage=self.usage, consent=self._cloud_consent)
         from ..models.openai_provider import OpenAIProvider
         self.openai = OpenAIProvider(s, privacy=self.privacy)
         self.router.register_provider("openai", self.openai)
@@ -545,6 +549,24 @@ class NeuralCore:
     def _progress(self, text: str) -> None:
         self._emit_response(Response(text, "progress"), "core", partial=True)
 
+    # ================================================================ uso pago da nuvem
+    def _cloud_consent(self, description: str) -> bool:
+        """Chamado pelo roteador (worker de IA) antes do PRIMEIRO uso pago: o mesmo pedido de autorização das
+        ações (barra da interface, voz "sim/não", console). Aprovado, fica registrado em ``cloud_consent_at``."""
+        if float(getattr(self.settings(), "cloud_consent_at", 0.0) or 0.0) > 0:
+            return True
+        timeout = max(60.0, float(getattr(self.settings(), "authorization_timeout", 30.0)))
+        req = self.authorizations.request(description, skill="model.cloud_paid", risk="medium",
+                                          args={"provedor": "openai"}, timeout=timeout, reversible=True,
+                                          origin="roteador de modelos")
+        approved = self.authorizations.wait(req)
+        if approved:
+            self.settings_manager.update(cloud_consent_at=time.time())
+            log.info("uso pago da nuvem autorizado pelo usuário")
+        else:
+            log.info("uso pago da nuvem não autorizado (%s)", req.status)
+        return approved
+
     # ================================================================ controle do próprio sistema
     def _control(self, intent: Intent) -> Response:
         if intent.kind == "dream":
@@ -575,6 +597,19 @@ class NeuralCore:
             self.settings_manager.update(privacy_mode=str(args["privacy_mode"]))
             self.privacy.refresh()
             return Response("LOCAL MODE ativo. Conexões externas automáticas bloqueadas.", "info")
+        if args.get("ai_usage"):
+            from ..models.usage import describe_month
+            from ..models import profiles
+            label = profiles.PROFILE_LABELS.get(profiles.effective_profile(s), "?")
+            return Response(f"Perfil de inteligência: {label}. " + describe_month(self.usage.month(), s), "info")
+        if "intelligence_profile" in args:
+            from ..models import profiles
+            wanted = str(args["intelligence_profile"])
+            if wanted in profiles.CLOUD_PROFILES:
+                return Response(f"Um perfil com nuvem ({profiles.PROFILE_LABELS[wanted]}) muda o que sai do "
+                                "computador: escolha em CONFIGURAÇÕES > INTELIGÊNCIA, que pede confirmação.", "info")
+            self.settings_manager.update(intelligence_profile=wanted)
+            return Response(f"Perfil {profiles.PROFILE_LABELS[wanted]}: só modelos locais.", "info")
         if "ultron" in args:                       # evento VISUAL: só um pedido à interface, nada mais
             if self.hud_health is None:
                 return Response("O Protocolo ULTRON é um evento visual da interface gráfica; no modo console ele "

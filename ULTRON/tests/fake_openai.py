@@ -50,6 +50,8 @@ class FakeOpenAI:
                     return self._send({"error": {"message": "falha simulada"}}, owner.status)
                 answer = owner.responder(payload)
                 output = []
+                if answer.get("web"):
+                    output.append({"type": "web_search_call", "id": "ws_1", "status": "completed"})
                 for call in answer.get("calls", []):
                     output.append({"type": "function_call", "id": f"fc_{call['id']}", "call_id": call["id"],
                                    "name": call["name"], "arguments": json.dumps(call.get("arguments", {}))})
@@ -57,7 +59,7 @@ class FakeOpenAI:
                     output.append({"type": "message", "role": "assistant",
                                    "content": [{"type": "output_text", "text": answer["text"]}]})
                 self._send({"id": "resp_1", "model": payload.get("model"), "output": output,
-                            "usage": {"output_tokens": 7}})
+                            "usage": {"input_tokens": 40, "output_tokens": 7}})
 
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         threading.Thread(target=self._server.serve_forever, daemon=True).start()

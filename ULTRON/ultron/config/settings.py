@@ -44,6 +44,7 @@ STT_ENGINES = ("auto", "vosk-large", "vosk-small")
 MIC_BACKENDS = ("auto", "pyaudio", "sounddevice")
 OBSERVER_MODES = ("off", "assistant", "observer")
 AI_PROVIDERS = ("ollama", "openai")
+INTELLIGENCE_PROFILES = ("", "local", "hibrido", "avancado", "economico", "privacidade")   # "" = como antes
 START_PAGES = ("jarvis", "tardis", "atividades", "configuracoes", "diagnosticos")
 PERMISSION_CATEGORIES = ("consultar", "configurar", "executar_programas", "arquivos", "apagar_dados")
 PERMISSION_MODES = ("permitir", "confirmar", "bloquear")
@@ -64,6 +65,7 @@ class Settings:
     # ------------------------------------------------------------ modelos
     model: str = "qwen2.5:3b"
     vision_model: str = "qwen2.5vl:3b"
+    model_robust: str = ""                    # modelo local para tarefas pesadas ("" = o maior instalado)
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_autostart: bool = True
     llm_timeout: float = 120.0
@@ -121,6 +123,18 @@ class Settings:
     ai_provider: str = "ollama"               # ollama | openai
     openai_model: str = "gpt-5.6-sol"
     openai_web_search: bool = True
+    openai_model_fast: str = ""               # modelo da nuvem para tarefas leves ("" = o mesmo de openai_model)
+    # ------------------------------------------------------------ perfis de inteligência e consumo (Phoenix D)
+    intelligence_profile: str = ""            # local | hibrido | avancado | economico | privacidade ("" = como antes)
+    cloud_monthly_limit_usd: float = 5.0      # 0 = nenhum gasto na nuvem
+    cloud_monthly_token_limit: int = 1000000  # vale também sem preço configurado; 0 = nenhum gasto
+    cloud_price_fast_in: float = 0.0          # US$ por milhão de tokens (0 = preço não configurado)
+    cloud_price_fast_out: float = 0.0
+    cloud_price_robust_in: float = 0.0
+    cloud_price_robust_out: float = 0.0
+    cloud_consent_at: float = 0.0             # quando o usuário autorizou o primeiro uso pago (0 = nunca)
+    cloud_share_memory: bool = False          # enviar memória pessoal/tela como contexto à nuvem (padrão: não)
+    cloud_images: bool = False                # enviar imagens/capturas de tela à nuvem (padrão: não)
     openai_base_url: str = "https://api.openai.com/v1"
     # ------------------------------------------------------------ imaginação
     image_provider: str = "auto"
@@ -193,6 +207,9 @@ class Settings:
         "audio_output_index": (-1, 64), "activity_keep": (100, 100000),
         "ultron_chance_per_hour": (0.0, 100.0), "ultron_min_interval_hours": (1.0, 720.0),
         "ultron_duration_s": (0.0, 600.0),
+        "cloud_monthly_limit_usd": (0.0, 10000.0), "cloud_monthly_token_limit": (0, 1000000000),
+        "cloud_price_fast_in": (0.0, 1000.0), "cloud_price_fast_out": (0.0, 1000.0),
+        "cloud_price_robust_in": (0.0, 1000.0), "cloud_price_robust_out": (0.0, 1000.0),
     }
     _CHOICES = {
         "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,
@@ -200,6 +217,7 @@ class Settings:
         "mic_backend": MIC_BACKENDS, "voice_profile": ("jarvis", "neutral"),
         "observer_mode": OBSERVER_MODES, "ai_provider": AI_PROVIDERS, "start_page": START_PAGES,
         "avatar_mode": ("face", "neural"), "render_backend": ("cpu", "gpu"), "scene3d": ("auto", "desligado"),
+        "intelligence_profile": INTELLIGENCE_PROFILES,
     }
 
     # ------------------------------------------------------------ utilidades

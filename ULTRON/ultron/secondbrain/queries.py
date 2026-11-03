@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import parsing, timeutil
-from .models import KIND_PLURALS, KINDS, Record
+from .models import KIND_PLURALS, KINDS, RELATIONS as RELATION_LABELS, Record
 from .service import NeedsClarification, SecondBrainError, SecondBrainService, describe_record
 
 MAX_ITEMS = 8
@@ -57,6 +57,19 @@ QUESTION_PATTERNS = (
     ("decisions", re.compile(r"\b(o que|que)\s+(eu\s+)?(havia|tinha|ja)?\s*decid\w*\s+(sobre|para|quanto a|"
                              r"a respeito d[oae])\s+(?:o |a )?(?P<topic>.+)$|\bdecis(ao|oes)\s+sobre\s+"
                              r"(?:o |a )?(?P<topic2>.+)$")),
+    ("between", re.compile(r"\brelac(?:ao|oes)\s+entre\s+(?:o |a )?(?:projeto\s+)?(?P<topic>.+?)\s+e\s+"
+                           r"(?:o |a )?(?:projeto\s+)?(?P<topic2>.+)$")),
+    ("related", re.compile(r"\b(?:projetos|registros|itens|notas|ideias|tarefas|coisas)\s+(?:estao\s+|sao\s+|esta\s+)?"
+                           r"(?:relacionad\w*|ligad\w*|conectad\w*)\s+(?:a|ao|aos|as|com)\s+(?:o |a )?(?:projeto\s+)?"
+                           r"(?P<topic>.+)$|\bo que (?:se )?(?:relaciona|liga|conecta)\s+(?:a|ao|com)\s+(?:o |a )?"
+                           r"(?:projeto\s+)?(?P<topic2>.+)$")),
+    ("decisions_all", re.compile(r"^(?:jarvis,?\s+)?(?:quais|que|minhas|liste|mostre|me mostre)\s+(?:sao\s+)?(?:as\s+)?"
+                                 r"(?:minhas\s+)?decisoes\b(?:\s+(?:que\s+)?(?:eu\s+)?(?:tomei|registrei|anotei|salvei))?"
+                                 r"\s*[?.!]*$")),
+    ("listing", re.compile(r"^(?:jarvis,?\s+)?(?:quais|que|minhas|meus|liste|listar|lista|mostre|mostra|me mostre)\s+"
+                           r"(?:sao\s+)?(?:as\s+|os\s+)?(?:minhas\s+|meus\s+)?(?P<kind>ideias|notas|anotacoes|tarefas|"
+                           r"estudos|prazos|rotinas|pessoas|compromissos)\b(?:\s+(?:que\s+)?(?:eu\s+)?(?:salvei|anotei|"
+                           r"registrei|tenho|guardei|criei|salvas|registradas|pendentes|abertas))?\s*[?.!]*$")),
     ("projects", re.compile(r"\b(quais|meus)\s+(sao\s+)?(meus\s+)?projetos( ativos)?\b")),
     ("upcoming", re.compile(r"\b(proximos|meus)\s+(compromissos|lembretes|eventos)\b|\bagenda da semana\b|"
                             r"\bo que tenho amanha\b|\bcompromissos de amanha\b")),
@@ -67,6 +80,71 @@ QUESTION_PATTERNS = (
 )
 
 
+LISTING_KINDS = {"ideias": ("idea",), "notas": ("note",), "anotacoes": ("note",), "tarefas": ("task",),
+                 "estudos": ("study",), "prazos": ("deadline",), "rotinas": ("routine",), "pessoas": ("person",),
+                 "compromissos": ("event",)}
+
+
+LISTING_LABELS = {"anotacoes": "anotações"}
+FEMININE = {"ideias", "notas", "anotacoes", "tarefas", "rotinas", "pessoas"}
+
+
+def _project_note(note: dict) -> str:
+    project = f" [{note['project']}]" if note.get("project") else ""
+    return f"{str(note.get('text') or '')[:160]}{project} (memória de projeto da TARDIS)"
+
+
+def _relations(service: SecondBrainService, kind: str, topic: str, now: dt.datetime) -> Answer:
+    """Relações de um projeto (ou entre dois), só com o que está salvo: ligações explícitas, itens do projeto,
+    etiquetas em comum e citações."""
+    names = [t.strip() for t in topic.split("|")] if kind == "between" else [topic]
+    records = [service.resolve(name, kinds=("project",)) if _has_project(service, name) else service.resolve(name)
+               for name in names]
+    if kind == "between":
+        a, b = records
+        found = []
+        for rel in service.related(a.id):
+            if rel["record"]["id"] == b.id:
+                found.append(f"ligação registrada: {RELATION_LABELS.get(rel['type'], rel['type'])}")
+        common = sorted({parsing.fold(t) for t in a.tags} & {parsing.fold(t) for t in b.tags})
+        if common:
+            found.append("etiquetas em comum: " + ", ".join(common))
+        for x, y in ((a, b), (b, a)):
+            if any(m.id == y.id for m in service.connections(x)["mentioned"]):
+                found.append(f"\"{y.title}\" é citado nos registros de \"{x.title}\"")
+        if not found:
+            return Answer(f"Não encontrei relação registrada entre \"{a.title}\" e \"{b.title}\".", [], "empty", kind)
+        return Answer(f"Entre \"{a.title}\" e \"{b.title}\": " + "; ".join(found) + ".", [a, b], "list", kind)
+    record = records[0]
+    links = service.connections(record)
+    parts = []
+    if links["explicit"]:
+        parts.append("ligações registradas: " + "; ".join(
+            f"{RELATION_LABELS.get(r['type'], r['type'])} \"{r['record']['title']}\"" for r in links["explicit"][:6]))
+    if links["members"]:
+        counts: dict[str, int] = {}
+        for m in links["members"]:
+            counts[m.kind] = counts.get(m.kind, 0) + 1
+        parts.append("itens do projeto: " + ", ".join(f"{n} {KIND_PLURALS.get(k, k).lower()}"
+                                                      for k, n in counts.items()))
+    if links["shared_tags"]:
+        parts.append("projetos com etiquetas em comum: " + "; ".join(
+            f"\"{s['record'].title}\" ({', '.join(s['tags'])})" for s in links["shared_tags"][:5]))
+    if links["mentioned"]:
+        parts.append("projetos citados nos registros: " + ", ".join(f"\"{m.title}\"" for m in links["mentioned"][:5]))
+    if not parts:
+        return Answer(f"Não encontrei relações registradas para \"{record.title}\".", [record], "empty", kind)
+    return Answer(f"\"{record.title}\" — " + ". ".join(parts) + ".", [record], "list", kind)
+
+
+def _has_project(service: SecondBrainService, name: str) -> bool:
+    try:
+        service.resolve(name, kinds=("project",))
+        return True
+    except (SecondBrainError, NeedsClarification):
+        return False
+
+
 def classify(text: str) -> tuple[str, str] | None:
     """(tipo de pergunta, assunto) — None quando não é uma pergunta ao Second Brain."""
     raw = " ".join(str(text or "").split())
@@ -75,6 +153,11 @@ def classify(text: str) -> tuple[str, str] | None:
         match = pattern.search(folded)
         if match:
             topic = ""
+            if kind == "between":
+                spans = [match.span(g) for g in ("topic", "topic2")]
+                return kind, " | ".join(raw[a:b].strip(" ?.!,;:") for a, b in spans)
+            if kind == "listing":
+                return kind, match.group("kind")
             for group in ("topic", "topic2"):
                 if group in pattern.groupindex and match.group(group):
                     start, end = match.span(group)
@@ -125,10 +208,35 @@ def answer(service: SecondBrainService, text: str) -> Answer:
             return Answer(f"Dependem de \"{target.title}\": {_items(records, now)}.", records, "list", kind)
         if kind == "decisions":
             records = service.decisions_about(topic)
-            if not records:
+            tardis = service.project_decisions(topic, limit=5)
+            if not records and not tardis:
                 return Answer(f"Não encontrei decisões registradas sobre {topic}.", [], "empty", kind)
             lines = [f"{r.title}" + (f": {r.body[:160]}" if r.body else "") for r in records[:5]]
-            return Answer(f"Sobre {topic}: " + "; ".join(lines) + ".", records, "list", kind)
+            lines += [_project_note(n) for n in tardis]
+            return Answer(f"Sobre {topic}: " + "; ".join(lines) + ".", records + tardis, "list", kind)
+        if kind == "decisions_all":
+            records = service.decisions(limit=MAX_ITEMS)
+            tardis = service.project_decisions(limit=MAX_ITEMS)
+            if not records and not tardis:
+                return Answer("Não há decisões registradas na memória.", [], "empty", kind)
+            lines = [r.title + (f": {r.body[:120]}" if r.body else "") for r in records]
+            lines += [_project_note(n) for n in tardis]
+            total = len(records) + len(tardis)
+            return Answer(f"Decisões registradas ({total}): " + "; ".join(lines[:MAX_ITEMS]) +
+                          (f" (e mais {total - MAX_ITEMS})" if total > MAX_ITEMS else "") + ".",
+                          records + tardis, "list", kind)
+        if kind == "listing":
+            wanted = LISTING_KINDS.get(parsing.fold(topic), ())
+            status = ("open", "in_progress", "waiting") if set(wanted) & {"task", "study", "deadline", "event"} else None
+            records = service.list(kinds=wanted, status=status, order="smart" if status else "recent", limit=200)
+            key = parsing.fold(topic)
+            label = LISTING_LABELS.get(key, topic.lower())
+            if not records:
+                ending = "registradas" if key in FEMININE else "registrados"
+                return Answer(f"Não há {label} {ending} na memória.", [], "empty", kind)
+            return Answer(f"{label.capitalize()} ({len(records)}): {_items(records, now)}.", records, "list", kind)
+        if kind in ("related", "between"):
+            return _relations(service, kind, topic, now)
         if kind == "projects":
             projects = service.projects()
             if not projects:
