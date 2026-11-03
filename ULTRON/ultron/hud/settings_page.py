@@ -265,6 +265,11 @@ class SettingsPage(QtWidgets.QWidget):
         self.check(form, "voice_enabled", "Voz do JARVIS (microfone e fala)")
         self.combo(form, "voice_profile", "Timbre", [("jarvis", "JARVIS — masculina, grave, natural"),
                                                      ("neutral", "Neutro")])
+        from ..config import paths
+        voices = sorted(p.stem for p in paths.voices_dir().glob("*.onnx")) or [self.settings.voice]
+        self.combo(form, "voice", "Voz neural (Piper)", [(v, v) for v in voices],
+                   tip="Vozes .onnx em assets\\voices (ex.: pt_BR-cadu-medium, pt_BR-jeff-medium, de "
+                       "huggingface.co/rhasspy/piper-voices). Vale ao reiniciar a voz.")
         self.number(form, "volume", "Volume da fala", 0.0, 1.0, step=0.05, decimals=2)
         self.number(form, "speech_speed", "Velocidade da fala", 0.6, 1.4, step=0.05, decimals=2,
                     tip="1,00 = normal; menor = mais devagar")

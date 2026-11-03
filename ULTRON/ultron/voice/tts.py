@@ -53,6 +53,12 @@ def _read_wav(data: bytes) -> tuple[np.ndarray, int]:
     return samples, rate
 
 
+def trailing_silence(audio: np.ndarray, rate: int, threshold: float = 0.01) -> int:
+    """Amostras de silêncio no fim do trecho (o que o modelo já pausou)."""
+    loud = np.flatnonzero(np.abs(audio) > threshold)
+    return int(len(audio) - loud[-1] - 1) if len(loud) else len(audio)
+
+
 class PiperSynth:
     name = "piper"
 
@@ -85,6 +91,43 @@ class PiperSynth:
             segments.append(Segment(position, position + len(audio), list(chunk.phonemes or []), alignment))
             parts.append(audio)
             position += len(audio)
+        if not parts:
+            return np.zeros(0, dtype=np.float32), rate or 22050, []
+        return np.concatenate(parts), rate, segments
+
+    def synthesize_plan(self, phrases: list, *, length_scale: float = 1.0
+                        ) -> tuple[np.ndarray, int, list[Segment] | None]:
+        """Fala planejada pela prosódia (``prosody.plan``): cada trecho com a própria velocidade e expressividade
+        e a pausa planejada depois dele. O silêncio que o modelo já põe no fim do trecho é DESCONTADO da pausa
+        (em vez de cortado), para o alinhamento dos fonemas — que move a boca — continuar exato."""
+        if not hasattr(self.voice, "synthesize_wav"):                      # piper-tts 1.2: sem configuração por trecho
+            return self.synthesize_segments(" ".join(p.text for p in phrases), length_scale=length_scale)
+        from piper import SynthesisConfig
+        parts: list[np.ndarray] = []
+        segments: list[Segment] = []
+        position, rate = 0, 0
+        for phrase in phrases:
+            config = SynthesisConfig(length_scale=max(0.5, min(2.0, length_scale * phrase.length_mult)),
+                                     noise_scale=phrase.noise_scale, noise_w_scale=phrase.noise_w_scale)
+            try:
+                chunks = list(self.voice.synthesize(phrase.text, syn_config=config, include_alignments=True))
+            except TypeError:
+                chunks = list(self.voice.synthesize(phrase.text, syn_config=config))
+            audio = np.zeros(0, dtype=np.float32)
+            for chunk in chunks:
+                audio = np.asarray(chunk.audio_float_array, dtype=np.float32).reshape(-1)
+                rate = rate or int(chunk.sample_rate)
+                alignment = None
+                if getattr(chunk, "phoneme_alignments", None):
+                    alignment = [(str(a.phoneme), int(a.num_samples)) for a in chunk.phoneme_alignments]
+                segments.append(Segment(position, position + len(audio), list(chunk.phonemes or []), alignment))
+                parts.append(audio)
+                position += len(audio)
+            if phrase.pause_after > 0 and rate:
+                extra = int(rate * phrase.pause_after) - trailing_silence(audio, rate)
+                if extra > 0:
+                    parts.append(np.zeros(extra, dtype=np.float32))
+                    position += extra
         if not parts:
             return np.zeros(0, dtype=np.float32), rate or 22050, []
         return np.concatenate(parts), rate, segments
@@ -366,7 +409,13 @@ class Speaker:
             started = time.perf_counter()
             segments = None
             length_scale = dsp.length_scale_for(profile)
-            if hasattr(self.synth, "synthesize_segments"):
+            if hasattr(self.synth, "synthesize_plan"):                # prosódia: pausas, ritmo e expressividade
+                from ..personality import persona
+                from . import prosody
+                style = prosody.ULTRON_STYLE if persona.current().ultron else prosody.JARVIS_STYLE
+                phrases = prosody.plan(text, style) or [prosody.Phrase(text)]
+                samples, rate, segments = self.synth.synthesize_plan(phrases, length_scale=length_scale)
+            elif hasattr(self.synth, "synthesize_segments"):
                 samples, rate, segments = self.synth.synthesize_segments(text, length_scale=length_scale)
             else:
                 samples, rate = self.synth.synthesize(text, length_scale=length_scale)

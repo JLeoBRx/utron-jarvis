@@ -431,3 +431,17 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * `tests/test_ultron_protocol.py` (21): política do operador, executor real, histórico, voz/tom, tecla de emergência,
   identidade x operador, restauração.
 
+## Aprimoramento 2 — Voz mais humana e as duas identidades vocais
+* `ultron/voice/prosody.py`: normalização para fala em pt-BR, planejamento em frases e respirações, pausas pela
+  pontuação, alongamento final, perguntas, variação determinística de ritmo, expressividade do Piper
+  (`noise_scale`/`noise_w_scale`) por identidade.
+* `PiperSynth.synthesize_plan`: síntese por trecho com a pausa planejada (descontando o silêncio do modelo, para o
+  alinhamento dos fonemas da boca continuar exato).
+* `ULTRON_VOICE_PROFILE` com textura metálica (`dsp.metallic`), mais grave e deliberado; `JARVIS_VOICE_PROFILE`.
+* Medido na voz Faber: variação de entonação do JARVIS 2,97 → 3,41 semitons; pausas médias 0,15 → 0,36 s; ULTRON
+  ~2,3 semitons abaixo do JARVIS na mesma frase. Amostras WAV entregues para avaliação de ouvido.
+* Escolha da voz Piper instalada nas configurações. Outras vozes não puderam ser baixadas neste ambiente (acesso ao
+  HuggingFace bloqueado); avaliação de ouvido fica com o usuário.
+* `tests/test_voice_prosody.py` (10): normalização, planejamento, perfis, estilo por persona e síntese REAL pelo
+  Piper — pausas, alinhamento da boca e inteligibilidade do ULTRON reconhecida pelo Vosk.
+

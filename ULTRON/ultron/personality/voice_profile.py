@@ -26,6 +26,7 @@ class VoiceProfile:
     air_cut_hz: float = 6500.0
     doubling: float = 0.16
     room: float = 0.12
+    metal: float = 0.0                 # textura metálica (ressonância curta + modulação em anel) — ULTRON
     volume: float = 0.9
     sapi_rate: int = 150               # fallback pyttsx3 (palavras/min)
     prefer_male_sapi: bool = True
@@ -54,5 +55,5 @@ ULTRON = VoiceProfile()          # identidade anterior (mantida só para compara
 JARVIS_VOICE_PROFILE = JARVIS
 # ULTRON: mais grave, frio e firme, ritmo deliberado, camada sintética e sala metálica curta. Ajustado na etapa de
 # voz (dsp.py) para continuar inteligível.
-ULTRON_VOICE_PROFILE = VoiceProfile(pitch=0.84, speed=0.9, rasp=0.05, depth_db=5.0, air_cut_hz=7600.0,
-                                    doubling=0.2, room=0.1, volume=0.9, sapi_rate=140)
+ULTRON_VOICE_PROFILE = VoiceProfile(pitch=0.84, speed=0.92, rasp=0.04, depth_db=5.0, air_cut_hz=7600.0,
+                                    doubling=0.18, room=0.08, metal=0.32, volume=0.9, sapi_rate=140)

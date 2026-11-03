@@ -461,6 +461,18 @@ comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
   (modelo local ou nuvem, com o nome), hipótese ou indisponível — e avisa trocas de provedor ("a nuvem falhou;
   respondido pelo modelo local").
 
+### Voz do JARVIS (e do ULTRON)
+
+* **Prosódia** (`ultron/voice/prosody.py`): o texto vira fala em português (abreviações, horas, moedas, por cento,
+  unidades, endereços pelo domínio, parênteses como inserção); frases longas respiram nas vírgulas; pausas pela
+  pontuação; fim de frase e perguntas um pouco mais lentos; variação pequena de velocidade entre frases; mais
+  variação de entonação e ritmo no Piper. A boca do holograma segue o áudio final (fonemas).
+* **Duas identidades**: `JARVIS_VOICE_PROFILE` (natural, levemente grave) e `ULTRON_VOICE_PROFILE` (mais grave,
+  fria, ritmo deliberado, pausas longas, textura metálica). A troca acompanha o Protocolo ULTRON.
+* **Outras vozes**: coloque uma voz Piper pt-BR (`.onnx` + `.onnx.json`, ex.: `pt_BR-cadu-medium`,
+  `pt_BR-jeff-medium`) em `assets\voices` e escolha em CONFIGURAÇÕES > VOZ > Voz neural. Vozes neurais na nuvem
+  (melhor qualidade) mandariam o texto falado para fora do computador — não estão ativas.
+
 ## 6. Memória pessoal e lembretes
 
 * Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.

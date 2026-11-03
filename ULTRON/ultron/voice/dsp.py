@@ -104,6 +104,25 @@ def room(signal: np.ndarray, amount: float, rate: int) -> np.ndarray:
     return out
 
 
+def metallic(signal: np.ndarray, amount: float, rate: int) -> np.ndarray:
+    """Textura metálica discreta: ressonância curta em pente (cavidade de ~2 ms) somada a uma modulação em anel
+    lenta (~48 Hz). ``amount`` 0–1; a voz original continua dominante para não perder inteligibilidade."""
+    if amount <= 0 or len(signal) == 0:
+        return signal
+    delay = max(1, int(rate * 0.0021))
+    comb = signal.copy()
+    gain = 0.55
+    for k in range(1, 5):                                      # pente de realimentação aproximado (4 ecos)
+        shift = delay * k
+        if shift >= len(signal):
+            break
+        comb[shift:] += signal[:-shift] * (gain ** k)
+    t = np.arange(len(signal), dtype=np.float32) / rate
+    ring = signal * np.sin(2 * np.pi * 48.0 * t).astype(np.float32)
+    mix = (1.0 - 0.55 * amount) * signal + 0.35 * amount * comb + 0.2 * amount * ring
+    return mix.astype(np.float32)
+
+
 def time_scale(profile: VoiceProfile) -> float:
     """Quanto ``process`` estica o tempo (a sala só acrescenta cauda no fim: não desloca nada)."""
     return 1.0 / max(0.5, min(1.5, profile.pitch))
@@ -119,6 +138,7 @@ def process(samples: np.ndarray, rate: int, profile: VoiceProfile) -> np.ndarray
     x = lowpass(x, profile.air_cut_hz, rate)
     x = rasp(x, profile.rasp, rate)
     x = doubling(x, profile.doubling, rate)
+    x = metallic(x, getattr(profile, "metal", 0.0), rate)
     x = room(x, profile.room, rate)
     peak = float(np.max(np.abs(x))) or 1.0
     return (x / peak * 0.92).astype(np.float32)
