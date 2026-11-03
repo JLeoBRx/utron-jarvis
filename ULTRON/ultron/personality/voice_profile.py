@@ -49,3 +49,10 @@ JARVIS = VoiceProfile(pitch=0.95, speed=0.97, rasp=0.0, depth_db=2.5, air_cut_hz
 NEUTRAL = VoiceProfile(pitch=1.0, speed=1.0, rasp=0.0, depth_db=0.0, air_cut_hz=11000.0,
                        doubling=0.0, room=0.0)
 ULTRON = VoiceProfile()          # identidade anterior (mantida só para comparação/testes)
+
+# Perfis das duas identidades do Protocolo ULTRON (a troca acompanha a transformação visual):
+JARVIS_VOICE_PROFILE = JARVIS
+# ULTRON: mais grave, frio e firme, ritmo deliberado, camada sintética e sala metálica curta. Ajustado na etapa de
+# voz (dsp.py) para continuar inteligível.
+ULTRON_VOICE_PROFILE = VoiceProfile(pitch=0.84, speed=0.9, rasp=0.05, depth_db=5.0, air_cut_hz=7600.0,
+                                    doubling=0.2, room=0.1, volume=0.9, sapi_rate=140)

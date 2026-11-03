@@ -681,14 +681,34 @@ class SettingsPage(QtWidgets.QWidget):
         self.check(form, "ambient_sound", "Som ambiente discreto do TARDIS")
         self._build_ultron(form)
 
+    def _build_operator_policy(self, form) -> None:
+        """Política do ULTRON_OPERATOR por categoria (nunca desbloqueia o que a política normal bloqueia)."""
+        for category in PERMISSION_CATEGORIES:
+            combo = QtWidgets.QComboBox()
+            for mode in PERMISSION_MODES:
+                if category in FLOORS and PERMISSION_MODES.index(mode) < PERMISSION_MODES.index(FLOORS[category]):
+                    continue
+                combo.addItem(MODE_LABELS[mode], mode)
+            combo.setToolTip("Bloqueada na política normal = bloqueada também para o operador")
+
+            def chosen(index, category=category, combo=combo):
+                policy = parse_policy(getattr(self.settings, "ultron_operator_policy", ()))
+                policy[category] = combo.itemData(index)
+                self.apply(ultron_operator_policy=policy_entries(policy))
+            combo.activated.connect(chosen)
+            self._refreshers.append(lambda c=category, combo=combo: _set_combo(
+                combo, parse_policy(getattr(self.settings, "ultron_operator_policy", ()))[c]))
+            form.addRow(f"Operador — {LABELS[category]}", combo)
+
     def _build_ultron(self, form) -> None:
-        form.addRow(_label("PROTOCOLO ULTRON — evento visual", "PanelTitle"))
-        form.addRow(_label("Uma troca temporária de identidade da interface (cores, holograma, ORBE, TARDIS e "
-                           "mensagens de um personagem fictício). É só aparência: não muda permissões nem "
-                           "configurações, não executa nada, não grava arquivos seus e mostra o tempo todo o rótulo "
-                           "\"evento visual — nenhuma ação real no sistema\". Nunca começa com autorização pendente, "
-                           "ação em execução ou modo privacidade. Sai com \"restaurar JARVIS\", pelo botão ou Esc.",
-                           "PanelDim"))
+        form.addRow(_label("PROTOCOLO ULTRON — identidade alternativa", "PanelTitle"))
+        form.addRow(_label("O assistente assume a identidade ULTRON: aparência, voz e tom. Com o perfil "
+                           "ULTRON_OPERATOR, ele usa as MESMAS ferramentas e o MESMO executor do JARVIS com autonomia "
+                           "para as rotinas que você liberar abaixo; categorias bloqueadas continuam bloqueadas, "
+                           "apagar dados, risco alto, envio de dados para fora e ações administrativas sempre pedem "
+                           "confirmação, e tudo vai para ATIVIDADES marcado como [ULTRON]. Nunca começa com "
+                           "autorização pendente ou ação em execução. Sai com \"restaurar JARVIS\", pelo botão, Esc "
+                           "ou a tecla de emergência (que também interrompe o que estiver em curso).", "PanelDim"))
         self.check(form, "ultron_manual", "Ativação pela frase \"JARVIS, iniciar protocolo ULTRON\"")
         self.check(form, "ultron_occasional", "Ocorrência ocasional (rara, só em repouso, após 2 min sem interação)")
         self.number(form, "ultron_chance_per_hour", "Probabilidade por hora em repouso", 0, 100, step=0.5,
@@ -697,6 +717,11 @@ class SettingsPage(QtWidgets.QWidget):
                     suffix=" h")
         self.number(form, "ultron_duration_s", "Encerrar sozinho depois de", 0, 600, step=5, suffix=" s",
                     tip="0 = só termina por comando, botão ou Esc")
+        self.check(form, "ultron_operator", "Perfil ULTRON_OPERATOR na ativação pedida por você")
+        self.check(form, "ultron_operator_occasional", "Perfil ULTRON_OPERATOR também na ativação ocasional")
+        self.line(form, "ultron_emergency_key", "Tecla de emergência", placeholder="Ctrl+Shift+U",
+                  tip="Restaura o JARVIS e interrompe a tarefa, a autorização e a fala em curso")
+        self._build_operator_policy(form)
         demo = _button("DEMONSTRAÇÃO", "Mostra o efeito por 20 segundos (rotulado como demonstração)")
         demo.clicked.connect(self.ultron_demo.emit)
         form.addRow("", demo)

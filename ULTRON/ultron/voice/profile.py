@@ -14,6 +14,14 @@ PRESETS = {"jarvis": JARVIS, "neutral": NEUTRAL, "ultron": ULTRON}
 
 
 def effective_profile(settings: Any = None, preset: str | None = None) -> VoiceProfile:
+    """Perfil da persona ativa: com o Protocolo ULTRON, ``ULTRON_VOICE_PROFILE``; senão o escolhido (JARVIS)."""
+    from ..personality import persona
+    from ..personality.voice_profile import ULTRON_VOICE_PROFILE
+    if preset is None and persona.current().ultron:
+        base = ULTRON_VOICE_PROFILE
+        if settings is None:
+            return base
+        return base.with_user(volume=getattr(settings, "volume", None))
     preset = preset or str(getattr(settings, "voice_profile", "jarvis") or "jarvis")
     base = PRESETS.get(preset, JARVIS)
     if settings is None:

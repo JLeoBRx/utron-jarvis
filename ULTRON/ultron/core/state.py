@@ -43,6 +43,7 @@ COGNITIVE_PHASES = ("", "ANALYZING", "CONNECTING", "EVALUATING", "PLANNING", "SE
 @dataclass
 class JarvisState:
     identity: dict = field(default_factory=dict)
+    persona: dict = field(default_factory=dict)     # JARVIS ou ULTRON (+ perfil ULTRON_OPERATOR) — Protocolo ULTRON
     runtime_state: str = "BOOTING"
     activity: str = "IDLE"                     # contrato de atividade (derivado de runtime_state)
     runtime_reason: str = ""

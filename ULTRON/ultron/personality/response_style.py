@@ -55,7 +55,11 @@ _URL = re.compile(r"https?://([^/\s]+)\S*")
 
 
 def _replace_identity(text: str) -> str:
-    # "Protocolo ULTRON" é o nome do evento visual da interface, não uma autorreferência: fica como está
+    # "Protocolo ULTRON" é o nome do protocolo, não uma autorreferência: fica como está. Com a persona ULTRON
+    # ativa, "ULTRON" é o nome certo — nada é trocado.
+    from . import persona
+    if persona.current().ultron:
+        return text
     for old in identity.FORBIDDEN_IDENTITIES:
         text = re.sub(rf"(?<![Pp]rotocolo )\b{re.escape(old)}\b", identity.NAME, text) if old[-1].isalnum() else \
             text.replace(old, identity.NAME)

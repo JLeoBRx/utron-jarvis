@@ -10,7 +10,8 @@ from unittest import mock
 
 import helpers
 
-from ultron.hud.ultron_protocol import LABEL, MESSAGES, Guard, UltronProtocol
+from ultron.hud.ultron_protocol import LABEL, LABEL_OPERATOR, MESSAGES, Guard, UltronProtocol
+from ultron.personality import persona
 
 
 class _Settings:
@@ -51,12 +52,11 @@ class ProtocolLogicTest(unittest.TestCase):
             self.assertIn(word, reason)
         self.assertFalse(self.p.active)
 
-    def test_real_activity_during_the_event_ends_it(self):
-        self.p.start("manual", Guard())
-        self.assertEqual(self.p.interrupt_reason(Guard()), "")
-        self.assertEqual(self.p.interrupt_reason(Guard(runtime_state="SPEAKING")), "", "falar a resposta não encerra")
+    def test_real_activity_only_blocks_the_start(self):
         for guard in (Guard(authorization_pending=True), Guard(action_running=True), Guard(privacy=True)):
-            self.assertTrue(self.p.interrupt_reason(guard))
+            self.assertTrue(UltronProtocol.start_conflict(guard))
+        self.assertEqual(UltronProtocol.start_conflict(Guard(runtime_state="SPEAKING")), "")
+        self.assertFalse(hasattr(self.p, "interrupt_reason"), "depois de iniciado, o ULTRON pode operar")
 
     def test_manual_can_be_disabled(self):
         self.settings.ultron_manual = False
@@ -109,10 +109,14 @@ class ProtocolLogicTest(unittest.TestCase):
             self.p.maybe_trigger(Guard(idle_seconds=600))
         self.assertLessEqual(len(calls), 1)
 
-    def test_messages_are_fiction_and_the_label_is_honest(self):
+    def test_messages_and_labels_are_honest(self):
         self.assertIn("PROTOCOLO ULTRON INICIADO", MESSAGES)
         self.assertIn("NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA", MESSAGES)
-        self.assertIn("nenhuma ação real", LABEL)
+        self.assertIn("permissões normais", LABEL)
+        self.assertIn("ações reais", LABEL_OPERATOR)
+        self.assertIn("ATIVIDADES", LABEL_OPERATOR)
+        self.assertFalse(any("INTERROMPIDO" in m or "COMPROMETIDO" in m for m in MESSAGES),
+                         "nenhuma mensagem sugere que o computador foi tomado")
 
 
 class IntentTest(unittest.TestCase):
@@ -135,7 +139,10 @@ class IdentityTest(unittest.TestCase):
 
 
 class ConsoleModeTest(unittest.TestCase):
-    def test_without_interface_it_says_it_has_no_effect(self):
+    def tearDown(self):
+        persona.reset()
+
+    def test_console_switches_voice_tone_and_operator_profile(self):
         from ultron.config.settings import SettingsManager
         from ultron.core.neural_core import NeuralCore
         manager = SettingsManager(helpers.temp_dir() / "settings.json")
@@ -146,12 +153,17 @@ class ConsoleModeTest(unittest.TestCase):
                           memory_db=helpers.make_memory().db)
         try:
             from ultron.cognition.intent_engine import IntentEngine
-            published = []
-            core.bus.subscribe(None, published.append, name="teste-ultron")
-            response = core._control(IntentEngine().classify("JARVIS, iniciar protocolo ULTRON."))
-            self.assertIn("modo console", response.text)
-            self.assertFalse([e for e in published if "ultron" in str(getattr(e, "payload", ""))],
-                             "nenhum pedido à interface sem interface")
+            from ultron.personality.voice_profile import ULTRON_VOICE_PROFILE
+            from ultron.voice.profile import effective_profile
+            engine = IntentEngine()
+            response = core._control(engine.classify("JARVIS, iniciar protocolo ULTRON."))
+            self.assertIn("console", response.text)
+            self.assertIn("ULTRON_OPERATOR", response.text)
+            self.assertTrue(persona.current().ultron and persona.current().operator)
+            self.assertEqual(effective_profile(manager.settings).pitch, ULTRON_VOICE_PROFILE.pitch, "voz do ULTRON")
+            self.assertEqual((core.state.get("persona") or {}).get("name"), "ultron", "estado para a ORBE")
+            self.assertEqual(core._control(engine.classify("restaurar JARVIS")).text, "JARVIS restaurado.")
+            self.assertFalse(persona.current().ultron)
         finally:
             core.memory.db.close()
 
@@ -187,12 +199,13 @@ class ControllerSafetyTest(unittest.TestCase):
         self.controller.show()
 
     def tearDown(self):
+        persona.reset()
         self.controller.quit()
         self.core.memory.db.close()
         self.env.stop()
         self.fake.__exit__(None, None, None)
 
-    def test_only_presentation_changes_and_everything_returns(self):
+    def test_identity_changes_settings_do_not_and_everything_returns(self):
         from PySide6 import QtWidgets
         c = self.controller
         settings_before = json.dumps(self.manager.settings.to_dict(), sort_keys=True, default=str)
@@ -215,8 +228,13 @@ class ControllerSafetyTest(unittest.TestCase):
         self.assertTrue(c.orb.ultron)
         self.assertTrue(any("255, 31, 61" in w.styleSheet() for w in c.window.findChildren(QtWidgets.QWidget)),
                         "os painéis também mudam de cor")
-        self.assertTrue(any("nenhuma ação real" in line for line in said), "a conversa avisa que é só visual")
+        self.assertTrue(any("ULTRON_OPERATOR ATIVO" in line and "ações reais" in line for line in said),
+                        "a conversa diz, com honestidade, que há um operador ativo")
+        self.assertTrue(persona.current().ultron and persona.current().operator, "persona no núcleo")
+        self.assertEqual(self.core.autonomy.level, "autonomous", "perfil operador em vigor")
         self.assertEqual(c.escape(), "ultron", "Esc restaura o JARVIS primeiro")
+        self.assertFalse(persona.current().ultron, "voz, tom e permissões voltam ao JARVIS")
+        self.assertNotEqual(self.core.autonomy.level, "autonomous")
         self.assertFalse(c.ultron.active)
 
         self.assertEqual(self.app.styleSheet(), style_before, "estilo restaurado exatamente")
@@ -246,14 +264,32 @@ class ControllerSafetyTest(unittest.TestCase):
         c._scene3d_request("restore")
         self.assertFalse(c.ultron.active, "o botão RESTAURAR JARVIS da cena encerra")
 
-    def test_a_real_authorization_during_the_event_ends_it_immediately(self):
+    def test_real_work_during_the_event_stays_visible_and_the_emergency_key_stops_it(self):
         c = self.controller
         self.assertTrue(c.ultron_start("manual"))
         with mock.patch.object(self.core.authorizations, "pending", return_value={"status": "pending"}):
             c._tick()
-        self.assertFalse(c.ultron.active, "a autorização real aparece com a identidade normal do JARVIS")
-        self.assertEqual(c.ultron.history[-1]["ended_by"], "há uma autorização pendente")
-        self.assertEqual(c.window.top.brand.title, "J.A.R.V.I.S.")
+        self.assertTrue(c.ultron.active, "o ULTRON opera: uma autorização real não encerra o evento")
+        self.assertTrue(c.window.top.state_chip.text().startswith("ULTRON ·") if hasattr(c.window.top.state_chip,
+                        "text") else True)
+        cancelled = []
+        original = self.core.cancel
+        self.core.cancel = lambda reason="": cancelled.append(reason) or original(reason)
+        c.ultron_emergency()
+        self.assertFalse(c.ultron.active)
+        self.assertTrue(cancelled, "a tecla de emergência também interrompe o que estiver em curso")
+        self.assertEqual(c.ultron.history[-1]["ended_by"], "tecla de emergência")
+        self.assertEqual(c.emergency_shortcut.key().toString(), "Ctrl+Shift+U")
+
+    def test_occasional_and_demo_change_only_the_identity(self):
+        c = self.controller
+        c.ultron_start("demonstracao")
+        self.assertTrue(persona.current().ultron)
+        self.assertFalse(persona.current().operator, "demonstração: só identidade")
+        c.ultron_stop("botão")
+        c._ultron_apply(True, "ocasional")
+        self.assertFalse(persona.current().operator, "ocasional: só identidade (padrão)")
+        c._ultron_apply(False, "botão")
 
     def test_page_titles_and_esc_inside_the_tardis(self):
         c = self.controller
@@ -293,6 +329,95 @@ class ControllerSafetyTest(unittest.TestCase):
         page.apply(ultron_occasional=True, ultron_chance_per_hour=5.0)
         self.assertTrue(self.core.settings().ultron_occasional)
         self.assertEqual(self.core.settings().ultron_chance_per_hour, 5.0)
+
+
+class OperatorPolicyTest(unittest.TestCase):
+    """ULTRON_OPERATOR: o MESMO executor e as MESMAS autorizações, com a política do operador — que nunca
+    desbloqueia, mantém os pisos e sempre confirma envio externo, ações administrativas e risco alto."""
+
+    def tearDown(self):
+        persona.reset()
+
+    def _decide(self, settings, skill_name, args=None):
+        from ultron.agent.autonomy import AutonomyPolicy
+        from ultron.agent.permissions import PermissionPolicy
+        from ultron.skills.registry import load_builtin, SkillRegistry
+        skill = load_builtin(SkillRegistry()).get(skill_name)
+        args = args or {}
+        autonomy = AutonomyPolicy(lambda: settings)
+        decision = autonomy.decide(skill.risk_for(args), reversible=skill.reversible, origin="user",
+                                   sensitive=skill.sensitive_for(args))
+        return PermissionPolicy(lambda: settings).apply(decision, skill, args).action
+
+    def test_operator_relaxes_only_what_the_user_allows(self):
+        settings = helpers.make_settings(permission_policy=("arquivos=confirmar", "executar_programas=bloquear"))
+        note = ("memory.session_note", {"note": "teste"})
+        self.assertEqual(self._decide(settings, *note), "authorize", "JARVIS: a categoria pede confirmação")
+        persona.set_persona("ultron", operator=True)
+        self.assertEqual(self._decide(settings, *note), "execute", "operador: rotina liberada no perfil")
+        self.assertEqual(self._decide(settings, "app.open", {"name": "notepad"}), "refuse",
+                         "bloqueado na política normal continua bloqueado")
+        self.assertEqual(self._decide(settings, "fs.delete", {"path": "C:/x.txt"}), "authorize",
+                         "apagar dados sempre pede confirmação")
+        persona.set_persona("ultron", operator=False)
+        self.assertEqual(self._decide(settings, *note), "authorize", "só identidade: permissões normais")
+
+    def test_external_and_administrative_actions_always_confirm(self):
+        settings = helpers.make_settings()
+        persona.set_persona("ultron", operator=True)
+        self.assertEqual(self._decide(settings, "web.search", {"query": "x"}), "authorize")
+        self.assertEqual(self._decide(settings, "system.power", {"action": "shutdown"}), "authorize")
+        settings.ultron_operator_policy = ("arquivos=bloquear",)
+        self.assertEqual(self._decide(settings, "memory.session_note", {"note": "x"}), "refuse",
+                         "o perfil do operador também pode restringir")
+
+    def test_the_same_executor_runs_the_routine_without_asking(self):
+        from fake_ollama import FakeOllama
+        from ultron.agent.execution import Action
+        from ultron.config.settings import SettingsManager
+        from ultron.core.neural_core import NeuralCore
+        with FakeOllama(["qwen2.5:3b"]) as ollama:
+            manager = SettingsManager(helpers.temp_dir() / "settings.json")
+            manager.load()
+            manager.settings.apply({"ollama_url": ollama.url, "network_discovery": False, "auto_backup": False,
+                                    "permission_policy": ["arquivos=confirmar"], "authorization_timeout": 5})
+            core = NeuralCore(manager, voice=False, perception=False, plugins=False,
+                              memory_db=helpers.make_memory().db)
+            try:
+                core.set_persona("ultron", operator=True, source="teste")
+                record = core.executor.execute(Action("memory.session_note", {"note": "rotina do operador"}))
+                self.assertEqual(record.status, "executed", record.result.error)
+                self.assertIsNone(record.authorization, "rotina liberada no perfil: sem pedido de autorização")
+                titles = [r["title"] for r in core.memory.db.query("SELECT title FROM activity")]
+                self.assertTrue(any(t.startswith("[ULTRON]") for t in titles), titles)
+                core.set_persona("jarvis", source="teste")
+                self.assertFalse(persona.current().ultron)
+            finally:
+                core.memory.db.close()
+
+    def test_actions_are_recorded_as_ultron_and_voice_and_tone_follow_the_persona(self):
+        from ultron.core.activity import ActivityLog
+        from ultron.personality import identity
+        from ultron.personality.response_style import stylize
+        from ultron.personality.voice_profile import JARVIS_VOICE_PROFILE, ULTRON_VOICE_PROFILE
+        from ultron.voice.profile import effective_profile
+        memory = helpers.make_memory()
+        try:
+            log = ActivityLog(memory.db, settings_getter=lambda: helpers.make_settings())
+            persona.set_persona("ultron", operator=True)
+            row_id = log.begin("acao", "abrir o bloco de notas", origin="user")
+            row = memory.db.query("SELECT title, detail FROM activity WHERE id=?", (row_id,))[0]
+            self.assertTrue(row["title"].startswith("[ULTRON]"))
+            self.assertIn("ULTRON_OPERATOR", row["detail"])
+            self.assertEqual(effective_profile(helpers.make_settings()).pitch, ULTRON_VOICE_PROFILE.pitch)
+            self.assertIn("ULTRON", identity.system_prompt())
+            self.assertIn("Nunca afirme que executou", identity.system_prompt(), "as regras de verdade continuam")
+            self.assertEqual(stylize("Eu sou ULTRON."), "Eu sou ULTRON.")
+            persona.reset()
+            self.assertEqual(effective_profile(helpers.make_settings()).pitch, JARVIS_VOICE_PROFILE.pitch)
+            self.assertNotIn("ULTRON", stylize("Eu sou ULTRON."))
+        finally:
+            memory.db.close()
 
 
 if __name__ == "__main__":

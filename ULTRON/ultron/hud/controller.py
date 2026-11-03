@@ -157,6 +157,10 @@ class HudController(QtCore.QObject):
         self._ultron_timer = QtCore.QTimer(self)
         self._ultron_timer.timeout.connect(self._ultron_tick)
         self._ultron_timer.start(5000)
+        # tecla de emergência (configurável): vale em qualquer janela do JARVIS, inclusive o ORBE recolhido
+        self.emergency_shortcut = QtGui.QShortcut(
+            QtGui.QKeySequence(str(getattr(core.settings(), "ultron_emergency_key", "") or "Ctrl+Shift+U")),
+            self.window, context=QtCore.Qt.ApplicationShortcut, activated=self.ultron_emergency)
 
     def _hud_fps(self) -> int:
         return int(getattr(self.core.settings(), "hud_fps", 60))
@@ -531,6 +535,9 @@ class HudController(QtCore.QObject):
         if "performance_profile" in changed or "hud_fps" in changed:
             self.set_profile(getattr(self.core.settings(), "performance_profile", quality.DEFAULT))
         self._apply_avatar_settings(changed)
+        if "ultron_emergency_key" in changed:
+            key = str(getattr(self.core.settings(), "ultron_emergency_key", "") or "Ctrl+Shift+U")
+            self.emergency_shortcut.setKey(QtGui.QKeySequence(key))
         if self.settings_page is not None:
             self.settings_page.on_settings_changed(changed)
         self.window.refresh_chips()
@@ -562,11 +569,9 @@ class HudController(QtCore.QObject):
         from .avatar.states import SHORT
         resolved = self.avatar.resolved
         if getattr(self, "ultron", None) is not None and self.ultron.active:
-            reason = self.ultron.interrupt_reason(self._ultron_guard())
-            if reason:                                    # atividade real: a aparência não pode encobri-la
-                self.ultron_stop(reason)
-        if getattr(self, "ultron", None) is not None and self.ultron.active:
-            self.window.top.state_chip.set_display("ULTRON", (255, 31, 61))
+            # o estado REAL continua visível (o ULTRON pode estar executando ou aguardando autorização)
+            self.window.top.state_chip.set_display(f"ULTRON · {SHORT.get(resolved.key, resolved.label)}",
+                                                   (255, 31, 61))
         else:
             self.window.top.state_chip.set_display(SHORT.get(resolved.key, resolved.label), resolved.style.rgb)
         orb = self.orb.isVisible()
@@ -827,6 +832,14 @@ class HudController(QtCore.QObject):
                      privacy=bool(getattr(self.core, "privacy_shield", False)),
                      idle_seconds=time.time() - float(getattr(self.core, "_last_interaction", time.time())))
 
+    def _ultron_operator_for(self, source: str) -> bool:
+        s = self.core.settings()
+        if source == "manual":
+            return bool(getattr(s, "ultron_operator", True))
+        if source == "ocasional":
+            return bool(getattr(s, "ultron_operator_occasional", False))
+        return False                                   # demonstração: só identidade
+
     def ultron_start(self, source: str = "manual") -> bool:
         ok, reason = self.ultron.start(source, self._ultron_guard())
         if not ok:
@@ -841,6 +854,12 @@ class HudController(QtCore.QObject):
         self._ultron_apply(False, by)
         return True
 
+    def ultron_emergency(self) -> None:
+        """Tecla de emergência: restaura o JARVIS e interrompe o que estiver em curso (tarefa, autorização, fala)."""
+        if self.ultron.active:
+            self.ultron_stop("tecla de emergência")
+        self.core.cancel("tecla de emergência do Protocolo ULTRON")
+
     def _ultron_tick(self) -> None:
         if self.ultron.active:
             if self.ultron.expired():
@@ -849,10 +868,17 @@ class HudController(QtCore.QObject):
             self._ultron_apply(True, "ocasional")
 
     def _ultron_apply(self, on: bool, source: str) -> None:
-        """Só aparência: cores, marca, título, orbe, cena 3D e uma linha na conversa e no histórico."""
-        from .ultron_protocol import LABEL, MESSAGES
+        """Identidade completa: persona no núcleo (voz, tom, perfil ULTRON_OPERATOR), cores, marca, título, orbe,
+        cena 3D, uma linha na conversa e no histórico. Ao sair, tudo volta como estava."""
+        from .ultron_protocol import LABEL, LABEL_OPERATOR, MESSAGES, OPERATOR_MESSAGES
         app = QtWidgets.QApplication.instance()
         brand = self.window.top.brand
+        operator = on and self._ultron_operator_for(source)
+        label = LABEL_OPERATOR if operator else LABEL
+        messages = OPERATOR_MESSAGES if operator else MESSAGES
+        if hasattr(self.core, "set_persona"):            # o fim por tempo não corta uma tarefa no meio
+            self.core.set_persona("ultron" if on else "jarvis", operator=operator, source=source,
+                                  interrupt=source not in ("tempo", "encerramento"))
         if on:
             self._ultron_saved = {"style": app.styleSheet() if app is not None else None,
                                   "identity": self.window.identity,
@@ -866,9 +892,9 @@ class HudController(QtCore.QObject):
             self.window.identity = "U.L.T.R.O.N."
             self.window.refresh_title()
             self.window.set_escape_override(True)       # Esc restaura o JARVIS em qualquer página
-            brand.title, brand.subtitle, brand.color = "U.L.T.R.O.N.", "PROTOCOLO ULTRON — EVENTO VISUAL", \
-                QtGui.QColor(theme.ERROR)
-            text = f"PROTOCOLO ULTRON INICIADO — {LABEL}."
+            brand.title, brand.subtitle, brand.color = "U.L.T.R.O.N.", \
+                ("PERFIL ULTRON_OPERATOR" if operator else "PROTOCOLO ULTRON"), QtGui.QColor(theme.ERROR)
+            text = f"PROTOCOLO ULTRON INICIADO — {label}."
         else:
             saved, self._ultron_saved = self._ultron_saved, None
             if saved is not None:
@@ -891,12 +917,13 @@ class HudController(QtCore.QObject):
         self.orb.ultron = on
         self.orb.update()
         if self.scene3d is not None:
-            self.scene3d.set_ultron(on, source=source, messages=MESSAGES, label=LABEL)
+            self.scene3d.set_ultron(on, source=source, messages=messages, label=label)
         self.window.conversation.add_system(text)
         activity = getattr(self.core, "activity", None)
         if activity is not None:
-            activity.record("sistema", ("Protocolo ULTRON iniciado" if on else "Protocolo ULTRON encerrado")
-                            + " (evento visual)", origin="hud", result=source)
+            activity.record("sistema", ("Protocolo ULTRON iniciado" + (" — perfil ULTRON_OPERATOR" if operator
+                                                                        else " — só identidade")) if on
+                            else "Protocolo ULTRON encerrado — JARVIS restaurado", origin="hud", result=source)
 
     def _chip_clicked(self, key: str) -> None:
         if key == "mic":

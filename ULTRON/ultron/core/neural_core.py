@@ -138,6 +138,8 @@ class NeuralCore:
         self.state = StateStore(self.bus)
         self.runtime = WorkerPool(WorkerPool.NAMES + ("health", "actions"))
         self.lifecycle = LifecycleManager(self.bus)
+        from ..personality import persona
+        persona.reset()                                 # todo núcleo começa como JARVIS
         self.metrics = PerformanceMonitor(bus=self.bus, runtime=self.runtime)
         self.state.update(_source="core", identity={**identity.describe(), "version": __version__})
 
@@ -296,6 +298,8 @@ class NeuralCore:
         self.booted = False
         self.bus.publish(EventType.SYSTEM_SHUTDOWN, {}, source="core")
         self.cancel("encerramento")
+        from ..personality import persona
+        persona.reset()
         try:
             self.state.set_runtime_state("SHUTDOWN", "encerrando", source="core")
         except Exception:
@@ -549,6 +553,38 @@ class NeuralCore:
     def _progress(self, text: str) -> None:
         self._emit_response(Response(text, "progress"), "core", partial=True)
 
+    # ================================================================ persona (Protocolo ULTRON)
+    def set_persona(self, name: str, *, operator: bool = False, source: str = "", interrupt: bool = True) -> dict:
+        """Troca JARVIS ↔ ULTRON para TODO o núcleo: voz (perfil), tom das respostas, política de permissões
+        (``ULTRON_OPERATOR``) e o estado que a interface, a cena 3D e a ORBE remota leem. Voltar ao JARVIS
+        interrompe o que o ULTRON estiver fazendo (a tarefa e a fala em curso)."""
+        from ..personality import persona
+        previous = persona.current()
+        current = persona.set_persona(name, operator=operator, source=source)
+        if previous.ultron and not current.ultron and interrupt:
+            self.cancel("Protocolo ULTRON encerrado: JARVIS restaurado")
+        info = current.to_dict()
+        self.state.update(_source="core", persona=info)
+        self.bus.publish(EventType.PERSONA_CHANGED, info, source="core")
+        log.info("persona: %s (fonte: %s)", current.label, source or "-")
+        return info
+
+    def _ultron_console(self, action: str) -> Response:
+        """Sem interface gráfica: identidade (voz e tom) e perfil operador, sem os efeitos visuais."""
+        from ..personality import persona
+        if action == "stop":
+            if not persona.current().ultron:
+                return Response("O JARVIS já está ativo.", "info")
+            self.set_persona("jarvis", source="console", interrupt=False)    # este pedido é o próprio "restaurar"
+            return Response("JARVIS restaurado.", "info")
+        if self.authorizations.pending() is not None:
+            return Response("Protocolo ULTRON não iniciado: há uma autorização pendente.", "info")
+        operator = action != "demo" and bool(getattr(self.settings(), "ultron_operator", True))
+        self.set_persona("ultron", operator=operator, source="console")
+        profile = " Perfil ULTRON_OPERATOR ativo: ações reais sob as suas permissões." if operator else ""
+        return Response("Protocolo ULTRON ativo no console (voz e tom; sem efeitos visuais)." + profile +
+                        " Diga \"restaurar JARVIS\" para voltar.", "info")
+
     # ================================================================ uso pago da nuvem
     def _cloud_consent(self, description: str) -> bool:
         """Chamado pelo roteador (worker de IA) antes do PRIMEIRO uso pago: o mesmo pedido de autorização das
@@ -610,10 +646,9 @@ class NeuralCore:
                                 "computador: escolha em CONFIGURAÇÕES > INTELIGÊNCIA, que pede confirmação.", "info")
             self.settings_manager.update(intelligence_profile=wanted)
             return Response(f"Perfil {profiles.PROFILE_LABELS[wanted]}: só modelos locais.", "info")
-        if "ultron" in args:                       # evento VISUAL: só um pedido à interface, nada mais
+        if "ultron" in args:                       # Protocolo ULTRON: a interface conduz a transformação
             if self.hud_health is None:
-                return Response("O Protocolo ULTRON é um evento visual da interface gráfica; no modo console ele "
-                                "não tem efeito.", "info")
+                return self._ultron_console(str(args["ultron"]))
             self.bus.publish(EventType.UI_REQUEST, {"ultron": str(args["ultron"])}, source="core")
             return Response("Restaurando o JARVIS." if args["ultron"] == "stop" else "Protocolo ULTRON solicitado.",
                             "info")

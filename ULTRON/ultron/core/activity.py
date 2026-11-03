@@ -133,6 +133,11 @@ class ActivityLog:
         now = self._clock()
         activity_id = uuid.uuid4().hex[:16]
         final = now if state in FINAL_STATES else None
+        from ..personality import persona
+        current = persona.current()
+        if current.ultron and kind in ("acao", "pedido"):          # o que o ULTRON fez fica identificado
+            detail = {**(detail or {}), "persona": "ULTRON_OPERATOR" if current.operator else "ULTRON"}
+            title = f"[ULTRON] {title}"
         row = (activity_id, kind if kind in KINDS else "sistema", _clean(ORIGINS.get(origin, origin), 40),
                _clean(title, 200) or KINDS.get(kind, kind), _clean(input, 1000), state, _clean(result, 1000),
                _clean(error, 600), parent or "", _clean(ref, 80), json.dumps(_safe_detail(detail), ensure_ascii=False),

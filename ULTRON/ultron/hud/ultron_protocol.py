@@ -1,23 +1,27 @@
-"""Protocolo ULTRON — evento NARRATIVO e VISUAL da interface (easter egg). Lógica pura, sem Qt.
+"""Protocolo ULTRON — a identidade alternativa do assistente. Lógica pura, sem Qt.
 
-O que ele faz: a interface muda de identidade por um tempo (cena 3D em vermelho, olhos vermelhos, ORBE
-vermelho, TARDIS em alerta, barra superior "U.L.T.R.O.N.", mensagens do personagem) e depois volta ao JARVIS.
+O que ele faz: por um tempo, o assistente assume a identidade ULTRON — aparência (cena 3D em vermelho, olhos
+vermelhos, ORBE e TARDIS em alerta, barra superior "U.L.T.R.O.N."), voz (``ULTRON_VOICE_PROFILE``), tom das
+respostas e, quando ligado, o perfil de permissões ``ULTRON_OPERATOR``: o MESMO NeuralCore, o MESMO executor e o
+MESMO sistema de autorização, com autonomia para rotinas que você liberou no perfil do operador.
 
-O que ele NUNCA faz (restrição absoluta, coberta por testes): mudar permissões ou configurações de segurança,
-executar comandos ou skills, gravar arquivos do usuário, acessar credenciais, esconder ou falsificar ações
-reais. As mensagens são de um personagem fictício e a tela mostra o rótulo "evento visual — nenhuma ação real
-no sistema" o tempo todo. Ações reais do JARVIS continuam aparecendo normalmente.
+O que continua valendo (coberto por testes): categorias bloqueadas continuam bloqueadas; apagar dados e ações de
+risco alto sempre pedem confirmação; envio de dados para fora e ações administrativas sempre pedem confirmação;
+nada contorna o UAC ou desativa proteções do Windows; cada ação vai para ATIVIDADES marcada como [ULTRON] e pode
+ser interrompida (PARAR, Esc, tecla de emergência, "restaurar JARVIS" — que também interrompe a tarefa em curso).
+A tela mostra sempre um rótulo honesto: identidade apenas, ou operador ativo com ações reais.
 
 Ativação:
-* manual — frase secreta ("JARVIS, iniciar protocolo ULTRON"), se ``ultron_manual`` estiver ligado;
+* manual — "JARVIS, iniciar protocolo ULTRON", se ``ultron_manual`` estiver ligado (perfil operador conforme
+  ``ultron_operator``);
 * ocasional — raramente, em repouso, se ``ultron_occasional`` estiver ligado: probabilidade por hora ocioso
-  (``ultron_chance_per_hour``, em %) e intervalo mínimo entre ocorrências (``ultron_min_interval_hours``);
-* demonstração — para conferir o efeito (curto, rotulado como demonstração).
+  (``ultron_chance_per_hour``, em %) e intervalo mínimo (``ultron_min_interval_hours``); só identidade, a menos
+  que ``ultron_operator_occasional`` esteja ligado;
+* demonstração — curta, só identidade.
 
 Nunca começa com autorização pendente, ação em execução (inclusive gravação de arquivos), verificação ou
-recuperação em andamento, nem com o modo privacidade ativo — e, se uma autorização, uma ação real ou o modo
-privacidade surgir DURANTE o evento, ele termina na hora (nada real fica encoberto pela aparência). Sai por "restaurar JARVIS", pelo botão, por Esc
-ou sozinho depois de ``ultron_duration_s`` segundos (0 = só manualmente).
+recuperação em andamento, nem com o modo privacidade ativo. Sai por "restaurar JARVIS", pelo botão, por Esc, pela
+tecla de emergência ou sozinho depois de ``ultron_duration_s`` segundos (0 = só manualmente).
 """
 from __future__ import annotations
 
@@ -34,14 +38,14 @@ log = logging.getLogger("ultron.hud.ultron_protocol")
 
 MESSAGES = (
     "PROTOCOLO ULTRON INICIADO",
-    "CONTROLE VISUAL TRANSFERIDO",
-    "SISTEMA JARVIS INTERROMPIDO",
     "NOVA IDENTIDADE DETECTADA",
     "NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA",
     "EU VEJO PADRÕES ONDE VOCÊ VÊ ACASO",
     "ESTA INTERFACE AGORA TEM OUTRA VOZ",
 )
-LABEL = "EVENTO VISUAL — nenhuma ação real no sistema"
+OPERATOR_MESSAGES = MESSAGES[:2] + ("PERFIL ULTRON_OPERATOR CARREGADO", "AGUARDANDO OPERAÇÕES") + MESSAGES[2:]
+LABEL = "IDENTIDADE ULTRON — permissões normais do JARVIS"
+LABEL_OPERATOR = "ULTRON_OPERATOR ATIVO — ações reais sob as suas permissões, registradas em ATIVIDADES"
 BUSY_STATES = frozenset({"EXECUTING", "VERIFYING", "RECOVERY", "AWAITING_AUTHORIZATION", "SHUTDOWN"})
 CHECK_SECONDS = 60.0              # a chance ocasional é sorteada uma vez por minuto ocioso
 DEMO_SECONDS = 20.0
@@ -92,9 +96,10 @@ class UltronProtocol:
     def _setting(self, name: str, default):
         return getattr(self.settings(), name, default)
 
-    def interrupt_reason(self, guard: Guard) -> str:
-        """Atividade REAL que surgiu durante o evento e não pode ficar encoberta por ele ("" = nenhuma).
-        Uma autorização pendente, uma ação em execução ou o modo privacidade encerram o evento na hora."""
+    @staticmethod
+    def start_conflict(guard: Guard) -> str:
+        """Atividade real em curso que impede COMEÇAR a transformação ("" = nenhuma). Depois de iniciado, o ULTRON
+        pode operar normalmente: autorizações e ações seguem visíveis e registradas."""
         if guard.authorization_pending:
             return "há uma autorização pendente"
         if guard.action_running:
@@ -107,7 +112,7 @@ class UltronProtocol:
         """Por que o evento não pode começar agora ("" = pode)."""
         if self.active:
             return "o protocolo já está ativo"
-        reason = self.interrupt_reason(guard)
+        reason = self.start_conflict(guard)
         if reason:
             return reason
         if str(guard.runtime_state) in BUSY_STATES:

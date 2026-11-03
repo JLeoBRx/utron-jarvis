@@ -417,3 +417,17 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
 * `tests/test_intelligence.py` (22): roteamento, perfis, limite, consumo, autorização, privacidade do que é enviado,
   procedência, memória — sempre com servidores falsos locais (nenhum serviço pago real foi chamado).
 
+## Aprimoramento 1 — Protocolo ULTRON com identidade completa e perfil ULTRON_OPERATOR
+* Pedido novo do usuário substitui a restrição anterior ("o ULTRON não executa nada"): persona no núcleo
+  (`ultron/personality/persona.py`) troca voz (`JARVIS_VOICE_PROFILE`/`ULTRON_VOICE_PROFILE`), tom das respostas e a
+  política de permissões; estado `persona` publicado para a interface, a cena 3D e a ORBE remota.
+* `ULTRON_OPERATOR`: mesma AutonomyPolicy/PermissionPolicy/AuthorizationManager/executor; política por categoria
+  configurável que nunca desbloqueia o bloqueado, mantém o piso de apagar dados, confirma risco alto, envio externo e
+  ações administrativas; atividades marcadas [ULTRON].
+* Tecla de emergência configurável (padrão Ctrl+Shift+U) que restaura e interrompe; restauração por comando/botão/Esc
+  também interrompe; fim por tempo não corta tarefas. Autorizações e ações durante o ULTRON continuam visíveis (o
+  evento não termina mais por causa delas); rótulos honestos (identidade × operador ativo).
+* Console: o protocolo agora troca voz, tom e perfil (sem os efeitos visuais).
+* `tests/test_ultron_protocol.py` (21): política do operador, executor real, histórico, voz/tom, tecla de emergência,
+  identidade x operador, restauração.
+

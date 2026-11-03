@@ -171,24 +171,30 @@ cena não puder abrir (sem QtWebEngine, sem WebGL 2, falha da placa de vídeo), 
 abaixo e DIAGNÓSTICOS diz por quê; depois de uma falha, Desligada → Automática tenta de novo. Para medir no
 seu computador: `python tools/benchmark_scene3d.py`.
 
-### Protocolo ULTRON (evento visual)
+### Protocolo ULTRON (identidade alternativa e perfil ULTRON_OPERATOR)
 
-Um *easter egg*: por um tempo, a interface "muda de dono" — holograma com postura dura e olhos vermelhos,
-ORBE vermelho, TARDIS em alerta, painéis e barra superior em vermelho/vinho, título **U.L.T.R.O.N.** e
-mensagens de um personagem fictício ("NÃO CONFUNDA EFICIÊNCIA COM OBEDIÊNCIA"). **É só aparência**: não
-altera permissões nem configurações, não executa comandos, não grava arquivos seus, não acessa credenciais e
-não esconde nenhuma ação real; o rótulo **"EVENTO VISUAL — nenhuma ação real no sistema"** fica na tela o tempo
-todo.
+Por um tempo, o assistente assume a identidade **ULTRON**: holograma com postura dura e olhos vermelhos, ORBE
+vermelho, TARDIS em alerta, painéis em vermelho/vinho, título **U.L.T.R.O.N.**, voz própria
+(`ULTRON_VOICE_PROFILE`: mais grave, fria, ritmo deliberado, textura metálica) e tom frio nas respostas. É o MESMO
+JARVIS por dentro: um NeuralCore, uma memória.
 
-* **Ativar**: "JARVIS, iniciar protocolo ULTRON" (voz ou texto). "protocolo ULTRON demonstração" mostra 20 s.
-* **Sair**: "restaurar JARVIS" / "encerrar protocolo ULTRON", botão **RESTAURAR JARVIS**, **Esc**, ou sozinho
-  depois do tempo configurado.
-* **Nunca começa** com autorização pendente, ação em execução (inclusive gravação de arquivos), verificação ou
-  recuperação em andamento, ou modo privacidade — e diz o motivo. Se uma autorização, uma ação real ou o modo
-  privacidade surgir **durante** o evento, ele termina na hora: nada real fica escondido pela aparência.
-* CONFIGURAÇÕES > APARÊNCIA > **PROTOCOLO ULTRON**: ativação pela frase, ocorrência ocasional (desligada por
-  padrão; só em repouso, com probabilidade por hora e intervalo mínimo), duração, **DEMONSTRAÇÃO** e o
-  histórico de ocorrências (`protocolo_ultron.json` na pasta de dados). No modo console não tem efeito.
+* **Ativar**: "JARVIS, iniciar protocolo ULTRON" (voz ou texto; também no console, sem os efeitos visuais).
+  "protocolo ULTRON demonstração" mostra 20 s, só a identidade.
+* **Perfil `ULTRON_OPERATOR`** (na ativação pedida por você, se `ultron_operator` estiver ligado): o ULTRON usa as
+  mesmas ferramentas, o mesmo executor e o mesmo sistema de autorização, com autonomia para as rotinas liberadas no
+  perfil do operador (CONFIGURAÇÕES > APARÊNCIA > PROTOCOLO ULTRON, por categoria). Continua valendo: categoria
+  bloqueada na política normal continua bloqueada; apagar dados e risco alto sempre pedem confirmação; pesquisas
+  na internet, abrir endereços, baixar pacotes, desligar o computador e páginas de administração sempre pedem
+  confirmação; nada contorna o UAC nem desativa proteções. Cada ação aparece em ATIVIDADES como **[ULTRON]**; o
+  indicador de estado mostra o estado real ("ULTRON · EXECUTANDO"); a tela diz "ULTRON_OPERATOR ATIVO — ações
+  reais sob as suas permissões".
+* **Sair**: "restaurar JARVIS", botão **RESTAURAR JARVIS**, **Esc** ou a **tecla de emergência** (padrão
+  `Ctrl+Shift+U`, configurável), que também interrompe a tarefa, a autorização e a fala em curso. Aparência, voz,
+  cores, tom e permissões voltam ao JARVIS. O fim automático por tempo não corta uma tarefa no meio.
+* **Ocasional** (desligado por padrão): raro, só em repouso, com probabilidade por hora e intervalo mínimo; troca só
+  a identidade, a menos que `ultron_operator_occasional` esteja ligado.
+* **Nunca começa** com autorização pendente, ação em execução, verificação ou recuperação em andamento, ou modo
+  privacidade. Histórico das ocorrências em `protocolo_ultron.json` (pasta de dados).
 
 ### O rosto holográfico 2D (reserva da central 3D)
 

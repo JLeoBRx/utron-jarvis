@@ -23,6 +23,11 @@ Piso que a configuração não rebaixa: ``apagar_dados`` nunca fica abaixo de ``
 
 Esta camada só RESTRINGE: nunca transforma uma decisão "authorize" ou "refuse" em "execute" — exceto a
 parada de emergência, que precisa funcionar em qualquer estado.
+
+Perfil ``ULTRON_OPERATOR`` (Protocolo ULTRON com o operador ligado): a política de cada categoria passa a ser a do
+operador (``ultron_operator_policy``), MAS uma categoria bloqueada na política normal continua bloqueada, o piso de
+``apagar_dados`` continua valendo e as ações que enviam dados para fora ou são administrativas
+(``OPERATOR_ALWAYS_CONFIRM``) sempre pedem confirmação. É o MESMO executor, com o MESMO histórico.
 """
 from __future__ import annotations
 
@@ -43,6 +48,9 @@ MODE_LABELS = {"permitir": "permitir (decide pelo risco)", "confirmar": "confirm
 DEFAULT_POLICY = {"consultar": "permitir", "configurar": "permitir", "executar_programas": "permitir",
                   "arquivos": "permitir", "apagar_dados": "confirmar"}
 FLOORS = {"apagar_dados": "confirmar"}
+# com o operador: enviam dados para fora do computador ou são administrativas → sempre confirmação
+OPERATOR_ALWAYS_CONFIRM = frozenset({"web.open_url", "web.search", "network.update_vendors", "system.power",
+                                     "jarvis.shutdown", "dev.install_dependency", "network.open_admin"})
 _STRICTNESS = {mode: index for index, mode in enumerate(PERMISSION_MODES)}      # permitir < confirmar < bloquear
 
 # Classificação explícita das skills embutidas. Skills novas podem declarar ``permission`` (ou
@@ -136,8 +144,21 @@ class PermissionPolicy:
     def __init__(self, settings_getter: Callable[[], Any]):
         self._settings = settings_getter
 
-    def policy(self) -> dict[str, str]:
+    def base_policy(self) -> dict[str, str]:
         return parse_policy(getattr(self._settings(), "permission_policy", ()))
+
+    def operator_policy(self) -> dict[str, str]:
+        """A política do ULTRON_OPERATOR: a do operador, sem nunca desbloquear o que a normal bloqueia."""
+        base = self.base_policy()
+        operator = parse_policy(getattr(self._settings(), "ultron_operator_policy", ()))
+        return {c: ("bloquear" if base[c] == "bloquear" else operator[c]) for c in base}
+
+    def operator_active(self) -> bool:
+        from ..personality import persona
+        return persona.current().operator
+
+    def policy(self) -> dict[str, str]:
+        return self.operator_policy() if self.operator_active() else self.base_policy()
 
     def mode(self, category: str) -> str:
         return self.policy().get(category, "permitir")
@@ -155,6 +176,8 @@ class PermissionPolicy:
         category = category_for(skill, args)
         mode = self.mode(category)
         label = LABELS.get(category, category)
+        if self.operator_active() and skill.name in OPERATOR_ALWAYS_CONFIRM and mode == "permitir":
+            mode = "confirmar"                       # operador: envio externo/administrativa sempre confirma
         if mode == "bloquear":
             return AutonomyDecision("refuse", f"a categoria \"{label}\" está bloqueada "
                                               "(CONFIGURAÇÕES > PERMISSÕES)", decision.risk, permission=category)

@@ -176,6 +176,10 @@ class Settings:
     ultron_occasional: bool = False           # ocorrências raras em repouso (desligado por padrão)
     ultron_chance_per_hour: float = 2.0       # % de chance por hora ociosa (sorteio por minuto)
     ultron_min_interval_hours: float = 24.0   # intervalo mínimo entre ocorrências ocasionais
+    ultron_operator: bool = True              # ativação pedida por você liga o perfil ULTRON_OPERATOR
+    ultron_operator_occasional: bool = False  # ativação ocasional também liga o perfil (padrão: só identidade)
+    ultron_operator_policy: tuple = ()        # "categoria=permitir|confirmar|bloquear" do operador; vazio = padrões
+    ultron_emergency_key: str = "Ctrl+Shift+U"   # restaura o JARVIS e interrompe o que o ULTRON estiver fazendo
     ultron_duration_s: float = 45.0           # encerramento automático (0 = só por "restaurar JARVIS"/Esc/botão)
     orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
     audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)

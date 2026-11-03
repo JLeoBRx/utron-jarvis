@@ -70,6 +70,9 @@ class AutonomyPolicy:
 
     @property
     def level(self) -> str:
+        from ..personality import persona
+        if persona.current().operator:
+            return "autonomous"           # ULTRON_OPERATOR: rotinas reversíveis sem perguntar; risco alto pergunta
         return getattr(self._settings(), "autonomy_level", "balanced")
 
     def decide(self, risk: Risk, *, reversible: bool, origin: str, sensitive: str = "") -> AutonomyDecision:
