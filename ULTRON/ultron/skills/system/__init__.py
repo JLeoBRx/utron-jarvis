@@ -1,6 +1,6 @@
 """Skills de sistema: energia, bloqueio, espera, rádios (Wi-Fi/Bluetooth/avião), brilho e estado.
 
-Os scripts PowerShell abaixo são FIXOS (herdados do JARVIS). Somente valores de listas
+Os scripts PowerShell abaixo são FIXOS (herdados do SAFRA). Somente valores de listas
 fechadas entram neles, por variável de ambiente.
 """
 from __future__ import annotations

@@ -5,7 +5,7 @@
 3. captura funcionando          (blocos chegando, nível, silêncio absoluto = privacidade/mudo)
 4. mecanismo STT disponível     (Vosk importável e modelos presentes)
 5. modelo de português carregado
-6. palavra de ativação detectada (só no teste com fala: o usuário diz "Jarvis…")
+6. palavra de ativação detectada (só no teste com fala: o usuário diz "Safra…")
 7. texto entregue ao cérebro    (USER_INPUT com origem voz chega ao Neural Core)
 8. resposta produzida e reproduzida (RESPONSE_READY + VOICE_FINISHED com fala real)
 
@@ -29,7 +29,7 @@ STEPS = (
     ("capture", "Captura de áudio"),
     ("stt_engine", "Mecanismo de reconhecimento (STT)"),
     ("pt_model", "Modelo de português carregado"),
-    ("wake", "Palavra de ativação \"Jarvis\""),
+    ("wake", "Palavra de ativação \"Safra\""),
     ("delivery", "Texto entregue ao cérebro"),
     ("response", "Resposta produzida e reproduzida"),
 )
@@ -86,7 +86,7 @@ class VoiceDiagnostics:
         if interactive and not self._cancelled():
             self.check_wake_interactive(listen_seconds, prompt)
         else:
-            self._set("wake", "SKIPPED", "teste sem fala: diga \"Jarvis\" no teste com fala para verificar",
+            self._set("wake", "SKIPPED", "teste sem fala: diga \"Safra\" no teste com fala para verificar",
                       wakes=(self.pipeline.stats.get("wakes", 0) if self.pipeline is not None else 0))
             if probe_response and not self._cancelled():
                 self.check_delivery_and_response()
@@ -152,7 +152,7 @@ class VoiceDiagnostics:
                 time.sleep(0.05)
             chunks = pipeline.stats["chunks"] - before["chunks"]
             zeros = pipeline.stats["zero_chunks"] - before["zero_chunks"]
-            self._capture_verdict(chunks, zeros, pipeline.peak_level, source="captura do JARVIS")
+            self._capture_verdict(chunks, zeros, pipeline.peak_level, source="captura do SAFRA")
             return
         if listing.get("backend") is None or not listing.get("devices"):
             self._set("capture", "FAIL", f"captura parada: {pipeline.reason or 'sem dispositivo'}")
@@ -262,7 +262,7 @@ class VoiceDiagnostics:
                 self.core.bus.subscribe(EventType.VOICE_FINISHED, lambda e: events.put(("spoken", e.payload)),
                                         name="voice.diag.spoken")]
         if prompt is not None:
-            prompt(f"Diga agora: \"Jarvis, {PROBE_COMMAND}?\" (até {seconds:.0f} s)")
+            prompt(f"Diga agora: \"Safra, {PROBE_COMMAND}?\" (até {seconds:.0f} s)")
         woke = delivered = responded = spoke = None
         deadline = time.monotonic() + seconds
         try:
@@ -294,7 +294,7 @@ class VoiceDiagnostics:
             self._set("wake", "OK", f"ativado por “{woke.get('matched')}” ({woke.get('strength')}); ouvido: {heard}")
         else:
             self._set("wake", "FAIL" if not self.heard else "WARN", f"palavra de ativação não reconhecida; ouvido: {heard}",
-                      "Rode a calibração (HUB > Voz > Calibrar ou python -m ultron.voice.calibrate) para o JARVIS "
+                      "Rode a calibração (HUB > Voz > Calibrar ou python -m ultron.voice.calibrate) para o SAFRA "
                       "aprender como o reconhecedor ouve a sua pronúncia.")
         if delivered is not None:
             self._set("delivery", "OK", f"o Neural Core recebeu: “{delivered.get('text', '')}”")

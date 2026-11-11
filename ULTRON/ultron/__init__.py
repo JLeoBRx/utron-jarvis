@@ -1,4 +1,4 @@
-"""JARVIS — agente computacional local-first.
+"""SAFRA — agente computacional local-first.
 
 O pacote é organizado por responsabilidade (ver ARCHITECTURE_REPORT.md):
 
@@ -24,5 +24,5 @@ O pacote é organizado por responsabilidade (ver ARCHITECTURE_REPORT.md):
     hud/          Neural HUD (somente apresentação)
 """
 
-__version__ = "2.0.0"
-NAME = "JARVIS"
+__version__ = "3.0.0"
+NAME = "SAFRA"

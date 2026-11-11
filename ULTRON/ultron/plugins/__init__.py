@@ -1,4 +1,4 @@
-"""Arquitetura de plugins do JARVIS."""
+"""Arquitetura de plugins do SAFRA."""
 from .base import CapabilityError, Plugin, PluginContext
 from .manager import PluginManager
 

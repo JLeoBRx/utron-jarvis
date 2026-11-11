@@ -1,6 +1,6 @@
-"""PLATAFORMA JARVIS ULTIMATE — uma janela, seis módulos.
+"""PLATAFORMA SAFRA ULTIMATE — uma janela, seis módulos.
 
-    JARVIS · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
+    SAFRA · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
 
 * Páginas criadas sob demanda (na primeira visita) e nunca destruídas: trocar de página só muda o que
   está à frente; câmera e região do TARDIS, filtros, rolagens e textos digitados ficam como estavam.
@@ -32,19 +32,19 @@ from .conversation import ConversationPanel
 from .window import DecisionBar, InputBar, app_icon
 
 NAV = (
-    ("jarvis", "JARVIS", ("F1",), "#00D9FF", "Assistente: conversa, voz e núcleo"),
+    ("jarvis", "SAFRA", ("F1",), "#EA2840", "Assistente: conversa, voz e núcleo"),
     ("tardis", "TARDIS", ("F2",), "#FFB347", "Segundo cérebro: memória pessoal, lembretes e organização"),
-    ("atividades", "ATIVIDADES", ("F5",), "#67F3FF", "Histórico de atividades: pedidos, ações, confirmações e falhas"),
-    ("configuracoes", "CONFIGURAÇÕES", ("F6",), "#67F3FF", "Voz, áudio, inteligência, privacidade, permissões "
+    ("atividades", "ATIVIDADES", ("F5",), "#FF5C6C", "Histórico de atividades: pedidos, ações, confirmações e falhas"),
+    ("configuracoes", "CONFIGURAÇÕES", ("F6",), "#FF5C6C", "Voz, áudio, inteligência, privacidade, permissões "
                                                            "e aparência"),
-    ("diagnosticos", "DIAGNÓSTICOS", ("F3", "F7"), "#67F3FF", "Voz, rede local, autonomia, desempenho, eventos e log"),
+    ("diagnosticos", "DIAGNÓSTICOS", ("F3", "F7"), "#FF5C6C", "Voz, rede local, autonomia, desempenho, eventos e log"),
 )
 NAV_KEYS = tuple(item[0] for item in NAV)
 PAGE_TITLES = {item[0]: item[1] for item in NAV}
 TRANSITION_MS = 300
 WEEKDAYS = ("SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM")
 MONTHS = ("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
-LEVEL_COLORS = {"ok": "#3DFFA8", "info": "#00D9FF", "warn": "#FFB547", "error": "#FF5D73", "off": "#3D5873"}
+LEVEL_COLORS = {"ok": "#3DDC97", "info": "#EA2840", "warn": "#F7C948", "error": "#FF7B1C", "off": "#5A5D66"}
 COVERING_FRACTION = 0.6            # a interface cobre a tela: a observação fica suspensa (como no original)
 
 
@@ -114,12 +114,12 @@ def compute_chips(core, state: dict, *, now: float | None = None, covering: bool
         speaker = core.speaker
         out = getattr(core, "audio_out", None)
         if speaker.muted:
-            chips.append(Chip("tts", "VOZ", "MUDA", "off", "Fala do JARVIS silenciada (clique para ligar)"))
+            chips.append(Chip("tts", "VOZ", "MUDA", "off", "Fala do SAFRA silenciada (clique para ligar)"))
         elif out is not None and not getattr(out, "available", False):
             chips.append(Chip("tts", "VOZ", "SEM SAÍDA", "warn", f"Saída de áudio indisponível: "
                                                                  f"{getattr(out, 'reason', '') or 'sem dispositivo'}"))
         elif speaker.speaking:
-            chips.append(Chip("tts", "VOZ", "FALANDO", "info", "O JARVIS está falando (Esc interrompe)"))
+            chips.append(Chip("tts", "VOZ", "FALANDO", "info", "O SAFRA está falando (Esc interrompe)"))
         else:
             chips.append(Chip("tts", "VOZ", "PRONTA", "ok", f"Saída: {getattr(out, 'backend', '—')}"))
     # inteligência
@@ -175,7 +175,7 @@ def compute_chips(core, state: dict, *, now: float | None = None, covering: bool
     elif observer.get("paused"):
         chips.append(Chip("obs", "OBSERVADOR", "PAUSADO", "warn", "Observação pausada (clique para retomar)"))
     elif covering:
-        chips.append(Chip("obs", "OBSERVADOR", "SUSPENSO", "warn", "Observação suspensa — a interface do JARVIS cobre "
+        chips.append(Chip("obs", "OBSERVADOR", "SUSPENSO", "warn", "Observação suspensa — a interface do SAFRA cobre "
                                                                    "a tela"))
     else:
         label = {"assistant": "ASSISTENTE", "observer": "ATIVO"}.get(mode, mode.upper())
@@ -193,19 +193,19 @@ def compute_chips(core, state: dict, *, now: float | None = None, covering: bool
 
 # ============================================================================ widgets da barra superior
 class BrandMark(QtWidgets.QWidget):
-    """Mini-reator de três arcos girando + "J.A.R.V.I.S." (identidade do original)."""
+    """Marca: mini-reator de três arcos girando + "SAFRA" e o subtítulo da plataforma."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.angle = 0.0
         self.animated = True
         self.color = QtGui.QColor(theme.PRIMARY)
-        self.title = "J.A.R.V.I.S."
-        self.subtitle = "JUST A RATHER VERY INTELLIGENT SYSTEM"
+        self.title = "SAFRA"
+        self.subtitle = "PLATAFORMA INTELIGENTE LOCAL"
         self.compact = False
         self.setFixedHeight(46)
         self.setMinimumWidth(170)
-        self.setToolTip("JUST A RATHER VERY INTELLIGENT SYSTEM")
+        self.setToolTip("SAFRA — plataforma inteligente local")
 
     def sizeHint(self) -> QtCore.QSize:  # noqa: N802 (Qt)
         return QtCore.QSize(170 if self.compact else 300, 46)
@@ -391,7 +391,7 @@ class StateChip(QtWidgets.QWidget):
             self.activity = activity
             if getattr(self, "_override", None) is None:          # sem avatar: o estado do núcleo
                 self.label = "INICIALIZANDO" if activity == "BOOTING" else palette.state_label(activity)
-                self.setToolTip(f"Estado do JARVIS: {self.label}")
+                self.setToolTip(f"Estado do SAFRA: {self.label}")
             self.update()
 
     def set_display(self, label: str, rgb: tuple | None = None) -> None:
@@ -400,7 +400,7 @@ class StateChip(QtWidgets.QWidget):
         if label != self.label or (color is not None and color != getattr(self, "_override", None)):
             self.label = label
             self._override = color
-            self.setToolTip(f"Estado do JARVIS: {label}")
+            self.setToolTip(f"Estado do SAFRA: {label}")
             self.update()
 
     def set_level(self, level: float) -> None:
@@ -810,7 +810,7 @@ class PlatformWindow(QtWidgets.QWidget):
         super().__init__()
         self.core = core
         self.view = view
-        self.identity = "J.A.R.V.I.S."               # o Protocolo ULTRON troca só isto (evento visual)
+        self.identity = "SAFRA"               # o Protocolo ULTRON troca só isto (evento visual)
         self.escape_override = False
         self._escape_saved: dict = {}
         self.setWindowTitle(self.identity)

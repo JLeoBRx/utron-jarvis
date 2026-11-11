@@ -3,9 +3,9 @@
 Diagnóstico: verificações do monitor de saúde (a última, se recente; senão uma nova dentro do prazo),
 componentes que falharam na inicialização, workers parados ou com fila acumulada, microfone e
 falhas recentes da própria TARDIS — cada achado com a fonte e a gravidade. Para voz e rede, PROPÕE rodar o
-diagnóstico completo (skills de leitura; o JARVIS executa só com confirmação).
+diagnóstico completo (skills de leitura; o SAFRA executa só com confirmação).
 
-Coordenação: uma fotografia dos módulos agora — estado do JARVIS, workers, fila da TARDIS e voz.
+Coordenação: uma fotografia dos módulos agora — estado do SAFRA, workers, fila da TARDIS e voz.
 Nada aqui altera o estado de nenhum módulo.
 """
 from __future__ import annotations
@@ -139,7 +139,7 @@ def coordenacao(run: Run, data: dict) -> TaskResult:
         state = ctx.state.runtime_state
         phase = ctx.state.get("cognitive_phase", "") or ""
         snapshot["jarvis"] = {"state": state, "phase": phase}
-        items.append({"title": f"JARVIS {STATE_LABELS.get(state, state.lower())}",
+        items.append({"title": f"SAFRA {STATE_LABELS.get(state, state.lower())}",
                       "detail": f"fase: {phase}" if phase else "sem pedido em andamento", "source": "estado"})
         sources.append("estado")
     if ctx.runtime is not None:

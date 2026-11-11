@@ -1,4 +1,4 @@
-"""Estilo de resposta do JARVIS.
+"""Estilo de resposta do SAFRA.
 
 Pós-processamento aplicado a qualquer texto antes de ser exibido ou falado. Garante a
 personalidade mesmo quando o modelo local ignora parte das instruções:

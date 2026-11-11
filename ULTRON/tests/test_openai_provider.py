@@ -25,7 +25,7 @@ KEY = "sk-teste-1234567890"
 class ConversionTest(unittest.TestCase):
     def test_messages_tools_and_calls_round_trip(self):
         messages = [
-            {"role": "system", "content": "Você é JARVIS."},
+            {"role": "system", "content": "Você é SAFRA."},
             {"role": "user", "content": "abra o bloco de notas"},
             {"role": "assistant", "content": "", "tool_calls": [{"id": "c1", "function": {"name": "app.open",
                                                                                            "arguments": {"name": "notepad"}}}]},
@@ -33,7 +33,7 @@ class ConversionTest(unittest.TestCase):
             {"role": "user", "content": "o que há na tela?", "images": ["iVBORw0KGgo="]},
         ]
         instructions, items = to_responses_input(messages)
-        self.assertEqual(instructions, "Você é JARVIS.")
+        self.assertEqual(instructions, "Você é SAFRA.")
         call = next(i for i in items if i.get("type") == "function_call")
         self.assertEqual((call["name"], call["call_id"]), ("app__open", "c1"), "a API não aceita '.' em nomes")
         output = next(i for i in items if i.get("type") == "function_call_output")
@@ -81,19 +81,19 @@ class RouterWithOpenAITest(unittest.TestCase):
             router, provider, _bus, _ = self._router(api.url, ollama.url, cloud_share_memory=True)
             selection = router.select("text")
             self.assertEqual((selection.provider, selection.model), ("openai", "openai:gpt-teste"))
-            messages = [{"role": "system", "content": "Você é JARVIS."}, {"role": "user", "content": "abra o bloco"}]
+            messages = [{"role": "system", "content": "Você é SAFRA."}, {"role": "user", "content": "abra o bloco"}]
             tools = [{"type": "function", "function": {"name": "app.open", "description": "Abrir app",
                                                         "parameters": {"type": "object", "properties": {}}}}]
             first = router.chat("text", messages, tools=tools)
             self.assertEqual(first.tool_calls[0]["function"]["name"], "app.open",
-                             "a OpenAI só escolhe a ferramenta; o JARVIS executa localmente")
+                             "a OpenAI só escolhe a ferramenta; o SAFRA executa localmente")
             messages.append(first.message())
             messages.append({"role": "tool", "content": '{"ok": true, "verified": true}'})
             final = router.chat("text", messages, tools=tools)
             self.assertEqual(final.content, "Bloco de notas aberto e verificado.")
             sent = api.requests[0]
             self.assertEqual(sent["auth"], f"Bearer {KEY}")
-            self.assertEqual(sent["payload"]["instructions"], "Você é JARVIS.")
+            self.assertEqual(sent["payload"]["instructions"], "Você é SAFRA.")
             self.assertFalse(sent["payload"]["store"])
             self.assertIn({"type": "web_search"}, sent["payload"]["tools"], "pesquisa web ligada por padrão")
             paired = [i for i in api.requests[1]["payload"]["input"] if i.get("type") == "function_call_output"]

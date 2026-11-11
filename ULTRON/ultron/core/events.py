@@ -1,4 +1,4 @@
-"""Tipos de evento do JARVIS.
+"""Tipos de evento do SAFRA.
 
 Os eventos são a linguagem comum entre módulos. Nenhum módulo chama a HUD ou a voz
 diretamente: ele publica um evento e quem estiver interessado reage.
@@ -99,8 +99,8 @@ class EventType(str, Enum):
     # inventário da rede local
     NETWORK_INVENTORY_UPDATED = "NETWORK_INVENTORY_UPDATED"
     UI_REQUEST = "UI_REQUEST"                     # pedido de abrir uma tela (ex.: HUB 2) vindo de voz/texto
-    PERSONA_CHANGED = "PERSONA_CHANGED"           # JARVIS ↔ ULTRON (aparência, voz, tom e perfil de permissões)
-    SHUTDOWN_REQUESTED = "SHUTDOWN_REQUESTED"     # encerramento do JARVIS pedido pelo usuário (já confirmado)
+    PERSONA_CHANGED = "PERSONA_CHANGED"           # SAFRA ↔ ULTRON (aparência, voz, tom e perfil de permissões)
+    SHUTDOWN_REQUESTED = "SHUTDOWN_REQUESTED"     # encerramento do SAFRA pedido pelo usuário (já confirmado)
     DEVICE_UPDATED = "DEVICE_UPDATED"
     # sistema
     HEALTH_UPDATED = "HEALTH_UPDATED"

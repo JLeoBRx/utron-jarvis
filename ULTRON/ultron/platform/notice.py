@@ -1,6 +1,6 @@
-"""Mensagens para quem iniciou o JARVIS sem console (``pythonw``, atalho, ``START_JARVIS.bat``).
+"""Mensagens para quem iniciou o SAFRA sem console (``pythonw``, atalho, ``START_JARVIS.bat``).
 
-Sem console, ``print`` não aparece em lugar nenhum: um erro de inicialização faria o JARVIS simplesmente sumir.
+Sem console, ``print`` não aparece em lugar nenhum: um erro de inicialização faria o SAFRA simplesmente sumir.
 No Windows usa a caixa de mensagem do próprio sistema (``MessageBoxW``), que funciona mesmo quando a falha foi
 do Qt; fora do Windows tenta o Qt. Sem nenhum dos dois, devolve ``None`` — o registro (log) continua valendo.
 """

@@ -1,7 +1,7 @@
-// O convés do JARVIS: piso metálico gravado, salão circular de nervuras com luz, feixes de luz volumétrica,
+// O convés do SAFRA: piso metálico gravado, salão circular de nervuras com luz, feixes de luz volumétrica,
 // poeira suspensa e um painel holográfico com dados REAIS do sistema (sem dado, o painel diz que não há).
 import * as THREE from 'three';
-import { ULTRON_RED } from './ultron.js';
+import { ULTRON_COLOR } from './ultron.js';
 import { disposer, canvasTexture, glowMaterial, glowTexture, PALETTE, physical, textPlate } from './materials.js';
 
 const HALL_R = 11.5;
@@ -23,30 +23,30 @@ export class Deck {
       const k = w / 2 / 14;                                   // pixels por metro (raio 14 m)
       const ring = (r, width, a, dash = []) => {
         g.beginPath(); g.setLineDash(dash.map((d) => d * k)); g.lineWidth = width;
-        g.strokeStyle = `rgba(90,200,255,${a})`; g.arc(0, 0, r * k, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = `rgba(255,80,96,${a})`; g.arc(0, 0, r * k, 0, Math.PI * 2); g.stroke();
       };
       ring(1.35, 3, 0.55); ring(1.6, 1.5, 0.25, [0.12, 0.08]); ring(2.4, 2, 0.32); ring(3.4, 1.2, 0.18, [0.6, 0.2]);
       ring(5.0, 2.5, 0.28); ring(5.15, 1, 0.16); ring(7.2, 3, 0.35); ring(7.45, 1, 0.18, [0.05, 0.12]); ring(10.5, 2, 0.2);
       g.setLineDash([]);
       for (let i = 0; i < 72; i++) {                          // raios entre 2,4 m e 5 m
         const a = (i / 72) * Math.PI * 2, major = i % 6 === 0;
-        g.strokeStyle = `rgba(90,200,255,${major ? 0.32 : 0.12})`; g.lineWidth = major ? 2.5 : 1.2;
+        g.strokeStyle = `rgba(255,80,96,${major ? 0.32 : 0.12})`; g.lineWidth = major ? 2.5 : 1.2;
         g.beginPath(); g.moveTo(Math.cos(a) * 2.4 * k, Math.sin(a) * 2.4 * k);
         g.lineTo(Math.cos(a) * (major ? 5.0 : 3.4) * k, Math.sin(a) * (major ? 5.0 : 3.4) * k); g.stroke();
       }
       for (let i = 0; i < 240; i++) {                         // escala no anel de 7,2 m
         const a = (i / 240) * Math.PI * 2, r0 = i % 10 === 0 ? 6.85 : 7.0;
-        g.strokeStyle = `rgba(90,200,255,${i % 10 === 0 ? 0.4 : 0.16})`; g.lineWidth = 1.5;
+        g.strokeStyle = `rgba(255,80,96,${i % 10 === 0 ? 0.4 : 0.16})`; g.lineWidth = 1.5;
         g.beginPath(); g.moveTo(Math.cos(a) * r0 * k, Math.sin(a) * r0 * k); g.lineTo(Math.cos(a) * 7.2 * k, Math.sin(a) * 7.2 * k); g.stroke();
       }
-      g.font = `${0.16 * k}px Consolas, monospace`; g.fillStyle = 'rgba(120,210,255,0.35)'; g.textAlign = 'center';
+      g.font = `${0.16 * k}px Consolas, monospace`; g.fillStyle = 'rgba(255,100,112,0.35)'; g.textAlign = 'center';
       for (let i = 0; i < 12; i++) {                          // azimutes gravados (como num instrumento)
         const a = (i / 12) * Math.PI * 2;
         g.save(); g.rotate(a + Math.PI / 2); g.fillText(String(i * 30).padStart(3, '0'), 0, -6.55 * k); g.restore();
       }
     }, { srgb: true });
     const plates = canvasTexture(1024, 1024, (g, w, h) => {
-      g.fillStyle = '#7f8a96'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#86888e'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 9000; i++) { const v = 100 + Math.random() * 80; g.fillStyle = `rgba(${v},${v},${v + 8},0.08)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
       g.strokeStyle = 'rgba(20,26,34,0.6)'; g.lineWidth = 3;
       for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * w / 4, 0); g.lineTo(i * w / 4, h); g.stroke(); g.beginPath(); g.moveTo(0, i * h / 4); g.lineTo(w, i * h / 4); g.stroke(); }
@@ -64,7 +64,7 @@ export class Deck {
     walk.rotation.x = -Math.PI / 2; walk.position.y = 0.16;
     const walkEdge = new THREE.Mesh(disposer.track(new THREE.CylinderGeometry(7.25, 7.25, 0.16, 160, 1, true)), P.metal);
     walkEdge.position.y = 0.08;
-    this.strip = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(7.27, 0.012, 6, 220)), glowMaterial(PALETTE.cyan, 0.75));
+    this.strip = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(7.27, 0.012, 6, 220)), glowMaterial(PALETTE.primary, 0.75));
     this.strip.rotation.x = Math.PI / 2; this.strip.position.y = 0.165;
     this.group.add(walk, walkEdge, this.strip);
 
@@ -75,7 +75,7 @@ export class Deck {
     const lightGeo = disposer.track(new THREE.TubeGeometry(ribCurve, 40, 0.025, 5, false));
     const N = 16;
     const ribs = new THREE.InstancedMesh(ribGeo, P.darkMetal, N);
-    const lights = new THREE.InstancedMesh(lightGeo, glowMaterial(PALETTE.electric, 0.28), N);
+    const lights = new THREE.InstancedMesh(lightGeo, glowMaterial(PALETTE.energy, 0.28), N);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
     for (let i = 0; i < N; i++) {
       const a = (i / N) * Math.PI * 2;
@@ -89,18 +89,18 @@ export class Deck {
     this.ribLights = lights;
     // painéis de vidro escuro entre as nervuras (reflexos frios ao fundo)
     const wall = new THREE.Mesh(disposer.track(new THREE.CylinderGeometry(HALL_R + 0.1, HALL_R + 0.1, 6.2, 72, 1, true)),
-      disposer.track(new THREE.MeshStandardMaterial({ color: 0x06101c, metalness: 0.9, roughness: 0.18, side: THREE.BackSide,
+      disposer.track(new THREE.MeshStandardMaterial({ color: 0x0c0a0b, metalness: 0.9, roughness: 0.18, side: THREE.BackSide,
                                                      transparent: true, opacity: 0.9 })));
     wall.position.y = 3.1;
     this.hall.add(wall);
     // anel de teto
-    const crown = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(HALL_R * 0.55, 0.06, 8, 120)), glowMaterial(PALETTE.cyan, 0.35));
+    const crown = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(HALL_R * 0.55, 0.06, 8, 120)), glowMaterial(PALETTE.primary, 0.35));
     crown.rotation.x = Math.PI / 2; crown.position.y = 9.8;
     this.hall.add(crown);
 
     // ---------- feixes de luz volumétrica (planos aditivos, quase imperceptíveis; mexem devagar)
     this.shaftMat = disposer.track(new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x4fb7ff) }, uPower: { value: 1 } },
+      uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0xff5a6a) }, uPower: { value: 1 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `uniform float uTime; uniform vec3 uColor; uniform float uPower; varying vec2 vUv;
         void main(){ float edge=smoothstep(0.0,0.35,vUv.x)*smoothstep(1.0,0.65,vUv.x);
@@ -124,7 +124,7 @@ export class Deck {
     dg.setAttribute('seed', new THREE.BufferAttribute(seeds, 4));
     disposer.track(dg);
     this.dustMat = disposer.track(new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, map: { value: glowTexture() }, uPixel: { value: 1 }, uColor: { value: new THREE.Color(0x8fd8ff) } },
+      uniforms: { uTime: { value: 0 }, map: { value: glowTexture() }, uPixel: { value: 1 }, uColor: { value: new THREE.Color(0xffa0a8) } },
       vertexShader: `attribute vec4 seed; uniform float uTime; uniform float uPixel; varying float vA;
         void main(){ float a=seed.x*6.2831+uTime*0.01*(seed.w-0.5); float r=1.5+seed.y*9.0;
           float y=mod(seed.z*7.0+uTime*0.04*(0.3+seed.w),7.0);
@@ -140,17 +140,17 @@ export class Deck {
 
     // ---------- painel holográfico de sistema (dados reais; sem dado, diz que não há)
     this.sys = textPlate(768, 420, (g, w, h, rows, title) => {
-      g.fillStyle = 'rgba(10,40,70,0.30)'; g.fillRect(0, 0, w, h);
-      g.strokeStyle = 'rgba(120,220,255,0.55)'; g.lineWidth = 2; g.strokeRect(3, 3, w - 6, h - 6);
-      g.fillStyle = 'rgba(120,220,255,0.9)'; g.fillRect(3, 3, 140, 4);
-      g.font = '600 30px Segoe UI, Arial'; g.fillStyle = 'rgba(150,235,255,0.95)'; g.fillText(title, 28, 54);
+      g.fillStyle = 'rgba(40,10,16,0.30)'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(255,110,122,0.55)'; g.lineWidth = 2; g.strokeRect(3, 3, w - 6, h - 6);
+      g.fillStyle = 'rgba(255,110,122,0.9)'; g.fillRect(3, 3, 140, 4);
+      g.font = '600 30px Segoe UI, Arial'; g.fillStyle = 'rgba(255,160,168,0.95)'; g.fillText(title, 28, 54);
       g.font = '26px Segoe UI, Arial';
       rows.forEach(([k, v, warn], i) => {
         const y = 112 + i * 52;
-        g.fillStyle = 'rgba(120,170,210,0.8)'; g.fillText(k, 28, y);
-        g.fillStyle = warn ? 'rgba(255,190,110,0.95)' : 'rgba(230,248,255,0.95)';
+        g.fillStyle = 'rgba(190,150,156,0.8)'; g.fillText(k, 28, y);
+        g.fillStyle = warn ? 'rgba(247,201,72,0.95)' : 'rgba(255,240,242,0.95)';
         g.fillText(v.length > 30 ? v.slice(0, 29) + '…' : v, 260, y);
-        g.fillStyle = 'rgba(120,220,255,0.12)'; g.fillRect(28, y + 14, w - 56, 1);
+        g.fillStyle = 'rgba(255,110,122,0.12)'; g.fillRect(28, y + 14, w - 56, 1);
       });
     });
     const sysMesh = new THREE.Mesh(disposer.track(new THREE.PlaneGeometry(1.7, 0.93)), glowMaterial(0xffffff, 0.85, { map: this.sys.texture }));
@@ -161,15 +161,15 @@ export class Deck {
     foot.position.set(3.7, 0.025, -1.6);
     this.hall.add(sysMesh, stand, foot);
     this.sysMesh = sysMesh;
-    this.sys.draw([['estado', 'sem conexão com o JARVIS', true]], 'SISTEMA');
+    this.sys.draw([['estado', 'sem conexão com o SAFRA', true]], 'SISTEMA');
 
     // ---------- luzes do convés
-    const hemi = new THREE.HemisphereLight(0x3a6ea8, 0x020409, 0.55);
-    const key = new THREE.SpotLight(0xcfe6ff, 12, 22, 0.42, 0.8, 1.6);
+    const hemi = new THREE.HemisphereLight(0x8a3a44, 0x050304, 0.55);
+    const key = new THREE.SpotLight(0xffe2e5, 12, 22, 0.42, 0.8, 1.6);
     key.position.set(2.0, 7.5, 6.5); key.target.position.set(-0.2, 0.6, -0.4);
-    const rim = new THREE.PointLight(0x2b8cff, 12, 14, 1.8);
+    const rim = new THREE.PointLight(0xff3040, 12, 14, 1.8);
     rim.position.set(0, 3.2, -4.5);
-    this.avatarLight = new THREE.PointLight(0x38e1ff, 4, 6, 2);
+    this.avatarLight = new THREE.PointLight(0xff4a5c, 4, 6, 2);
     this.avatarLight.position.set(0, 0.6, 0.6);
     this.group.add(hemi, key, key.target, rim, this.avatarLight);
   }
@@ -178,7 +178,7 @@ export class Deck {
 
   /** Dados reais do sistema (estado central + telemetria). */
   setSystem({ model = '', health = null, uptime = null, workers = null, connected = true } = {}) {
-    if (!connected) { this.sys.draw([['estado', 'sem conexão com o JARVIS', true]], 'SISTEMA'); return; }
+    if (!connected) { this.sys.draw([['estado', 'sem conexão com o SAFRA', true]], 'SISTEMA'); return; }
     const rows = [];
     rows.push(['modelo', model || 'nenhum modelo ativo', !model]);
     if (health && health.status) rows.push(['saúde', String(health.status).toLowerCase() + (health.detail ? ' · ' + health.detail : ''), health.status !== 'OK']);
@@ -204,8 +204,8 @@ export class Deck {
     this.floorMat.emissiveIntensity = 0.42 + 0.18 * look.glow;
     const uk = this.ultron || 0;                             // Protocolo ULTRON: convés em vermelho
     this.floorMat.emissive.setRGB(1, 1 - 0.7 * uk, 1 - 0.65 * uk);
-    this.ribLights.material.color.setHex(0x168bff).lerp(ULTRON_RED, uk);
-    this.shaftMat.uniforms.uColor.value.setHex(0x4fb7ff).lerp(ULTRON_RED, uk);
+    this.ribLights.material.color.setHex(0xff3b6b).lerp(ULTRON_COLOR, uk);
+    this.shaftMat.uniforms.uColor.value.setHex(0xff5a6a).lerp(ULTRON_COLOR, uk);
     // vista do núcleo: feixes e painel recuam (foco no ORBE)
     const f = 1 - Math.exp(-dt * 2.5);
     this.shaftMat.uniforms.uPower.value += ((look.focus ? 0 : 1) - this.shaftMat.uniforms.uPower.value) * f;

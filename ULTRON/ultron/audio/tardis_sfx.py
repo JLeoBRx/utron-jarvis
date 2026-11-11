@@ -1,9 +1,9 @@
 """Sons da TARDIS — efeitos ORIGINAIS sintetizados (numpy), substituíveis por arquivos autorizados do usuário.
 
-O som característico da série é obra protegida: o JARVIS não o inclui nem o distribui. Os efeitos abaixo são
+O som característico da série é obra protegida: o SAFRA não o inclui nem o distribui. Os efeitos abaixo são
 criações próprias de ficção científica (ondas de fase, ressonâncias metálicas, mecânica da cabine). Se você tiver
 um arquivo com licença para uso, coloque-o na pasta de sons do usuário (``sons_tardis`` na pasta de dados do
-JARVIS) com um destes nomes — ele substitui o efeito original e nunca vai para o repositório:
+SAFRA) com um destes nomes — ele substitui o efeito original e nunca vai para o repositório:
 
     materializacao.wav · desmaterializacao.wav · porta_abrir.wav · porta_fechar.wav · rotor.wav · alerta.wav ·
     ambiente.wav

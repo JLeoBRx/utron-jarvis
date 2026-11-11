@@ -38,7 +38,7 @@ class Events:
 
 
 class Brain:
-    """Serviço + agendador sobre um arquivo SQLite; ``restart()`` simula fechar e abrir o JARVIS."""
+    """Serviço + agendador sobre um arquivo SQLite; ``restart()`` simula fechar e abrir o SAFRA."""
 
     def __init__(self, start: dt.datetime, **overrides):
         self.path = helpers.temp_dir("sb-") / "jarvis.sqlite3"
@@ -200,7 +200,7 @@ class ReminderTest(unittest.TestCase):
         brain = Brain(MONDAY_9)
         try:
             brain.service.create("event", "Entrega do projeto", when=dt.datetime(2026, 3, 2, 11, 0), remind=True)
-            brain.restart()                                  # JARVIS fechado das 9h às 14h
+            brain.restart()                                  # SAFRA fechado das 9h às 14h
             brain.at(dt.datetime(2026, 3, 2, 14, 0))
             brain.reminders.process()
             brain.reminders.process()
@@ -224,7 +224,7 @@ class ReminderTest(unittest.TestCase):
             brain.reminders.process()
             self.assertEqual(len(brain.due()), 1)
             self.assertEqual(brain.service.get(routine.id).due_local, "2026-03-03 09:30", "próxima ocorrência")
-            brain.at(dt.datetime(2026, 3, 6, 12, 0))         # três dias sem o JARVIS aberto
+            brain.at(dt.datetime(2026, 3, 6, 12, 0))         # três dias sem o SAFRA aberto
             brain.reminders.process()
             brain.reminders.process()
             fired = brain.due()
@@ -370,7 +370,7 @@ class ExportBackupTest(unittest.TestCase):
         self.assertIsNotNone(second)
         backup.create_backup(self.brain.db, keep=2, directory=folder, clock=lambda: 1000.0 + 26 * 3600)
         self.assertEqual(len(backup.list_backups(folder)), 2, "só os mais recentes ficam")
-        # restaurar (JARVIS fechado): o banco atual é guardado, nada se perde
+        # restaurar (SAFRA fechado): o banco atual é guardado, nada se perde
         newest = backup.list_backups(folder)[0]["path"]
         self.sb.create("note", "Criada depois do backup")
         self.brain.db.close()
@@ -395,7 +395,7 @@ class CaptureTest(unittest.TestCase):
         self.brain.close()
 
     def test_explicit_request_is_confirmed_and_wake_name_is_ignored(self):
-        result = self.capture.explicit("Jarvis, anote uma ideia: painel de energia na garagem")
+        result = self.capture.explicit("Safra, anote uma ideia: painel de energia na garagem")
         self.assertTrue(result.ok)
         record = result.records[0]
         self.assertEqual(record.kind, "idea")

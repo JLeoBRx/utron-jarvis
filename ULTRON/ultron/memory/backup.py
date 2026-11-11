@@ -1,10 +1,10 @@
-"""BACKUP — cópias do banco único do JARVIS (memórias, Second Brain, lembretes, grafo, rede).
+"""BACKUP — cópias do banco único do SAFRA (memórias, Second Brain, lembretes, grafo, rede).
 
-* ``create_backup``: cópia consistente com o JARVIS rodando (API de backup do SQLite), verificada
+* ``create_backup``: cópia consistente com o SAFRA rodando (API de backup do SQLite), verificada
   e com nome datado em ``<dados>/backups``; guarda as ``keep`` mais recentes (só apaga arquivos
   que ela mesma criou, pelo prefixo);
 * ``backup_if_due``: o backup automático diário (configurável) — chamado pelo agendador do núcleo;
-* ``restore_backup``: só com o JARVIS FECHADO. Verifica a integridade do arquivo escolhido,
+* ``restore_backup``: só com o SAFRA FECHADO. Verifica a integridade do arquivo escolhido,
   guarda o banco atual como ``*.antes-da-restauracao-<data>`` (nada é perdido) e só então troca.
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ def backups_dir() -> Path:
 
 
 def list_backups(directory: Path | None = None) -> list[dict]:
-    """Backups do JARVIS, do mais recente ao mais antigo."""
+    """Backups do SAFRA, do mais recente ao mais antigo."""
     directory = directory or backups_dir()
     items = []
     for path in directory.glob(f"{PREFIX}*{SUFFIX}"):
@@ -87,7 +87,7 @@ def backup_if_due(db: Database, *, interval_hours: float = 24.0, keep: int = 10,
 
 
 def restore_backup(source: Path | str, *, database: Path | None = None, clock=time.time) -> dict:
-    """Restaura um backup (JARVIS fechado). Devolve o que foi feito, inclusive onde ficou o banco anterior."""
+    """Restaura um backup (SAFRA fechado). Devolve o que foi feito, inclusive onde ficou o banco anterior."""
     source = Path(source)
     database = Path(database or paths.database_path())
     ok, detail = verify_database_file(source)

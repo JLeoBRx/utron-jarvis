@@ -116,7 +116,7 @@ class ProtocolTest(unittest.TestCase):
                                 chain=["jarvis"])
         envelope.state = "DONE"
         envelope.started, envelope.finished, envelope.duration_ms = 10.0, 11.5, 1500
-        envelope.model = "modelo-teste:1b (o mesmo do JARVIS)"
+        envelope.model = "modelo-teste:1b (o mesmo do SAFRA)"
         envelope.note("iniciada")
         envelope.result = TaskResult("Plano com 2 etapas.", [{"title": "1. medir", "detail": "", "source": "x"}],
                                      ["plano"], [ProposedAction("guardar o plano", "secondbrain.capture",
@@ -201,7 +201,7 @@ class ContextAnalyzerTest(unittest.TestCase):
     def test_consult_model_label_and_fallback_without_model(self):
         run = make_run(ctx=TardisContext(second_brain=self.sb, router=FakeRouter("Resposta [1].")))
         context_analyzer.consulta(run, {"question": "painel solar"})
-        self.assertEqual(run.envelope.model, "modelo-teste:1b (o mesmo do JARVIS)")
+        self.assertEqual(run.envelope.model, "modelo-teste:1b (o mesmo do SAFRA)")
         offline = FakeRouter(error=RuntimeError("Ollama indisponível: sem resposta"))
         run = make_run(ctx=TardisContext(second_brain=self.sb, router=offline))
         result = context_analyzer.consulta(run, {"question": "painel solar"})
@@ -254,7 +254,7 @@ class PlanningAnalyzerTest(unittest.TestCase):
         self.assertEqual(result.data["steps"][0]["title"], "Medir a sala")
         self.assertEqual(result.data["risks"], ["piso refletivo"])
         self.assertEqual([a.skill for a in result.actions], ["secondbrain.capture"])
-        self.assertIn("(o mesmo do JARVIS)", run.envelope.model)
+        self.assertIn("(o mesmo do SAFRA)", run.envelope.model)
 
     def test_bad_model_output_is_a_failure(self):
         for reply in ("não sei", '{"etapas": []}', "{quebrado"):
@@ -366,7 +366,7 @@ class DiagnosticsAnalyzerTest(unittest.TestCase):
         ctx = TardisContext(state=state, runtime=FakeRuntime(),
                             voice_probe=lambda: {"enabled": True, "capturing": True, "listening": True})
         result = diagnostics_analyzer.coordenacao(make_run("coordenacao", ctx), {})
-        self.assertIn("JARVIS em repouso", result.summary)
+        self.assertIn("SAFRA em repouso", result.summary)
         self.assertIn("Workers: 2/3 ativos", result.summary)
         self.assertIn("microfone capturando, escutando", result.summary)
         with self.assertRaises(TaskFailed):
@@ -424,7 +424,7 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(task.result.summary, "ok: x")
         self.assertIsNotNone(task.duration_ms)
         self.assertTrue(any("lido" in line for line in task.log))
-        self.assertEqual(self.store.get(task.id).state, "DONE", "gravada no banco do JARVIS")
+        self.assertEqual(self.store.get(task.id).state, "DONE", "gravada no banco do SAFRA")
         kinds = [k for k in self.bus.kinds() if k.startswith("TARDIS_TASK_")]
         self.assertEqual(kinds, ["TARDIS_TASK_QUEUED", "TARDIS_TASK_STARTED", "TARDIS_TASK_FINISHED"])
         started = self.bus.of("TARDIS_TASK_STARTED")[0]
@@ -557,7 +557,7 @@ class RoomSceneTest(unittest.TestCase):
         self.settle()
         self.assertAlmostEqual(scene.speed, MODES["jarvis"].speed, places=2)
         self.assertTrue(all(abs(a - b) < 2 for a, b in zip(scene.color, CYAN)))
-        self.assertGreater(scene.beam, 0.95, "feixe JARVIS ⇄ TARDIS só na consulta do JARVIS")
+        self.assertGreater(scene.beam, 0.95, "feixe SAFRA ⇄ TARDIS só na consulta do SAFRA")
         offsets = []
         for _ in range(200):
             scene.step(1 / 30)
@@ -579,7 +579,7 @@ class RoomSceneTest(unittest.TestCase):
         self.assertGreater(scene.panels["planejamento"].level, 0.9)
         self.assertEqual(scene.panels["analise"].level, 0.0)
         scene.task_event("TARDIS_TASK_FINISHED", {"kind": "planejamento", "summary": "Plano com 3 etapas",
-                                                  "model": "qwen2.5:3b (o mesmo do JARVIS)"})
+                                                  "model": "qwen2.5:3b (o mesmo do SAFRA)"})
         self.assertEqual(scene.panels["planejamento"].flash, 1.0)
         self.assertEqual(scene.model_label, "qwen2.5:3b")
         scene.task_event("TARDIS_TASK_STARTED", {"kind": "organizacao"})

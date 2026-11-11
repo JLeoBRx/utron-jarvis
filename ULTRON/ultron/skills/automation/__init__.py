@@ -1,6 +1,6 @@
 """Skills de automação: mouse, teclado, rolagem e automações salvas pelo usuário.
 
-Proteções herdadas do JARVIS:
+Proteções herdadas do SAFRA:
 
 * ``pyautogui.FAILSAFE``: jogar o mouse no canto superior esquerdo interrompe qualquer automação;
 * digitar ou pressionar Enter em um terminal eleva o risco (exige autorização);

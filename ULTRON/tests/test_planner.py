@@ -18,14 +18,14 @@ class IntentTest(unittest.TestCase):
 
     def test_routing_of_portuguese_commands(self):
         cases = {
-            "Jarvis, abra o bloco de notas": ("command", "app.open"),
+            "Safra, abra o bloco de notas": ("command", "app.open"),
             "quais dispositivos estão na rede": ("command", "network.devices"),     # inventário (varre se vazio/antigo)
             "escaneie a rede": ("command", "network.scan"),
             "diagnostique a rede": ("command", "network.diagnose"),
             "aumente o volume": ("command", "audio.volume"),
             "pode parar": ("cancel", None),
             "fale mais devagar": ("control", None),
-            "Jarvis, anote uma ideia: horta vertical": ("command", "secondbrain.capture"),
+            "Safra, anote uma ideia: horta vertical": ("command", "secondbrain.capture"),
             "tenho algum conflito de horário na agenda?": ("command", "secondbrain.conflicts"),
             "exporte minhas tarefas em planilha": ("command", "secondbrain.export"),
             "faça um backup da memória": ("command", "memory.backup"),
@@ -40,10 +40,10 @@ class IntentTest(unittest.TestCase):
         self.assertEqual(self.engine.classify("exporte minhas tarefas em planilha").args.get("format"), "csv")
         self.assertEqual(self.engine.classify("abra o TARDIS").args.get("open_view"), "tardis")
         self.assertNotEqual(self.engine.classify("restaure o backup de ontem").skill, "memory.backup",
-                            "restaurar só pela linha de comando, com o JARVIS fechado")
+                            "restaurar só pela linha de comando, com o SAFRA fechado")
 
     def test_goals_and_templates(self):
-        intent = self.engine.classify("Jarvis, prepare meu projeto Atlas")
+        intent = self.engine.classify("Safra, prepare meu projeto Atlas")
         self.assertEqual((intent.kind, intent.template), ("goal", "prepare_project"))
         self.assertEqual(intent.entities["project"], "Atlas")
         multi = self.engine.classify("abra o chrome e depois pesquise python")
@@ -75,7 +75,7 @@ class PlannerTest(unittest.TestCase):
         self.memory.stop()
 
     def test_prepare_project_becomes_ten_adaptive_tasks(self):
-        intent = IntentEngine().classify("Jarvis, prepare meu projeto Atlas")
+        intent = IntentEngine().classify("Safra, prepare meu projeto Atlas")
         plan = self.planner.create("g1", intent.goal, intent)
         self.assertEqual(plan.strategy, "template")
         self.assertEqual(len(plan.steps), 10)
@@ -163,7 +163,7 @@ class PrepareProjectEndToEndTest(unittest.TestCase):
                 planner=PlannerEngine(registry, memory=memory, bus=bus, state=state), executor=executor,
                 verifier=VerificationEngine(registry, bus=bus, state=state), recovery=RecoveryEngine(bus=bus, state=state),
                 registry=registry, router=None)
-            response = orchestrator.handle(Command("Jarvis, prepare meu projeto Atlas"), CancellationToken())
+            response = orchestrator.handle(Command("Safra, prepare meu projeto Atlas"), CancellationToken())
             steps = {s["id"]: s for s in state.get("current_plan")["steps"]}
             self.assertEqual(steps["locate"]["status"], "DONE", steps["locate"])
             self.assertEqual(steps["run"]["status"], "DONE", steps["run"])

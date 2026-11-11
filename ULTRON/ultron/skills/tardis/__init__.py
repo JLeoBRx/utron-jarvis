@@ -1,7 +1,7 @@
-"""Skills da TARDIS — a ponte JARVIS → TARDIS.
+"""Skills da TARDIS — a ponte SAFRA → TARDIS.
 
-* ``tardis.consult``: o JARVIS envia uma tarefa à TARDIS (origem "jarvis", cadeia ["jarvis"]) e espera o
-  resultado. A resposta diz qual análise rodou, qual modelo usou (o MESMO do JARVIS, ou "sem modelo") e de
+* ``tardis.consult``: o SAFRA envia uma tarefa à TARDIS (origem "jarvis", cadeia ["jarvis"]) e espera o
+  resultado. A resposta diz qual análise rodou, qual modelo usou (o MESMO do SAFRA, ou "sem modelo") e de
   onde veio cada informação. Ações propostas NÃO são executadas aqui: o núcleo as oferece ao usuário como
   sugestão, que só roda com "sim" e passa pelo executor (permissões, risco, verificação).
 * ``tardis.note``: grava uma nota, decisão ou parâmetro na memória de projeto (categoria "arquivos").
@@ -29,7 +29,7 @@ def _registry(ctx):
 
 class Consult(Skill):
     name = "tardis.consult"
-    description = ("Consultar a TARDIS, o segundo cérebro do JARVIS: consulta contextual na memória (kind consulta, "
+    description = ("Consultar a TARDIS, o segundo cérebro do SAFRA: consulta contextual na memória (kind consulta, "
                    "com question), planejamento de um objetivo (planejamento, com goal), organização da memória "
                    "pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do sistema (telemetria), "
                    "diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto "

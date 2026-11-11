@@ -3,17 +3,17 @@ setlocal
 chcp 65001 <nul >nul
 cd /d "%~dp0"
 
-rem START_JARVIS.bat                 abre o JARVIS (TARDIS e as outras paginas pela navegacao ou F1-F7)
+rem START_JARVIS.bat                 abre o SAFRA (TARDIS e as outras paginas pela navegacao ou F1-F7)
 rem START_JARVIS.bat --console       modo console (texto), com o mesmo nucleo, memoria e permissoes da janela
 rem START_JARVIS.bat --foreground    abre a janela pelo python.exe: este terminal mostra avisos e tracebacks
 rem START_JARVIS.bat --gui-check     monta a interface sem mostra-la e diz se ela abre nesta maquina
 rem START_JARVIS.bat --diagnose      saude completa + voz (8 etapas) e sai
-rem START_JARVIS.bat --voice-test    teste de voz falando ("Jarvis, que horas sao?")
+rem START_JARVIS.bat --voice-test    teste de voz falando ("Safra, que horas sao?")
 rem START_JARVIS.bat --mics          lista os microfones
-rem START_JARVIS.bat --status        diz se o JARVIS esta em execucao
-rem START_JARVIS.bat --stop          encerra o JARVIS em execucao (normalmente, sem forcar)
+rem START_JARVIS.bat --status        diz se o SAFRA esta em execucao
+rem START_JARVIS.bat --stop          encerra o SAFRA em execucao (normalmente, sem forcar)
 rem START_JARVIS.bat --backup        backup do banco (memorias, lembretes, rede)
-rem START_JARVIS.bat --list-backups  lista os backups;  --restore-backup ARQUIVO  restaura um (JARVIS fechado)
+rem START_JARVIS.bat --list-backups  lista os backups;  --restore-backup ARQUIVO  restaura um (SAFRA fechado)
 rem START_JARVIS.bat --export ARQ    exporta a memoria pessoal (.json ou .csv) para um arquivo novo
 rem START_JARVIS.bat --say "TEXTO"   executa um pedido e mostra a resposta
 rem START_JARVIS.bat --autostart     liga o inicio automatico com o Windows ( --no-autostart desliga )
@@ -21,7 +21,7 @@ rem START_JARVIS.bat --help          todos os comandos
 rem Comandos que respondem com texto rodam nesta janela (com o Python de console) e esperam uma tecla.
 
 if not exist ".venv\Scripts\python.exe" (
-    echo O ambiente do JARVIS ainda nao foi instalado. Execute INSTALL_JARVIS.bat primeiro.
+    echo O ambiente do SAFRA ainda nao foi instalado. Execute INSTALL_JARVIS.bat primeiro.
     pause
     exit /b 1
 )
@@ -56,11 +56,11 @@ exit /b %CODE%
 exit /b %errorlevel%
 
 :foreground_mode
-echo Abrindo o JARVIS com este terminal visivel (avisos e erros aparecem aqui; feche pela bandeja ^> Sair).
+echo Abrindo o SAFRA com este terminal visivel (avisos e erros aparecem aqui; feche pela bandeja ^> Sair).
 "%VPY%" main.py
 set "CODE=%errorlevel%"
 echo.
-echo O JARVIS terminou com codigo %CODE%. Registro: %LOCALAPPDATA%\ULTRON\logs\ultron.log
+echo O SAFRA terminou com codigo %CODE%. Registro: %LOCALAPPDATA%\ULTRON\logs\ultron.log
 pause
 exit /b %CODE%
 

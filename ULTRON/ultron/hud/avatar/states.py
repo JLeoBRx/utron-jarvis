@@ -11,7 +11,7 @@ Prioridade (ARQUITETURA_ULTIMATE.md §7), da maior para a menor:
                                  TINGE os estados de prioridade menor
  6. Reconhecendo a fala        — parciais do reconhecimento nos últimos 0,8 s com a escuta aberta
  7. Escutando                  — escuta aberta (palavra de ativação ou continuação)
- 8. Consultando a TARDIS       — tarefa da TARDIS pedida pelo JARVIS em execução
+ 8. Consultando a TARDIS       — tarefa da TARDIS pedida pelo SAFRA em execução
  9. Executando uma tarefa      — EXECUTING, VERIFYING, RECOVERY
 10. Pensando                   — THINKING, DECIDING, PLANNING, CONTEXT, PERCEIVING, IMAGINING
 11. Inicializando              — BOOTING (progresso real dos componentes)
@@ -45,26 +45,27 @@ class StateStyle:
     priority: int
 
 
-CYAN = (0, 217, 255)
-GLOW = (103, 243, 255)
-ELECTRIC = (22, 139, 255)
-AMBER = (255, 179, 71)
-CORAL = (255, 93, 115)
-DIM = (61, 88, 115)
+PRIMARY = (234, 40, 64)
+CYAN = PRIMARY                      # nome antigo (código externo)
+GLOW = (255, 92, 108)
+ELECTRIC = (255, 59, 107)
+AMBER = (247, 201, 72)
+CORAL = (255, 123, 28)
+DIM = (90, 93, 102)
 
 STYLES: dict[str, StateStyle] = {s.key: s for s in (
     StateStyle("privacidade", "PRIVACIDADE · MICROFONE DESLIGADO", DIM, DIM, 0.35, 0.0, 0.0, 0.25, 0.0, 0.1, 0.0, 1),
     StateStyle("erro", "ERRO DE INTEGRAÇÃO", CORAL, CORAL, 0.75, 0.9, -0.2, 0.5, 0.6, 0.3, 0.5, 2),
     StateStyle("confirmacao", "AGUARDANDO CONFIRMAÇÃO", AMBER, GLOW, 0.85, 1.1, 0.7, 0.4, 0.5, 0.4, 0.6, 3),
-    StateStyle("falando", "FALANDO", CYAN, GLOW, 1.0, 1.0, 0.15, 0.8, 1.0, 1.0, 1.0, 4),
+    StateStyle("falando", "FALANDO", PRIMARY, GLOW, 1.0, 1.0, 0.15, 0.8, 1.0, 1.0, 1.0, 4),
     StateStyle("alerta", "ALERTA", AMBER, AMBER, 1.0, 1.25, 0.8, 0.5, 1.4, 1.2, 0.9, 5),
     StateStyle("reconhecendo", "RECONHECENDO", GLOW, GLOW, 0.95, 1.05, 0.35, 0.3, 1.3, 1.5, 0.9, 6),
-    StateStyle("escutando", "ESCUTANDO", CYAN, GLOW, 0.9, 1.15, 0.55, 0.5, 1.0, 0.8, 0.8, 7),
-    StateStyle("tardis", "CONSULTANDO A TARDIS", CYAN, AMBER, 0.9, 0.95, 0.1, 0.6, 1.2, 1.6, 0.9, 8),
+    StateStyle("escutando", "ESCUTANDO", PRIMARY, GLOW, 0.9, 1.15, 0.55, 0.5, 1.0, 0.8, 0.8, 7),
+    StateStyle("tardis", "CONSULTANDO A TARDIS", PRIMARY, AMBER, 0.9, 0.95, 0.1, 0.6, 1.2, 1.6, 0.9, 8),
     StateStyle("executando", "EXECUTANDO", ELECTRIC, GLOW, 0.95, 0.95, -0.25, 0.35, 1.6, 2.0, 1.0, 9),
     StateStyle("pensando", "PENSANDO", ELECTRIC, GLOW, 0.85, 0.9, -0.35, 0.7, 1.1, 1.3, 0.8, 10),
-    StateStyle("inicializando", "INICIALIZANDO", CYAN, GLOW, 0.8, 0.0, 0.0, 0.2, 2.0, 0.6, 0.5, 11),
-    StateStyle("aguardando", "EM ESPERA", CYAN, GLOW, 0.7, 1.0, 0.0, 1.0, 0.6, 0.35, 0.5, 12),
+    StateStyle("inicializando", "INICIALIZANDO", PRIMARY, GLOW, 0.8, 0.0, 0.0, 0.2, 2.0, 0.6, 0.5, 11),
+    StateStyle("aguardando", "EM ESPERA", PRIMARY, GLOW, 0.7, 1.0, 0.0, 1.0, 0.6, 0.35, 0.5, 12),
 )}
 ORDER = tuple(sorted(STYLES, key=lambda k: STYLES[k].priority))
 SHORT = {"privacidade": "PRIVACIDADE", "erro": "ERRO", "confirmacao": "CONFIRMAÇÃO", "falando": "FALANDO",

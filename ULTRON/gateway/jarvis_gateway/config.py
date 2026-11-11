@@ -7,7 +7,7 @@ Variáveis (ver ``.env.example``):
 * ``JARVIS_ENROLL_SECRET_HASH`` hash scrypt do segredo de inscrição do agente (``python -m jarvis_gateway hash-secret``);
                                sem ele, nenhuma matriz-mãe consegue se inscrever;
 * ``JARVIS_GATEWAY_DB``         banco do gateway (padrão ``./data/gateway.sqlite3``);
-* ``JARVIS_SCENE_DIR``          pasta da cena 3D do JARVIS (módulos da ORBE e Three.js);
+* ``JARVIS_SCENE_DIR``          pasta da cena 3D do SAFRA (módulos da ORBE e Three.js);
 * ``JARVIS_HOST``/``JARVIS_PORT`` endereço local de escuta (atrás do proxy HTTPS);
 * ``JARVIS_TRUST_PROXY``        1 = usar X-Forwarded-For (só atrás do proxy do compose);
 * ``JARVIS_DEVICE_DAYS``        validade da sessão de um dispositivo pareado (padrão 30);

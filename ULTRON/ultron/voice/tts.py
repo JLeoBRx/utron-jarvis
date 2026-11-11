@@ -1,4 +1,4 @@
-"""TTS — síntese de fala com o perfil de voz do JARVIS.
+"""TTS — síntese de fala com o perfil de voz do SAFRA.
 
 Motores, em ordem:
 

@@ -30,12 +30,12 @@ def protected_roots() -> list[tuple[str, str]]:
 
     * o sistema operacional;
     * a inicialização automática (um arquivo ali roda sozinho a cada login: persistência oculta);
-    * o próprio JARVIS: programa e plugins (um .py ali é executado na próxima partida) e os dados do
-      usuário (memória pessoal, lembretes, backups), que só os módulos do JARVIS alteram."""
+    * o próprio SAFRA: programa e plugins (um .py ali é executado na próxima partida) e os dados do
+      usuário (memória pessoal, lembretes, backups), que só os módulos do SAFRA alteram."""
     from ..config import paths
-    roots = [(str(paths.project_root()), "a pasta do programa do JARVIS"),
-             (str(Path(__file__).resolve().parent.parent.parent), "a pasta do programa do JARVIS"),
-             (str(paths.data_dir()), "os dados do JARVIS (memória pessoal, plugins e backups)")]
+    roots = [(str(paths.project_root()), "a pasta do programa do SAFRA"),
+             (str(Path(__file__).resolve().parent.parent.parent), "a pasta do programa do SAFRA"),
+             (str(paths.data_dir()), "os dados do SAFRA (memória pessoal, plugins e backups)")]
     if os.name == "nt":
         env = os.environ
         for key, label in (("SystemRoot", "a pasta do Windows"), ("ProgramFiles", "Arquivos de Programas"),

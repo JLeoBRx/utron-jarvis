@@ -1,4 +1,4 @@
-"""Repertório de falas do JARVIS.
+"""Repertório de falas do SAFRA.
 
 Falas curtas, por situação. A escolha evita repetir a mesma frase em sequência.
 A lógica do sistema pede uma *situação* (``say("done")``); a personalidade decide a frase.
@@ -32,7 +32,7 @@ LINES: dict[str, tuple[str, ...]] = {
     "unavailable": ("{module} indisponível.", "{module} não está disponível no momento."),
     "model_missing": ("O modelo {model} não está instalado.",),
     "wake": ("Sim, senhor?", "Pois não?", "Estou ouvindo."),
-    "online": ("JARVIS online.", "Sistemas online, senhor."),
+    "online": ("SAFRA online.", "Sistemas online, senhor."),
     "shutdown": ("Encerrando.", "Até breve, senhor."),
     "busy": ("Ainda estou concluindo a tarefa anterior.",),
     "imagining": ("Construindo o conceito.", "Imaginando."),

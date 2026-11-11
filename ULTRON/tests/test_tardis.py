@@ -1,6 +1,6 @@
 """Os dois hubs com o núcleo real (Qt offscreen, Ollama simulado, banco temporário).
 
-Cobre: abrir e fechar o JARVIS CORE e o ARQUIVO da TARDIS (a memória espacial, dentro da página TARDIS),
+Cobre: abrir e fechar o SAFRA CORE e o ARQUIVO da TARDIS (a memória espacial, dentro da página TARDIS),
 regiões com dados REAIS do banco, comunicação pelos eventos do núcleo (registro criado → ARQUIVO e CORE
 reagem), voltar ao CORE sem perder o estado do ARQUIVO, ações pelo núcleo (nunca direto no banco),
 perfis de qualidade e encerramento sem threads penduradas. Não é teste de GPU nem de janela real do Windows.
@@ -191,7 +191,7 @@ class ShutdownTest(unittest.TestCase):
                 if not left:
                     break
                 time.sleep(0.05)
-        self.assertEqual([t.name for t in left], [], "nenhuma thread do JARVIS ficou viva após o encerramento")
+        self.assertEqual([t.name for t in left], [], "nenhuma thread do SAFRA ficou viva após o encerramento")
 
 
 if __name__ == "__main__":

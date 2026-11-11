@@ -1,4 +1,4 @@
-"""Transições — depois de QUALQUER desfecho o JARVIS volta ao repouso, e o rosto mostra o que acontece.
+"""Transições — depois de QUALQUER desfecho o SAFRA volta ao repouso, e o rosto mostra o que acontece.
 
 Para cada desfecho de um pedido — sucesso, falha da skill, autorização negada, autorização sem resposta,
 pedido cancelado com o modelo ainda respondendo, modelo que quebra — a sequência REAL de estados do núcleo

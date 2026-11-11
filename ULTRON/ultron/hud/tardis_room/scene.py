@@ -2,10 +2,10 @@
 
 A cena só ANIMA o que o motor da TARDIS informa:
 
-* o modo do rotor vem do ``TARDIS_STATE`` (repouso, processando, operação, consulta do JARVIS, falha);
+* o modo do rotor vem do ``TARDIS_STATE`` (repouso, processando, operação, consulta do SAFRA, falha);
 * cada painel do console acende enquanto uma tarefa REAL daquele tipo roda, pulsa quando ela termina
   (âmbar se concluiu, vermelho se falhou) e apaga devagar;
-* o feixe JARVIS ⇄ TARDIS só existe enquanto uma tarefa pedida pelo JARVIS está em execução;
+* o feixe SAFRA ⇄ TARDIS só existe enquanto uma tarefa pedida pelo SAFRA está em execução;
 * o anel de falha no piso acende quando uma tarefa falha e apaga sozinho.
 
 Sem evento, a sala fica em repouso: nada aqui inventa atividade.
@@ -41,7 +41,7 @@ MODES: dict[str, ModeStyle] = {m.key: m for m in (
     ModeStyle("repouso", "REPOUSO", 0.12, 0.30, 0.42, AMBER_DIM, 0.05),
     ModeStyle("processando", "PROCESSANDO", 0.55, 1.00, 0.92, AMBER, 0.35),
     ModeStyle("operacao", "OPERAÇÃO", 0.35, 0.60, 0.78, TEAL, 0.22),
-    ModeStyle("jarvis", "CONSULTA DO JARVIS", 0.65, 1.00, 1.00, CYAN, 0.45),
+    ModeStyle("jarvis", "CONSULTA DO SAFRA", 0.65, 1.00, 1.00, CYAN, 0.45),
     ModeStyle("falha", "FALHA", 0.03, 0.12, 0.55, RED, 0.02),
 )}
 PANEL_ANGLES = {key: math.radians(90 - 60 * i) for i, key in enumerate(PANELS)}   # ANÁLISE de frente
@@ -134,8 +134,8 @@ class RoomScene:
                 panel.flash = 1.0
                 panel.last = str(payload.get("summary") or "")[:160]
                 model = str(payload.get("model") or "")
-                if "(o mesmo do JARVIS)" in model:          # só o nome do modelo de linguagem usado
-                    self.model_label = model.replace("(o mesmo do JARVIS)", "").strip()
+                if "(o mesmo do SAFRA)" in model:          # só o nome do modelo de linguagem usado
+                    self.model_label = model.replace("(o mesmo do SAFRA)", "").strip()
             elif kind == "TARDIS_TASK_FAILED":
                 panel.fault = 1.0
                 panel.last = "falhou: " + str((payload.get("error") or {}).get("message") or "")[:150]

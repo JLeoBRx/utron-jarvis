@@ -1,7 +1,7 @@
 """INTENT ENGINE — transforma um COMMAND em INTENT.
 
 1. Automação do usuário por frase exata (memória procedural);
-2. caminho rápido por regras em português (preservadas e ampliadas do roteador do JARVIS):
+2. caminho rápido por regras em português (preservadas e ampliadas do roteador do SAFRA):
    resposta imediata, sem modelo, para comandos diretos;
 3. caso contrário, a intenção fica para o modelo local (conversa, pergunta ou objetivo
    aberto), que decide via ferramentas ou plano.
@@ -68,7 +68,7 @@ def pt_number(text: str) -> int | None:
     return total
 
 
-def strip_wake(raw: str, wake_words: tuple = ("jarvis",)) -> str:
+def strip_wake(raw: str, wake_words: tuple = ("safra", "jarvis")) -> str:
     text = str(raw or "").strip()
     pattern = r"^(?:(?:ok|ei|oi|ola|olá)\s+)?(?:" + "|".join(re.escape(w) for w in wake_words) + r")(?:[,;:]\s*|\s+|$)"
     return re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
@@ -88,7 +88,7 @@ class IntentEngine:
                  wake_words: Callable[[], tuple] | None = None,
                  recent_topic: Callable[[], dict | None] | None = None):
         self._automations = automations
-        self._wake_words = wake_words or (lambda: ("jarvis",))
+        self._wake_words = wake_words or (lambda: ("safra", "jarvis"))
         self._recent_topic = recent_topic or (lambda: None)     # assunto recente ("anote essa ideia", "disso")
 
     # ------------------------------------------------------------ API
@@ -135,7 +135,7 @@ class IntentEngine:
 
     # ------------------------------------------------------------ TARDIS (segundo cérebro)
     def _tardis_rules(self, raw, t):
-        """"JARVIS, consulte a TARDIS sobre X", "TARDIS, organize/planeje/diagnostique...", "anote na TARDIS
+        """"SAFRA, consulte a TARDIS sobre X", "TARDIS, organize/planeje/diagnostique...", "anote na TARDIS
         que..." e a navegação ("abra a TARDIS" → sala de controle; "segundo cérebro"/"memória espacial" →
         o ARQUIVO). Pedidos de consulta vêm antes das palavras de tipo: "pergunte à TARDIS como organizar
         meu estudo" é uma pergunta, não uma organização."""
@@ -194,7 +194,7 @@ class IntentEngine:
             return _cmd(raw, "tardis.consult", kind="organizacao")
         if re.search(r"\b(rotinas?|lembretes|automac\w*|recorren\w*)\b", t):
             return _cmd(raw, "tardis.consult", kind="rotinas")
-        if re.search(r"\b(telemetria|metricas|desempenho do (sistema|jarvis))\b", t):
+        if re.search(r"\b(telemetria|metricas|desempenho do (sistema|jarvis|safra))\b", t):
             return _cmd(raw, "tardis.consult", kind="telemetria")
         if re.search(r"\b(diagnost\w*|problemas?|falhas?)\b", t):
             return _cmd(raw, "tardis.consult", kind="diagnostico")
@@ -223,7 +223,7 @@ class IntentEngine:
             if re.search(r"\b(demonstra\w*|teste|testar)\b", t):
                 return _intent("control", raw, args={"ultron": "demo"})
             return _intent("control", raw, args={"ultron": "start"})
-        if re.search(r"\brestaur\w* (o )?jarvis\b", t):
+        if re.search(r"\brestaur\w* (o |a )?(jarvis|safra)\b", t):
             return _intent("control", raw, args={"ultron": "stop"})
         # inteligência: consumo do mês e perfil
         if re.search(r"\b(quanto (eu )?gastei|consumo|gasto|custo)\b.*\b(ia|inteligencia|openai|nuvem|modelos?)\b|"
@@ -259,13 +259,15 @@ class IntentEngine:
             return _intent("control", raw, args={"privacy_shield": False})
         if re.search(r"\b(ativ\w*|lig\w*|entr\w*)\b.*\bmodo (local|privado)\b", t):
             return _intent("control", raw, args={"privacy_mode": "local"})
-        # Encerrar o próprio JARVIS (no original só respondia "Encerrando, senhor.")
+        # Encerrar o próprio SAFRA (no original só respondia "Encerrando, senhor.")
         if t in ("desligar assistente", "desligue o assistente", "encerrar jarvis", "encerre o jarvis",
                  "encerrar o jarvis", "desligar jarvis", "desligue o jarvis", "feche o jarvis", "fechar o jarvis",
-                 "sair do jarvis", "encerrar o assistente"):
+                 "sair do jarvis", "encerrar o assistente", "encerrar safra", "encerre o safra", "encerrar o safra",
+                 "desligar safra", "desligue o safra", "desligar o safra", "feche o safra", "fechar o safra",
+                 "sair do safra"):
             return _cmd(raw, "jarvis.shutdown")
         if t in ("desligar", "desliga", "desligue"):
-            return _intent("response", raw, response="Desligar o quê, senhor: o computador ou o JARVIS?",
+            return _intent("response", raw, response="Desligar o quê, senhor: o computador ou o SAFRA?",
                            reason="pedido ambíguo")
         if re.search(r"\bmodo (sonho|sonhar)\b|\bcomece a sonhar\b|\bsonhe\b", t):
             return _intent("dream", raw)
@@ -332,7 +334,7 @@ class IntentEngine:
                      r"\b(o que|que tarefas?|quais tarefas?|tenho algo|tem algo|ha algo|alguma coisa)\b.*"
                      r"\b(atrasad\w*|vencid\w*|em atraso)\b|\bo que (eu )?atrasei\b|"
                      r"\b(quais|que|minhas)\s+ideias\b|\b(quais|que)\s+(tarefas|registros|itens)?\s*dependem\b|"
-                     r"^(jarvis,?\s+)?(quais|que|minhas|meus|liste|listar|mostre|mostra|me mostre)\s+(sao\s+)?(as\s+|os\s+)?"
+                     r"^((jarvis|safra),?\s+)?(quais|que|minhas|meus|liste|listar|mostre|mostra|me mostre)\s+(sao\s+)?(as\s+|os\s+)?"
                      r"(minhas\s+|meus\s+)?(notas|anotacoes|tarefas|estudos|prazos|rotinas|decisoes)\b"
                      r"(?!.*\b(do windows|do sistema|em execucao|abertas no|processos)\b)|"
                      r"\b(projetos|registros|itens|notas|ideias|tarefas)\s+(estao\s+|sao\s+)?(relacionad\w*|ligad\w*)\s+"
@@ -503,19 +505,19 @@ class IntentEngine:
 
     def _system_rules(self, raw, t):
         # navegação da plataforma. "abra as configurações" (sozinho) continua abrindo as do Windows, como no
-        # JARVIS original; as do JARVIS precisam do nome
+        # JARVIS original; as do SAFRA precisam do nome
         opening = re.search(r"\b(abr\w*|mostr\w*|exib\w*|v\w+ para|ir para|leve\w* (me )?para)\b", t)
-        if opening and re.search(r"\b(configurac\w*|ajustes|preferencias) do (jarvis|assistente)\b", t):
+        if opening and re.search(r"\b(configurac\w*|ajustes|preferencias) do (jarvis|safra|assistente)\b", t):
             return _intent("control", raw, args={"open_view": "configuracoes"})
         if opening and re.search(r"\b(historico|registro|pagina|lista) de atividades\b|\batividades recentes\b", t):
             return _intent("control", raw, args={"open_view": "atividades"})
         if opening and re.search(r"\bconsole de eventos\b", t):
             return _intent("control", raw, args={"open_view": "diagnosticos", "section": "eventos"})
-        if opening and re.search(r"\b(o )?log do (jarvis|sistema)\b|\barquivo de log\b", t):
+        if opening and re.search(r"\b(o )?log do (jarvis|safra|sistema)\b|\barquivo de log\b", t):
             return _intent("control", raw, args={"open_view": "diagnosticos", "section": "log"})
         if opening and re.search(r"\b(pagina|painel|tela) de diagnosticos?\b|\bos diagnosticos\b", t):
             return _intent("control", raw, args={"open_view": "diagnosticos"})
-        if re.search(r"\bvolt\w* (para |pra )?(o |a )?(jarvis|nucleo|inicio|pagina principal|conversa)\b", t):
+        if re.search(r"\bvolt\w* (para |pra )?(o |a )?(jarvis|safra|nucleo|inicio|pagina principal|conversa)\b", t):
             return _intent("control", raw, args={"open_view": "jarvis"})
         if re.search(r"\bo que voce (fez|executou|andou fazendo)\b|\bultimas atividades\b|"
                      r"\bhistorico de atividades\b|\bsuas atividades (de hoje|recentes)\b", t):
@@ -527,8 +529,8 @@ class IntentEngine:
         if re.search(r"\b(quais|que|liste|mostre|minhas)\b.*\bautorizac\w* (permanentes?|ativas?|em vigor)\b|"
                      r"\bautorizacoes permanentes\b", t):
             return _cmd(raw, "autonomy.list")
-        if re.search(r"\b(saude|health)\b|como voce esta|status do (jarvis|ultron)|"
-                     r"diagnostico (do (jarvis|ultron)|interno)", t):
+        if re.search(r"\b(saude|health)\b|como voce esta|status do (jarvis|safra|ultron)|"
+                     r"diagnostico (do (jarvis|safra|ultron)|interno)", t):
             return _cmd(raw, "diagnostics.health")
         if re.search(r"relatorio do (sistema|computador)|uso de (cpu|memoria|processador)|desempenho do (pc|computador)|"
                      r"como esta o (computador|pc)", t):

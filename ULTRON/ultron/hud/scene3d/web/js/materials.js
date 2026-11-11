@@ -7,8 +7,9 @@ import * as THREE from 'three';
 
 export const PALETTE = {
   // os mesmos valores de ultron/hud/design/tokens.json (o teste confere)
-  ink: 0x030712, deep: 0x071426, cyan: 0x00d9ff, glow: 0x67f3ff, electric: 0x168bff,
-  ice: 0xdceeff, amber: 0xffb547, coral: 0xff5d73, dim: 0x3d5873, ultron: 0xff1f3d, ultronGlow: 0xff5a6b,
+  ink: 0x07070a, deep: 0x0f1013, primary: 0xea2840, glow: 0xff5c6c, energy: 0xff3b6b,
+  text: 0xf4f4f5, amber: 0xf7c948, fault: 0xff7b1c, dim: 0x5a5d66, ultron: 0x8b5cf6, ultronGlow: 0xb794ff,
+  ultronDeep: 0x1c0f33, ultronMetal: 0xa9b0bc,
 };
 
 /** Registro do que precisa ser liberado da GPU ao encerrar (geometrias, materiais, texturas). */
@@ -46,7 +47,7 @@ export function glowTexture() {
 }
 
 /** Uniformes do holograma compartilhados por linhas, pontos e casca (um estado, três desenhos). */
-export function holoUniforms(color = PALETTE.cyan) {
+export function holoUniforms(color = PALETTE.primary) {
   return {
     uTime: { value: 0 },
     uColor: { value: new THREE.Color(color) },
@@ -184,9 +185,9 @@ export function holoShellMaterial(u, { opacity = 0.32, skinned = false, power = 
  * Superfície SÓLIDA holográfica com luz: pele de androide e roupas. Escreve profundidade (o que está atrás do corpo
  * não aparece através dele), luz principal de cima/frente + preenchimento, borda (Fresnel) na cor do estado, uma
  * trama fina opcional (tecido) e linhas de varredura discretas. ``base`` é a cor do material; ``tint`` quanto a cor
- * do estado do JARVIS (ou do ULTRON) tinge o material.
+ * do estado do SAFRA (ou do ULTRON) tinge o material.
  */
-export function holoSolidMaterial(u, { opacity = 0.9, skinned = true, base = 0x9fdcf2, tint = 0.55, rimPower = 2.2,
+export function holoSolidMaterial(u, { opacity = 0.9, skinned = true, base = 0xf2b9be, tint = 0.55, rimPower = 2.2,
                                        weave = 0.0, gloss = 0.35, rim = 0.85, glow = 0.08 } = {}) {
   const vertexShader = skinnedVertex(COMMON_VARY + /* glsl */`
     varying vec3 vN; varying vec3 vV; varying vec3 vP;
@@ -234,7 +235,7 @@ export function holoSolidMaterial(u, { opacity = 0.9, skinned = true, base = 0x9
  * Cabelo: fios (linhas) presos ao osso da cabeça. Atributos: ``strand`` (0 na raiz → 1 na ponta) e ``seed``. As
  * pontas balançam com o tempo e com a energia (fala, movimento); a cor vai da raiz escura à ponta luminosa.
  */
-export function hairMaterial(u, { opacity = 0.85, base = 0x2a4a62, tip = 0x9fe9ff } = {}) {
+export function hairMaterial(u, { opacity = 0.85, base = 0x4a1c24, tip = 0xffb8bf } = {}) {
   const vertexShader = SKIN_DECL + COMMON_VARY + /* glsl */`
     attribute float strand; attribute float seed; attribute vec3 flow;
     uniform float uSway; varying float vS; varying float vSeed;
@@ -317,28 +318,28 @@ function noiseCanvas(g, w, h, base, spread, alpha = 0.06) {
 export function physical() {
   if (PHYS.ready) return PHYS;
   const brushed = canvasTexture(256, 256, (g, w, h) => {
-    noiseCanvas(g, w, h, '#7d8a99', 255, 0.05);
+    noiseCanvas(g, w, h, '#85878d', 255, 0.05);
     for (let y = 0; y < h; y += 2) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`; g.fillRect(0, y, w, 1); }
   }, { repeat: [2, 2] });
-  PHYS.metal = disposer.track(new THREE.MeshStandardMaterial({ color: 0x6c7a8c, metalness: 0.85, roughness: 0.32, map: brushed }));
-  PHYS.darkMetal = disposer.track(new THREE.MeshStandardMaterial({ color: 0x1a2533, metalness: 0.8, roughness: 0.45 }));
-  PHYS.steel = disposer.track(new THREE.MeshStandardMaterial({ color: 0x9aa7b6, metalness: 0.95, roughness: 0.22 }));
+  PHYS.metal = disposer.track(new THREE.MeshStandardMaterial({ color: 0x76787e, metalness: 0.85, roughness: 0.32, map: brushed }));
+  PHYS.darkMetal = disposer.track(new THREE.MeshStandardMaterial({ color: 0x1c1d22, metalness: 0.8, roughness: 0.45 }));
+  PHYS.steel = disposer.track(new THREE.MeshStandardMaterial({ color: 0xa3a6ad, metalness: 0.95, roughness: 0.22 }));
   PHYS.brass = disposer.track(new THREE.MeshStandardMaterial({ color: 0xb58a3c, metalness: 0.9, roughness: 0.3 }));
   PHYS.copper = disposer.track(new THREE.MeshStandardMaterial({ color: 0xa8643a, metalness: 0.9, roughness: 0.35 }));
-  PHYS.panel = disposer.track(new THREE.MeshStandardMaterial({ color: 0x24344a, metalness: 0.6, roughness: 0.55 }));
-  PHYS.rubber = disposer.track(new THREE.MeshStandardMaterial({ color: 0x0b1018, metalness: 0.1, roughness: 0.85 }));
+  PHYS.panel = disposer.track(new THREE.MeshStandardMaterial({ color: 0x2a2c33, metalness: 0.6, roughness: 0.55 }));
+  PHYS.rubber = disposer.track(new THREE.MeshStandardMaterial({ color: 0x0d0d10, metalness: 0.1, roughness: 0.85 }));
   PHYS.glass = disposer.track(new THREE.MeshStandardMaterial({
-    color: 0x9fd8ff, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false,
+    color: 0xdedfe3, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false,
     envMapIntensity: 1.6 }));
   const grate = canvasTexture(256, 256, (g, w, h) => {
-    noiseCanvas(g, w, h, '#151d28', 90, 0.08);
-    g.strokeStyle = 'rgba(120,150,180,0.35)'; g.lineWidth = 2;
+    noiseCanvas(g, w, h, '#18191d', 90, 0.08);
+    g.strokeStyle = 'rgba(160,160,168,0.35)'; g.lineWidth = 2;
     for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * w / 8, 0); g.lineTo(i * w / 8, h); g.stroke();
       g.beginPath(); g.moveTo(0, i * h / 8); g.lineTo(w, i * h / 8); g.stroke(); }
     g.fillStyle = 'rgba(0,0,0,0.55)';
     for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) g.fillRect(i * w / 8 + 5, j * h / 8 + 5, w / 8 - 10, h / 8 - 10);
   }, { repeat: [10, 10] });
-  PHYS.grate = disposer.track(new THREE.MeshStandardMaterial({ color: 0x8394a8, metalness: 0.8, roughness: 0.5, map: grate }));
+  PHYS.grate = disposer.track(new THREE.MeshStandardMaterial({ color: 0x8a8c93, metalness: 0.8, roughness: 0.5, map: grate }));
   // madeira pintada de azul (cabine): veios + desgaste leve, como relevo
   const wood = canvasTexture(512, 512, (g, w, h) => {
     g.fillStyle = '#183f8a'; g.fillRect(0, 0, w, h);

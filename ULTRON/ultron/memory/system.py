@@ -48,7 +48,7 @@ class MemorySystem:
             try:
                 self.legacy_report = import_jarvis(self.db, paths.legacy_jarvis_database())
             except Exception as exc:          # dados legados nunca impedem o boot
-                log.warning("importação do JARVIS falhou: %s", exc)
+                log.warning("importação do SAFRA falhou: %s", exc)
         try:
             repair_automations(self.db)       # automações importadas antes da correção dos nomes
         except Exception as exc:

@@ -66,7 +66,7 @@ class ProfilesTest(unittest.TestCase):
         self.assertLess(ULTRON_VOICE_PROFILE.pitch, JARVIS_VOICE_PROFILE.pitch, "ULTRON mais grave")
         self.assertLess(ULTRON_VOICE_PROFILE.speed, JARVIS_VOICE_PROFILE.speed, "ritmo mais deliberado")
         self.assertGreater(ULTRON_VOICE_PROFILE.metal, 0.0)
-        self.assertEqual(JARVIS_VOICE_PROFILE.metal, 0.0, "o JARVIS não tem textura metálica")
+        self.assertEqual(JARVIS_VOICE_PROFILE.metal, 0.0, "o SAFRA não tem textura metálica")
 
     def test_metallic_texture_keeps_length_and_level(self):
         rate = 22050

@@ -4,7 +4,7 @@ Abas: VOZ · REDE LOCAL · AUTONOMIA · DESEMPENHO E SAÚDE (as do Painel de Sis
 
 * **EVENTOS** — o CONSOLE DE EVENTOS do original: até 300 entradas "[HH:MM:SS] ▸ texto", filtro sem
   diferenciar maiúsculas, COPIAR (só as linhas visíveis), LIMPAR e PAUSAR. Mostra os eventos reais do
-  barramento desde a abertura do JARVIS (mesmo antes de a página ser aberta);
+  barramento desde a abertura do SAFRA (mesmo antes de a página ser aberta);
 * **LOG** — as últimas linhas do arquivo de log (lido fora da thread da interface), com filtro de nível;
 * **SERVIÇOS E GPU** — componentes, workers, modelos, provedor externo, privacidade e a GPU (lista do
   sistema e, sob pedido, o renderizador OpenGL que o Qt consegue abrir).
@@ -375,7 +375,7 @@ class DiagnosticsPanel(SystemsPanel):
 
     def __init__(self, core, *, state: dict | None = None, profile=None, events: deque | None = None):
         super().__init__(core, state=state, profile=profile)
-        self.setWindowTitle("JARVIS — Diagnósticos")
+        self.setWindowTitle("SAFRA — Diagnósticos")
         from ..config import paths
         self.console = EventConsole(events)
         self.log_viewer = LogViewer(paths.logs_dir() / "ultron.log")
@@ -384,8 +384,8 @@ class DiagnosticsPanel(SystemsPanel):
         self.tabs.addTab(self.log_viewer, "LOG")
         self.tabs.addTab(self.services, "SERVIÇOS E GPU")
         title = self.findChild(QtWidgets.QLabel)
-        if title is not None and title.text() == "JARVIS · SISTEMAS":
-            title.setText("JARVIS · DIAGNÓSTICOS")
+        if title is not None and title.text() == "SAFRA · SISTEMAS":
+            title.setText("SAFRA · DIAGNÓSTICOS")
 
     def visible_keys(self) -> set[str]:
         index = self.tabs.currentIndex()

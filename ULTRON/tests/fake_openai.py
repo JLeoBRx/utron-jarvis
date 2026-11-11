@@ -1,6 +1,6 @@
 """Servidor HTTP local que imita a Responses API da OpenAI (POST /v1/responses) para testes.
 
-O provedor real do JARVIS fala HTTP com este servidor: serialização, autorização, ferramentas,
+O provedor real do SAFRA fala HTTP com este servidor: serialização, autorização, ferramentas,
 erros. Nenhuma chamada sai do computador.
 """
 from __future__ import annotations

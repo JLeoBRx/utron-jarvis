@@ -1,6 +1,6 @@
 """Execução segura de programas do sistema.
 
-Regras herdadas do JARVIS e mantidas:
+Regras herdadas do SAFRA e mantidas:
 
 * nunca ``shell=True`` e nunca texto livre vindo do usuário ou do modelo como comando;
 * scripts PowerShell são FIXOS; valores de listas fechadas entram por variável de

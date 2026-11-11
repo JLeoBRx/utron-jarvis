@@ -4,7 +4,7 @@ Produz EVIDÊNCIA estruturada (aplicação, atividade, erro visível, elementos)
 instruções. Todo texto visível na tela é tratado como dado não confiável; tentativas de
 dar ordens ao assistente pela tela são sinalizadas e ignoradas.
 
-Limites herdados do Observador do JARVIS: intervalo mínimo entre análises, teto por hora
+Limites herdados do Observador do SAFRA: intervalo mínimo entre análises, teto por hora
 e espera exponencial após falhas.
 """
 from __future__ import annotations

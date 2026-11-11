@@ -1,12 +1,12 @@
-"""Desenho da sala de controle da TARDIS em QPainter (CPU), no estilo holográfico do JARVIS.
+"""Desenho da sala de controle da TARDIS em QPainter (CPU), no estilo holográfico do SAFRA.
 
 Inspirada na sala de controle clássica — console hexagonal, rotor de vidro que sobe e desce, paredes com
 círculos —, sem reproduzir marcas, textos ou desenhos protegidos: a geometria é própria e as cores são
-as da plataforma (âmbar da TARDIS sobre o azul profundo do JARVIS).
+as da plataforma (âmbar da TARDIS sobre o azul profundo do SAFRA).
 
 Camadas, de trás para a frente: fundo em cache · círculos das paredes · piso (anéis e raios) · colunas
 e nervuras do teto · anel de falha · console (painéis atrás do rotor) · rotor · console (painéis à
-frente) · telas flutuantes · feixe JARVIS ⇄ TARDIS · rótulos · partículas · linhas de varredura.
+frente) · telas flutuantes · feixe SAFRA ⇄ TARDIS · rótulos · partículas · linhas de varredura.
 
 Custo: as camadas fixas (fundo, paredes, piso, colunas e pedestal) ficam numa imagem em cache, refeita só
 quando a câmera se move (escolher um painel); por quadro, só rotor, painéis, telas, rótulos e partículas.
@@ -27,9 +27,9 @@ from ...tardis.protocol import PANELS
 from ..avatar import fastpath
 from .scene import AMBER, CYAN, ICE, MODES, PANEL_ANGLES, RED, RoomScene
 
-DEEP = (3, 7, 18)
-ABYSS = (7, 20, 38)
-NAVY = (11, 31, 58)
+DEEP = (7, 7, 10)
+ABYSS = (15, 16, 19)
+NAVY = (23, 24, 28)
 ROOM_R = 5.4
 CEILING = 3.7
 OUT_R, OUT_Y = 1.22, 0.92          # borda externa do console
@@ -264,7 +264,7 @@ class RoomRenderer:
         grad = QtGui.QLinearGradient(0, 0, 0, h)
         grad.setColorAt(0.0, _color(DEEP, 1.0))
         grad.setColorAt(0.55, _color(ABYSS, 1.0))
-        grad.setColorAt(1.0, _color((4, 12, 26), 1.0))
+        grad.setColorAt(1.0, _color((10, 10, 13), 1.0))
         p.fillRect(0, 0, w, h, grad)
         halo = QtGui.QRadialGradient(w * 0.5, h * 0.40, max(w, h) * 0.55)
         halo.setColorAt(0.0, _color(NAVY, 0.85))
@@ -401,19 +401,19 @@ class RoomRenderer:
         # anéis do teto e da base das paredes
         samples = quality.ring_samples // (2 if moving else 1)
         ring_rows = [_circle((0.0, 0.0, 0.0), ROOM_R, samples), _circle((0.0, CEILING, 0.0), ROOM_R * 0.92, samples)]
-        self._rows(painter, np.stack(ring_rows), cam, (103, 243, 255), 0.35)
+        self._rows(painter, np.stack(ring_rows), cam, (255, 92, 108), 0.35)
 
     def _floor(self, painter, cam: Camera, quality: RoomQuality, *, moving: bool = False) -> None:
         n = quality.ring_samples // (2 if moving else 1)
         rings = np.stack([_circle((0.0, 0.0, 0.0), r, n) for r in (0.85, 1.6, 2.4, 3.2, 4.1, 5.0)])
-        self._rows(painter, rings, cam, (22, 139, 255), 0.55)
+        self._rows(painter, rings, cam, (255, 59, 107), 0.55)
         spokes = []
         count = 12 if moving else 24
         for i in range(count):
             a = i * math.tau / count
             t = np.linspace(0.85, 5.0, 9)[:, None]
             spokes.append(np.hstack([t * math.cos(a), np.zeros_like(t), t * math.sin(a)]))
-        self._rows(painter, np.stack(spokes), cam, (22, 139, 255), 0.32)
+        self._rows(painter, np.stack(spokes), cam, (255, 59, 107), 0.32)
 
     def _structure(self, painter, cam: Camera) -> None:
         """Seis colunas curvas (entre os painéis) e as nervuras do teto até o conector do rotor."""
@@ -428,7 +428,7 @@ class RoomRenderer:
             r2 = 2.5 * (1 - u) + 0.42 * u
             y2 = CEILING - 0.05 - 0.55 * u ** 1.5
             rows.append(np.hstack([r2 * math.cos(a), y2, r2 * math.sin(a)]))
-        self._rows(painter, np.stack(rows), cam, _mix((103, 243, 255), AMBER, 0.3), 0.55)
+        self._rows(painter, np.stack(rows), cam, _mix((255, 92, 108), AMBER, 0.3), 0.55)
         connector = np.stack([_circle((0.0, CEILING - 0.6, 0.0), 0.42, 32),
                               _circle((0.0, ROTOR_Y1 + 0.05, 0.0), ROTOR_R + 0.06, 32)])
         self._rows(painter, connector, cam, AMBER, 0.6)
@@ -470,7 +470,7 @@ class RoomRenderer:
 
     def _pedestal(self, painter, cam: Camera) -> None:
         """Pedestal hexagonal: três contornos fechados e as seis arestas verticais (quatro chamadas)."""
-        rgb = _mix(AMBER, (103, 243, 255), 0.45)
+        rgb = _mix(AMBER, (255, 92, 108), 0.45)
         hexa = [PANEL_ANGLES[k] - math.pi / 6 for k in PANELS]
         for y, r in ((0.0, PED_R + 0.2), (0.80, PED_R), (OUT_Y, OUT_R)):
             ring = np.array([[r * math.cos(a), y, r * math.sin(a)] for a in hexa + hexa[:1]])
@@ -659,7 +659,7 @@ class RoomRenderer:
         return pix
 
     def _beam(self, painter, cam: Camera, scene: RoomScene) -> None:
-        """Feixe JARVIS ⇄ TARDIS: só enquanto uma tarefa pedida pelo JARVIS está em execução."""
+        """Feixe SAFRA ⇄ TARDIS: só enquanto uma tarefa pedida pelo SAFRA está em execução."""
         x, y, _z = cam.point((0.0, 1.95, 0.0))
         if not (math.isfinite(x) and math.isfinite(y)):
             return
@@ -675,7 +675,7 @@ class RoomRenderer:
         painter.drawEllipse(start, 5, 5)
         painter.setFont(self.font(11, bold=True, spacing=2.5))
         painter.setPen(_color(CYAN, scene.beam))
-        painter.drawText(QtCore.QPointF(start.x() + 10, start.y() - 10), "JARVIS ⇄ TARDIS")
+        painter.drawText(QtCore.QPointF(start.x() + 10, start.y() - 10), "SAFRA ⇄ TARDIS")
 
     def _labels(self, painter, cam: Camera, scene: RoomScene, panels: list[dict]) -> None:
         for panel in panels:
@@ -736,8 +736,8 @@ class RoomRenderer:
             painter.drawText(QtCore.QPointF(18, y), QtGui.QFontMetricsF(painter.font()).elidedText(
                 f"falha: {scene.fault_text}", QtCore.Qt.ElideRight, w * 0.34))
         painter.setFont(self.font(9, spacing=1.0))
-        painter.setPen(_color((127, 155, 183), 0.85))
-        note = "um só modelo de linguagem: o mesmo do JARVIS" + (f" ({scene.model_label})" if scene.model_label
+        painter.setPen(_color((161, 161, 170), 0.85))
+        note = "um só modelo de linguagem: o mesmo do SAFRA" + (f" ({scene.model_label})" if scene.model_label
                                                                 else "")
         painter.drawText(QtCore.QPointF(18, h - 14), note)
         hint = "clique num painel do console · Esc fecha o painel"

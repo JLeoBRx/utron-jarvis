@@ -1,34 +1,43 @@
-"""Paleta do JARVIS sem Qt — a fonte única de cores, tons e intensidades por estado.
+"""Paleta do SAFRA sem Qt — a fonte única de cores, tons e intensidades por estado.
 
-``theme.py`` constrói as cores do Qt a partir daqui; as cenas (``scene.py``,
+Os valores vêm de ``ultron/hud/design/tokens.json`` (o teste ``DesignTokensTest`` confere). ``theme.py``
+constrói as cores e as folhas de estilo do Qt a partir daqui; as cenas 2D (``scene.py``,
 ``tardis_scene.py``) usam os mesmos valores sem depender de Qt (testáveis).
+
+Semântica: o VERMELHO SAFRA é atividade, escuta e dados em movimento; o BORDÔ é repouso e profundidade; o
+vermelho-framboesa ("energy") marca pensamento, planejamento e execução; o brilho claro é fala e
+confirmação. Âmbar é atenção/autorização pendente e laranja é falha real — fora da família do vermelho
+para nunca se confundirem com a identidade. Violeta e cromo pertencem só ao Protocolo ULTRON.
 """
 from __future__ import annotations
 
-NAME = "jarvis-blue"
+NAME = "safra-red"
 HEX = {
-    "space": "#030712", "abyss": "#071426", "deep": "#0B1F3A", "tech": "#075985", "cyan": "#00D9FF",
-    "glow": "#67F3FF", "electric": "#168BFF", "ice": "#DCEEFF", "dim_text": "#7F9BB7", "alert": "#FFB547",
-    "error": "#FF5D73",
+    "space": "#07070A", "abyss": "#0F1013", "deep": "#17181C", "graphite": "#23252B", "muted": "#5C1A24",
+    "wine": "#7A0F1F", "primary": "#EA2840", "glow": "#FF5C6C", "energy": "#FF3B6B", "text": "#F4F4F5",
+    "dim_text": "#A1A1AA", "alert": "#F7C948", "error": "#FF7B1C",
 }
-# tons de partículas/pulsos/nós → cor
-TONE_HEX = {"cyan": HEX["cyan"], "glow": HEX["glow"], "blue": HEX["electric"], "electric": HEX["electric"],
-            "ice": HEX["ice"], "dim": HEX["tech"], "deep": HEX["tech"], "alert": HEX["alert"], "error": HEX["error"],
-            "gold": HEX["cyan"], "amber": HEX["alert"], "white": HEX["ice"]}
+# cores do Protocolo ULTRON (identidade alternativa): só ele usa
+ULTRON_HEX = {"ultron": "#8B5CF6", "ultron_glow": "#B794FF", "ultron_deep": "#1C0F33", "ultron_metal": "#A9B0BC"}
+# tons de partículas/pulsos/nós → cor (os nomes dos tons são identificadores internos das cenas)
+TONE_HEX = {"cyan": HEX["primary"], "primary": HEX["primary"], "glow": HEX["glow"], "blue": HEX["energy"],
+            "electric": HEX["energy"], "energy": HEX["energy"], "ice": HEX["text"], "dim": HEX["muted"],
+            "deep": HEX["wine"], "alert": HEX["alert"], "error": HEX["error"], "gold": HEX["primary"],
+            "amber": HEX["alert"], "white": HEX["text"]}
 # estado de atividade (contrato do núcleo) → (cor, intensidade do halo 0..1, efeito)
 STATE = {
-    "IDLE": (HEX["deep"], 0.25, "azul profundo discreto"),
-    "LISTENING": (HEX["cyan"], 0.75, "halo ciano suave"),
-    "PERCEIVING": (HEX["cyan"], 0.6, "ondas sutis"),
-    "CONTEXT": (HEX["electric"], 0.55, "memória consultada"),
-    "DECIDING": (HEX["electric"], 0.6, "conexões se acendem"),
-    "PLANNING": (HEX["electric"], 0.7, "conexões progressivamente iluminadas"),
-    "EXECUTING": (HEX["cyan"], 0.85, "pulsos acompanham a operação"),
+    "IDLE": (HEX["wine"], 0.25, "bordô discreto"),
+    "LISTENING": (HEX["primary"], 0.75, "halo vermelho suave"),
+    "PERCEIVING": (HEX["primary"], 0.6, "ondas sutis"),
+    "CONTEXT": (HEX["energy"], 0.55, "memória consultada"),
+    "DECIDING": (HEX["energy"], 0.6, "conexões se acendem"),
+    "PLANNING": (HEX["energy"], 0.7, "conexões progressivamente iluminadas"),
+    "EXECUTING": (HEX["primary"], 0.85, "pulsos acompanham a operação"),
     "VERIFYING": (HEX["glow"], 0.7, "confirmação"),
     "RECOVERY": (HEX["alert"], 0.6, "correção em andamento"),
     "SPEAKING": (HEX["glow"], 0.8, "sincronizado com a voz"),
     "REMINDING": (HEX["glow"], 0.8, "lembrete"),
-    "IMAGINING": (HEX["electric"], 0.65, "espaço interno com profundidade"),
+    "IMAGINING": (HEX["energy"], 0.65, "espaço interno com profundidade"),
     "ERROR": (HEX["error"], 0.6, "falha identificável"),
 }
 # rótulo exibido para cada estado
@@ -44,3 +53,20 @@ def state_glow(activity: str) -> float:
 
 def state_label(activity: str) -> str:
     return STATE_LABEL.get(str(activity or "IDLE"), str(activity or ""))
+
+
+def rgb(key: str) -> str:
+    """"r, g, b" de uma cor da paleta (para folhas de estilo com transparência)."""
+    value = {**HEX, **ULTRON_HEX}[key].lstrip("#")
+    return ", ".join(str(int(value[i:i + 2], 16)) for i in (0, 2, 4))
+
+
+def contrast(fg: str, bg: str) -> float:
+    """Razão de contraste WCAG 2.1 entre duas cores #RRGGBB."""
+    def lum(h: str) -> float:
+        h = h.lstrip("#")
+        c = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    a, b = sorted((lum(fg), lum(bg)), reverse=True)
+    return (a + 0.05) / (b + 0.05)

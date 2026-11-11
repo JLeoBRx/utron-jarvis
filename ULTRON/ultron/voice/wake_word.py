@@ -1,20 +1,24 @@
-"""Palavra de ativação "Jarvis".
+"""Palavra de ativação: "Safra" (e "Jarvis", aceita por compatibilidade).
 
 O reconhecedor transcreve tudo; a ativação procura a palavra no INÍCIO da frase — no meio
 de uma frase ela não ativa. Há três tipos de forma:
 
-* **fortes**: "jarvis" e variantes que não são palavras comuns ("ja vis", "jar vis").
-  Ativam sozinhas ("Jarvis.") ou seguidas de comando;
+* **fortes**: as palavras de ativação ("safra", "jarvis") e variantes que não são palavras comuns
+  ("ja vis", "jar vis"). Ativam sozinhas ("Safra.") ou seguidas de comando;
 * **nomes** ("jarbas", "javi"): palavras do vocabulário do Vosk que soam como Jarvis mas são
   nomes próprios. Valem como fortes só quando abrem a frase; depois de "o", "ei"… exigem
-  comando (evita "O Jarbas ligou" ativar o JARVIS);
+  comando (evita "O Jarbas ligou" ativar o assistente);
 * **fracas**: confusões medidas do reconhecedor com palavras comuns ("aviso", "aves",
   "a vez", "já vi", "davis"…). Só ativam seguidas de um comando reconhecido.
 
-Medição (voz pt-BR sintetizada dizendo "Jarvis…", modelos instalados): o modelo pequeno
-não tem "jarvis" no vocabulário; o grande tem "jarvis" e "jarbas", mas transcreve a palavra
-como "aves", "aviso", "davis", "a vez". Gramática restrita foi testada e rejeitada: no
-modelo grande toda frase vira "jarvis" (22 de 22 frases sem a palavra ativaram).
+Por que "Safra": medição de outubro de 2026 (voz pt-BR sintetizada dizendo "Jarvis…", modelos
+instalados): o modelo pequeno não tem "jarvis" no vocabulário; o grande tem "jarvis" e "jarbas", mas
+transcreve a palavra como "aves", "aviso", "davis", "a vez". "Safra" é palavra do português: está no
+vocabulário do modelo grande (``graph/words.txt``); o pequeno não distribui a lista de palavras. A taxa de
+acerto e o custo em ativações falsas (é uma palavra comum, por isso só vale no início da frase) são medidos
+por ``tools/experimentos/ativacao.py``. Gramática restrita foi
+testada e rejeitada: no modelo grande toda frase virava a palavra de ativação (22 de 22 frases sem a
+palavra ativaram).
 A calibração (``calibrate.py``) aprende as formas que o reconhecedor produz para a voz do
 usuário. Após uma interação, uma janela de continuação permite falar sem repetir a palavra.
 """
@@ -41,9 +45,10 @@ class WakeResult:
     strength: str = ""            # strong | weak
 
 
-TARGET = "jarvis"
-# Formas fortes padrão: "jarvis" e sequências incomuns que o reconhecedor produz para ela.
-DEFAULT_STRONG_VARIANTS = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
+TARGETS = ("safra", "jarvis")       # a palavra do SAFRA primeiro; "jarvis" aceita por compatibilidade
+TARGET = TARGETS[0]
+# Formas fortes padrão: as palavras de ativação e sequências incomuns que o reconhecedor produz para "jarvis".
+DEFAULT_STRONG_VARIANTS = ("safra", "jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
 # Nomes próprios do vocabulário do Vosk que soam como "Jarvis": fortes só no início da frase.
 DEFAULT_NAME_VARIANTS = ("jarbas", "javi")
 # Confusões medidas com palavras comuns ("Jarvis" → "aviso", "aves", "a vez"…). Exigem comando.
@@ -57,7 +62,7 @@ LEGACY_WEAK_VARIANTS = ("o tom", "o trom", "o tron", "u tom", "u trom", "ultra",
 class WakeWordDetector:
     LEADING_FILLERS = {"ok", "ei", "hey", "oi", "ola", "e", "o", "ah", "hum", "fala"}
 
-    def __init__(self, words: tuple = (TARGET,), variants: tuple = DEFAULT_STRONG_VARIANTS, *,
+    def __init__(self, words: tuple = TARGETS, variants: tuple = DEFAULT_STRONG_VARIANTS, *,
                  weak: tuple = DEFAULT_WEAK_VARIANTS,
                  names: tuple = DEFAULT_NAME_VARIANTS, followup_seconds: float = 12.0):
         self._lock = threading.Lock()
@@ -128,15 +133,17 @@ class WakeWordDetector:
             return max(0.0, self._followup_until - time.monotonic())
 
 
-# Palavras comuns que nunca podem virar forma FORTE (ativariam o JARVIS em conversas normais).
+# Palavras comuns que nunca podem virar forma FORTE (ativariam o assistente em conversas normais).
 _NEVER_VARIANTS = {"aviso", "avisos", "aves", "a vez", "vez", "vezes", "ja vi", "ja", "vi", "vis", "jovens", "jovem",
                    "javista", "jardim", "jantar", "janeiro", "janela", "jarra", "jogar", "davis", "travis", "avis",
-                   "e vi", "ja vou", "garfo", "gravis", "jabes", "chaves", "javali", "harvard"}
+                   "e vi", "ja vou", "garfo", "gravis", "jabes", "chaves", "javali", "harvard",
+                   "sobra", "sobre", "cifra", "zafra", "sabia", "sabe", "safári", "safari", "safira", "sacra"}
 
 
-def _close_to(candidate: str, target: str = TARGET) -> bool:
+def _close_to(candidate: str, targets: tuple = TARGETS) -> bool:
     import difflib
-    return difflib.SequenceMatcher(None, candidate.replace(" ", ""), target).ratio() >= 0.6
+    joined = candidate.replace(" ", "")
+    return any(difflib.SequenceMatcher(None, joined, target).ratio() >= 0.6 for target in targets)
 
 
 def _candidate(transcript: str) -> str:
@@ -147,9 +154,9 @@ def _candidate(transcript: str) -> str:
 
 
 def learn_variants(transcripts: list[str], known: tuple = ()) -> tuple:
-    """Calibração: aprende como o reconhecedor ouve "Jarvis" na voz deste usuário.
+    """Calibração: aprende como o reconhecedor ouve a palavra de ativação na voz deste usuário.
 
-    Só aceita como forma forte o que é próximo de "jarvis" e não é palavra comum.
+    Só aceita como forma forte o que é próximo de "safra" ou de "jarvis" e não é palavra comum.
     """
     learned = list(known)
     for transcript in transcripts:
@@ -163,7 +170,7 @@ def learn_variants(transcripts: list[str], known: tuple = ()) -> tuple:
 def learn_weak_variants(transcripts: list[str], strong: tuple, known_weak: tuple = ()) -> tuple:
     """Formas fracas: confusões CONSISTENTES (2+ amostras) que não viraram forma forte.
 
-    Uma forma fraca só ativa o JARVIS quando seguida de um comando reconhecido.
+    Uma forma fraca só ativa o assistente quando seguida de um comando reconhecido.
     """
     counts: dict[str, int] = {}
     for transcript in transcripts:

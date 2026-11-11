@@ -1,11 +1,11 @@
-"""Segurança — o que o JARVIS NÃO pode fazer, conferido no código-fonte e em execução.
+"""Segurança — o que o SAFRA NÃO pode fazer, conferido no código-fonte e em execução.
 
 * Nenhum comando de texto livre: nada de shell, ``eval``/``exec``, ``os.system`` ou ``pickle``; todo
   processo recebe os argumentos em lista; a verificação TLS nunca é desligada; a rede não sonda portas.
 * Skills proibidas não existem; o modelo só usa as ferramentas oferecidas no pedido; o planejador nunca vê
   as skills reservadas a pedidos diretos.
 * Arquivos: nada é criado, alterado, movido ou apagado no sistema operacional, na inicialização automática
-  nem no próprio JARVIS (um ``.py`` na pasta de plugins rodaria na próxima partida) — a recusa vem ANTES de
+  nem no próprio SAFRA (um ``.py`` na pasta de plugins rodaria na próxima partida) — a recusa vem ANTES de
   qualquer autorização; exclusão só para a Lixeira; cópias de segurança nunca sobrescritas; conteúdo lido é
   dado não confiável.
 * Texto observado na tela entra no prompt numa linha só, entre aspas e rotulado como dado.
@@ -195,7 +195,7 @@ class FileSafetyTest(unittest.TestCase):
         database = paths.database_path()
         source = self.file("relatorio.txt")
         targets = {"o programa": [str(plugin), str(self.program / "main.py")],
-                   "os dados do JARVIS": [str(database), str(paths.data_dir() / "plugins" / "x.py")]}
+                   "os dados do SAFRA": [str(database), str(paths.data_dir() / "plugins" / "x.py")]}
         if os.name == "nt":
             windows = os.environ.get("SystemRoot", r"C:\Windows")
             targets["Windows"] = [os.path.join(windows, "System32", "drivers", "etc", "hosts")]
@@ -231,7 +231,7 @@ class FileSafetyTest(unittest.TestCase):
             os.symlink(paths.data_dir(), link, target_is_directory=True)
         except (OSError, NotImplementedError):
             self.skipTest("este sistema não cria links simbólicos sem privilégio")
-        self.assert_refused("fs.create_file", {"path": str(link / "x.txt")}, "os dados do JARVIS")
+        self.assert_refused("fs.create_file", {"path": str(link / "x.txt")}, "os dados do SAFRA")
         record = self.engine.execute(Action("fs.create_file", {"path": str(link / "x.txt"), "content": "x"}))
         self.assertEqual(record.status, "refused")
         self.assertFalse((paths.data_dir() / "x.txt").exists())
@@ -336,7 +336,7 @@ class CredentialsTest(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"keyring": fake}), mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
             self.assertEqual(credentials.set_secret("openai_api_key", secret), "cofre do sistema")
             self.assertEqual(credentials.get_secret("openai_api_key"), secret)
-        self.assertEqual(vault, {("JARVIS", "openai_api_key"): secret})
+        self.assertEqual(vault, {("JARVIS", "openai_api_key"): secret}, "serviço do cofre mantido (chaves já salvas)")
         after = {p: p.stat().st_mtime for p in data.rglob("*") if p.is_file()}
         self.assertEqual(after, before, "nenhum arquivo de dados foi criado ou alterado")
         self.assertEqual(credentials.mask(secret), "••••••••cdef")

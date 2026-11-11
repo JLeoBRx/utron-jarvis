@@ -1,9 +1,9 @@
-"""Painéis reutilizáveis dos HUBs do JARVIS (memória pessoal, rede, sistema).
+"""Painéis reutilizáveis dos HUBs do SAFRA (memória pessoal, rede, sistema).
 
 As páginas daqui aparecem em dois lugares, sem duplicação de código nem de estado:
 
 * no **TARDIS** (memória espacial): ao entrar numa região, a página dela abre ao lado;
-* no **Painel de Sistemas** do JARVIS CORE: voz, rede e desempenho/saúde.
+* no **Painel de Sistemas** do SAFRA CORE: voz, rede e desempenho/saúde.
 
 Regras (valem para os dois):
 
@@ -1156,7 +1156,7 @@ class NetworkPage(Page):
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 1)
         self.layout_.addWidget(split, 1)
-        boundary = _label("DESCOBRIR ≠ ADMINISTRAR — o JARVIS lista aparelhos que aparecem na sua rede (tabela de "
+        boundary = _label("DESCOBRIR ≠ ADMINISTRAR — o SAFRA lista aparelhos que aparecem na sua rede (tabela de "
                           "vizinhos do sistema, ping de um pacote, DNS reverso e, se você ativar, anúncios SSDP). "
                           "Estar na lista não dá permissão de acesso: ele não entra, não controla e não altera nenhum "
                           "aparelho. A presença de um aparelho não identifica quem o usa, e aparelhos que bloqueiam "
@@ -1269,7 +1269,7 @@ class NetworkPage(Page):
 
 
 class AutonomyPage(Page):
-    """O que o JARVIS faz sozinho, o que pergunta, o que ficou autorizado e o que foi executado."""
+    """O que o SAFRA faz sozinho, o que pergunta, o que ficou autorizado e o que foi executado."""
 
     key, title = "autonomy", "AUTONOMIA, AUTORIZAÇÕES E REGISTRO DE AÇÕES"
     LEVELS = (("restricted", "Restrita — pergunta antes de quase tudo"),

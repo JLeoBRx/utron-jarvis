@@ -1,11 +1,11 @@
-"""Controlador da interface: liga o Neural Core à PLATAFORMA JARVIS ULTIMATE sem misturar responsabilidades.
+"""Controlador da interface: liga o Neural Core à PLATAFORMA SAFRA ULTIMATE sem misturar responsabilidades.
 
-Uma janela (``PlatformWindow``) com cinco módulos — JARVIS · TARDIS · ATIVIDADES ·
+Uma janela (``PlatformWindow``) com cinco módulos — SAFRA · TARDIS · ATIVIDADES ·
 CONFIGURAÇÕES · DIAGNÓSTICOS — e o orbe compacto. As páginas pesadas (TARDIS, Diagnósticos,
 Atividades, Configurações) nascem na primeira visita e nunca são destruídas: trocar de página
 preserva câmera, região, filtros e textos.
 
-* **JARVIS** (``BrainView`` + conversa): percepção, decisão, planejamento, execução, verificação, voz.
+* **SAFRA** (``BrainView`` + conversa): percepção, decisão, planejamento, execução, verificação, voz.
 * **TARDIS** (``TardisPage``): a SALA DE CONTROLE (console 3D, rotor ligado ao motor da TARDIS e os
   painéis de análise) e o ARQUIVO (``TardisWindow``, a memória pessoal como espaço navegável).
 * **DIAGNÓSTICOS** (o Painel de Sistemas embutido + eventos, log, serviços e GPU).
@@ -53,7 +53,7 @@ SHUTDOWN_DELAY_MS = 1500       # "Encerrando, senhor." é dito antes de fechar
 
 
 class _ScenePlaceholder(QtWidgets.QWidget):
-    """Fundo da página JARVIS enquanto a cena 3D está emprestada à sala da TARDIS (uma cena, um motor)."""
+    """Fundo da página SAFRA enquanto a cena 3D está emprestada à sala da TARDIS (uma cena, um motor)."""
 
     paint_count = 0
     bottom_reserved = 16
@@ -62,7 +62,7 @@ class _ScenePlaceholder(QtWidgets.QWidget):
         super().__init__()
         self.frame_times: deque = deque(maxlen=2)
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
-        self.setStyleSheet("background: #020611;")
+        self.setStyleSheet("background: #050507;")
 
     def in_motion(self) -> bool:
         return False
@@ -99,7 +99,7 @@ class HudController(QtCore.QObject):
         (self.view if face else self.avatar).hide()
         self.orb = OrbWindow(self.scene)
         self.second = None                          # ARQUIVO da TARDIS: memória espacial (sob demanda)
-        self._placeholder = _ScenePlaceholder()     # ocupa a página JARVIS enquanto a cena 3D está na TARDIS
+        self._placeholder = _ScenePlaceholder()     # ocupa a página SAFRA enquanto a cena 3D está na TARDIS
         self.window.page_changed.connect(self._page_changed)
         self.systems = None                         # Diagnósticos / Painel de Sistemas (idem)
         self.activity_page = None
@@ -157,7 +157,7 @@ class HudController(QtCore.QObject):
         self._ultron_timer = QtCore.QTimer(self)
         self._ultron_timer.timeout.connect(self._ultron_tick)
         self._ultron_timer.start(5000)
-        # tecla de emergência (configurável): vale em qualquer janela do JARVIS, inclusive o ORBE recolhido
+        # tecla de emergência (configurável): vale em qualquer janela do SAFRA, inclusive o ORBE recolhido
         self.emergency_shortcut = QtGui.QShortcut(
             QtGui.QKeySequence(str(getattr(core.settings(), "ultron_emergency_key", "") or "Ctrl+Shift+U")),
             self.window, context=QtCore.Qt.ApplicationShortcut, activated=self.ultron_emergency)
@@ -167,7 +167,7 @@ class HudController(QtCore.QObject):
 
     # ================================================================ avatar
     def _make_avatar(self, backend: str):
-        """A vista do JARVIS: a central 3D quando possível; senão o rosto 2D (GPU ou CPU) — e diz por quê."""
+        """A vista do SAFRA: a central 3D quando possível; senão o rosto 2D (GPU ou CPU) — e diz por quê."""
         view = self._make_scene3d()
         if view is None:
             view = self._make_avatar_2d(backend)
@@ -229,7 +229,7 @@ class HudController(QtCore.QObject):
         view.hide()
         view.setParent(None)
         view.deleteLater()
-        self._show_message("JARVIS · vista 3D indisponível", f"{reason}. A interface continua na vista 2D.")
+        self._show_message("SAFRA · vista 3D indisponível", f"{reason}. A interface continua na vista 2D.")
 
     def _scene3d_request(self, action: str) -> None:
         """Pedidos da página 3D (cliques do usuário): os mesmos caminhos dos botões da interface."""
@@ -241,7 +241,7 @@ class HudController(QtCore.QObject):
             self.open_page("jarvis")
 
     def _page_changed(self, key: str) -> None:
-        """Uma só cena 3D: no JARVIS ela é o convés; na TARDIS, a sala de controle (passa pela porta)."""
+        """Uma só cena 3D: no SAFRA ela é o convés; na TARDIS, a sala de controle (passa pela porta)."""
         self._tardis_sounds(key)
         view = self.scene3d
         if view is None:
@@ -294,7 +294,7 @@ class HudController(QtCore.QObject):
         return view
 
     def central(self):
-        """A vista em uso na página JARVIS (rosto ou núcleo neural)."""
+        """A vista em uso na página SAFRA (rosto ou núcleo neural)."""
         return self.window.jarvis_page.central
 
     def _apply_avatar_settings(self, changed: list) -> None:
@@ -447,7 +447,7 @@ class HudController(QtCore.QObject):
             elif kind == EventType.REMINDER_DUE.value:
                 self._notify(payload)
             elif kind == EventType.NOTIFICATION.value and payload.get("popup") and not payload.get("silent"):
-                self._show_message(f"JARVIS · {payload.get('title', '')}", str(payload.get("body", "")))
+                self._show_message(f"SAFRA · {payload.get('title', '')}", str(payload.get("body", "")))
             elif kind == EventType.SHUTDOWN_REQUESTED.value:
                 QtCore.QTimer.singleShot(SHUTDOWN_DELAY_MS, self.quit)    # já confirmado pelo executor
             elif kind == EventType.UI_REQUEST.value:
@@ -507,7 +507,7 @@ class HudController(QtCore.QObject):
 
     def _pull_telemetry(self) -> None:
         if not (self.window.isVisible() or self.orb.isVisible()):
-            return                                        # só a página JARVIS e o orbe mostram níveis de áudio
+            return                                        # só a página SAFRA e o orbe mostram níveis de áudio
         telemetry = self.core.telemetry()
         mic = self.core.voice.mic_probe() if self.core.enable_voice else {}
         if self.core.privacy_shield:
@@ -576,7 +576,7 @@ class HudController(QtCore.QObject):
         hub1 = self.window.isVisible() and not self.window.isMinimized() and central.isVisible()
         shown = self.avatar.isVisible() and ((self.window.isVisible() and not self.window.isMinimized())
                                              or self.orb.scene_view is self.avatar)   # também no ORBE 3D
-        if shown:                                         # rosto 2D na página JARVIS, ou a cena 3D (JARVIS ou TARDIS)
+        if shown:                                         # rosto 2D na página SAFRA, ou a cena 3D (SAFRA ou TARDIS)
             self.avatar.step(dt)
         else:
             self.avatar.update_state()                    # o estado vale mesmo com outra página à frente
@@ -585,7 +585,7 @@ class HudController(QtCore.QObject):
         if getattr(self, "ultron", None) is not None and self.ultron.active:
             # o estado REAL continua visível (o ULTRON pode estar executando ou aguardando autorização)
             self.window.top.state_chip.set_display(f"ULTRON · {SHORT.get(resolved.key, resolved.label)}",
-                                                   (255, 31, 61))
+                                                   (139, 92, 246))
         else:
             self.window.top.state_chip.set_display(SHORT.get(resolved.key, resolved.label), resolved.style.rgb)
         orb = self.orb.isVisible()
@@ -617,7 +617,7 @@ class HudController(QtCore.QObject):
 
     def _tardis_in_front(self) -> bool:
         """O TARDIS ficou numa janela separada e em foco (não acontece com a plataforma, onde ele é uma
-        página: com o TARDIS à frente a vista do JARVIS nem é desenhada)."""
+        página: com o TARDIS à frente a vista do SAFRA nem é desenhada)."""
         second = self.second
         return bool(second is not None and second.isWindow() and second.isVisible() and second.isActiveWindow()
                     and not self.window.isActiveWindow())
@@ -758,7 +758,7 @@ class HudController(QtCore.QObject):
 
     def open_tardis(self, section: str | None = None):
         """Abre a TARDIS como estava (sala ou ARQUIVO); com seção, vai ao painel da sala ou à região do
-        ARQUIVO. Voltar ao JARVIS só troca de página: câmera, painel, região e filtros ficam."""
+        ARQUIVO. Voltar ao SAFRA só troca de página: câmera, painel, região e filtros ficam."""
         return self.open_page("tardis", section)
 
     def open_archive(self, section: str | None = None):
@@ -815,7 +815,7 @@ class HudController(QtCore.QObject):
     def escape(self) -> str:
         """Esc como no original: interrompe a fala; senão cancela o pedido em andamento (ou a autorização
         pendente); senão sai da tela cheia. Nunca minimiza. Devolve o que foi feito. Com o Protocolo ULTRON
-        ativo, Esc primeiro restaura o JARVIS."""
+        ativo, Esc primeiro restaura o SAFRA."""
         if self.ultron.active:
             self.ultron_stop("Esc")
             return "ultron"
@@ -869,7 +869,7 @@ class HudController(QtCore.QObject):
         return True
 
     def ultron_emergency(self) -> None:
-        """Tecla de emergência: restaura o JARVIS e interrompe o que estiver em curso (tarefa, autorização, fala)."""
+        """Tecla de emergência: restaura o SAFRA e interrompe o que estiver em curso (tarefa, autorização, fala)."""
         if self.ultron.active:
             self.ultron_stop("tecla de emergência")
         self.core.cancel("tecla de emergência do Protocolo ULTRON")
@@ -905,7 +905,7 @@ class HudController(QtCore.QObject):
                 widget.setStyleSheet(theme.ultron_stylesheet(style))
             self.window.identity = "U.L.T.R.O.N."
             self.window.refresh_title()
-            self.window.set_escape_override(True)       # Esc restaura o JARVIS em qualquer página
+            self.window.set_escape_override(True)       # Esc restaura o SAFRA em qualquer página
             brand.title, brand.subtitle, brand.color = "U.L.T.R.O.N.", \
                 ("PERFIL ULTRON_OPERATOR" if operator else "PROTOCOLO ULTRON"), QtGui.QColor(theme.ERROR)
             text = f"PROTOCOLO ULTRON INICIADO — {label}."
@@ -923,7 +923,7 @@ class HudController(QtCore.QObject):
                         pass
                 brand.title, brand.subtitle, brand.color = saved["brand"]
             self.window.set_escape_override(False)
-            text = f"JARVIS restaurado ({source})."
+            text = f"SAFRA restaurado ({source})."
             page = getattr(self, "settings_page", None)
             if page is not None:
                 page.refresh()                         # histórico de ocorrências atualizado
@@ -937,7 +937,7 @@ class HudController(QtCore.QObject):
         if activity is not None:
             activity.record("sistema", ("Protocolo ULTRON iniciado" + (" — perfil ULTRON_OPERATOR" if operator
                                                                         else " — só identidade")) if on
-                            else "Protocolo ULTRON encerrado — JARVIS restaurado", origin="hud", result=source)
+                            else "Protocolo ULTRON encerrado — SAFRA restaurado", origin="hud", result=source)
 
     def _chip_clicked(self, key: str) -> None:
         if key == "mic":
@@ -1011,8 +1011,8 @@ class HudController(QtCore.QObject):
         """Notificação nativa (bandeja do Windows) para um lembrete real; respeita silêncio."""
         if payload.get("silent"):
             return
-        title = {"lead": "JARVIS · Lembrete antecipado", "missed": "JARVIS · Lembrete perdido"}.get(
-            payload.get("kind"), "JARVIS · Lembrete")
+        title = {"lead": "SAFRA · Lembrete antecipado", "missed": "SAFRA · Lembrete perdido"}.get(
+            payload.get("kind"), "SAFRA · Lembrete")
         body = str(payload.get("title", ""))[:160]
         if payload.get("when_text"):
             body += f"\n{payload['when_text']}"
@@ -1031,7 +1031,7 @@ class HudController(QtCore.QObject):
         if not QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
             return None
         tray = QtWidgets.QSystemTrayIcon(app_icon(), self)
-        tray.setToolTip("JARVIS")
+        tray.setToolTip("SAFRA")
         menu = self._menu()
         tray.setContextMenu(menu)
         self._tray_menu = menu
@@ -1045,9 +1045,9 @@ class HudController(QtCore.QObject):
     def _menu(self) -> QtWidgets.QMenu:
         """Menu da bandeja e do orbe. As marcações são relidas a cada abertura (estado real)."""
         menu = QtWidgets.QMenu()
-        header = menu.addAction("J.A.R.V.I.S.")
+        header = menu.addAction("SAFRA")
         header.setEnabled(False)
-        menu.addAction("Abrir o JARVIS", lambda: self.open_page("jarvis"))
+        menu.addAction("Abrir o SAFRA", lambda: self.open_page("jarvis"))
         for key, label in (("tardis", "TARDIS — segundo cérebro"),
                            ("atividades", "Atividades"), ("configuracoes", "Configurações"),
                            ("diagnosticos", "Diagnósticos")):
@@ -1058,7 +1058,7 @@ class HudController(QtCore.QObject):
         mic = menu.addAction("Microfone")
         mic.setCheckable(True)
         mic.toggled.connect(lambda on: self.window.input.mic.setChecked(on))
-        voice = menu.addAction("Voz do JARVIS")
+        voice = menu.addAction("Voz do SAFRA")
         voice.setCheckable(True)
         voice.toggled.connect(lambda on: self.window.input.voice.setChecked(on))
         restart = menu.addAction("Reiniciar voz", self._restart_voice)
@@ -1116,16 +1116,16 @@ class HudController(QtCore.QObject):
         try:
             (autostart.enable if on else autostart.disable)()
             self.core.settings_manager.update(startup=bool(on))
-            self._show_message("JARVIS", autostart.check()["text"])
+            self._show_message("SAFRA", autostart.check()["text"])
         except OSError as exc:
-            self._show_message("JARVIS · início automático", f"Não foi possível alterar: {exc}")
+            self._show_message("SAFRA · início automático", f"Não foi possível alterar: {exc}")
 
     def show_diagnostics(self) -> None:
         report = self.core.health.last or {}
         text = format_report(report) if report else "Verificação de saúde ainda não concluída."
         plugins = ", ".join(f"{p['name']} ({p['status']})" for p in self.core.plugins.list()) or "nenhum"
         box = QtWidgets.QMessageBox(self.window)
-        box.setWindowTitle("JARVIS — diagnóstico")
+        box.setWindowTitle("SAFRA — diagnóstico")
         box.setIcon(QtWidgets.QMessageBox.NoIcon)
         box.setText(f"<pre>{text}\n\nPlugins: {plugins}</pre>")
         box.exec()
@@ -1157,7 +1157,7 @@ _QT_LEVELS = {QtCore.QtMsgType.QtDebugMsg: logging.DEBUG, QtCore.QtMsgType.QtInf
 
 
 def log_qt_messages() -> None:
-    """Mensagens do Qt vão para o registro do JARVIS. Sem console (pythonw) elas se perderiam — inclusive a
+    """Mensagens do Qt vão para o registro do SAFRA. Sem console (pythonw) elas se perderiam — inclusive a
     fatal (plataforma gráfica que não carrega), que o Qt emite pouco antes de encerrar o processo."""
     qt_log = logging.getLogger("ultron.qt")
 
@@ -1175,7 +1175,7 @@ def run_hud(core, *, minimized: bool = False, boot: bool = True) -> int:
     from .scene3d import prepare_qt
     prepare_qt()                                           # antes da QApplication: exigência do QtWebEngine
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    app.setApplicationName("JARVIS")
+    app.setApplicationName("SAFRA")
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(theme.STYLESHEET)
     app.setWindowIcon(app_icon())

@@ -96,7 +96,7 @@ class ProcessControlTest(unittest.TestCase):
         from ultron.platform import control
 
         folder = helpers.temp_dir("control-")
-        script = folder / "main.py"                       # o nome conta: só processos do JARVIS são considerados
+        script = folder / "main.py"                       # o nome conta: só processos do SAFRA são considerados
         script.write_text(
             "import os, sys, time\n"
             "sys.path.insert(0, sys.argv[1])\n"

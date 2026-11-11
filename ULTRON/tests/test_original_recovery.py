@@ -293,7 +293,7 @@ class SessionNotesAndAgentToolsTest(unittest.TestCase):
             self.assertIsNotNone(skill, name)
             self.assertTrue(skill.expose_to_llm, f"{name} oferecida ao agente, como no original")
         self.assertEqual(registry.get("system.power").risk.name, "CRITICAL", "energia sempre pede confirmação")
-        self.assertFalse(registry.get("jarvis.shutdown").expose_to_llm, "encerrar o JARVIS só por pedido direto")
+        self.assertFalse(registry.get("jarvis.shutdown").expose_to_llm, "encerrar o SAFRA só por pedido direto")
         self.assertIn("vision.screenshot", __import__("ultron.skills.automation", fromlist=["x"]).SAFE_AUTOMATION_SKILLS)
 
 

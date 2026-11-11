@@ -3,7 +3,7 @@
 * Exclusão sempre vai para a Lixeira (send2trash), nunca apaga definitivamente.
 * Antes de sobrescrever/editar, uma cópia ``.ultron.bak`` é criada — nunca por cima de uma cópia anterior.
 * Nada é criado, alterado, movido ou apagado nas pastas protegidas (sistema operacional, inicialização
-  automática, programa e dados do JARVIS): a recusa vem antes de qualquer pedido de autorização.
+  automática, programa e dados do SAFRA): a recusa vem antes de qualquer pedido de autorização.
 * Conteúdo lido de arquivos é dado não confiável, nunca instrução.
 * Cada operação tem verificação observando o disco de novo.
 """
@@ -57,7 +57,7 @@ def _protected(path: str, action: str) -> str:
     except ValueError:
         return "caminho inválido"
     label = protected_reason(target)
-    return f"{action} recusado: {target} fica em {label} — o JARVIS não altera essa pasta" if label else ""
+    return f"{action} recusado: {target} fica em {label} — o SAFRA não altera essa pasta" if label else ""
 
 
 def _read_text(path: str) -> str:

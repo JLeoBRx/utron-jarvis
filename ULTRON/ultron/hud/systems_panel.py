@@ -1,4 +1,4 @@
-"""PAINEL DE SISTEMAS do JARVIS CORE: voz, rede local, autonomia e desempenho/saúde.
+"""PAINEL DE SISTEMAS do SAFRA CORE: voz, rede local, autonomia e desempenho/saúde.
 
 Fica no HUB principal porque trata do cérebro operacional do computador (o TARDIS cuida da
 memória pessoal). É a mesma infraestrutura de páginas do TARDIS (``panels.PageHost``):
@@ -18,7 +18,7 @@ class SystemsPanel(PageHost):
     def __init__(self, core, *, state: dict | None = None, profile=None):
         super().__init__(core, state=state, profile=profile)
         self.setObjectName("Panel")
-        self.setWindowTitle("JARVIS — Sistemas")
+        self.setWindowTitle("SAFRA — Sistemas")
         self.resize(1180, 760)
         self.setMinimumSize(860, 540)
         self.tabs = QtWidgets.QTabWidget()
@@ -29,7 +29,7 @@ class SystemsPanel(PageHost):
         self.tabs.addTab(self.add_page(AutonomyPage(self)), "AUTONOMIA")
         self.tabs.addTab(self.add_page(SystemPage(self)), "DESEMPENHO E SAÚDE")
         self.tabs.currentChanged.connect(self._tab_changed)
-        title = _label("JARVIS · SISTEMAS", "PanelTitle")
+        title = _label("SAFRA · SISTEMAS", "PanelTitle")
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(14, 12, 14, 10)
         root.addWidget(title)

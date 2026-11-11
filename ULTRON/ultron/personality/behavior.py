@@ -1,7 +1,7 @@
-"""Comportamento do JARVIS: quando falar, quanto falar e como se dirigir ao usuário.
+"""Comportamento do SAFRA: quando falar, quanto falar e como se dirigir ao usuário.
 
 Separado da execução: estas regras nunca decidem *se* uma ação é executada, apenas
-*como* o JARVIS se comunica sobre ela.
+*como* o SAFRA se comunica sobre ela.
 """
 from __future__ import annotations
 

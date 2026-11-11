@@ -572,7 +572,7 @@ class SecondBrainService:
                                                                                                active_only=False)]
             relations = [rel for record in records for rel in self.store.relations(record.id)
                          if rel.get("src") == record.id]
-            payload = {"app": "JARVIS", "kind": "second_brain_export", "version": 1, "timezone": self.tz,
+            payload = {"app": "SAFRA", "kind": "second_brain_export", "version": 1, "timezone": self.tz,
                        "exported_at": self.now_wall().isoformat(timespec="seconds"), "count": len(records),
                        "records": [r.to_dict() for r in records], "reminders": reminders, "relations": relations}
             partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")

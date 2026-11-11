@@ -116,7 +116,7 @@ def check_database() -> tuple:
         db = Database(path)
     except sqlite3.DatabaseError as exc:
         return ("FALHA", f"{path} não abriu ({exc}); o arquivo NÃO foi alterado",
-                ["Com o JARVIS fechado: START_JARVIS.bat --list-backups e START_JARVIS.bat --restore-backup ARQUIVO"])
+                ["Com o SAFRA fechado: START_JARVIS.bat --list-backups e START_JARVIS.bat --restore-backup ARQUIVO"])
     try:
         verdict = str(db.one("PRAGMA quick_check")[0])
     finally:
@@ -179,7 +179,7 @@ def check_gui(args: argparse.Namespace, seconds: float) -> tuple:
     erro de construção, de biblioteca do Qt e de plataforma gráfica — inclusive os que derrubam o processo."""
     import importlib.util
     if importlib.util.find_spec("PySide6") is None:
-        return ("AVISO", "PySide6 não instalado: o JARVIS abre em modo console")
+        return ("AVISO", "PySide6 não instalado: o SAFRA abre em modo console")
     main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "main.py")
     command = [sys.executable, main, "--gui-check"]
     for flag in ("no_voice", "no_perception", "no_plugins"):
@@ -207,7 +207,7 @@ def run(args: argparse.Namespace, *, make_core: Callable, wait_voice: Callable, 
     from .config import paths
     from .voice.diagnostics import format_report as voice_report
     report = Report(out)
-    out(f"JARVIS {version} — diagnóstico (Python {platform.python_version()}, {platform.system()} {platform.release()})")
+    out(f"SAFRA {version} — diagnóstico (Python {platform.python_version()}, {platform.system()} {platform.release()})")
     out(f"Dados: {paths.data_dir()} · registro: {paths.logs_dir() / 'ultron.log'}")
     out("")
     settings_ok = report.step("Configurações", 15, lambda: check_settings(args)) != "FALHA"

@@ -1,4 +1,4 @@
-"""Event Bus interno do JARVIS.
+"""Event Bus interno do SAFRA.
 
 * ``publish`` nunca bloqueia quem publica: o evento entra numa fila e uma thread
   despachante entrega aos assinantes.

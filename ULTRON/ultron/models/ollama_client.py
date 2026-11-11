@@ -122,7 +122,7 @@ class OllamaClient:
     # ------------------------------------------------------------ transporte
     def _guard(self) -> None:
         if self._local_only() and not is_local_url(self.base_url):
-            raise OllamaError("BLOCKED", "Modo local ativo: o JARVIS só aceita Ollama nesta máquina "
+            raise OllamaError("BLOCKED", "Modo local ativo: o SAFRA só aceita Ollama nesta máquina "
                                          f"(endereço configurado: {self.base_url}).")
 
     def _request(self, path: str, payload: dict | None = None, *, timeout: float | None = None,
@@ -233,7 +233,7 @@ class OllamaClient:
         if keep_alive:
             payload["keep_alive"] = keep_alive
         # Uma thread lê a resposta e entrega as linhas numa fila; quem pediu espera NA FILA, olhando o
-        # cancelamento a cada 50 ms. Assim cancelar libera o JARVIS na hora em qualquer sistema — mesmo com o
+        # cancelamento a cada 50 ms. Assim cancelar libera o SAFRA na hora em qualquer sistema — mesmo com o
         # modelo ainda carregando, antes de qualquer byte (no Windows, encerrar o socket de outra thread não
         # acorda quem está bloqueado nele).
         connections: list = []

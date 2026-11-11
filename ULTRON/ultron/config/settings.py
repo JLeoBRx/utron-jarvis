@@ -1,22 +1,25 @@
-"""Configuração do JARVIS.
+"""Configuração do SAFRA.
 
 Ordem de carga (a última vence):
 
 1. valores padrão desta classe;
 2. perfil escolhido (``profiles.py``);
-3. ``settings.json`` na pasta de dados do usuário (migrado da identidade ULTRON, se preciso);
-4. variáveis de ambiente ``JARVIS_<CAMPO>`` ou, por compatibilidade, ``ULTRON_<CAMPO>``
+3. ``settings.json`` na pasta de dados do usuário (migrado das identidades anteriores, se preciso);
+4. variáveis de ambiente ``SAFRA_<CAMPO>`` ou, por compatibilidade, ``JARVIS_<CAMPO>`` e ``ULTRON_<CAMPO>``
    (ex.: ``JARVIS_MODEL=qwen2.5:7b``).
 
 Todo valor passa por validação: campos desconhecidos são ignorados e números fora da faixa
 são limitados. A configuração nunca guarda credenciais.
 
-Migração de identidade (versão 2): só os campos que eram IDENTIDADE do ULTRON mudam —
-palavra de ativação "ultron" → "jarvis" (variantes do ULTRON trocadas pelas do JARVIS; formas
-calibradas pelo usuário que não são do ULTRON são mantidas), tema dourado → azul e perfil
-"performance" → "economy". Antes de regravar, uma cópia do arquivo original é guardada em
-``settings.ultron-backup.json``. Preferências pessoais (microfone, volume, modelos, horários…)
-não são tocadas.
+Migrações de identidade (só os campos que eram IDENTIDADE mudam; preferências pessoais — microfone,
+volume, modelos, horários… — nunca são tocadas):
+
+* **versão 2 (ULTRON → JARVIS):** palavra de ativação "ultron" → "jarvis" (variantes do ULTRON trocadas;
+  formas calibradas pelo usuário que não são do ULTRON são mantidas), tema dourado → azul, perfil
+  "performance" → "economy". Cópia do original em ``settings.ultron-backup.json``.
+* **versão 3 (JARVIS → SAFRA):** "safra" passa a ser a primeira palavra de ativação e "jarvis" continua
+  aceita (nada do que o usuário calibrou se perde); tema azul → vermelho SAFRA. Cópia do original em
+  ``settings.jarvis-backup.json``.
 """
 from __future__ import annotations
 
@@ -39,7 +42,7 @@ AUTONOMY_LEVELS = ("restricted", "balanced", "autonomous")
 PERFORMANCE_PROFILES = ("economy", "balanced", "high", "cinematic")
 LEGACY_PROFILES = {"performance": "economy"}           # nome antigo (ULTRON) → nome atual
 PRIVACY_MODES = ("local", "standard")
-THEMES = ("jarvis-blue",)
+THEMES = ("safra-red",)
 STT_ENGINES = ("auto", "vosk-large", "vosk-small")
 MIC_BACKENDS = ("auto", "pyaudio", "sounddevice")
 OBSERVER_MODES = ("off", "assistant", "observer")
@@ -48,12 +51,14 @@ INTELLIGENCE_PROFILES = ("", "local", "hibrido", "avancado", "economico", "priva
 START_PAGES = ("jarvis", "tardis", "atividades", "configuracoes", "diagnosticos")
 PERMISSION_CATEGORIES = ("consultar", "configurar", "executar_programas", "arquivos", "apagar_dados")
 PERMISSION_MODES = ("permitir", "confirmar", "bloquear")
-SETTINGS_VERSION = 2                                   # 2 = identidade JARVIS
+SETTINGS_VERSION = 3                                   # 2 = identidade JARVIS · 3 = identidade SAFRA
 
-DEFAULT_WAKE_VARIANTS = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
+WAKE_WORDS = ("safra", "jarvis")                       # "safra" primeiro; "jarvis" aceito por compatibilidade
+# Formas fortes padrão: as palavras de ativação e sequências incomuns que o reconhecedor produz para "Jarvis".
+DEFAULT_WAKE_VARIANTS = ("safra", "jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
 # Nomes próprios que soam como "Jarvis": fortes só no início da frase.
 DEFAULT_WAKE_NAMES = ("jarbas", "javi")
-# Confusões com palavras comuns (medidas): só ativam seguidas de um comando reconhecido.
+# Confusões com palavras comuns (medidas para "Jarvis"): só ativam seguidas de um comando reconhecido.
 DEFAULT_WEAK_WAKE_VARIANTS = ("aviso", "aves", "a vez", "ja vi", "e vi", "davis", "travis", "avis")
 LEGACY_WAKE_VARIANTS = ("ultron", "ultrom", "ultrão", "ultrao", "últron", "ultrón", "altron", "ultro",
                         "ul tron", "u tron", "ultrone", "outron")
@@ -79,7 +84,7 @@ class Settings:
     voice_enabled: bool = True
     voice_profile: str = "jarvis"          # jarvis (masculina, grave, natural) | neutral
     stt_engine: str = "auto"
-    wake_words: tuple = ("jarvis",)
+    wake_words: tuple = WAKE_WORDS
     wake_variants: tuple = DEFAULT_WAKE_VARIANTS
     wake_names: tuple = DEFAULT_WAKE_NAMES
     wake_weak_variants: tuple = DEFAULT_WEAK_WAKE_VARIANTS
@@ -157,7 +162,7 @@ class Settings:
     activity_history: bool = True             # histórico de atividades (pedidos, ações, confirmações, erros)
     activity_keep: int = 5000                 # registros guardados (os mais antigos saem primeiro)
     # ------------------------------------------------------------ interface e som
-    theme: str = "jarvis-blue"
+    theme: str = "safra-red"
     performance_profile: str = "balanced"     # economy | balanced | high | cinematic (custo visual)
     ambient_sound: bool = False               # som ambiente discreto do TARDIS (desligado por padrão)
     hud_fps: int = 60
@@ -165,7 +170,7 @@ class Settings:
     hud_auto_expand: bool = True
     sound_effects: bool = True
     sfx_volume: float = 0.35
-    # ------------------------------------------------------------ JARVIS WEB ORB (agente da matriz-mãe)
+    # ------------------------------------------------------------ SAFRA WEB ORB (agente da matriz-mãe)
     remote_enabled: bool = False              # conexão de SAÍDA com o gateway (nenhuma porta aberta aqui)
     remote_gateway_url: str = ""              # ex.: https://orb.seudominio.com (o token fica no cofre do sistema)
     remote_audio: bool = True                 # enviar a voz das respostas aos dispositivos que pedirem
@@ -185,8 +190,8 @@ class Settings:
     ultron_operator: bool = True              # ativação pedida por você liga o perfil ULTRON_OPERATOR
     ultron_operator_occasional: bool = False  # ativação ocasional também liga o perfil (padrão: só identidade)
     ultron_operator_policy: tuple = ()        # "categoria=permitir|confirmar|bloquear" do operador; vazio = padrões
-    ultron_emergency_key: str = "Ctrl+Shift+U"   # restaura o JARVIS e interrompe o que o ULTRON estiver fazendo
-    ultron_duration_s: float = 45.0           # encerramento automático (0 = só por "restaurar JARVIS"/Esc/botão)
+    ultron_emergency_key: str = "Ctrl+Shift+U"   # restaura o SAFRA e interrompe o que o ULTRON estiver fazendo
+    ultron_duration_s: float = 45.0           # encerramento automático (0 = só por "restaurar SAFRA"/Esc/botão)
     orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
     audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)
     audio_output_index: int = -1
@@ -319,7 +324,7 @@ def _close_to_ultron(form: str) -> bool:
 
 
 def migrate(stored: dict) -> tuple[dict, list[str]]:
-    """Migra um settings.json da identidade ULTRON (versão 1) para JARVIS (versão 2)."""
+    """Migra um settings.json das identidades anteriores, passo a passo (1 → 2 → 3)."""
     stored = dict(stored or {})
     try:
         version = int(stored.get("settings_version", 1))
@@ -328,17 +333,31 @@ def migrate(stored: dict) -> tuple[dict, list[str]]:
     if version >= SETTINGS_VERSION or not stored:
         return stored, []
     notes: list[str] = []
+    if version < 2:
+        notes += _migrate_ultron_to_jarvis(stored)
+    if version < 3:
+        notes += _migrate_jarvis_to_safra(stored)
+    if stored.get("performance_profile") in LEGACY_PROFILES:
+        stored["performance_profile"] = LEGACY_PROFILES[stored["performance_profile"]]
+        notes.append("perfil performance → economy")
+    stored["settings_version"] = SETTINGS_VERSION
+    return stored, notes or ["versão das configurações atualizada"]
+
+
+def _migrate_ultron_to_jarvis(stored: dict) -> list[str]:
+    """Versão 2: a palavra e as formas do ULTRON saem; as formas do JARVIS entram."""
+    notes: list[str] = []
+    jarvis_forms = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
     words = [str(w) for w in stored.get("wake_words") or []]
     if words:
-        new_words = ["jarvis" if _close_to_ultron(w) else w for w in words]
-        new_words = list(dict.fromkeys(new_words))
+        new_words = list(dict.fromkeys("jarvis" if _close_to_ultron(w) else w for w in words))
         if new_words != words:
             stored["wake_words"] = new_words
             notes.append("palavra de ativação ultron → jarvis")
     variants = [str(v) for v in stored.get("wake_variants") or []]
     if variants:
         kept = [v for v in variants if v not in LEGACY_WAKE_VARIANTS and not _close_to_ultron(v)]
-        stored["wake_variants"] = list(dict.fromkeys(list(DEFAULT_WAKE_VARIANTS) + kept))
+        stored["wake_variants"] = list(dict.fromkeys(list(jarvis_forms) + kept))
         if len(kept) != len(variants):
             notes.append("variantes do ULTRON trocadas pelas do JARVIS")
     weak = [str(v) for v in stored.get("wake_weak_variants") or []]
@@ -347,14 +366,23 @@ def migrate(stored: dict) -> tuple[dict, list[str]]:
         stored["wake_weak_variants"] = list(dict.fromkeys(list(DEFAULT_WEAK_WAKE_VARIANTS) + kept))
         if len(kept) != len(weak):
             notes.append("formas fracas do ULTRON trocadas pelas do JARVIS")
+    return notes
+
+
+def _migrate_jarvis_to_safra(stored: dict) -> list[str]:
+    """Versão 3: "safra" vira a primeira palavra de ativação; "jarvis" e o que foi calibrado continuam."""
+    notes: list[str] = []
+    words = [str(w) for w in stored.get("wake_words") or []]
+    if words and "safra" not in words:
+        stored["wake_words"] = ["safra"] + words
+        notes.append("palavra de ativação: safra (jarvis continua aceita)")
+    variants = [str(v) for v in stored.get("wake_variants") or []]
+    if variants and "safra" not in variants:
+        stored["wake_variants"] = ["safra"] + variants
     if stored.get("theme") not in (None, *THEMES):
         stored["theme"] = THEMES[0]
-        notes.append("tema dourado → azul JARVIS")
-    if stored.get("performance_profile") in LEGACY_PROFILES:
-        stored["performance_profile"] = LEGACY_PROFILES[stored["performance_profile"]]
-        notes.append("perfil performance → economy")
-    stored["settings_version"] = SETTINGS_VERSION
-    return stored, notes or ["versão das configurações atualizada"]
+        notes.append("tema → vermelho SAFRA")
+    return notes
 
 
 class SettingsManager:
@@ -395,7 +423,8 @@ class SettingsManager:
                 settings.profile = profile
             env = {}
             for name in Settings.field_names():
-                value = os.environ.get("JARVIS_" + name.upper(), os.environ.get("ULTRON_" + name.upper()))
+                value = os.environ.get("SAFRA_" + name.upper(), os.environ.get("JARVIS_" + name.upper(),
+                                                                    os.environ.get("ULTRON_" + name.upper())))
                 if value is not None:
                     env[name] = value
             settings.apply(env, source="ambiente")
@@ -420,14 +449,18 @@ class SettingsManager:
 
     def _backup_and_rewrite(self, stored: dict, notes: list[str]) -> None:
         """Guarda o arquivo original e grava a versão migrada (só campos de identidade mudam)."""
-        backup = self.path.with_name("settings.ultron-backup.json")
+        try:
+            version = int(json.loads(self.path.read_text(encoding="utf-8")).get("settings_version", 1))
+        except (OSError, ValueError, TypeError, AttributeError):
+            version = 1
+        backup = self.path.with_name("settings.ultron-backup.json" if version < 2 else "settings.jarvis-backup.json")
         try:
             if not backup.exists():
                 backup.write_text(self.path.read_text(encoding="utf-8"), encoding="utf-8")
             tmp = self.path.with_suffix(".tmp")
             tmp.write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
             os.replace(tmp, self.path)
-            log.info("configurações migradas para a identidade JARVIS: %s (cópia em %s)", "; ".join(notes),
+            log.info("configurações migradas para a identidade SAFRA: %s (cópia em %s)", "; ".join(notes),
                      backup.name)
         except OSError as exc:
             log.warning("não foi possível regravar settings.json migrado (%s); a migração vale só nesta sessão",

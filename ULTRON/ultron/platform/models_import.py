@@ -3,7 +3,7 @@
 Layouts reconhecidos:
 
 * JARVIS original: ``<pasta>\\voices\\pt_BR-faber-medium.onnx`` e ``<pasta>\\vosk-model-*\\`` na raiz;
-* ULTRON / JARVIS atual: ``<pasta>\\assets\\voices\\`` e ``<pasta>\\assets\\stt\\``;
+* ULTRON / SAFRA atual: ``<pasta>\\assets\\voices\\`` e ``<pasta>\\assets\\stt\\``;
 * a pasta indicada pode ser a de cima (que contém ``JARVIS\\`` ou ``ULTRON\\``).
 
 Cada arquivo copiado é conferido pelo tamanho; arquivos já presentes no destino nunca são tocados.

@@ -1,4 +1,4 @@
-"""JARVIS: migração de identidade das configurações e diagnóstico de voz ponta a ponta.
+"""SAFRA: migração de identidade das configurações e diagnóstico de voz ponta a ponta.
 
 Os testes de voz usam um núcleo REAL (Event Bus, intents, orquestrador, fala) com microfone,
 reconhecedor e saída de áudio SIMULADOS — não substituem o teste com hardware real
@@ -28,24 +28,44 @@ class SettingsMigrationTest(unittest.TestCase):
         path.write_text(json.dumps(legacy), encoding="utf-8")
         manager = SettingsManager(path)
         s = manager.load()
-        self.assertEqual(s.wake_words, ("jarvis",))
+        self.assertEqual(s.wake_words, ("safra", "jarvis"), "safra primeiro; jarvis continua aceita")
         self.assertIn("jarvis", s.wake_variants)
         self.assertNotIn("ultrom", s.wake_variants)
-        self.assertNotIn("outrom", s.wake_variants, "forma calibrada para 'ultron' não serve ao JARVIS")
+        self.assertNotIn("outrom", s.wake_variants, "forma calibrada para 'ultron' não serve ao SAFRA")
         self.assertIn("jarvas", s.wake_variants, "forma calibrada que não é do ULTRON é mantida")
         self.assertNotIn("o tom", s.wake_weak_variants)
         self.assertIn("atencao", s.wake_weak_variants)
-        self.assertEqual((s.theme, s.performance_profile), ("jarvis-blue", "economy"))
+        self.assertEqual((s.theme, s.performance_profile), ("safra-red", "economy"))
         self.assertEqual((s.mic_name, s.volume, s.model, s.quiet_hours),
                          ("Microfone (USB)", 0.55, "qwen2.5:7b", "22:00-07:00"), "preferências pessoais intactas")
         backup = folder / "settings.ultron-backup.json"
         self.assertTrue(backup.is_file(), "cópia do arquivo original guardada")
         self.assertEqual(json.loads(backup.read_text(encoding="utf-8"))["wake_words"], ["ultron"])
-        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["settings_version"], 2)
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["settings_version"], 3)
         again = SettingsManager(path)
         again.load()
         self.assertEqual(again.migration_notes, [], "migração roda uma única vez")
 
+
+    def test_jarvis_settings_gain_safra_and_keep_what_was_calibrated(self):
+        folder = helpers.temp_dir()
+        path = folder / "settings.json"
+        jarvis = {"settings_version": 2, "wake_words": ["jarvis"], "wake_variants": ["jarvis", "jarbis"],
+                  "wake_weak_variants": ["aviso", "a vez"], "theme": "jarvis-blue", "mic_name": "Headset",
+                  "volume": 0.4, "model": "qwen2.5:7b"}
+        path.write_text(json.dumps(jarvis), encoding="utf-8")
+        s = SettingsManager(path).load()
+        self.assertEqual(s.wake_words, ("safra", "jarvis"))
+        self.assertEqual(s.wake_variants[:3], ("safra", "jarvis", "jarbis"), "forma calibrada pelo usuário mantida")
+        self.assertEqual(s.wake_weak_variants, ("aviso", "a vez"))
+        self.assertEqual(s.theme, "safra-red")
+        self.assertEqual((s.mic_name, s.volume, s.model), ("Headset", 0.4, "qwen2.5:7b"), "preferências intactas")
+        backup = folder / "settings.jarvis-backup.json"
+        self.assertTrue(backup.is_file(), "cópia do arquivo da identidade JARVIS guardada")
+        self.assertEqual(json.loads(backup.read_text(encoding="utf-8"))["settings_version"], 2)
+        again = SettingsManager(path)
+        again.load()
+        self.assertEqual(again.migration_notes, [], "migração roda uma única vez")
 
 class FakeStream:
     def __init__(self):

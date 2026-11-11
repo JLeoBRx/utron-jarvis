@@ -3,12 +3,12 @@
 Fluxo por bloco de áudio (250 ms):
 
 1. nível de entrada (para a HUD) e reconhecimento contínuo (Vosk, offline);
-2. **fora de uma conversa**, só frases que começam com "Jarvis" (ou uma variante
+2. **fora de uma conversa**, só frases que começam com "Safra" (ou uma variante
    medida/calibrada) viram comando; o resto é descartado sem registro;
 3. depois de uma resposta, uma **janela de continuação** aceita a próxima frase sem a
    palavra de ativação;
-4. **enquanto o JARVIS fala** (sem cancelamento de eco por hardware), o que o microfone
-   capta é comparado com o texto sendo falado: eco é ignorado; "pare", "Jarvis" ou
+4. **enquanto o SAFRA fala** (sem cancelamento de eco por hardware), o que o microfone
+   capta é comparado com o texto sendo falado: eco é ignorado; "pare", "Safra" ou
    "pausa" ditos pelo usuário interrompem/pausam a fala na hora (*barge-in*).
 
 Diagnóstico: contadores por etapa (blocos lidos, silêncio absoluto, parciais, finais,
@@ -54,7 +54,7 @@ SILENT_CHUNKS_WARNING = 20        # 5 s de zeros exatos: microfone bloqueado (pr
 SILENCE_REASON = ("o microfone entrega silêncio absoluto — verifique Configurações do Windows > Privacidade > "
                   "Microfone (permitir que aplicativos da área de trabalho acessem) ou se ele está mudo")
 LISTEN_TIMEOUT = 8.0              # escuta sem fala → volta ao repouso
-WAKE_ONLY_WINDOW = 8.0            # "Jarvis" sozinho: espera o comando por este tempo
+WAKE_ONLY_WINDOW = 8.0            # "Safra" sozinho: espera o comando por este tempo
 AWAIT_RESPONSE_SECONDS = 180.0    # limite de espera pela resposta antes de encerrar a conversa
 
 
@@ -63,7 +63,7 @@ def _words(text: str) -> list[str]:
 
 
 def echo_ratio(heard: str, spoken: str) -> float:
-    """Fração das palavras ouvidas que estão no texto que o JARVIS está falando."""
+    """Fração das palavras ouvidas que estão no texto que o SAFRA está falando."""
     heard_words = [w for w in _words(heard) if len(w) >= 2]
     if not heard_words:
         return 0.0
@@ -91,7 +91,7 @@ def find_barge_in(heard: str, spoken: str, wake_fn: Callable[[str], Any]) -> tup
 
     Frases de controle de duas palavras ("pode parar", "pode continuar") valem em qualquer
     posição, se não forem eco. Fora isso, palavras do texto falado (eco) e ruídos são puladas
-    e o trecho restante precisa começar com "Jarvis …" ou um controle curto ("pare", "pausa").
+    e o trecho restante precisa começar com "Safra …" ou um controle curto ("pare", "pausa").
     Uma ativação cujas palavras (e o comando que a segue) estão no próprio texto falado é eco.
     Devolve (tipo, comando) com tipo em wake | cancel | pause | resume.
     """
@@ -141,7 +141,7 @@ class VoicePipeline:
         self.stt = None
         self.stt_reason = ""
         s = self._settings()
-        self.detector = WakeWordDetector(tuple(getattr(s, "wake_words", ("jarvis",))),
+        self.detector = WakeWordDetector(tuple(getattr(s, "wake_words", ("safra", "jarvis"))),
                                          tuple(getattr(s, "wake_variants", DEFAULT_STRONG_VARIANTS)),
                                          weak=tuple(getattr(s, "wake_weak_variants", DEFAULT_WEAK_VARIANTS)),
                                          names=tuple(getattr(s, "wake_names", DEFAULT_NAME_VARIANTS)),
@@ -170,7 +170,7 @@ class VoicePipeline:
         self._overlapped_speech = False
         self._barged = False
         self._barge_cut = False                    # fala cortada pelo usuário: sem cauda de eco
-        # contadores (sem conteúdo: falas não endereçadas ao JARVIS não são guardadas)
+        # contadores (sem conteúdo: falas não endereçadas ao SAFRA não são guardadas)
         self.commands = 0
         self.ignored = 0
         self.echoes = 0
@@ -503,7 +503,7 @@ class VoicePipeline:
         wake = self.wake(text)
         in_followup = self.detector.in_followup()
         if wake is None and not in_followup:
-            self.ignored += 1                                   # não endereçado ao JARVIS: descartado
+            self.ignored += 1                                   # não endereçado ao SAFRA: descartado
             self._stop_listening()
             return
         command = wake.command if wake is not None else text.strip()
@@ -519,11 +519,11 @@ class VoicePipeline:
                                  "confidence": round(confidence, 3), "control": classify_short_command(command)})
 
     def _on_final_during_speech(self, text: str, confidence: float, barged: bool) -> None:
-        """Enquanto o JARVIS fala, só passam "Jarvis …" e controles curtos ditos pelo usuário."""
+        """Enquanto o SAFRA fala, só passam "Safra …" e controles curtos ditos pelo usuário."""
         barge = find_barge_in(text, self._spoken_text(), self.wake)
         if barge is None:
             if self._listen_mode == "wake" and self.listening and echo_ratio(text, self._spoken_text()) < 0.5:
-                # o usuário foi convidado a falar ("Jarvis." → confirmação): a frase é o comando
+                # o usuário foi convidado a falar ("Safra." → confirmação): a frase é o comando
                 self._dispatch(text.strip(), {"wake": True, "followup": False, "barge_in": False,
                                               "confidence": round(confidence, 3),
                                               "control": classify_short_command(text)})

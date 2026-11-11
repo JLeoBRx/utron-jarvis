@@ -27,7 +27,7 @@ SECTIONS = (("geral", "GERAL E INÍCIO"), ("voz", "VOZ E ÁUDIO"), ("ia", "INTEL
             ("aparencia", "APARÊNCIA E DESEMPENHO"), ("remota", "REDE REMOTA (ORBE WEB)"),
             ("registros", "HISTÓRICO E REGISTROS"),
             ("restaurar", "RESTAURAR PADRÕES"))
-PAGE_LABELS = {"jarvis": "JARVIS", "tardis": "TARDIS", "atividades": "ATIVIDADES",
+PAGE_LABELS = {"jarvis": "SAFRA", "tardis": "TARDIS", "atividades": "ATIVIDADES",
                "configuracoes": "CONFIGURAÇÕES", "diagnosticos": "DIAGNÓSTICOS"}
 
 
@@ -43,13 +43,13 @@ class SettingsPage(QtWidgets.QWidget):
         self.core = core
         self.setObjectName("Panel")
         self.setStyleSheet(theme.PANEL_STYLESHEET + """
-            QWidget#SettingsForm { background: #071426; }
-            QDoubleSpinBox { background: #050E1C; color: #DCEEFF; border: 1px solid rgba(0, 217, 255, 60);
+            QWidget#SettingsForm { background: #0F1013; }
+            QDoubleSpinBox { background: #0B0B0E; color: #F4F4F5; border: 1px solid rgba(234, 40, 64, 60);
                 border-radius: 4px; padding: 5px 8px; }
             QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit { min-height: 22px; }
             QListWidget#H2Nav::item { background: transparent; padding: 11px 16px; }
-            QListWidget#H2Nav::item:selected { background: rgba(0, 217, 255, 30); color: #E6FBFF;
-                border-left: 2px solid #00D9FF; }
+            QListWidget#H2Nav::item:selected { background: rgba(234, 40, 64, 30); color: #FFFFFF;
+                border-left: 2px solid #EA2840; }
         """)
         self._ask = ask or self._confirm_dialog
         self.ultron_history: Callable[[], list] = lambda: []    # o controlador liga ao histórico real do evento
@@ -230,13 +230,13 @@ class SettingsPage(QtWidgets.QWidget):
     # ------------------------------------------------------------ GERAL E INÍCIO
     def _build_general(self, form) -> None:
         self.combo(form, "start_page", "Página ao abrir", [(k, PAGE_LABELS.get(k, k)) for k in START_PAGES],
-                   "Página mostrada quando o JARVIS abre")
+                   "Página mostrada quando o SAFRA abre")
         self.check(form, "hud_start_minimized", "Iniciar recolhido no orbe (só o orbe na tela)")
-        self.check(form, "hud_auto_expand", "Expandir sozinho ao ouvir \"Jarvis\" ou quando houver autorização "
+        self.check(form, "hud_auto_expand", "Expandir sozinho ao ouvir \"Safra\" ou quando houver autorização "
                                             "pendente")
         self.autostart_state = _label("", "PanelDim")
         self.autostart_box = QtWidgets.QCheckBox("Iniciar com o Windows")
-        self.autostart_box.setToolTip("Grava (ou remove) a entrada \"JARVIS\" em HKCU\\...\\Run — só quando você "
+        self.autostart_box.setToolTip("Grava (ou remove) a entrada \"SAFRA\" em HKCU\\...\\Run — só quando você "
                                       "clica aqui")
         self.autostart_box.clicked.connect(self._toggle_autostart)
         form.addRow("", self.autostart_box)
@@ -266,8 +266,8 @@ class SettingsPage(QtWidgets.QWidget):
 
     # ------------------------------------------------------------ VOZ E ÁUDIO
     def _build_voice(self, form) -> None:
-        self.check(form, "voice_enabled", "Voz do JARVIS (microfone e fala)")
-        self.combo(form, "voice_profile", "Timbre", [("jarvis", "JARVIS — masculina, grave, natural"),
+        self.check(form, "voice_enabled", "Voz do SAFRA (microfone e fala)")
+        self.combo(form, "voice_profile", "Timbre", [("jarvis", "SAFRA — masculina, grave, natural"),
                                                      ("neutral", "Neutro")])
         from ..config import paths
         voices = sorted(p.stem for p in paths.voices_dir().glob("*.onnx")) or [self.settings.voice]
@@ -286,7 +286,7 @@ class SettingsPage(QtWidgets.QWidget):
         mic_row.addWidget(self.mic_list, 1)
         refresh_mics = _button("LISTAR", "Ler os microfones disponíveis (nada é aberto)")
         refresh_mics.clicked.connect(lambda: self.load_devices("input"))
-        use_mic = _button("USAR ESTE", "Trocar o microfone do JARVIS e reabrir a captura", primary=True)
+        use_mic = _button("USAR ESTE", "Trocar o microfone do SAFRA e reabrir a captura", primary=True)
         use_mic.clicked.connect(self._use_mic)
         mic_row.addWidget(refresh_mics)
         mic_row.addWidget(use_mic)
@@ -621,7 +621,7 @@ class SettingsPage(QtWidgets.QWidget):
 
     # ------------------------------------------------------------ PERMISSÕES
     def _build_permissions(self, form) -> None:
-        intro = _label("O que o JARVIS pode fazer por categoria. \"Permitir\" deixa a decisão com o risco de cada "
+        intro = _label("O que o SAFRA pode fazer por categoria. \"Permitir\" deixa a decisão com o risco de cada "
                        "ação (sensíveis continuam pedindo autorização); \"Confirmar sempre\" pergunta a cada vez; "
                        "\"Bloquear\" recusa. Apagar dados nunca fica abaixo de \"Confirmar\".", "PanelDim")
         form.addRow(intro)
@@ -678,7 +678,7 @@ class SettingsPage(QtWidgets.QWidget):
         self.combo(form, "performance_profile", "Perfil visual", [(n, quality.LABELS[n]) for n in quality.NAMES],
                    "Muda só o custo visual; execução, memória e segurança funcionam igual em todos")
         self.check(form, "heavy_effects", "Efeitos pesados (brilho, transições holográficas, varreduras)")
-        self.combo(form, "avatar_mode", "Vista do JARVIS", [("face", "Rosto holográfico"),
+        self.combo(form, "avatar_mode", "Vista do SAFRA", [("face", "Rosto holográfico"),
                                                             ("neural", "Núcleo neural")])
         self.combo(form, "scene3d", "Cena 3D (holograma de corpo inteiro, ORBE e TARDIS)",
                    [("auto", "Automática — liga com QtWebEngine e WebGL 2"), ("desligado", "Desligada (vista 2D)")],
@@ -718,13 +718,13 @@ class SettingsPage(QtWidgets.QWidget):
     def _build_ultron(self, form) -> None:
         form.addRow(_label("PROTOCOLO ULTRON — identidade alternativa", "PanelTitle"))
         form.addRow(_label("O assistente assume a identidade ULTRON: aparência, voz e tom. Com o perfil "
-                           "ULTRON_OPERATOR, ele usa as MESMAS ferramentas e o MESMO executor do JARVIS com autonomia "
+                           "ULTRON_OPERATOR, ele usa as MESMAS ferramentas e o MESMO executor do SAFRA com autonomia "
                            "para as rotinas que você liberar abaixo; categorias bloqueadas continuam bloqueadas, "
                            "apagar dados, risco alto, envio de dados para fora e ações administrativas sempre pedem "
                            "confirmação, e tudo vai para ATIVIDADES marcado como [ULTRON]. Nunca começa com "
-                           "autorização pendente ou ação em execução. Sai com \"restaurar JARVIS\", pelo botão, Esc "
+                           "autorização pendente ou ação em execução. Sai com \"restaurar SAFRA\", pelo botão, Esc "
                            "ou a tecla de emergência (que também interrompe o que estiver em curso).", "PanelDim"))
-        self.check(form, "ultron_manual", "Ativação pela frase \"JARVIS, iniciar protocolo ULTRON\"")
+        self.check(form, "ultron_manual", "Ativação pela frase \"SAFRA, iniciar protocolo ULTRON\"")
         self.check(form, "ultron_occasional", "Ocorrência ocasional (rara, só em repouso, após 2 min sem interação)")
         self.number(form, "ultron_chance_per_hour", "Probabilidade por hora em repouso", 0, 100, step=0.5,
                     decimals=1, suffix=" %", tip="Sorteada uma vez por minuto ocioso")
@@ -735,7 +735,7 @@ class SettingsPage(QtWidgets.QWidget):
         self.check(form, "ultron_operator", "Perfil ULTRON_OPERATOR na ativação pedida por você")
         self.check(form, "ultron_operator_occasional", "Perfil ULTRON_OPERATOR também na ativação ocasional")
         self.line(form, "ultron_emergency_key", "Tecla de emergência", placeholder="Ctrl+Shift+U",
-                  tip="Restaura o JARVIS e interrompe a tarefa, a autorização e a fala em curso")
+                  tip="Restaura o SAFRA e interrompe a tarefa, a autorização e a fala em curso")
         self._build_operator_policy(form)
         demo = _button("DEMONSTRAÇÃO", "Mostra o efeito por 20 segundos (rotulado como demonstração)")
         demo.clicked.connect(self.ultron_demo.emit)
@@ -751,14 +751,14 @@ class SettingsPage(QtWidgets.QWidget):
         custom = sorted(f"{k} ({v})" for k, v in origin.items() if v != "original")
         folder = paths.data_file("sons_tardis")
         self.sfx_origin.setText(("Arquivos seus em uso: " + ", ".join(custom) + ". ") if custom else
-                                "Efeitos originais do JARVIS (sintetizados). ")
+                                "Efeitos originais do SAFRA (sintetizados). ")
         self.sfx_origin.setToolTip(f"Para usar um som com licença, coloque o .wav em {folder} "
                                    "(materializacao, desmaterializacao, porta_abrir, porta_fechar, rotor, alerta, "
-                                   "ambiente) e reinicie o JARVIS.")
+                                   "ambiente) e reinicie o SAFRA.")
 
-    # ------------------------------------------------------------ REDE REMOTA (JARVIS WEB ORB)
+    # ------------------------------------------------------------ REDE REMOTA (SAFRA WEB ORB)
     def _build_remote(self, form) -> None:
-        form.addRow(_label("A JARVIS WEB ORB é a ORBE deste JARVIS no navegador (celular ou outro computador). Este "
+        form.addRow(_label("A SAFRA WEB ORB é a ORBE deste SAFRA no navegador (celular ou outro computador). Este "
                            "computador continua sendo a MATRIZ-MÃE: inteligência, memória, voz, ferramentas e "
                            "autorizações ficam aqui. A conexão é de SAÍDA para o seu gateway (nenhuma porta aberta no "
                            "roteador). Ações sensíveis só se confirmam neste computador.", "PanelDim"))
@@ -856,9 +856,9 @@ class SettingsPage(QtWidgets.QWidget):
         remote = getattr(self.core, "remote", None)
         if remote is None:
             return
-        text = (f"Um dispositivo quer usar a ORBE deste JARVIS:\n\nNome: {info.get('device_name')}\n"
+        text = (f"Um dispositivo quer usar a ORBE deste SAFRA:\n\nNome: {info.get('device_name')}\n"
                 f"Navegador: {str(info.get('user_agent'))[:90]}\nIP: {info.get('ip')}\n\nEle poderá conversar com o "
-                "JARVIS e pedir tarefas com as mesmas permissões (ações sensíveis continuam exigindo confirmação "
+                "SAFRA e pedir tarefas com as mesmas permissões (ações sensíveis continuam exigindo confirmação "
                 "AQUI). Autorizar?")
         remote.decide_pairing(info.get("id", ""), self._ask("Parear dispositivo", text))
 
@@ -957,7 +957,7 @@ class PairingDialog(QtWidgets.QDialog):
 
     def __init__(self, info: dict, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Parear dispositivo — JARVIS WEB ORB")
+        self.setWindowTitle("Parear dispositivo — SAFRA WEB ORB")
         self.setStyleSheet(theme.PANEL_STYLESHEET)
         layout = QtWidgets.QVBoxLayout(self)
         qr = QtWidgets.QLabel()
@@ -993,7 +993,7 @@ def qr_image(text: str, scale: int = 8):
     size = len(matrix)
     image = QtGui.QImage(size, size, QtGui.QImage.Format_RGB32)
     image.fill(QtGui.QColor("white"))
-    dark = QtGui.QColor("#030712").rgb()
+    dark = QtGui.QColor("#07070A").rgb()
     for y, row in enumerate(matrix):
         for x, on in enumerate(row):
             if on:

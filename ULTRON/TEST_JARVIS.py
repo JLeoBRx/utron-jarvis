@@ -27,11 +27,11 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(TESTS))
 
 REQUIRED = {"numpy": "numpy", "psutil": "psutil"}
-INTERFACE = {"PySide6": "JARVIS CORE e TARDIS (sem ele: modo console)"}
+INTERFACE = {"PySide6": "SAFRA CORE e TARDIS (sem ele: modo console)"}
 OPTIONAL = {
     "vosk": "reconhecimento de fala offline", "pyaudio": "microfone e saída de áudio (PyAudio)",
     "sounddevice": "microfone e saída de áudio (alternativa ao PyAudio)",
-    "piper": "voz neural do JARVIS", "pyttsx3": "voz alternativa (SAPI)",
+    "piper": "voz neural do SAFRA", "pyttsx3": "voz alternativa (SAPI)",
     "pyautogui": "teclado, mouse e mídia", "pywinauto": "elementos de interface do Windows",
     "pycaw": "volume do sistema", "send2trash": "exclusão segura (Lixeira)", "mss": "captura de tela",
     "PIL": "imagens (Pillow)", "pytesseract": "OCR (requer Tesseract OCR)",
@@ -47,7 +47,7 @@ def environment_report() -> list[str]:
     from ultron.config import paths
     from ultron.voice.stt import LARGE, SMALL
 
-    lines = [f"JARVIS {__version__} · Python {platform.python_version()} · {platform.system()} {platform.release()}"]
+    lines = [f"SAFRA {__version__} · Python {platform.python_version()} · {platform.system()} {platform.release()}"]
     for module, label in {**REQUIRED, **INTERFACE}.items():
         lines.append(f"  [{'ok' if has(module) else 'FALTA'}] {module:<12} {label}")
     for module, label in OPTIONAL.items():
@@ -108,7 +108,7 @@ def _safe_output() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     _safe_output()
-    parser = argparse.ArgumentParser(description="Suíte de testes do JARVIS")
+    parser = argparse.ArgumentParser(description="Suíte de testes do SAFRA")
     parser.add_argument("modules", nargs="*", help="módulos de teste (ex.: test_voice)")
     parser.add_argument("--quick", action="store_true", help="pula testes lentos")
     parser.add_argument("--env", action="store_true", help="só o relatório do ambiente")
@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.quick:
         os.environ["ULTRON_TEST_QUICK"] = "1"
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    import helpers  # noqa: F401  (isola dados em pasta temporária antes de qualquer import do JARVIS)
+    import helpers  # noqa: F401  (isola dados em pasta temporária antes de qualquer import do SAFRA)
 
     logging.basicConfig(level=logging.CRITICAL)
     print("\n".join(environment_report()))

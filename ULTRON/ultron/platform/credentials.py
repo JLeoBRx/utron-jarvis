@@ -11,7 +11,7 @@ import os
 
 log = logging.getLogger("ultron.credentials")
 
-SERVICE = "JARVIS"
+SERVICE = "JARVIS"                                  # nome do serviço no cofre do sistema: mantido (chaves já salvas)
 ENV_NAMES = {"openai_api_key": "OPENAI_API_KEY"}
 
 
@@ -32,7 +32,7 @@ def get_secret(name: str) -> str:
         return ""
     try:
         return (ring.get_password(SERVICE, name) or "").strip()
-    except Exception as exc:                       # cofre indisponível: nunca derruba o JARVIS
+    except Exception as exc:                       # cofre indisponível: nunca derruba o SAFRA
         log.info("cofre de credenciais indisponível: %s", type(exc).__name__)
         return ""
 

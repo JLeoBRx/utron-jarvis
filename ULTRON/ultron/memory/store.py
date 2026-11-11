@@ -1,4 +1,4 @@
-"""Armazenamento persistente do JARVIS (SQLite, modo WAL).
+"""Armazenamento persistente do SAFRA (SQLite, modo WAL).
 
 Uma única base para todas as memórias, objetivos, grafo e inventário. As migrações são
 versionadas e idempotentes. Textos que parecem segredos (senhas, tokens, cartões) são
@@ -37,7 +37,7 @@ def clean_text(value: Any, limit: int, *, field: str = "texto", allow_empty: boo
     if len(text) > limit:
         raise ValueError(f"{field} excede {limit} caracteres")
     if looks_secret(text):
-        raise ValueError("o JARVIS não armazena senhas, tokens ou dados financeiros")
+        raise ValueError("o SAFRA não armazena senhas, tokens ou dados financeiros")
     return text
 
 
@@ -235,7 +235,7 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         "UPDATE network_devices SET status='absent' WHERE status='offline'",
         "CREATE INDEX IF NOT EXISTS idx_net_status ON network_devices(status)",
     ]),
-    # v4 — HISTÓRICO DE ATIVIDADES (JARVIS ULTIMATE): o ciclo de vida estruturado de cada pedido, ação,
+    # v4 — HISTÓRICO DE ATIVIDADES (SAFRA ULTIMATE): o ciclo de vida estruturado de cada pedido, ação,
     # confirmação, consulta à TARDIS (e, até a remoção do Noctário, comandos ao robô). A tabela ``audit`` continua como trilha de
     # auditoria de baixo nível (só acrescenta texto); aqui o MESMO registro muda de estado
     # (recebido → executando → concluído/falhou), com origem, entrada, resultado, erro e duração.
@@ -269,7 +269,7 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
             created REAL NOT NULL, source TEXT NOT NULL DEFAULT 'usuario')""",
         "CREATE INDEX IF NOT EXISTS idx_project_notes ON project_notes(project, created)",
     ]),
-    # v6 — tabelas do antigo módulo do robô (removido do JARVIS). A migração continua aqui para que bancos
+    # v6 — tabelas do antigo módulo do robô (removido do SAFRA). A migração continua aqui para que bancos
     # existentes e novos tenham o MESMO esquema; os dados já gravados nelas são preservados e não são lidos.
     (6, [
         """CREATE TABLE IF NOT EXISTS noctario_runs (
@@ -394,7 +394,7 @@ class Database:
             self._conn.execute("DELETE FROM audit WHERE id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT 2000)")
 
     def backup_to(self, destination: Path | str) -> Path:
-        """Cópia consistente do banco inteiro com o JARVIS rodando (API de backup do SQLite: não
+        """Cópia consistente do banco inteiro com o SAFRA rodando (API de backup do SQLite: não
         copia um arquivo pela metade). O destino não pode existir — nada é sobrescrito."""
         destination = Path(destination)
         if destination.exists():
@@ -441,7 +441,7 @@ def verify_database_file(path: Path | str) -> tuple[bool, str]:
         finally:
             conn.close()
     except sqlite3.Error as exc:
-        return False, f"não é um banco do JARVIS legível: {exc}"
+        return False, f"não é um banco do SAFRA legível: {exc}"
     if not row or str(row[0]).lower() != "ok":
         return False, f"integridade comprometida: {row[0] if row else '?'}"
     return True, f"íntegro (esquema v{version[0] if version and version[0] is not None else '?'})"

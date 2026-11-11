@@ -1,4 +1,4 @@
-"""Orbe compacto: a forma recolhida do JARVIS (sempre visível, arrastável).
+"""Orbe compacto: a forma recolhida do SAFRA (sempre visível, arrastável).
 
 Com a central 3D ativa, o orbe mostra o ORBE 3D da PRÓPRIA cena (a mesma vista, emprestada enquanto a janela
 principal está recolhida — um motor só): janela redonda por máscara, uma camada transparente por cima recebe
@@ -75,7 +75,7 @@ class OrbWindow(QtWidgets.QWidget):
         self.scene = scene
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setFixedSize(self.SIZE, self.SIZE)
-        self.setToolTip("JARVIS — clique duplo para expandir")
+        self.setToolTip("SAFRA — clique duplo para expandir")
         self._drag: QtCore.QPoint | None = None
         self._dragged = False
         self.scene_view = None                      # a cena 3D emprestada (None = desenho 2D)

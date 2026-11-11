@@ -7,8 +7,8 @@ saltos até aqui), ``state`` (QUEUED → RUNNING → DONE | FAILED | REJECTED | 
 
 Regras que este módulo garante:
 
-* cadeia de no máximo 2 saltos (ex.: JARVIS → TARDIS → sub-análise) e nenhum salto repetido — impede
-  ciclos de delegação; a TARDIS nunca devolve uma tarefa ao JARVIS;
+* cadeia de no máximo 2 saltos (ex.: SAFRA → TARDIS → sub-análise) e nenhum salto repetido — impede
+  ciclos de delegação; a TARDIS nunca devolve uma tarefa ao SAFRA;
 * prazo por tipo de análise; cancelamento a qualquer momento;
 * sem dado suficiente → FAILED com o motivo (nunca um resultado inventado).
 """
@@ -65,7 +65,7 @@ class TaskCancelled(Exception):
 
 @dataclass
 class ProposedAction:
-    """Ação que a TARDIS PROPÕE. Só o JARVIS executa, com a confirmação do usuário."""
+    """Ação que a TARDIS PROPÕE. Só o SAFRA executa, com a confirmação do usuário."""
 
     description: str
     skill: str
@@ -164,7 +164,7 @@ def check_chain(kind: str, origin: str, chain: list[str]) -> str:
     if origin == "tardis" and not any(h.startswith("tardis:") for h in hops):
         return "sub-análise da TARDIS sem a análise que a pediu na cadeia"
     if "jarvis" in hops[1:]:
-        return "a TARDIS não devolve tarefas ao JARVIS"
+        return "a TARDIS não devolve tarefas ao SAFRA"
     return ""
 
 

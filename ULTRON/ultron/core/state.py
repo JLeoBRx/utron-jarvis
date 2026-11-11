@@ -13,7 +13,7 @@ from typing import Any
 
 from .events import EventType
 
-# Estados de runtime (o que o JARVIS está fazendo agora). A HUD traduz cada um em
+# Estados de runtime (o que o SAFRA está fazendo agora). A HUD traduz cada um em
 # um comportamento visual; nenhum outro módulo inventa estados próprios.
 RUNTIME_STATES = (
     "BOOTING", "IDLE", "PERCEIVING", "CONTEXT", "DECIDING", "LISTENING", "THINKING", "PLANNING", "EXECUTING",
@@ -43,8 +43,8 @@ COGNITIVE_PHASES = ("", "ANALYZING", "CONNECTING", "EVALUATING", "PLANNING", "SE
 @dataclass
 class JarvisState:
     identity: dict = field(default_factory=dict)
-    persona: dict = field(default_factory=dict)     # JARVIS ou ULTRON (+ perfil ULTRON_OPERATOR) — Protocolo ULTRON
-    remote: dict = field(default_factory=dict)      # JARVIS WEB ORB: conexão com o gateway e dispositivos
+    persona: dict = field(default_factory=dict)     # SAFRA ou ULTRON (+ perfil ULTRON_OPERATOR) — Protocolo ULTRON
+    remote: dict = field(default_factory=dict)      # SAFRA WEB ORB: conexão com o gateway e dispositivos
     runtime_state: str = "BOOTING"
     activity: str = "IDLE"                     # contrato de atividade (derivado de runtime_state)
     runtime_reason: str = ""

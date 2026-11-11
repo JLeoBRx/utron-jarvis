@@ -1,9 +1,9 @@
-"""Painel de diagnóstico de voz do JARVIS (HUB principal).
+"""Painel de diagnóstico de voz do SAFRA (HUB principal).
 
 * lista os microfones (leitura em thread de trabalho) e permite escolher outro;
 * "TESTAR": as 8 etapas sem fala (inclui ida e volta pelo núcleo e a fala da resposta);
-* "TESTAR FALANDO": o usuário diz "Jarvis, que horas são?" e cada etapa é confirmada;
-* "CALIBRAR": aprende como o reconhecedor ouve "Jarvis" na voz do usuário;
+* "TESTAR FALANDO": o usuário diz "Safra, que horas são?" e cada etapa é confirmada;
+* "CALIBRAR": aprende como o reconhecedor ouve "Safra" na voz do usuário;
 * contadores ao vivo (blocos lidos, nível, ativações, entregas) só enquanto o painel está aberto.
 
 Nada aqui roda na thread da interface além de pintar: testes, listagem e calibração usam
@@ -42,7 +42,7 @@ class VoicePanel(QtWidgets.QWidget):
         self.devices.setMinimumWidth(360)
         refresh = self._button("ATUALIZAR", "Ler de novo a lista de microfones")
         refresh.clicked.connect(self.load_devices)
-        use = self._button("USAR ESTE", "Trocar o microfone do JARVIS para o selecionado", primary=True)
+        use = self._button("USAR ESTE", "Trocar o microfone do SAFRA para o selecionado", primary=True)
         use.clicked.connect(self._use_device)
         mic_row.addWidget(QtWidgets.QLabel("Microfone:"))
         mic_row.addWidget(self.devices, 1)
@@ -70,9 +70,9 @@ class VoicePanel(QtWidgets.QWidget):
         buttons = QtWidgets.QHBoxLayout()
         self.test = self._button("TESTAR", "As 8 etapas sem precisar falar", primary=True)
         self.test.clicked.connect(lambda: self.run_test(interactive=False))
-        self.speak = self._button("TESTAR FALANDO", "Diga \"Jarvis, que horas são?\" quando pedido")
+        self.speak = self._button("TESTAR FALANDO", "Diga \"Safra, que horas são?\" quando pedido")
         self.speak.clicked.connect(lambda: self.run_test(interactive=True))
-        self.calibrate = self._button("CALIBRAR", "Ensinar como o reconhecedor ouve \"Jarvis\" na sua voz")
+        self.calibrate = self._button("CALIBRAR", "Ensinar como o reconhecedor ouve \"Safra\" na sua voz")
         self.calibrate.clicked.connect(self.run_calibration)
         for button in (self.test, self.speak, self.calibrate):
             buttons.addWidget(button)

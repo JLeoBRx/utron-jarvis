@@ -1,4 +1,4 @@
-"""Persistência da TARDIS no MESMO banco do JARVIS (migração v5): tarefas e memória de projeto.
+"""Persistência da TARDIS no MESMO banco do SAFRA (migração v5): tarefas e memória de projeto.
 
 Textos que parecem segredo (senhas, tokens, cartões) são redigidos antes de gravar — a memória de
 projeto nunca guarda credenciais. Retenção das tarefas: as 2000 mais recentes.
@@ -73,10 +73,10 @@ class TardisStore:
         return [self._row(r) for r in rows]
 
     def interrupted(self) -> int:
-        """Tarefas que estavam na fila ou rodando quando o JARVIS fechou: viram CANCELLED (com o motivo)."""
+        """Tarefas que estavam na fila ou rodando quando o SAFRA fechou: viram CANCELLED (com o motivo)."""
         cursor = self.db.execute("UPDATE tardis_tasks SET state='CANCELLED', error=? WHERE state IN "
                                  "('QUEUED','RUNNING')",
-                                 (dumps({"code": "INTERRUPTED", "message": "o JARVIS foi encerrado antes do fim"}),))
+                                 (dumps({"code": "INTERRUPTED", "message": "o SAFRA foi encerrado antes do fim"}),))
         return max(0, cursor.rowcount or 0)
 
     # ------------------------------------------------------------ memória de projeto

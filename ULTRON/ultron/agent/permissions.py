@@ -3,7 +3,7 @@
 Cinco categorias:
 
 * ``consultar`` — leitura: estado, listas, buscas, diagnósticos, descoberta na rede, visão sem clique;
-* ``configurar`` — ajustes reversíveis do computador e do JARVIS: volume, brilho, rádio, microfone,
+* ``configurar`` — ajustes reversíveis do computador e do SAFRA: volume, brilho, rádio, microfone,
   preferências, automações, inventário da rede;
 * ``executar_programas`` — abrir/fechar programas e janelas, navegador, teclado e mouse, projetos de
   desenvolvimento e comandos do sistema (bloquear, desligar);

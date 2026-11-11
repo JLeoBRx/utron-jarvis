@@ -1,10 +1,10 @@
-"""Controle do processo do JARVIS pela linha de comando: ``--status`` e ``--stop``.
+"""Controle do processo do SAFRA pela linha de comando: ``--status`` e ``--stop``.
 
 * ao iniciar, a instância registra o PID em ``<dados>/jarvis.pid`` (e o apaga ao sair);
 * ``--stop`` não mata nada à força: cria ``<dados>/parar.solicitado``; a instância em execução
   verifica esse pedido a cada ~1,5 s e encerra do jeito normal (lembretes, banco e microfone
   fechados em ordem). Se ela não sair no prazo, o comando diz isso e sugere bandeja > Sair;
-* só um processo cujo comando é o do JARVIS (``main.py`` ou ``-m ultron``) é considerado.
+* só um processo cujo comando é o do SAFRA (``main.py`` ou ``-m ultron``) é considerado.
 """
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def _is_jarvis(pid: int) -> bool:
 
 
 def running_pid() -> int | None:
-    """PID da instância em execução, se houver (arquivo de PID + processo do JARVIS vivo)."""
+    """PID da instância em execução, se houver (arquivo de PID + processo do SAFRA vivo)."""
     try:
         pid = int(pid_path().read_text(encoding="ascii").strip())
     except (OSError, ValueError):
@@ -126,13 +126,13 @@ def stop(timeout: float = 15.0, *, sleep=time.sleep) -> tuple[bool, str]:
     pid = running_pid()
     if pid is None:
         clear_stop_request()
-        return True, "O JARVIS não está em execução."
+        return True, "O SAFRA não está em execução."
     request_stop()
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if running_pid() is None:
             clear_stop_request()
-            return True, f"JARVIS encerrado (processo {pid})."
+            return True, f"SAFRA encerrado (processo {pid})."
         sleep(0.3)
-    return False, (f"O JARVIS (processo {pid}) não encerrou em {timeout:.0f} s. Use o ícone da bandeja > Sair; "
+    return False, (f"O SAFRA (processo {pid}) não encerrou em {timeout:.0f} s. Use o ícone da bandeja > Sair; "
                    "se a janela não responder, finalize o processo pelo Gerenciador de Tarefas.")

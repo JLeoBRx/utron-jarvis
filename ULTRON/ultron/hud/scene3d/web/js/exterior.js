@@ -3,7 +3,7 @@
 // nas quatro faces, telhado em três degraus, lâmpada no topo, maçaneta e placa. Sem modelos de terceiros.
 //
 // A lâmpada e as janelas respondem ao estado REAL do motor da TARDIS (repouso, processando, consulta do
-// JARVIS, falha); as portas só abrem na transição JARVIS ⇄ TARDIS que o usuário pediu.
+// SAFRA, falha); as portas só abrem na transição SAFRA ⇄ TARDIS que o usuário pediu.
 import * as THREE from 'three';
 import { Batch, disposer, canvasTexture, glowMaterial, glowTexture, physical, textPlate } from './materials.js';
 
@@ -67,7 +67,7 @@ export class PoliceBox {
       g.fillStyle = '#1b2633'; g.textAlign = 'center';
       g.font = '700 34px Arial'; g.fillText('T.A.R.D.I.S.', w / 2, 72);
       g.font = '22px Arial';
-      ['SALA DE CONTROLE', 'ENTRADA PELO', 'PAINEL DO JARVIS', '—', 'PEDIDOS AVALIADOS', 'COM FONTES'].forEach((t, i) => g.fillText(t, w / 2, 120 + i * 32));
+      ['SALA DE CONTROLE', 'ENTRADA PELO', 'PAINEL DO SAFRA', '—', 'PEDIDOS AVALIADOS', 'COM FONTES'].forEach((t, i) => g.fillText(t, w / 2, 120 + i * 32));
     });
     const frost = canvasTexture(128, 128, (g, w, h) => {
       const r = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w * 0.7);
@@ -209,7 +209,7 @@ export class PoliceBox {
     this.spillMat.opacity = Math.min(1, this.open * 1.6);
     const active = this.mode === 'processando' || this.mode === 'jarvis' || this.mode === 'operacao' || (this.ultron || 0) > 0.5;
     const pulse = active ? 0.5 + 0.5 * Math.sin(time * (this.mode === 'jarvis' ? 4.2 : 2.6)) : 0;
-    const target = (this.ultron || 0) > 0.5 ? 0xff1f3d : this.mode === 'falha' ? 0xff6b5a : (this.mode === 'jarvis' ? 0x9fe8ff : 0xfff0d8);
+    const target = (this.ultron || 0) > 0.5 ? 0x8b5cf6 : this.mode === 'falha' ? 0xff7b1c : (this.mode === 'jarvis' ? 0xff8a94 : 0xfff0d8);
     this.lampColor.lerp(_c.set(target), 1 - Math.exp(-dt * 3));
     this.lampMat.emissive.copy(this.lampColor);
     this.lampMat.emissiveIntensity = 0.45 + (active ? 1.4 * pulse : 0) + (this.mode === 'falha' ? 0.5 : 0);

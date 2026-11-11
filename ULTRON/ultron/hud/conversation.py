@@ -1,12 +1,12 @@
-"""Conversa da página JARVIS — a INTERFACE DE INTERAÇÃO do JARVIS original, de volta.
+"""Conversa da página SAFRA — a INTERFACE DE INTERAÇÃO do JARVIS original, de volta.
 
 Como no original (jarvis_hud.py: conversa, STATUS/HORAS, PARAR, COPIAR RESPOSTA, LIMPAR, Ctrl+L):
 
-* cada mensagem com horário: ``[HH:MM] VOCÊ ▸``, ``[HH:MM] J.A.R.V.I.S. ▸`` e ``// sistema``;
+* cada mensagem com horário: ``[HH:MM] VOCÊ ▸``, ``[HH:MM] SAFRA ▸`` e ``// sistema``;
 * até 200 linhas com rolagem (as mais antigas saem);
 * STATUS ("status do sistema") e HORAS ("que horas são") enviam o pedido ao núcleo pelo mesmo caminho
   do teclado; PARAR cancela o que estiver em andamento (pedido, fala, autorização pendente);
-* COPIAR RESPOSTA copia a última resposta do JARVIS; LIMPAR (ou Ctrl+L) limpa só a tela — o histórico
+* COPIAR RESPOSTA copia a última resposta do SAFRA; LIMPAR (ou Ctrl+L) limpa só a tela — o histórico
   de atividades continua registrado.
 
 O painel só mostra o que chegou pelos eventos reais (USER_INPUT e RESPONSE_READY).
@@ -22,11 +22,11 @@ from . import theme
 
 MAX_LINES = 200
 SOURCES = {"voice": "voz", "text": "texto", "hud": "interface", "tardis": "TARDIS", "sistemas": "sistemas"}
-_DIM = "#7F9BB7"
-_USER = "#9FB9D3"
-_JARVIS = "#67F3FF"
-_ERROR = "#FF8A9A"
-_ALERT = "#FFC870"
+_DIM = "#A1A1AA"
+_USER = "#C4C4CC"
+_JARVIS = "#FF5C6C"
+_ERROR = "#FFA25C"
+_ALERT = "#FAD776"
 
 
 def _clock(at: float | None) -> str:
@@ -42,7 +42,7 @@ class ConversationPanel(QtWidgets.QFrame):
         super().__init__(parent)
         self.setObjectName("Conversation")
         self.setStyleSheet(theme.PANEL_STYLESHEET + """
-            QFrame#Conversation { background: rgba(5, 14, 28, 225); border-left: 1px solid rgba(0, 217, 255, 70); }
+            QFrame#Conversation { background: rgba(11, 11, 14, 225); border-left: 1px solid rgba(234, 40, 64, 70); }
             QTextBrowser#ConversationLog { background: transparent; border: none; font-size: 10pt; }
         """)
         self.last_response = ""
@@ -75,7 +75,7 @@ class ConversationPanel(QtWidgets.QFrame):
         self.time_button.clicked.connect(lambda: self.command.emit("que horas são"))
         self.stop_button = self._button("PARAR", "Cancela o pedido em andamento, a fala e a autorização pendente (Esc)")
         self.stop_button.clicked.connect(self.stop_requested)
-        self.copy_button = self._button("COPIAR RESPOSTA", "Copiar a última resposta do JARVIS")
+        self.copy_button = self._button("COPIAR RESPOSTA", "Copiar a última resposta do SAFRA")
         self.copy_button.clicked.connect(self.copy_last)
         self.clear_button = self._button("LIMPAR", "Limpar a conversa da tela (Ctrl+L); o histórico de atividades fica")
         self.clear_button.clicked.connect(self.clear)
@@ -118,11 +118,11 @@ class ConversationPanel(QtWidgets.QFrame):
     def add_jarvis(self, text: str, *, error: bool = False, at: float | None = None, source: str = "") -> None:
         """``source``: a procedência ("fonte: memória pessoal", "fonte: inferência — modelo local ...")."""
         self.last_response = text
-        color = _ERROR if error else "#DCEEFF"
+        color = _ERROR if error else "#F4F4F5"
         origin = (f'<br><span style="color:{_DIM}; font-size:small">&nbsp;&nbsp;{html.escape(source)}</span>'
                   if source else "")
         self._append(f'<span style="color:{_DIM}">[{_clock(at)}]</span> '
-                     f'<span style="color:{_JARVIS}"><b>J.A.R.V.I.S.</b> ▸</span> '
+                     f'<span style="color:{_JARVIS}"><b>SAFRA</b> ▸</span> '
                      f'<span style="color:{color}">{html.escape(text)}</span>{origin}')
 
     def add_system(self, text: str, *, alert: bool = False, at: float | None = None) -> None:

@@ -65,6 +65,23 @@ class FakeSpeaker:
 
 
 class WakeWordTest(unittest.TestCase):
+    def test_safra_is_the_wake_word_and_jarvis_still_works(self):
+        d = WakeWordDetector()
+        self.assertEqual(d.detect("Safra, abra o chrome").command, "abra o chrome")
+        self.assertEqual(d.detect("Safra.").strength, "strong")
+        self.assertEqual(d.detect("ei safra que horas são").command, "que horas são")
+        self.assertEqual(d.detect("Jarvis, que horas são").command, "que horas são", "compatibilidade")
+        # "safra" é palavra comum: no meio da frase nunca ativa
+        for text in ("a safra de soja foi boa", "a melhor safra do ano", "vendemos a safra inteira"):
+            self.assertFalse(d.detect(text).detected, text)
+
+    def test_calibration_never_learns_common_words_near_safra(self):
+        from ultron.voice.wake_word import learn_variants
+        learned = learn_variants(["sobra", "cifra", "safra", "safras", "zafra"], known=("safra",))
+        self.assertIn("safras", learned)
+        for word in ("sobra", "cifra", "zafra"):
+            self.assertNotIn(word, learned)
+
     def test_strong_and_weak_forms(self):
         d = WakeWordDetector()                         # formas medidas do JARVIS
         self.assertEqual(d.detect("Jarvis, abra o chrome").command, "abra o chrome")

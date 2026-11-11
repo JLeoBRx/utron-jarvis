@@ -1,4 +1,4 @@
-"""Skills de áudio: volume, controle de mídia e a própria voz do JARVIS (diagnóstico,
+"""Skills de áudio: volume, controle de mídia e a própria voz do SAFRA (diagnóstico,
 lista e escolha de microfone)."""
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def _core(ctx):
 
 class VoiceDiagnose(Skill):
     name = "voice.diagnose"
-    description = ("Diagnosticar a voz do JARVIS: microfone detectado e selecionado, captura, reconhecimento de fala, "
+    description = ("Diagnosticar a voz do SAFRA: microfone detectado e selecionado, captura, reconhecimento de fala, "
                    "modelo de português e saída de voz.")
     category = "audio"
     inputs = schema({})
@@ -114,7 +114,7 @@ class VoiceDiagnose(Skill):
 
 class ListMicrophones(Skill):
     name = "voice.list_mics"
-    description = "Listar os microfones disponíveis e qual o JARVIS está usando."
+    description = "Listar os microfones disponíveis e qual o SAFRA está usando."
     category = "audio"
     inputs = schema({})
     risk = Risk.NONE
@@ -139,7 +139,7 @@ class ListMicrophones(Skill):
 
 class SelectMicrophone(Skill):
     name = "voice.select_mic"
-    description = "Escolher o microfone do JARVIS pelo número da lista ou por parte do nome."
+    description = "Escolher o microfone do SAFRA pelo número da lista ou por parte do nome."
     category = "audio"
     inputs = schema({"device": string(120)}, ("device",))
     risk = Risk.LOW

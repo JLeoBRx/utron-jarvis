@@ -15,7 +15,7 @@ from . import app_index
 
 IS_WINDOWS = sys.platform == "win32"
 
-# Catálogo preservado do JARVIS (nome falado -> comando e processos esperados).
+# Catálogo preservado do SAFRA (nome falado -> comando e processos esperados).
 KNOWN_APPS: dict[str, dict] = {
     "calculadora": {"label": "Calculadora", "command": "calc", "process": ["CalculatorApp.exe", "calc.exe",
                                                                           "gnome-calculator", "kcalc"]},

@@ -9,7 +9,7 @@
 // * sobrancelhas: três traços por lado presos a ossos próprios (expressões: erguer, franzir).
 //
 // Os materiais vêm de materials.js (superfície sólida com luz; fios). A cor de cada peça tinge-se pelo estado do
-// JARVIS — e muda para grafite/vermelho no Protocolo ULTRON (avatar.js chama ``dressUltron``).
+// SAFRA — e muda para grafite/vermelho no Protocolo ULTRON (avatar.js chama ``dressUltron``).
 import * as THREE from 'three';
 import { holoSolidMaterial, hairMaterial, holoLineMaterial, disposer } from './materials.js';
 
@@ -19,10 +19,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const gauss = (x, mu, s) => Math.exp(-(((x - mu) / s) ** 2));
 
 export const CLOTH = {
-  jacket: { base: 0x2f5f84, ultron: 0x3a3d45 },
-  pants: { base: 0x1d3a58, ultron: 0x26282e },
-  shoes: { base: 0x14222f, ultron: 0x18191d },
-  hair: { base: 0x34648a, tip: 0xa8ecff },
+  jacket: { base: 0x5a2a32, ultron: 0x3a3d45 },
+  pants: { base: 0x2c1c21, ultron: 0x26282e },
+  shoes: { base: 0x1a1416, ultron: 0x18191d },
+  hair: { base: 0x5a2630, tip: 0xffc2c8 },
 };
 
 /** Malha sólida + costuras de uma peça a partir de um BodyGeometry já preenchido. */
@@ -299,7 +299,7 @@ export function buildBrows(rig, u, { headRadius, HEAD_SCALE, BodyGeometry }) {
     }
     geo.grid(rows, { closed: false, ringEvery: 999, meridianEvery: 999, pointEvery: 999 });
   }
-  const material = holoSolidMaterial(u, { base: 0x17304a, tint: 0.04, gloss: 0.2, opacity: 0.98, rim: 0.15,
+  const material = holoSolidMaterial(u, { base: 0x2a1218, tint: 0.04, gloss: 0.2, opacity: 0.98, rim: 0.15,
                                           rimPower: 3.0, glow: 0.0 });
   const piece = solidPiece(geo, material, holoLineMaterial(u, { opacity: 0.0, skinned: true }));
   piece.mesh.renderOrder = 5;

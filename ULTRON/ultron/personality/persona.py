@@ -1,4 +1,4 @@
-"""Persona ativa do assistente: JARVIS (padrão) ou ULTRON (identidade alternativa do Protocolo ULTRON).
+"""Persona ativa do assistente: SAFRA (padrão) ou ULTRON (identidade alternativa do Protocolo ULTRON).
 
 É UM processo, UM NeuralCore, UMA memória: a persona só muda a apresentação (aparência, voz, tom das respostas)
 e, com o perfil ``ULTRON_OPERATOR``, a POLÍTICA de autonomia aplicada ao MESMO executor (ver
@@ -29,7 +29,7 @@ class Persona:
     @property
     def label(self) -> str:
         if not self.ultron:
-            return "J.A.R.V.I.S."
+            return "SAFRA"
         return f"U.L.T.R.O.N. · {OPERATOR_PROFILE}" if self.operator else "U.L.T.R.O.N."
 
     def to_dict(self) -> dict:

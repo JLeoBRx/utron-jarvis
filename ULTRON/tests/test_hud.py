@@ -401,7 +401,7 @@ class RenderTest(unittest.TestCase):
         painter = QtGui.QPainter(image)
         orb.render(painter, QtCore.QPoint(0, 0))
         painter.end()
-        lit = sum(image.pixelColor(x, y).green() > 90 for x in range(30, 74, 2) for y in range(30, 74, 2))
+        lit = sum(max(image.pixelColor(x, y).getRgb()[:3]) > 90 for x in range(30, 74, 2) for y in range(30, 74, 2))
         self.assertGreater(lit, 5, "o cérebro em miniatura aparece no orbe")
         self.assertTrue(math.isfinite(scene.camera.angle))
 

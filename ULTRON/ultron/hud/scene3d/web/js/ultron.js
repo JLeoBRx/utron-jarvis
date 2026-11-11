@@ -1,10 +1,11 @@
 // Protocolo ULTRON na cena: transição cinematográfica de identidade (a parte visual; voz, tom e o perfil
 // ULTRON_OPERATOR ficam no núcleo, em Python).
 //
-// Entra em ~2,5 s (interferência, cores migrando para vermelho/vinho/metal, postura do holograma mais dura,
-// olhos vermelhos, ORBE vermelho, TARDIS e convés em alerta) e sai em ~1,2 s. As mensagens são de um
-// personagem e vêm junto do rótulo honesto enviado pelo Python (identidade apenas, ou operador ativo); o botão
-// RESTAURAR JARVIS (e Esc) pede ao Python o fim do evento. Nada aqui fala com o sistema operacional.
+// Entra em ~2,5 s (interferência, cores migrando do vermelho SAFRA para violeta e cromo, postura do holograma
+// mais dura, olhos violeta, ORBE violeta, TARDIS e convés em alerta) e sai em ~1,2 s. O violeta é exclusivo do
+// ULTRON — o vermelho pertence ao SAFRA. As mensagens são de um personagem e vêm junto do rótulo honesto enviado
+// pelo Python (identidade apenas, ou operador ativo); o botão RESTAURAR SAFRA (e Esc) pede ao Python o fim do
+// evento. Nada aqui fala com o sistema operacional.
 import * as THREE from 'three';
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -56,6 +57,6 @@ export class UltronTheme {
   }
 }
 
-export const ULTRON_RED = new THREE.Color(0xff1f3d);
-export const ULTRON_GLOW = new THREE.Color(0xff5a6b);
-export const ULTRON_WINE = new THREE.Color(0x4a0712);
+export const ULTRON_COLOR = new THREE.Color(0x8b5cf6);       // violeta elétrico (tokens: ultron)
+export const ULTRON_GLOW = new THREE.Color(0xb794ff);        // violeta claro (tokens: ultron_glow)
+export const ULTRON_DEEP = new THREE.Color(0x1c0f33);        // (tokens: ultron_deep)

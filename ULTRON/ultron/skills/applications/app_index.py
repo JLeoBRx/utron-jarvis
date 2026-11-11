@@ -1,6 +1,6 @@
 """Índice dos programas instalados (menu Iniciar do Windows).
 
-Preservado do JARVIS (onde estava escrito mas nunca conectado). O que o usuário ou o modelo
+Preservado do SAFRA (onde estava escrito mas nunca conectado). O que o usuário ou o modelo
 fornecem é apenas um NOME comparado com o índice; nunca vira comando — o programa é aberto
 pelo atalho/AppID que já estava no índice.
 """

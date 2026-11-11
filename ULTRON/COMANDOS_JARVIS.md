@@ -83,7 +83,7 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
 | `diagnostics.audit` | Ler as últimas entradas do registro de auditoria local (ações executadas e verificadas). | nenhum | consultar | sim | — |
-| `diagnostics.health` | Saúde do JARVIS: CPU, RAM, GPU, disco, Ollama, voz, visão, rede, memória e HUD. | nenhum | consultar | sim | — |
+| `diagnostics.health` | Saúde do SAFRA: CPU, RAM, GPU, disco, Ollama, voz, visão, rede, memória e HUD. | nenhum | consultar | sim | — |
 | `diagnostics.processes` | Listar os processos que mais consomem CPU ou memória. | nenhum | consultar | sim | — |
 | `diagnostics.system_report` | Relatório do computador: CPU, RAM, GPU, discos, bateria e processos mais pesados. | nenhum | consultar | sim | — |
 
@@ -117,7 +117,7 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
-| `memory.backup` | Fazer agora um backup do banco do JARVIS (memórias, memória pessoal, lembretes, grafo e inventário da rede). | baixo | modificar arquivos e dados pessoais | sim | — |
+| `memory.backup` | Fazer agora um backup do banco do SAFRA (memórias, memória pessoal, lembretes, grafo e inventário da rede). | baixo | modificar arquivos e dados pessoais | sim | — |
 | `memory.forget` | Esquecer um fato registrado. | alto | apagar dados | sim | — |
 | `memory.profile` | Ler o perfil e as preferências do usuário (nome, tratamento, cidade, idioma, editor...). | nenhum | consultar | sim | — |
 | `memory.recall` | Consultar a memória (fatos, experiências, procedimentos e conceitos). | nenhum | consultar | sim | — |
@@ -154,7 +154,7 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
-| `jarvis.shutdown` | Encerrar o JARVIS (fecha a interface, a voz e os serviços em ordem). | alto | executar programas e comandos do sistema | não | — |
+| `jarvis.shutdown` | Encerrar o SAFRA (fecha a interface, a voz e os serviços em ordem). | alto | executar programas e comandos do sistema | não | — |
 
 ## Periféricos
 
@@ -192,7 +192,7 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
-| `tardis.consult` | Consultar a TARDIS, o segundo cérebro do JARVIS: consulta contextual na memória (kind consulta, com question), planejamento de um objetivo (planejamento, com goal), organização da memória pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do sistema (telemetria), diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto (projeto). Devolve o resultado com as fontes; não executa ações. | nenhum | consultar | sim | — |
+| `tardis.consult` | Consultar a TARDIS, o segundo cérebro do SAFRA: consulta contextual na memória (kind consulta, com question), planejamento de um objetivo (planejamento, com goal), organização da memória pessoal (organizacao), rotinas e lembretes (rotinas), telemetria do sistema (telemetria), diagnóstico do sistema (diagnostico), estado dos módulos (coordenacao) ou memória de projeto (projeto). Devolve o resultado com as fontes; não executa ações. | nenhum | consultar | sim | — |
 | `tardis.note` | Gravar na memória de projeto da TARDIS uma nota, uma decisão ou um parâmetro (ex.: 'decisão: usar o perfil HÍBRIDO no projeto Phoenix'). Nunca senhas, tokens ou dados sensíveis. | baixo | modificar arquivos e dados pessoais | sim | — |
 
 ## Teclado e mouse
@@ -220,6 +220,6 @@ necessários (sem eles a ação responde que está indisponível, não finge).
 
 | Ação | O que faz | Risco | Permissão | Modelo | Requer |
 |---|---|---|---|---|---|
-| `voice.diagnose` | Diagnosticar a voz do JARVIS: microfone detectado e selecionado, captura, reconhecimento de fala, modelo de português e saída de voz. | nenhum | consultar | sim | — |
-| `voice.list_mics` | Listar os microfones disponíveis e qual o JARVIS está usando. | nenhum | consultar | sim | — |
-| `voice.select_mic` | Escolher o microfone do JARVIS pelo número da lista ou por parte do nome. | baixo | alterar configurações | sim | — |
+| `voice.diagnose` | Diagnosticar a voz do SAFRA: microfone detectado e selecionado, captura, reconhecimento de fala, modelo de português e saída de voz. | nenhum | consultar | sim | — |
+| `voice.list_mics` | Listar os microfones disponíveis e qual o SAFRA está usando. | nenhum | consultar | sim | — |
+| `voice.select_mic` | Escolher o microfone do SAFRA pelo número da lista ou por parte do nome. | baixo | alterar configurações | sim | — |

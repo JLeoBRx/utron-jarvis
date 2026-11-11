@@ -117,13 +117,13 @@ class Device:
                 if not value]
 
     def administration(self) -> str:
-        """Descobrir não é administrar: o que o JARVIS pode (e não pode) fazer com este aparelho."""
+        """Descobrir não é administrar: o que o SAFRA pode (e não pode) fazer com este aparelho."""
         if self.observation() == "self":
             return "Este computador: administrado pela sua própria conta do Windows."
         if self.is_gateway:
             return ("Gateway/roteador: a administração é só pela página oficial dele, aberta por você e com as SUAS "
-                    "credenciais — o JARVIS não guarda, não testa e não adivinha senhas.")
-        return "Descoberto, não administrado: o JARVIS não acessa, não controla e não altera este aparelho."
+                    "credenciais — o SAFRA não guarda, não testa e não adivinha senhas.")
+        return "Descoberto, não administrado: o SAFRA não acessa, não controla e não altera este aparelho."
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -425,8 +425,8 @@ class NetworkInventory:
         lines += ["", "> Estados são observações: *presente* = visto na última varredura; *desconhecido* = não visto "
                       "uma vez ou visto em outra rede; *ausente* = não visto em varreduras seguidas. A presença de um "
                       "aparelho não identifica quem o usa. O inventário pode estar incompleto.", "",
-                  "> **Descobrir não é administrar.** Estar nesta lista não dá ao JARVIS nem a ninguém permissão para "
-                  "acessar ou controlar um aparelho; o JARVIS não acessa, não controla e não altera dispositivos de "
+                  "> **Descobrir não é administrar.** Estar nesta lista não dá ao SAFRA nem a ninguém permissão para "
+                  "acessar ou controlar um aparelho; o SAFRA não acessa, não controla e não altera dispositivos de "
                   "terceiros.", "",
                   "| Nome | IP | MAC | Fabricante | Tipo | Observação | Gateway | Confiança | Origem | Primeira vez "
                   "| Última vez |",

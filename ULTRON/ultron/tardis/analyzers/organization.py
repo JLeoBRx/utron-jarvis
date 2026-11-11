@@ -2,7 +2,7 @@
 
 Organização: atrasados, conflitos de agenda, duplicados (mesmo título normalizado), tarefas sem data e
 registros inferidos aguardando revisão. Para duplicados, PROPÕE arquivar as cópias mais novas (ação
-reversível que o JARVIS só executa com confirmação). Rotinas: lembretes futuros, recorrências e
+reversível que o SAFRA só executa com confirmação). Rotinas: lembretes futuros, recorrências e
 automações configuradas.
 """
 from __future__ import annotations

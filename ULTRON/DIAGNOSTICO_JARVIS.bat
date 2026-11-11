@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 <nul >nul
-title JARVIS - Diagnostico
+title SAFRA - Diagnostico
 cd /d "%~dp0"
 
 rem Modo de diagnostico: mostra o que esta instalado, o que falta e por que (sem alterar nada).

@@ -1,6 +1,6 @@
 """Skills do próprio assistente — recuperadas do JARVIS original.
 
-* ``jarvis.shutdown``: encerrar o JARVIS (no original, "encerrar jarvis" só respondia "Encerrando,
+* ``jarvis.shutdown``: encerrar o SAFRA (no original, "encerrar jarvis" só respondia "Encerrando,
   senhor."); passa pela confirmação do executor, como toda ação de risco alto.
 * ``memory.session_note`` / ``memory.profile``: ferramentas ``add_session_note`` e ``get_profile``.
 * ``diagnostics.audit``: ferramenta ``read_audit`` (o registro já existia, só não era legível pelo
@@ -16,7 +16,7 @@ from ..base import Risk, Skill, SkillResult, VerificationResult, check, schema, 
 
 class Shutdown(Skill):
     name = "jarvis.shutdown"
-    description = "Encerrar o JARVIS (fecha a interface, a voz e os serviços em ordem)."
+    description = "Encerrar o SAFRA (fecha a interface, a voz e os serviços em ordem)."
     category = "assistant"
     inputs = schema({})
     risk = Risk.HIGH

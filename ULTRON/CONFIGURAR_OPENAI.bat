@@ -1,5 +1,5 @@
 @echo off
-rem JARVIS - configurar a OpenAI (opcional; o JARVIS original tinha configurar_openai.bat)
+rem SAFRA - configurar a OpenAI (opcional; o JARVIS original tinha configurar_openai.bat)
 rem A chave fica no Gerenciador de Credenciais do Windows, nunca em arquivo de configuracao.
 setlocal
 cd /d "%~dp0"
@@ -9,7 +9,7 @@ if not exist "%VPY%" (
     pause
     exit /b 1
 )
-echo JARVIS - configurar a OpenAI
+echo SAFRA - configurar a OpenAI
 echo.
 echo 1. Chave da OpenAI ^(guardada no Gerenciador de Credenciais do Windows^)
 "%VPY%" main.py --set-openai-key

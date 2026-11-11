@@ -4,12 +4,12 @@
   com o prazo do tipo — se travar, a tarefa falha por TIMEOUT e a fila segue (a thread é avisada para
   parar na próxima verificação). Cancelar uma tarefa na fila a remove; em execução, encerra na hora.
 * A cadeia de delegação é verificada na entrada (``check_chain``): ciclo ou saltos demais → REJECTED.
-* Cada tarefa é gravada no banco do JARVIS e aparece no histórico de atividades (tipo "tardis").
+* Cada tarefa é gravada no banco do SAFRA e aparece no histórico de atividades (tipo "tardis").
 * Eventos: TARDIS_TASK_QUEUED/STARTED/FINISHED/FAILED/REJECTED/CANCELLED e TARDIS_STATE (modo do rotor).
 
-O modo do rotor reflete o estado REAL: ``jarvis`` (tarefa pedida pelo JARVIS em execução),
+O modo do rotor reflete o estado REAL: ``jarvis`` (tarefa pedida pelo SAFRA em execução),
 ``processando`` (outra tarefa em execução ou na fila), ``operacao`` (backup, exportação ou escrita que o
-JARVIS está executando), ``falha`` (uma tarefa falhou há menos de ``FAULT_WINDOW`` s) e ``repouso``.
+SAFRA está executando), ``falha`` (uma tarefa falhou há menos de ``FAULT_WINDOW`` s) e ``repouso``.
 """
 from __future__ import annotations
 
@@ -33,14 +33,14 @@ FAULT_WINDOW = 8.0                    # segundos com o anel de falha aceso depoi
 GRACE = 2.0                           # tolerância além do prazo antes de abandonar uma análise travada
 RECENT = 40
 MODE_LABELS = {"repouso": "repouso", "processando": "processando", "operacao": "operação",
-               "jarvis": "consulta do JARVIS", "falha": "falha"}
+               "jarvis": "consulta do SAFRA", "falha": "falha"}
 ACTIVITY_STATES = {"QUEUED": "recebido", "RUNNING": "executando", "DONE": "concluido", "FAILED": "falhou",
                    "REJECTED": "recusado", "CANCELLED": "cancelado"}
 ACTIVITY_ORIGINS = {"jarvis": "core", "usuario": "user", "tardis": "tardis", "agendador": "automation"}
-ORIGIN_LABELS = {"jarvis": "JARVIS", "usuario": "usuário", "tardis": "TARDIS", "agendador": "agendador"}
+ORIGIN_LABELS = {"jarvis": "SAFRA", "usuario": "usuário", "tardis": "TARDIS", "agendador": "agendador"}
 FINAL_EVENTS = {"DONE": EventType.TARDIS_TASK_FINISHED, "FAILED": EventType.TARDIS_TASK_FAILED,
                 "REJECTED": EventType.TARDIS_TASK_REJECTED, "CANCELLED": EventType.TARDIS_TASK_CANCELLED}
-# skills que o JARVIS executa e que acendem o modo "operação" no rotor (dados sendo gravados ou exportados)
+# skills que o SAFRA executa e que acendem o modo "operação" no rotor (dados sendo gravados ou exportados)
 OPERATION_SKILLS = frozenset({"memory.backup", "secondbrain.export", "network.export", "secondbrain.empty_trash",
                               "activity.clear", "fs.copy", "fs.move", "fs.delete", "fs.write_text", "fs.edit_text",
                               "fs.create_file", "fs.create_folder", "dev.install_dependency", "dev.create_venv"})
@@ -120,9 +120,9 @@ class TardisEngine:
             running = self._running
             self._wake.notify_all()
         for envelope in pending:
-            self._final(envelope, "CANCELLED", error={"code": "SHUTDOWN", "message": "o JARVIS foi encerrado"})
+            self._final(envelope, "CANCELLED", error={"code": "SHUTDOWN", "message": "o SAFRA foi encerrado"})
         if running is not None:
-            running.error = {"code": "SHUTDOWN", "message": "o JARVIS foi encerrado"}
+            running.error = {"code": "SHUTDOWN", "message": "o SAFRA foi encerrado"}
             self._cancels.get(running.id, threading.Event()).set()
         if self._thread is not None:
             self._thread.join(timeout=3.0)
@@ -166,8 +166,8 @@ class TardisEngine:
             if not stopping:
                 self._queue.append(envelope)
                 self._wake.notify_all()
-        if stopping:                                        # o JARVIS fechou enquanto a tarefa entrava
-            self._final(envelope, "CANCELLED", error={"code": "SHUTDOWN", "message": "o JARVIS foi encerrado"})
+        if stopping:                                        # o SAFRA fechou enquanto a tarefa entrava
+            self._final(envelope, "CANCELLED", error={"code": "SHUTDOWN", "message": "o SAFRA foi encerrado"})
             return envelope
         self._publish_state()
         return envelope
@@ -238,7 +238,7 @@ class TardisEngine:
                                   result=f"nota #{note_id} gravada", ref=f"nota:{note_id}")
         return note_id
 
-    # ------------------------------------------------------------ operações do JARVIS (modo do rotor)
+    # ------------------------------------------------------------ operações do SAFRA (modo do rotor)
     def begin_operation(self, key: str, label: str) -> None:
         with self._lock:
             self._operations[key] = label

@@ -1,9 +1,9 @@
-"""Modo console do JARVIS (``START_JARVIS.bat --console``).
+"""Modo console do SAFRA (``START_JARVIS.bat --console``).
 
 O MESMO ``NeuralCore`` da interface gráfica — mesmo banco, configurações, memória pessoal e de projetos,
 TARDIS, permissões, autorizações e executor —, só que conversando pelo terminal. Tudo o que é digitado entra
 por ``core.submit`` como na barra de pedidos da janela: "sim"/"não" respondem às confirmações, "cancelar" ou
-"pare" interrompem, e o resto vira pedido. A voz funciona quando disponível (diga "Jarvis"). Cada resposta é
+"pare" interrompem, e o resto vira pedido. A voz funciona quando disponível (diga "Safra"). Cada resposta é
 esperada antes do próximo prompt, para a conversa não se misturar; avisos que chegam sozinhos (lembretes)
 aparecem quando chegam.
 """
@@ -64,9 +64,9 @@ class Console:
         if not text:
             return
         if payload.get("partial"):
-            self.say(f"JARVIS … {text}")
+            self.say(f"SAFRA … {text}")
             return
-        self.say(f"JARVIS > {text}")
+        self.say(f"SAFRA > {text}")
         from .cognition.provenance import line
         source = line(payload.get("provenance") or {})
         if source:
@@ -89,10 +89,10 @@ class Console:
         if payload.get("source") == "voice":           # o que a voz entendeu aparece como pedido
             self.say(f"{self.name} (voz) > {payload.get('text', '')}")
 
-    def _on_shutdown(self, _event) -> None:           # "encerre o JARVIS" (o executor já confirmou)
+    def _on_shutdown(self, _event) -> None:           # "encerre o SAFRA" (o executor já confirmou)
         def finish() -> None:
             time.sleep(1.0)                           # "Encerrando, senhor." chega antes
-            self._close("encerramento pedido ao JARVIS")
+            self._close("encerramento pedido ao SAFRA")
             os._exit(0)
 
         threading.Thread(target=finish, name="ultron-console-exit", daemon=True).start()
@@ -121,7 +121,7 @@ class Console:
                        else f"COM FALHA — {memory.detail}")
         tardis = core.lifecycle.health_of("tardis")
         tardis_text = "DISPONÍVEL" if tardis.status in ("OK", "UNKNOWN") else f"{tardis.status} — {tardis.detail}"
-        return [LINE, f"       J.A.R.V.I.S. {'.'.join(__version__.split('.')[:2])}", "       CONSOLE INTERFACE", LINE,
+        return [LINE, f"       SAFRA {'.'.join(__version__.split('.')[:2])}", "       CONSOLE INTERFACE", LINE,
                 "", f"Sistema: {system}", f"Modelo: {model}", f"Memória: {memory_text}", f"TARDIS: {tardis_text}",
                 f"Voz: {self.voice_text()}", ""]
 
@@ -133,9 +133,9 @@ class Console:
         if core.privacy_shield:
             return "MICROFONE FECHADO (modo privacidade)"
         if voice.stt is not None and voice.capturing:
-            return 'DISPONÍVEL — diga "Jarvis" e o pedido'
+            return 'DISPONÍVEL — diga "Safra" e o pedido'
         reason = voice.stt_reason or voice.reason or "ainda carregando"
-        speaker = "a fala do JARVIS continua" if getattr(core, "voice_output_ready", False) else "respostas só em texto"
+        speaker = "a fala do SAFRA continua" if getattr(core, "voice_output_ready", False) else "respostas só em texto"
         return f"INDISPONÍVEL para ouvir ({reason}); {speaker}; digite os pedidos"
 
     def _wait_voice(self) -> None:
@@ -163,7 +163,7 @@ class Console:
                       bus.subscribe(EventType.USER_INPUT, self._on_input, name="console.input"),
                       bus.subscribe(EventType.SHUTDOWN_REQUESTED, self._on_shutdown, name="console.shutdown")]
         if boot and not core.booted:
-            self.say("Iniciando o JARVIS…")
+            self.say("Iniciando o SAFRA…")
             core.boot(on_progress=lambda name, status: self.say(f"  componente {name}: FALHOU (detalhes no log)")
                       if status == "FAILED" else None)
         self._wait_voice()
@@ -174,7 +174,7 @@ class Console:
         self.name = " ".join(str(name).split()).upper() if name else "VOCÊ"
         for row in self.banner():
             self.say(row)
-        self.say('JARVIS aguardando instruções. ("sair" encerra · "cancelar" ou Ctrl+C interrompe · '
+        self.say('SAFRA aguardando instruções. ("sair" encerra · "cancelar" ou Ctrl+C interrompe · '
                  '"sim"/"não" respondem às confirmações)')
         self.say()
         self._watch_stop()
@@ -248,7 +248,7 @@ class Console:
             self._at_prompt = False
         if not self.core.booted:
             return
-        self._write("Encerrando o JARVIS (memória, lembretes e voz fechados em ordem)…")
+        self._write("Encerrando o SAFRA (memória, lembretes e voz fechados em ordem)…")
         log.info("console: encerrando (%s)", reason)
         for sub in self._subs:
             try:

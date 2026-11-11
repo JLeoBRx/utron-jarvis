@@ -86,6 +86,60 @@ Tabela P1–P12 em `AUDITORIA_INICIAL.md` §10. Os de maior impacto para o TCC:
 * Decisões: título revisado sem robótica; hipótese com quatro condições verificáveis (H1–H4) e critério
   de decisão; congelamento de funcionalidades em maio de 2027.
 
+### Etapa 3 — identidade SAFRA
+
+**O que mudou**
+
+| Área | Mudança | Arquivos principais |
+|---|---|---|
+| Nome visível | "JARVIS" → "SAFRA" em textos da interface, voz, console, diagnóstico, mensagens de erro, prompt de identidade, site da ORBE, scripts `.bat` (só os textos), manual e README | 133 módulos (texto), `README_JARVIS.md`, `../README.md`, `*.bat` |
+| Versão | 2.0.0 → **3.0.0** | `ultron/__init__.py` |
+| Paleta | azul/ciano → vermelho SAFRA, bordô, preto, grafite; âmbar (atenção), laranja (falha); violeta e cromo só no ULTRON | `hud/design/tokens.json`, `hud/palette.py`, `css/tokens.css` (gerado) |
+| Qt | folhas de estilo **geradas da paleta** (antes eram cores literais); cantos retos, filete vermelho nas abas | `hud/theme.py`, 9 módulos recoloridos |
+| Cena 3D | holograma, roupas, cabelo, ORBE, piso, luzes, telas da TARDIS e camada de interface em vermelho; cabine externa **azul preservada** | `web/js/*.js`, `web/css/scene.css` |
+| Protocolo ULTRON | vermelho → violeta e cromo (para continuar distinguível) | `ultron.js`, `theme.ULTRON_SWAPS`, `controller.py` |
+| Ativação por voz | "safra" passa a ser a primeira palavra; "jarvis" continua aceita; calibração aceita as duas e recusa palavras comuns próximas ("sobra", "cifra"…) | `voice/wake_word.py`, `config/settings.py`, `cognition/intent_engine.py` |
+| Configurações | migração **v2 → v3** passo a passo, com cópia `settings.jarvis-backup.json`; preferências pessoais intactas | `config/settings.py` |
+| Frases de comando | "restaurar SAFRA", "encerrar o SAFRA", "status do SAFRA"… somadas às antigas | `cognition/intent_engine.py` |
+| Atalhos | `START_SAFRA.bat`, `INSTALL_SAFRA.bat`, `ATUALIZAR_SAFRA.bat`, `DIAGNOSTICO_SAFRA.bat` chamam os scripts de nome antigo | novos |
+| Variáveis de ambiente | `SAFRA_<CAMPO>` e `SAFRA_DATA_DIR` aceitas, além de `JARVIS_*` e `ULTRON_*` | `config/settings.py`, `config/paths.py` |
+| Design system | documento reescrito para o SAFRA, com contrastes medidos | `DESIGN_SYSTEM.md` |
+| Testes | +3 testes (palavra de ativação "Safra" e compatibilidade; calibração; migração v2→v3); expectativas de texto atualizadas | `tests/test_voice.py`, `tests/test_jarvis_voice.py`, outros |
+
+**Decisões**
+
+| ID | Decisão | Justificativa |
+|---|---|---|
+| D1 | Manter identificadores internos: pasta `ULTRON/`, pacote `ultron`, dados `%LOCALAPPDATA%\ULTRON`, scripts `*_JARVIS.bat`, serviço "JARVIS" no cofre de credenciais, entrada "JARVIS" do início automático, pasta `Imagens\JARVIS`, pasta `JARVIS/` do pacote ZIP, objeto `window.JARVIS` da ponte com a cena 3D, cookies da web | mudar qualquer um deles quebra instalações, chaves salvas, atalhos ou a comunicação entre Python e a página (requisito RT06) |
+| D2 | Vermelho primário `#EA2840`, não `#E5233A` | o primeiro candidato dava contraste 4,44:1 sobre o fundo; o escolhido dá 4,67:1 (WCAG AA ≥ 4,5:1) |
+| D3 | ULTRON em violeta e cromo | com o SAFRA vermelho, a assinatura vermelha do ULTRON deixaria as duas identidades indistinguíveis |
+| D4 | Atenção em âmbar e falha em laranja | numa interface vermelha, o vermelho não pode significar erro; estados continuam com cor **e** texto |
+| D5 | Nome escrito "SAFRA", sem pontos, e subtítulo "PLATAFORMA INTELIGENTE LOCAL" | "S.A.F.R.A." sugere uma sigla que não foi definida; o subtítulo antigo era a expansão de "J.A.R.V.I.S." |
+| D6 | "safra" como palavra de ativação e "jarvis" mantida | "jarvis" não está no vocabulário do reconhecedor; "safra" está (modelo grande). O custo é uma palavra comum: só vale no início da frase. Efeito medido na etapa 4 |
+| D7 | Cabine externa da TARDIS continua azul; interior com energia vermelha | preservar a identidade da nave pedida pelo autor |
+
+**Problemas encontrados durante a etapa (e como foram detectados)**
+
+A troca de nome foi feita com um script que altera só literais de texto e comentários, protegendo nomes de
+variáveis de ambiente e de arquivos. Mesmo assim, ele trocou identificadores que **pareciam texto**:
+
+| Problema | Consequência se passasse | Como foi detectado | Correção |
+|---|---|---|---|
+| serviço do cofre de credenciais "JARVIS" → "SAFRA" | a chave da OpenAI já salva deixaria de ser encontrada | `test_security.CredentialsTest` | revertido |
+| pastas do JARVIS original (`…\JARVIS\assistant.sqlite3`, `JARVIS\assets`) | importação de dados e modelos antigos pararia | `test_original_recovery` | revertido |
+| prefixo de variáveis `"JARVIS_" + campo` | configurações por ambiente ignoradas | revisão do diff | `SAFRA_` somado aos antigos |
+| entrada "JARVIS" do início automático | o início automático já ligado seria tratado como "outro programa" | revisão do diff (o CI do Windows também confere essa chave) | revertido |
+| `window.JARVIS` (ponte Python → página 3D) | a cena 3D abriria, mas **não receberia nenhum estado** | `test_scene3d.NativeSceneTest` com QtWebEngine real sob Xvfb (1 erro de JavaScript) | revertido |
+| quebras de linha CRLF dos `.bat` viraram LF | o `cmd.exe` pode não achar os rótulos do `goto` | `test_cli.WindowsScriptsTest` | CRLF restaurado |
+
+Lição registrada: renomear um produto exige separar **nome visível** de **identificador**; a suíte de
+testes — principalmente os testes de compatibilidade e o teste da cena real — foi o que impediu as
+regressões.
+
+**Verificação:** suíte completa aprovada (474 testes, 0 falhas, 1 pulado — a cena 3D real, executada à parte
+e aprovada: 24/24 com QtWebEngine e WebGL por software); pyflakes e compileall limpos; pacote ZIP validado;
+capturas em `docs/capturas/safra_*.jpg`.
+
 ## 9. Testes
 
 Ver [`TESTES.md`](TESTES.md) (atualizado ao fim de cada etapa).

@@ -1,4 +1,4 @@
-"""Resolução de caminhos do JARVIS.
+"""Resolução de caminhos do SAFRA.
 
 * ``project_root()``: pasta do produto (onde ficam ``assets/``, ``plugins/`` e os .bat).
 * ``data_dir()``: dados do usuário (banco, grafo, world model, logs). No Windows fica em
@@ -32,7 +32,8 @@ def plugins_dir() -> Path:
 
 
 def data_dir() -> Path:
-    override = os.environ.get("JARVIS_DATA_DIR") or os.environ.get("ULTRON_DATA_DIR")
+    override = (os.environ.get("SAFRA_DATA_DIR") or os.environ.get("JARVIS_DATA_DIR")
+                or os.environ.get("ULTRON_DATA_DIR"))
     if override:
         path = Path(override)
     elif sys.platform == "win32":

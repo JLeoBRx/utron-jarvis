@@ -13,7 +13,7 @@
 * ``diagnose()``: diagnóstico sob demanda.
 
 Gerenciar aparelhos de terceiros fabricantes exige integração oficial configurada; sem ela o
-JARVIS só observa e abre a interface oficial — não promete controle universal.
+SAFRA só observa e abre a interface oficial — não promete controle universal.
 """
 from __future__ import annotations
 

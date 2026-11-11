@@ -1,11 +1,11 @@
-// Ponte com o JARVIS (Python) pelo QWebChannel do Qt.
+// Ponte com o SAFRA (Python) pelo QWebChannel do Qt.
 //
 // Python → página: JARVIS.receive(mensagem) (estado resolvido, legenda, sala da TARDIS, vista, perfil).
 // Página → Python: ready, report, select, request — o objeto "jarvis" registrado no canal. A página não
 // executa nada no computador: só PEDE (abrir a TARDIS, alternar o microfone, escolher um painel) e o lado
 // Python decide pelo mesmo caminho dos botões da interface.
 
-/** Conecta ao canal; fora do JARVIS (navegador comum) devolve null. */
+/** Conecta ao canal; fora do SAFRA (navegador comum) devolve null. */
 export function connectBridge(timeoutMs = 4000) {
   return new Promise((resolve) => {
     const qt = window.qt;

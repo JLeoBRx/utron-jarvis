@@ -1,4 +1,4 @@
-"""Falhas — quando algo quebra, o JARVIS diz o motivo, não perde dados do usuário e volta ao repouso.
+"""Falhas — quando algo quebra, o SAFRA diz o motivo, não perde dados do usuário e volta ao repouso.
 
 * configurações ilegíveis: padrões em uso e o arquivo original guardado antes de qualquer gravação;
 * banco danificado: o início para com uma mensagem clara (código 3) e o arquivo não é tocado; um backup o
@@ -6,7 +6,7 @@
 * banco que recusa gravação (somente leitura, disco cheio): a conversa continua e a resposta diz o que não
   foi gravado;
 * backup que falha no meio: nenhum arquivo pela metade e os backups anteriores intactos;
-* modelo que quebra no meio do pedido: resposta honesta e o JARVIS volta ao repouso;
+* modelo que quebra no meio do pedido: resposta honesta e o SAFRA volta ao repouso;
 * sensor que falha: fica marcado com o motivo, sem derrubar os outros.
 
 As falhas são provocadas de propósito — disco cheio por exceção injetada, banco somente leitura por
@@ -73,7 +73,7 @@ class DatabaseFailureTest(unittest.TestCase):
             done = self.run_jarvis(data, *args)
             output = done.stdout + done.stderr
             self.assertEqual(done.returncode, 3, output[-2000:])
-            self.assertIn("O banco de memória do JARVIS não abriu", output)
+            self.assertIn("O banco de memória do SAFRA não abriu", output)
             self.assertIn("O arquivo NÃO foi alterado", output)
             self.assertIn("--restore-backup", output)
             self.assertNotIn("Traceback", output)
@@ -182,7 +182,7 @@ class RuntimeFailureTest(unittest.TestCase):
             self.assertRegex(self.ask("que horas são?")["text"], r"São \d{2}:\d{2}")
             note = self.ask("anote uma ideia: horta vertical na varanda")
             self.assertFalse(note.get("success"))
-            self.assertIn("Não consegui gravar na memória do JARVIS", note["text"])
+            self.assertIn("Não consegui gravar na memória do SAFRA", note["text"])
             self.assertIn("Nada foi registrado", note["text"])
             self.assert_at_rest()
         finally:

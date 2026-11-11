@@ -1,4 +1,4 @@
-"""TARDIS — a memória espacial do JARVIS (segundo HUB).
+"""TARDIS — a memória espacial do SAFRA (segundo HUB).
 
 Um espaço interior tecnológico, maior por dentro: câmara central de energia (o dia de hoje),
 anéis concêntricos que giram devagar, corredores de dados até os portais das regiões —
@@ -10,7 +10,7 @@ projetos, compromissos, tarefas, ideias e memórias — e dois satélites (lembr
   com autorização) — tudo pelo Neural Core.
 * Pulsos percorrem os corredores só quando algo REAL acontece (registro criado/alterado,
   lembrete disparado). A câmara central segue o estado de atividade do núcleo.
-* "← JARVIS CORE" volta ao HUB principal (na plataforma, "← SALA DE CONTROLE" volta à sala da
+* "← SAFRA CORE" volta ao HUB principal (na plataforma, "← SALA DE CONTROLE" volta à sala da
   TARDIS); a janela só se esconde — câmera, região aberta e filtros continuam como estavam.
 * Som ambiente discreto e opcional (desligado por padrão).
 
@@ -355,7 +355,7 @@ class TardisView(QtWidgets.QWidget):
     def _draw_overlay(self, p: QtGui.QPainter, w: float, h: float) -> None:
         p.setFont(theme.font(15, weight=600, spacing=8))
         p.setPen(theme.TEXT_BRIGHT)
-        p.drawText(QPointF(26, 40), "JARVIS")
+        p.drawText(QPointF(26, 40), "SAFRA")
         p.setFont(theme.font(8, weight=600, spacing=5))
         p.setPen(theme.PRIMARY)
         p.drawText(QPointF(28, 58), "TARDIS · MEMÓRIA ESPACIAL")
@@ -518,7 +518,7 @@ class TardisWindow(PageHost):
     def __init__(self, core, *, state: dict | None = None, profile=None):
         super().__init__(core, state=state, profile=profile)
         self.setObjectName("Panel")
-        self.setWindowTitle("JARVIS — TARDIS")
+        self.setWindowTitle("SAFRA — TARDIS")
         self.setWindowIcon(app_icon())
         self.resize(1360, 840)
         self.setMinimumSize(980, 600)
@@ -556,7 +556,7 @@ class TardisWindow(PageHost):
         # barra superior sobre o espaço
         top = QtWidgets.QHBoxLayout()
         top.setContentsMargins(20, 12, 20, 0)
-        back = _button("← JARVIS CORE", "Voltar ao HUB principal (o TARDIS fica como está)", primary=True)
+        back = _button("← SAFRA CORE", "Voltar ao HUB principal (o TARDIS fica como está)", primary=True)
         back.clicked.connect(self.return_requested)
         self.back_button = back                     # na plataforma, volta para a sala de controle
         self.sound = _button("SOM AMBIENTE", "Som ambiente discreto do TARDIS")
@@ -568,7 +568,7 @@ class TardisWindow(PageHost):
         export_menu.addAction("JSON (completo)", lambda: self._export("json"))
         export_menu.addAction("CSV (planilha)", lambda: self._export("csv"))
         export.setMenu(export_menu)
-        backup = _button("BACKUP", "Cópia de segurança do banco do JARVIS agora (memórias, lembretes, rede)")
+        backup = _button("BACKUP", "Cópia de segurança do banco do SAFRA agora (memórias, lembretes, rede)")
         backup.clicked.connect(lambda: self.run_action("Backup do banco", "memory.backup", {}))
         top.addStretch(1)
         top.addWidget(export)
@@ -750,7 +750,7 @@ class TardisWindow(PageHost):
         self.view.update()
 
     def _core_in_front(self) -> bool:
-        """Outra janela do JARVIS (o CORE) está em foco e o TARDIS ficou atrás: cadência de fundo.
+        """Outra janela do SAFRA (o CORE) está em foco e o TARDIS ficou atrás: cadência de fundo.
         Com o foco em outro programa, o TARDIS mantém a cadência normal de repouso."""
         active = QtWidgets.QApplication.activeWindow()
         return active is not None and active is not self.window() and not self.isActiveWindow()

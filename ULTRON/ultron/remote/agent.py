@@ -1,4 +1,4 @@
-"""Agente da MATRIZ-MÃE — liga o JARVIS deste computador à JARVIS WEB ORB, por uma conexão de SAÍDA.
+"""Agente da MATRIZ-MÃE — liga o SAFRA deste computador à SAFRA WEB ORB, por uma conexão de SAÍDA.
 
 * Conecta-se ao gateway (``remote_gateway_url``) por WSS com um token obtido na inscrição (guardado no cofre do
   sistema, nunca em arquivo de configuração). Nenhuma porta é aberta neste computador ou no roteador.
@@ -41,9 +41,9 @@ STATE_MAP = {
 LABELS = {"aguardando": "EM ESPERA", "inicializando": "INICIALIZANDO", "escutando": "ESCUTANDO", "pensando": "PENSANDO",
           "falando": "FALANDO", "executando": "EXECUTANDO", "confirmacao": "AGUARDANDO AUTORIZAÇÃO", "erro": "ERRO",
           "alerta": "ALERTA", "privacidade": "PRIVACIDADE"}
-COLORS = {"aguardando": (0, 217, 255), "inicializando": (0, 217, 255), "escutando": (103, 243, 255),
-          "pensando": (22, 139, 255), "falando": (103, 243, 255), "executando": (22, 139, 255),
-          "confirmacao": (255, 181, 71), "erro": (255, 93, 115), "alerta": (255, 181, 71), "privacidade": (61, 88, 115)}
+COLORS = {"aguardando": (234, 40, 64), "inicializando": (234, 40, 64), "escutando": (255, 92, 108),
+          "pensando": (255, 59, 107), "falando": (255, 92, 108), "executando": (255, 59, 107),
+          "confirmacao": (247, 201, 72), "erro": (255, 123, 28), "alerta": (247, 201, 72), "privacidade": (90, 93, 102)}
 WATCH = (EventType.STATE_CHANGED, EventType.RESPONSE_READY, EventType.USER_INPUT, EventType.AUTHORIZATION_REQUIRED,
          EventType.AUTHORIZATION_RESOLVED, EventType.PERSONA_CHANGED)
 
@@ -118,7 +118,7 @@ class RemoteAgent:
     def enabled(self) -> bool:
         return bool(getattr(self._settings(), "remote_enabled", False)) and self.configured()
 
-    def enroll(self, url: str, secret: str, name: str = "JARVIS") -> tuple[bool, str]:
+    def enroll(self, url: str, secret: str, name: str = "SAFRA") -> tuple[bool, str]:
         """Troca o segredo de inscrição (digitado UMA vez) por um token guardado no cofre do sistema."""
         url = str(url or "").strip().rstrip("/")
         if not url.startswith("https://") and not url.startswith(("http://127.0.0.1", "http://localhost")):
@@ -194,7 +194,7 @@ class RemoteAgent:
                                               max_size=4 * 1024 * 1024, open_timeout=15, ping_interval=25) as ws:
                     self._ws, self.connected, self.error, delay = ws, True, "", 1.0
                     self._publish_status()
-                    await ws.send(json.dumps({"type": "hello", "name": "JARVIS"}))
+                    await ws.send(json.dumps({"type": "hello", "name": "SAFRA"}))
                     await ws.send(json.dumps(self.snapshot()))
                     await ws.send(json.dumps({"type": "devices"}))
                     async for raw in ws:

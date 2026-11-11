@@ -3,7 +3,7 @@
 Rotas:
 
 * ``GET /`` e ``GET /p/{link}``       — o site da ORBE (o link vem do QR Code mostrado pela matriz-mãe);
-* ``GET /static/*``, ``GET /scene/*`` — arquivos do site e os módulos 3D do próprio JARVIS (lista fechada);
+* ``GET /static/*``, ``GET /scene/*`` — arquivos do site e os módulos 3D do próprio SAFRA (lista fechada);
 * ``GET /healthz``                    — saúde (e se a matriz-mãe está conectada; nada além disso);
 * ``GET /api/session``                — este navegador está pareado? (cria o cookie anti-CSRF);
 * ``POST /api/pair/claim``            — o navegador apresenta o código/link de pareamento;
@@ -258,7 +258,7 @@ def create_app(cfg: Config | None = None, *, store: Store | None = None) -> web.
             store.audit("inscricao_recusada", ip=ip)
             raise web.HTTPForbidden(text="segredo de inscrição incorreto")
         token = new_token(32)
-        store.set_agent(token, str(body.get("name") or "JARVIS")[:80])
+        store.set_agent(token, str(body.get("name") or "SAFRA")[:80])
         store.audit("inscricao", ip=ip, detail=str(body.get("name") or "")[:80])
         if hub.online:                                   # a inscrição nova derruba a conexão antiga
             await hub.agent.close(code=4002, message=b"nova inscricao")
@@ -297,7 +297,7 @@ def create_app(cfg: Config | None = None, *, store: Store | None = None) -> web.
     async def _from_agent(data: dict, ws) -> None:
         kind = data.get("type")
         if kind == "hello":
-            hub.agent_name = str(data.get("name") or "JARVIS")[:60]
+            hub.agent_name = str(data.get("name") or "SAFRA")[:60]
         elif kind == "state":
             hub.last_state = {k: v for k, v in data.items() if k != "type"}
             await hub.to_devices({"type": "state", **hub.last_state})
@@ -445,5 +445,5 @@ def create_app(cfg: Config | None = None, *, store: Store | None = None) -> web.
 def run(cfg: Config | None = None) -> None:
     cfg = cfg or Config.from_env()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    log.info("JARVIS Gateway %s em %s:%s (público: %s)", __version__, cfg.host, cfg.port, cfg.public_url)
+    log.info("SAFRA Gateway %s em %s:%s (público: %s)", __version__, cfg.host, cfg.port, cfg.public_url)
     web.run_app(create_app(cfg), host=cfg.host, port=cfg.port, access_log=None)

@@ -8,7 +8,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposer } from './materials.js';
 
-// Perfis do JARVIS (os mesmos nomes de CONFIGURAÇÕES > APARÊNCIA). "particles" multiplica as contagens.
+// Perfis do SAFRA (os mesmos nomes de CONFIGURAÇÕES > APARÊNCIA). "particles" multiplica as contagens.
 export const PROFILES = {
   economy:   { pixel: 0.75, bloom: 0,    antialias: false, particles: 0.35, fps: 30, idleFps: 20 },
   balanced:  { pixel: 1.0,  bloom: 0.75, antialias: true,  particles: 0.7,  fps: 45, idleFps: 30 },
@@ -39,7 +39,7 @@ export class Engine {
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance',
                                                alpha: false, stencil: false });
     if (!renderer.capabilities.isWebGL2) throw new Error('WebGL 2 indisponível neste computador');
-    renderer.setClearColor(0x020611, 1);
+    renderer.setClearColor(0x050507, 1);
     renderer.info.autoReset = false;               // conta todas as passagens do quadro (estatísticas reais)
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
@@ -47,7 +47,7 @@ export class Engine {
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x020611, 0.045);
+    this.scene.fog = new THREE.FogExp2(0x050507, 0.045);
     this.camera = new THREE.PerspectiveCamera(36, 1, 0.05, 220);
     const pmrem = new THREE.PMREMGenerator(renderer);
     this.environment = disposer.track(pmrem.fromScene(new RoomEnvironment(), 0.04).texture);

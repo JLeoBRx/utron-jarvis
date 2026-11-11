@@ -3,7 +3,7 @@ e devolve um ``TaskResult`` — ou levanta ``TaskFailed`` com o motivo quando n�
 
 O que um analisador PODE usar está em ``TardisContext``: leitura do Segundo Cérebro, da memória, do
 histórico de atividades, da saúde, da voz, dos modelos, das métricas e da memória de projeto. Nenhum
-analisador executa skills: ações viram ``ProposedAction`` (o JARVIS executa só com confirmação).
+analisador executa skills: ações viram ``ProposedAction`` (o SAFRA executa só com confirmação).
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class TardisContext:
 
 
 class Run:
-    """Uma execução: prazo, cancelamento, registro de operações e acesso ao MESMO modelo do JARVIS."""
+    """Uma execução: prazo, cancelamento, registro de operações e acesso ao MESMO modelo do SAFRA."""
 
     def __init__(self, envelope: TaskEnvelope, ctx: TardisContext, deadline: float,
                  cancelled: threading.Event | None = None):
@@ -78,7 +78,7 @@ class Run:
         self.envelope.note(text)
 
     def language(self, system: str, prompt: str, *, fmt: str | None = None) -> tuple[str | None, str]:
-        """(texto, rótulo do modelo) usando o MESMO modelo do JARVIS; (None, motivo) se não houver modelo."""
+        """(texto, rótulo do modelo) usando o MESMO modelo do SAFRA; (None, motivo) se não houver modelo."""
         router = self.ctx.router
         if router is None:
             return None, "roteador de modelos indisponível"
@@ -97,7 +97,7 @@ class Run:
             return None, "o modelo não devolveu texto"
         model = str(getattr(result, "model", "") or "modelo")
         self.note(f"linguagem: {model}")
-        return text, f"{model} (o mesmo do JARVIS)"
+        return text, f"{model} (o mesmo do SAFRA)"
 
 
 def normalize(text: str) -> str:

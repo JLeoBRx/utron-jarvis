@@ -200,14 +200,14 @@ class Screenshot(Skill):
 
     def execute(self, ctx, **_) -> SkillResult:
         try:
-            # pedido explícito: a interface do JARVIS na frente não impede (como no original);
+            # pedido explícito: a interface do SAFRA na frente não impede (como no original);
             # aplicativos excluídos e janelas sensíveis continuam impedindo
             image, _meta = ctx.perception.screen_sensor.capture_now(explicit=True)
         except PermissionError as exc:
             return SkillResult(False, error=str(exc), error_kind="PERMISSION_ERROR")
         except Exception as exc:
             return SkillResult(False, error=str(exc), error_kind="VISION_ERROR")
-        folder = user_dir("Pictures", "JARVIS")
+        folder = user_dir("Pictures", "JARVIS")              # pasta mantida (capturas já salvas ficam juntas)
         path = os.path.join(str(folder), time.strftime("captura_%Y%m%d_%H%M%S.png"))
         image.save(path)
         return SkillResult(True, f"Captura salva em {path}.", [path], {"path": path})

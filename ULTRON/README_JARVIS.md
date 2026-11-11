@@ -1,10 +1,10 @@
-# JARVIS
+# SAFRA
 
 Inteligência local para Windows: percebe o computador, entende pedidos em português por voz
 ou texto, planeja, executa com **verificação independente**, guarda a sua memória pessoal
 (tarefas, compromissos, ideias, projetos, lembretes) e mostra tudo em dois hubs:
 
-* **JARVIS CORE** — o hub principal: o cérebro neural em 3D com o estado real de percepção,
+* **SAFRA CORE** — o hub principal: o cérebro neural em 3D com o estado real de percepção,
   decisão, planejamento, execução, verificação, memória, voz e saúde.
 * **TARDIS** — a memória espacial: um espaço interior navegável onde cada região é a sua
   memória pessoal real (compromissos, tarefas, projetos, ideias, memórias, lembretes).
@@ -12,8 +12,12 @@ ou texto, planeja, executa com **verificação independente**, guarda a sua mem�
 É **local-first**: o cérebro é o Ollama nesta máquina; reconhecimento de fala e voz são
 offline; nada sai do computador sem que você peça.
 
-> O pacote interno continua `ultron` e os dados continuam em `%LOCALAPPDATA%\ULTRON`. É de
-> propósito: suas memórias, lembretes, configurações e o inventário da rede seguem onde estão.
+> **SAFRA é o novo nome do JARVIS** (versão 3.0). A palavra de ativação passa a ser **"Safra"**; "Jarvis"
+> continua aceita. Os scripts mantêm os nomes antigos (`START_JARVIS.bat`, `INSTALL_JARVIS.bat`…) e ganharam
+> atalhos com o nome novo (`START_SAFRA.bat`, `INSTALL_SAFRA.bat`, `ATUALIZAR_SAFRA.bat`, `DIAGNOSTICO_SAFRA.bat`).
+> O pacote interno continua `ultron` e os dados continuam em `%LOCALAPPDATA%\ULTRON`. É de propósito: suas
+> memórias, lembretes, configurações, chaves no cofre do Windows e o inventário da rede seguem onde estão.
+> Documentação técnica e do TCC: `docs/README.md`.
 
 ---
 
@@ -23,7 +27,7 @@ Requisitos: Windows 10/11 64 bits, **Python 3.11** (python.org, marque *Add pyth
 PATH*), **Ollama** (ollama.com/download). 8 GB de RAM ou mais recomendados.
 
 ### Instalação nova
-1. Extraia `JARVIS_FINAL.zip` (pasta `JARVIS`).
+1. Extraia `JARVIS_FINAL.zip` (pasta `JARVIS` — nome mantido por compatibilidade).
 2. Execute **`INSTALL_JARVIS.bat`**. Ele:
    * cria `.venv` (nunca apaga um existente) e instala `requirements.txt` — inclusive o
      `PySide6-Addons` (QtWebEngine, ~122 MB no Windows) da **central 3D**; numa instalação existente,
@@ -32,22 +36,23 @@ PATH*), **Ollama** (ollama.com/download). 8 GB de RAM ou mais recomendados.
      você tem uma instalação anterior, informe a pasta dela e os modelos que faltam são
      copiados (nada é sobrescrito ou apagado); senão, ele mostra de onde baixar;
    * oferece baixar os modelos do Ollama (`qwen2.5:3b` texto, `qwen2.5vl:3b` visão, ~5 GB);
-   * pergunta se o JARVIS deve iniciar com o Windows;
+   * pergunta se o SAFRA deve iniciar com o Windows;
    * termina com o diagnóstico completo (componentes ausentes e voz em 8 etapas).
 3. Inicie com **`START_JARVIS.bat`**.
 
 ### Atualizando uma instalação existente (ULTRON ou JARVIS)
-1. Feche o JARVIS: bandeja > **Sair** (ou `START_JARVIS.bat --stop`).
-2. Extraia o conteúdo da pasta `JARVIS` do ZIP **por cima** da pasta atual do programa
+1. Feche o SAFRA: bandeja > **Sair** (ou `START_JARVIS.bat --stop`).
+2. Extraia o conteúdo da pasta `SAFRA` do ZIP **por cima** da pasta atual do programa
    (substituir arquivos). `.venv`, `assets` (modelos) e os seus dados não são tocados.
-3. Execute **`ATUALIZAR_JARVIS.bat`**: encerra o JARVIS se ainda estiver aberto, faz um
+3. Execute **`ATUALIZAR_JARVIS.bat`**: encerra o SAFRA se ainda estiver aberto, faz um
    **backup** do banco, atualiza as dependências e roda o diagnóstico.
 
-Na primeira execução, as configurações da identidade ULTRON são migradas (palavra de
-ativação "ultron" → "jarvis", tema dourado → azul) e o arquivo original é guardado como
-`settings.ultron-backup.json`. Personalizações suas que não eram da identidade antiga são
-mantidas. Atalhos antigos (`START_ULTRON.bat`, `INSTALL_ULTRON.bat`, `TEST_ULTRON.py`) abrem
-as versões JARVIS.
+Na primeira execução, as configurações das identidades anteriores são migradas passo a passo: ULTRON → JARVIS
+(palavra de ativação "ultron" → "jarvis", tema dourado → azul; cópia em `settings.ultron-backup.json`) e
+JARVIS → SAFRA ("safra" passa a ser a primeira palavra de ativação e "jarvis" continua aceita; tema azul →
+vermelho; cópia em `settings.jarvis-backup.json`). Personalizações suas (microfone, volume, modelos, formas
+calibradas, horários) são mantidas. Atalhos antigos (`START_ULTRON.bat`, `INSTALL_ULTRON.bat`, `TEST_ULTRON.py`)
+abrem o SAFRA.
 
 ### Modelos locais (não incluídos no ZIP)
 
@@ -57,7 +62,7 @@ as versões JARVIS.
 | `vosk-model-pt-fb-v0.1.1-20220516_2113` (opcional, mais preciso) | `assets\stt\…\` | alphacephei.com/vosk/models |
 | `pt_BR-faber-medium.onnx` + `.onnx.json` (voz) | `assets\voices\` | huggingface.co/rhasspy/piper-voices (pt/pt_BR/faber/medium) |
 
-Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz do Windows.
+Sem o modelo de fala, o SAFRA funciona por texto; sem a voz neural, usa a voz do Windows.
 
 ---
 
@@ -65,14 +70,14 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 
 | Comando | Efeito |
 |---|---|
-| `START_JARVIS.bat` | abre o JARVIS (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz). Se ele já estiver aberto, traz a janela para a frente |
+| `START_JARVIS.bat` | abre o SAFRA (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz). Se ele já estiver aberto, traz a janela para a frente |
 | `START_JARVIS.bat --console` | **modo console**: conversa pelo terminal com o MESMO núcleo, memória, TARDIS, permissões e confirmações da janela (`sair` encerra; "cancelar" ou Ctrl+C interrompe; "sim"/"não" respondem às confirmações) |
 | `START_JARVIS.bat --foreground` | abre a janela pelo `python.exe`, com o terminal visível mostrando avisos e erros (para investigar quando a janela não abre) |
 | `START_JARVIS.bat --gui-check` | monta a interface sem mostrá-la e diz se ela abre nesta máquina |
 | `START_JARVIS.bat --status` | diz se está em execução |
-| `START_JARVIS.bat --stop` | pede ao JARVIS em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
+| `START_JARVIS.bat --stop` | pede ao SAFRA em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
 | `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | diagnóstico **por etapas** (`[OK]`/`[AVISO]`/`[FALHA]`/`[TEMPO]`): configurações, banco, núcleo, Ollama, modelos, memória, TARDIS, voz em 8 etapas, percepção, plugins, sistema e a interface gráfica montada de verdade. Cada etapa tem prazo; a que não responde é nomeada e as outras continuam |
-| `START_JARVIS.bat --voice-test` | teste de voz falando ("Jarvis, que horas são?") |
+| `START_JARVIS.bat --voice-test` | teste de voz falando ("Safra, que horas são?") |
 | `START_JARVIS.bat --backup` | backup do banco agora |
 | `START_JARVIS.bat --autostart` / `--no-autostart` | liga/desliga o início com o Windows |
 | `ATUALIZAR_JARVIS.bat` | atualização segura (para, faz backup, atualiza dependências, diagnostica) |
@@ -83,26 +88,26 @@ Sem o modelo de fala, o JARVIS funciona por texto; sem a voz neural, usa a voz d
 * *Backups*: um automático por dia (os 10 mais recentes ficam em
   `%LOCALAPPDATA%\ULTRON\backups`), além de `--backup` e do botão BACKUP do TARDIS.
   Para voltar: `START_JARVIS.bat --stop`, depois `python main.py --list-backups` e
-  `python main.py --restore-backup ARQUIVO`. A restauração só roda com o JARVIS fechado,
+  `python main.py --restore-backup ARQUIVO`. A restauração só roda com o SAFRA fechado,
   verifica a integridade do arquivo e **guarda o banco atual** como
   `ultron.sqlite3.antes-da-restauracao-<data>` antes de trocar.
 * *Configurações*: renomeie `%LOCALAPPDATA%\ULTRON\settings.json` para recriar os padrões.
 * *Modo seguro*: `python main.py --no-voice --no-perception --no-plugins`.
 * *Registro*: `%LOCALAPPDATA%\ULTRON\logs\ultron.log`.
-* *Travou*: bandeja > Sair; se não responder, finalize `pythonw.exe` do JARVIS pelo
+* *Travou*: bandeja > Sair; se não responder, finalize `pythonw.exe` do SAFRA pelo
   Gerenciador de Tarefas — os dados ficam íntegros (banco em modo WAL) e lembretes perdidos
   são avisados uma vez na próxima abertura.
 
 ---
 
-## 3. A plataforma: JARVIS · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
+## 3. A plataforma: SAFRA · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
 
 Uma janela com cinco módulos. Trocar de módulo não perde nada: câmera e região do TARDIS,
 filtros, rolagem e textos digitados ficam como estavam.
 
 | Atalho | Efeito |
 |---|---|
-| F1 | JARVIS (núcleo e conversa) |
+| F1 | SAFRA (núcleo e conversa) |
 | F2 | TARDIS (sala de controle e ARQUIVO da memória pessoal) |
 | F5 | ATIVIDADES (histórico) |
 | F6 | CONFIGURAÇÕES |
@@ -112,9 +117,9 @@ filtros, rolagem e textos digitados ficam como estavam.
 | Ctrl+M | microfone |
 | Ctrl+L | limpa a conversa da tela |
 
-Por voz: *"abra a TARDIS"*, *"abra o segundo cérebro"* (o ARQUIVO), *"abra as configurações do JARVIS"* (sem "do JARVIS", abre as
+Por voz: *"abra a TARDIS"*, *"abra o segundo cérebro"* (o ARQUIVO), *"abra as configurações do SAFRA"* (sem "do SAFRA", abre as
 configurações do Windows, como no original), *"mostre o histórico de atividades"*, *"abra o
-console de eventos"*, *"abra o log do JARVIS"*, *"volte para o JARVIS"*,
+console de eventos"*, *"abra o log do SAFRA"*, *"volte para o SAFRA"*,
 *"o que você fez hoje?"*.
 
 **Barra superior**: mini-reator e identidade, navegação, relógio e data; na segunda linha o
@@ -128,15 +133,15 @@ rascunho), **ENVIAR**, **MIC**, **VOZ**, **ORBE** (recolhe para o orbe compacto;
 orbe expande; o orbe lembra onde foi deixado; com a central 3D aberta, o orbe recolhido é a **mesma cena 3D**
 em modo compacto — o mesmo ORBE, com o estado real — e, sem ela, o orbe 2D). Autorizações e sugestões aparecem
 logo acima.
-Fechar a janela mantém o JARVIS na bandeja; **Sair** encerra.
+Fechar a janela mantém o SAFRA na bandeja; **Sair** encerra.
 
-**Conversa** (página JARVIS): cada mensagem com horário (`[HH:MM] VOCÊ ▸`, `J.A.R.V.I.S. ▸`,
+**Conversa** (página SAFRA): cada mensagem com horário (`[HH:MM] VOCÊ ▸`, `S.A.F.R.A. ▸`,
 `// sistema`), **STATUS**, **HORAS**, **PARAR**, **COPIAR RESPOSTA** e **LIMPAR** (Ctrl+L).
 
 **Transições**: holográficas (~300 ms) com "efeitos pesados" ligados e fora do perfil
 econômico; senão, imediatas.
 
-**Observação da tela**: quando a janela do JARVIS cobre a maior parte da tela, a observação fica
+**Observação da tela**: quando a janela do SAFRA cobre a maior parte da tela, a observação fica
 suspensa (o indicador mostra SUSPENSO), como no original. Pedidos explícitos ("o que há na
 tela?") continuam funcionando.
 
@@ -144,12 +149,12 @@ tela?") continuam funcionando.
 **Modo privacidade**, **Observador** (modos, pausar/retomar), **Iniciar com o Windows** (só por
 clique; se o Registro recusar, a marcação volta), qualidade visual, diagnóstico e Sair.
 
-### A central 3D (página JARVIS e sala da TARDIS)
+### A central 3D (página SAFRA e sala da TARDIS)
 
 Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo `requirements.txt`) e
-**WebGL 2**, a página JARVIS e a sala da TARDIS viram uma **cena 3D única** (Three.js embutido, sem internet):
+**WebGL 2**, a página SAFRA e a sala da TARDIS viram uma **cena 3D única** (Three.js embutido, sem internet):
 
-* **holograma de corpo inteiro** do JARVIS (cabeça, pescoço, ombros, tronco, braços, mãos com dedos, quadril,
+* **holograma de corpo inteiro** do SAFRA (cabeça, pescoço, ombros, tronco, braços, mãos com dedos, quadril,
   pernas, pés) sobre uma base de projeção com anéis, feixe e partículas; linhas topológicas, nós luminosos,
   casca translúcida e esqueleto interno. Respira, olha, pisca, gesticula com a energia real da fala e mexe a
   boca pela trilha labial do áudio real — **cada movimento vem de um estado real** (tabela abaixo; detalhes em
@@ -162,13 +167,13 @@ Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo
   grafite metálicas, olhos vermelhos, sobrancelhas baixas e punhos cerrados;
 * o **ORBE** (núcleo de inteligência) flutua ao lado: rede neural de três camadas com pulsos, filamentos,
   anéis orbitais e partículas que entram (escuta) ou saem (fala) do núcleo. Botão **NÚCLEO** amplia com
-  órbita/zoom; sem sinal do JARVIS ele apaga e diz "SEM CONEXÃO";
+  órbita/zoom; sem sinal do SAFRA ele apaga e diz "SEM CONEXÃO";
 * a **cabine azul** da TARDIS no convés (portas, janelas, letreiro iluminado, lâmpada que pulsa com o modo
   real do motor). **ENTRAR NA TARDIS** (ou clique na cabine) passa pela porta para a sala de controle;
 * na página **TARDIS**, a mesma cena mostra a sala por dentro: rotor do tempo (com giroscópio interno que gira
   no ritmo real do motor), console de seis painéis com botões, alavancas, mostradores, luzes e uma tela por
   painel — tudo ligado às tarefas REAIS do motor — e mobiliário integrado (bancos de couro, estante embutida,
-  bancada com monitores, cabideiro, feixes de cabos). **O mesmo holograma do JARVIS entra na sala**: fica sobre
+  bancada com monitores, cabideiro, feixes de cabos). **O mesmo holograma do SAFRA entra na sala**: fica sobre
   o tablado, junto ao console, olha o painel escolhido ou o que está trabalhando de verdade e opera o console
   enquanto o motor trabalha;
   escolher uma aba à direita (ou clicar no painel 3D) leva a câmera ao painel.
@@ -184,9 +189,9 @@ seu computador: `python tools/benchmark_scene3d.py`.
 Por um tempo, o assistente assume a identidade **ULTRON**: holograma com postura dura e olhos vermelhos, ORBE
 vermelho, TARDIS em alerta, painéis em vermelho/vinho, título **U.L.T.R.O.N.**, voz própria
 (`ULTRON_VOICE_PROFILE`: mais grave, fria, ritmo deliberado, textura metálica) e tom frio nas respostas. É o MESMO
-JARVIS por dentro: um NeuralCore, uma memória.
+SAFRA por dentro: um NeuralCore, uma memória.
 
-* **Ativar**: "JARVIS, iniciar protocolo ULTRON" (voz ou texto; também no console, sem os efeitos visuais).
+* **Ativar**: "SAFRA, iniciar protocolo ULTRON" (voz ou texto; também no console, sem os efeitos visuais).
   "protocolo ULTRON demonstração" mostra 20 s, só a identidade.
 * **Perfil `ULTRON_OPERATOR`** (na ativação pedida por você, se `ultron_operator` estiver ligado): o ULTRON usa as
   mesmas ferramentas, o mesmo executor e o mesmo sistema de autorização, com autonomia para as rotinas liberadas no
@@ -196,9 +201,9 @@ JARVIS por dentro: um NeuralCore, uma memória.
   confirmação; nada contorna o UAC nem desativa proteções. Cada ação aparece em ATIVIDADES como **[ULTRON]**; o
   indicador de estado mostra o estado real ("ULTRON · EXECUTANDO"); a tela diz "ULTRON_OPERATOR ATIVO — ações
   reais sob as suas permissões".
-* **Sair**: "restaurar JARVIS", botão **RESTAURAR JARVIS**, **Esc** ou a **tecla de emergência** (padrão
+* **Sair**: "restaurar SAFRA", botão **RESTAURAR SAFRA**, **Esc** ou a **tecla de emergência** (padrão
   `Ctrl+Shift+U`, configurável), que também interrompe a tarefa, a autorização e a fala em curso. Aparência, voz,
-  cores, tom e permissões voltam ao JARVIS. O fim automático por tempo não corta uma tarefa no meio.
+  cores, tom e permissões voltam ao SAFRA. O fim automático por tempo não corta uma tarefa no meio.
 * **Ocasional** (desligado por padrão): raro, só em repouso, com probabilidade por hora e intervalo mínimo; troca só
   a identidade, a menos que `ultron_operator_occasional` esteja ligado.
 * **Nunca começa** com autorização pendente, ação em execução, verificação ou recuperação em andamento, ou modo
@@ -209,7 +214,7 @@ JARVIS por dentro: um NeuralCore, uma memória.
 Um rosto robótico 3D renderizado **em tempo real** (não é imagem nem vídeo): malha esculpida com
 iluminação, olhos com íris, sobrancelhas, nariz, orelhas, colar com reator, plataforma de projeção,
 anéis de dados, partículas e varredura. CONFIGURAÇÕES > APARÊNCIA troca para o núcleo neural
-anterior ("Vista do JARVIS") e escolhe CPU ou GPU (OpenGL; se não abrir, volta para a CPU e
+anterior ("Vista do SAFRA") e escolhe CPU ou GPU (OpenGL; se não abrir, volta para a CPU e
 DIAGNÓSTICOS > SERVIÇOS E GPU diz por quê). Clique no rosto liga/desliga o microfone.
 
 **A boca acompanha o áudio real da fala**: a voz Piper informa os fonemas de cada frase; os visemas
@@ -230,7 +235,7 @@ ditas (desligue em CONFIGURAÇÕES > VOZ E ÁUDIO).
 | Alerta | lembrete devido (6 s) | âmbar, atenção súbita; tinge os estados abaixo |
 | Reconhecendo | parciais do reconhecimento com a escuta aberta | olhos focados, micro-movimentos |
 | Escutando | escuta aberta | atenção, cabeça inclinada, halo pelo nível real do microfone |
-| Consultando a TARDIS | tarefa da TARDIS pedida pelo JARVIS | olhar para o lado, íris âmbar |
+| Consultando a TARDIS | tarefa da TARDIS pedida pelo SAFRA | olhar para o lado, íris âmbar |
 | Executando | execução, verificação, recuperação | expressão firme, varredura rápida |
 | Pensando | contexto, decisão, planejamento | olhar que varre, sobrancelhas franzidas |
 | Inicializando | progresso real do boot | o rosto se monta por um plano de varredura; olhos abrem ao fim |
@@ -266,7 +271,7 @@ estados e resultados.
 
 ### ATIVIDADES
 
-Tudo o que o JARVIS recebeu, decidiu e fez, com origem, estado, duração e o resultado ou o erro
+Tudo o que o SAFRA recebeu, decidiu e fez, com origem, estado, duração e o resultado ou o erro
 reais: pedidos (voz, texto, sugestões aceitas), ações ligadas ao pedido, confirmações,
 verificações, lembretes e falhas. Filtros por tipo e estado, busca, detalhe de cada registro,
 **COPIAR** e **LIMPAR HISTÓRICO** (categoria "apagar dados": pede confirmação). Textos que parecem
@@ -296,7 +301,7 @@ risco), *confirmar sempre* ou *bloquear*. Apagar dados nunca fica abaixo de *con
   de autorização e registro das ações executadas.
 * **DESEMPENHO E SAÚDE** — saúde dos componentes, quadros por segundo, perfil visual.
 * **EVENTOS** — console de eventos do original: 300 entradas `[HH:MM:SS] ▸ texto`, filtro,
-  PAUSAR, COPIAR (linhas visíveis) e LIMPAR; inclui os eventos desde a abertura do JARVIS.
+  PAUSAR, COPIAR (linhas visíveis) e LIMPAR; inclui os eventos desde a abertura do SAFRA.
 * **LOG** — fim do arquivo de log com filtro de nível. Exceções não tratadas (inclusive em
   threads e na pintura da interface) também vão para o log.
 * **SERVIÇOS E GPU** — componentes, workers, Ollama, OpenAI, privacidade, GPUs do sistema e
@@ -306,11 +311,11 @@ risco), *confirmar sempre* ou *bloquear*. Apagar dados nunca fica abaixo de *con
 
 ## 4. TARDIS — o segundo cérebro (sala de controle e ARQUIVO)
 
-A TARDIS é um **módulo lógico** do JARVIS com fila, protocolo, analisadores e memória de projeto
+A TARDIS é um **módulo lógico** do SAFRA com fila, protocolo, analisadores e memória de projeto
 próprios. **Não é um segundo modelo de IA**: quando precisa de linguagem natural, usa o **mesmo
-modelo do JARVIS** com instruções próprias — e cada resultado diz qual modelo usou (*"qwen2.5:3b (o
-mesmo do JARVIS)"*) ou *"sem modelo: análise determinística"*. A TARDIS **nunca executa ações**:
-devolve **ações propostas**, que só rodam com a sua confirmação, pelo mesmo executor do JARVIS
+modelo do SAFRA** com instruções próprias — e cada resultado diz qual modelo usou (*"qwen2.5:3b (o
+mesmo do SAFRA)"*) ou *"sem modelo: análise determinística"*. A TARDIS **nunca executa ações**:
+devolve **ações propostas**, que só rodam com a sua confirmação, pelo mesmo executor do SAFRA
 (permissões, risco, autorização e verificação).
 
 Abra por **F2**, pelo botão TARDIS ou dizendo *"abra a TARDIS"*. A página tem duas vistas, e cada uma
@@ -328,7 +333,7 @@ faz no resto da plataforma).
 | PLANEJAMENTO | decompõe um objetivo em etapas verificáveis e aponta riscos (exige o modelo; sem ele, falha com o motivo). Nenhuma etapa é executada |
 | ARQUIVO | organização da memória pessoal (atrasados, conflitos, duplicados, tarefas sem data, registros aguardando revisão) e a entrada da memória espacial |
 | ROTINAS | lembretes futuros, registros recorrentes e automações |
-| TELEMETRIA | telemetria do próprio JARVIS medida pelo núcleo: CPU e memória do processo, latência real dos modelos e das respostas, fluidez da interface, Event Bus e workers, com pontos de atenção explicados (nada é alterado) |
+| TELEMETRIA | telemetria do próprio SAFRA medida pelo núcleo: CPU e memória do processo, latência real dos modelos e das respostas, fluidez da interface, Event Bus e workers, com pontos de atenção explicados (nada é alterado) |
 | DIAGNÓSTICO | saúde, componentes, workers e voz, com gravidade e fonte (diagnóstico); e a fotografia do estado de cada módulo agora (coordenação) |
 
 O **rotor** mostra o estado REAL do motor da TARDIS:
@@ -337,8 +342,8 @@ O **rotor** mostra o estado REAL do motor da TARDIS:
 |---|---|
 | REPOUSO | fila vazia — respiração lenta, âmbar escuro |
 | PROCESSANDO | uma análise roda ou espera na fila — o rotor sobe e desce, âmbar |
-| CONSULTA DO JARVIS | a análise em execução foi pedida pelo JARVIS — ciano, com o feixe **JARVIS ⇄ TARDIS** (e o rosto do JARVIS mostra "CONSULTANDO A TARDIS") |
-| OPERAÇÃO | o JARVIS está gravando ou exportando dados (backup, exportação, escrita de arquivos) — verde-água |
+| CONSULTA DO SAFRA | a análise em execução foi pedida pelo SAFRA — ciano, com o feixe **SAFRA ⇄ TARDIS** (e o rosto do SAFRA mostra "CONSULTANDO A TARDIS") |
+| OPERAÇÃO | o SAFRA está gravando ou exportando dados (backup, exportação, escrita de arquivos) — verde-água |
 | FALHA | uma análise falhou há menos de 8 s — vermelho, anel no piso e o motivo no canto |
 
 Cada painel acende enquanto uma tarefa REAL do seu tipo roda e pulsa ao terminar (vermelho se falhou).
@@ -346,42 +351,42 @@ As telas flutuantes mostram a fila e o último resultado. Sem evento, a sala fic
 
 O lado direito mostra o **RESULTADO** da tarefa escolhida: resumo, itens com a fonte de cada um,
 modelo usado, o registro de operações e as **ações propostas** com o botão **APLICAR** (executa pelo
-JARVIS, que pede confirmação quando a categoria exige — apagar dados sempre pede).
+SAFRA, que pede confirmação quando a categoria exige — apagar dados sempre pede).
 **CANCELAR** interrompe uma análise na fila ou em execução. **TAREFAS** lista as desta sessão e as
 anteriores (lidas do banco).
 
-### Pelo JARVIS (voz ou texto)
+### Pelo SAFRA (voz ou texto)
 
-*"Jarvis, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o
+*"Safra, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o
 projeto Phoenix"*, *"TARDIS, organize minha memória"*, *"peça à TARDIS um plano para montar a pista"*,
 *"TARDIS, diagnostique o sistema"*, *"peça à TARDIS para analisar a telemetria do sistema"*,
 *"TARDIS, quais são minhas rotinas?"*, *"TARDIS, estado dos módulos"*, *"anote na TARDIS uma
 decisão: usar pista de 3 metros"*, *"mostre a memória de projeto do Phoenix"*.
 
-A resposta diz qual análise rodou, o modelo e as fontes. Se a TARDIS propõe uma ação, o JARVIS
+A resposta diz qual análise rodou, o modelo e as fontes. Se a TARDIS propõe uma ação, o SAFRA
 pergunta: diga **"sim"** para executar ou **"não"** para descartar (a proposta expira em 90 s). Para
 apagar dados, o "sim" ainda passa pela confirmação própria da categoria. **"Cancelar"** para as
-consultas que o JARVIS fez à TARDIS (as análises pedidas na sala continuam).
+consultas que o SAFRA fez à TARDIS (as análises pedidas na sala continuam).
 
 ### Protocolo e garantias
 
 Toda tarefa tem `id`, entrada, estado (`QUEUED → RUNNING → DONE | FAILED | REJECTED | CANCELLED`),
 resultado (resumo, itens, fontes, ações propostas), erro (código e mensagem), tempos (criada,
-iniciada, terminada, duração), origem (JARVIS, usuário, TARDIS, agendador), cadeia de delegação,
-registro de operações e o modelo usado. Tudo fica no **mesmo banco** do JARVIS e no histórico de
+iniciada, terminada, duração), origem (SAFRA, usuário, TARDIS, agendador), cadeia de delegação,
+registro de operações e o modelo usado. Tudo fica no **mesmo banco** do SAFRA e no histórico de
 atividades (pedido → ação → tarefa da TARDIS, ligados).
 
 * **Sem ciclos**: no máximo 2 saltos na cadeia, nenhum salto repetido, e a TARDIS nunca devolve
-  tarefas ao JARVIS — o que violar isso é **recusado** na entrada.
+  tarefas ao SAFRA — o que violar isso é **recusado** na entrada.
 * **Prazos por tipo** (consulta 60 s, planejamento 120 s, organização 20 s, rotinas 10 s,
   telemetria 20 s, diagnóstico 30 s, coordenação 5 s, memória de projeto 10 s); uma análise que
   trava é abandonada com TIMEOUT e a fila segue.
 * **Sem dado, sem resultado**: nada encontrado → FAILED com o motivo (`NO_DATA`); sem modelo para
-  planejar → `NO_MODEL`. A TELEMETRIA mede o próprio JARVIS (processo, latência real dos modelos e das
+  planejar → `NO_MODEL`. A TELEMETRIA mede o próprio SAFRA (processo, latência real dos modelos e das
   respostas, interface, Event Bus e workers); sem métrica coletada ainda, diz que não há dado.
 * A memória de projeto **recusa senhas, tokens e dados sensíveis**; textos que parecem segredo são
   redigidos antes de gravar.
-* Tarefas que estavam na fila quando o JARVIS fechou viram CANCELLED (`INTERRUPTED`) na próxima abertura.
+* Tarefas que estavam na fila quando o SAFRA fechou viram CANCELLED (`INTERRUPTED`) na próxima abertura.
 
 ### ARQUIVO (memória espacial)
 
@@ -426,11 +431,11 @@ tarefa no motor, 0,8 ms (mediana). Números completos em `docs/benchmarks/tardis
 
 ---
 
-## 5. Falando com o JARVIS
+## 5. Falando com o SAFRA
 
-**Voz.** Diga **"Jarvis"** no início: *"Jarvis, abra o bloco de notas"*. Depois de uma
+**Voz.** Diga **"Safra"** no início: *"Safra, abra o bloco de notas"*. Depois de uma
 resposta há 12 s de continuação sem repetir o nome. *"Pare"* interrompe a fala;
-*"fique quieto"* / *"pode falar"* desligam/religam a voz. Se ele não entende o seu "Jarvis",
+*"fique quieto"* / *"pode falar"* desligam/religam a voz. Se ele não entende o seu "Safra",
 use DIAGNÓSTICOS > VOZ > **CALIBRAR**.
 
 **Texto.** Digite na barra inferior (↑/↓ percorrem o histórico).
@@ -453,13 +458,13 @@ raciocínio pesado e planejamento) · **AVANÇADO** (nuvem para o que não for t
 nuvem só como reserva, modelo rápido) · **PRIVACIDADE** (só local, sem pesquisa na internet). Sem escolha, vale o
 comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
 
-* **Por tarefa**: o JARVIS estima a complexidade do pedido (raciocínio, planejamento, tamanho, código) e escolhe
+* **Por tarefa**: o SAFRA estima a complexidade do pedido (raciocínio, planejamento, tamanho, código) e escolhe
   modelo local rápido, local robusto (`model_robust`, ou o maior instalado — ex.: `ollama pull qwen2.5:7b`) ou nuvem
   rápida/robusta (`openai_model_fast` / `openai_model`).
 * **Nunca vai para a nuvem**: conteúdo sensível (senhas, documentos, banco, saúde); memória pessoal, tela, histórico
   da conversa e resultados de ferramentas (salvo com "Enviar contexto pessoal à nuvem" ligado); imagens (salvo com
   "Enviar imagens" ligado).
-* **Primeiro uso pago**: o JARVIS pede autorização (barra de autorização, voz "sim/não" ou console); recusado, a
+* **Primeiro uso pago**: o SAFRA pede autorização (barra de autorização, voz "sim/não" ou console); recusado, a
   resposta vem do modelo local e diz isso. "REVOGAR AUTORIZAÇÃO" volta a pedir.
 * **Consumo**: cada chamada fica no mesmo banco (tabela `model_usage`, só números); limite mensal em US$ e em
   tokens (0 = nenhum gasto). O custo só é calculado com o preço configurado — sem preço, diz "custo desconhecido".
@@ -471,16 +476,16 @@ comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
 
 ### Sons da TARDIS
 
-Efeitos **originais** (sintetizados pelo próprio JARVIS — o áudio da série é protegido e não é distribuído):
+Efeitos **originais** (sintetizados pelo próprio SAFRA — o áudio da série é protegido e não é distribuído):
 partida da nave quando uma tarefa da TARDIS começa, chegada quando ela termina com resultado, rotor ganhando energia,
 alerta quando uma tarefa falha, portas ao entrar e sair da sala e o ambiente da sala (só com a página TARDIS à frente
 e "Som ambiente" ligado). CONFIGURAÇÕES > APARÊNCIA: **Sons da TARDIS** (liga/desliga) e **volume próprio**; o
 liga/desliga geral dos efeitos também vale. Para usar um arquivo com licença, coloque o `.wav` na pasta
-`sons_tardis` dos dados do JARVIS (`%LOCALAPPDATA%\ULTRON\sons_tardis`) com um destes nomes: `materializacao`,
+`sons_tardis` dos dados do SAFRA (`%LOCALAPPDATA%\ULTRON\sons_tardis`) com um destes nomes: `materializacao`,
 `desmaterializacao`, `porta_abrir`, `porta_fechar`, `rotor`, `alerta`, `ambiente` — ele substitui o efeito original
 ao reiniciar (a tela mostra a origem de cada som).
 
-### Voz do JARVIS (e do ULTRON)
+### Voz do SAFRA (e do ULTRON)
 
 * **Prosódia** (`ultron/voice/prosody.py`): o texto vira fala em português (abreviações, horas, moedas, por cento,
   unidades, endereços pelo domínio, parênteses como inserção); frases longas respiram nas vírgulas; pausas pela
@@ -492,9 +497,9 @@ ao reiniciar (a tela mostra a origem de cada som).
   `pt_BR-jeff-medium`) em `assets\voices` e escolha em CONFIGURAÇÕES > VOZ > Voz neural. Vozes neurais na nuvem
   (melhor qualidade) mandariam o texto falado para fora do computador — não estão ativas.
 
-### JARVIS WEB ORB (a ORBE no celular)
+### SAFRA WEB ORB (a ORBE no celular)
 
-Uma página com só a ORBE, ligada a ESTE JARVIS (a matriz-mãe) por um gateway seu, com conexão de SAÍDA do computador
+Uma página com só a ORBE, ligada a ESTE SAFRA (a matriz-mãe) por um gateway seu, com conexão de SAÍDA do computador
 (nenhuma porta aberta). Conversa, voz, interromper, autorizações comuns e a identidade ULTRON chegam da matriz-mãe;
 ações sensíveis só se confirmam aqui. Pareamento por QR Code/código com confirmação NESTE computador; revogação na
 hora. CONFIGURAÇÕES › **REDE REMOTA (ORBE WEB)**. Publicação, segurança e o que depende de hospedagem/domínio:
@@ -511,7 +516,7 @@ hora. CONFIGURAÇÕES › **REDE REMOTA (ORBE WEB)**. Publicação, segurança e
   diária, dias úteis, semanal e mensal; horário de silêncio (`quiet_hours`, ex.: 22:00-07:00
   — o aviso fica na central, sem som).
 * **Não dependem da IA**: o agendador é determinístico e persistente. Lembretes que venceram
-  com o JARVIS fechado são avisados **uma vez** na próxima abertura (recorrentes não geram
+  com o SAFRA fechado são avisados **uma vez** na próxima abertura (recorrentes não geram
   rajada).
 * Notificações do Windows pela bandeja, fala (se permitido) e central de notificações.
 * **Conflitos**: compromissos com horário sobrepostos são informados ao registrar ou editar,
@@ -536,8 +541,8 @@ computador*. O gateway é marcado. O que não se sabe aparece como **desconhecid
 
 Fontes: tabela de vizinhos do sistema, ping de um pacote, DNS reverso e, se você ativar
 (`network_ssdp`), anúncios SSDP — só na sub-rede privada da interface ativa. **Descobrir não é
-administrar**: o JARVIS não acessa, não controla e não altera aparelhos; o roteador só pela
-página oficial dele, aberta por você, com as suas credenciais (que o JARVIS não guarda).
+administrar**: o SAFRA não acessa, não controla e não altera aparelhos; o roteador só pela
+página oficial dele, aberta por você, com as suas credenciais (que o SAFRA não guarda).
 
 ---
 
@@ -558,13 +563,13 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
   AUTONOMIA).
 * Texto da tela, de arquivos e de páginas é **dado**, nunca instrução: entra no contexto do modelo numa
   linha só, entre aspas e rotulado como dado observado.
-* **Arquivos**: o JARVIS não cria, altera, move nem apaga nada nas pastas do sistema operacional, da
-  inicialização automática e do próprio JARVIS (programa, plugins e memória pessoal) — nem com "sim": a
+* **Arquivos**: o SAFRA não cria, altera, move nem apaga nada nas pastas do sistema operacional, da
+  inicialização automática e do próprio SAFRA (programa, plugins e memória pessoal) — nem com "sim": a
   recusa vem antes do pedido de autorização. Ler e listar continuam livres. Excluir vai sempre para a
   Lixeira; editar guarda uma cópia `.ultron.bak` (as anteriores nunca são sobrescritas).
 * O modelo de linguagem só executa as ferramentas oferecidas naquele pedido; as reservadas a pedidos
   diretos não são oferecidas e são recusadas se ele as inventar.
-* O JARVIS não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
+* O SAFRA não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
   invasão, captura de credenciais, exploração ou interceptação.
 
 ---
@@ -573,7 +578,7 @@ página oficial dele, aberta por você, com as suas credenciais (que o JARVIS n�
 
 Bandeja > *Qualidade visual*: **Econômico**, **Equilibrado** (padrão), **Alto**,
 **Cinematográfico**. O perfil muda só o custo visual (quadros, partículas, densidade) —
-memória, lembretes, execução e segurança funcionam igual. Em repouso o JARVIS desenha
+memória, lembretes, execução e segurança funcionam igual. Em repouso o SAFRA desenha
 poucos quadros; o hub que fica atrás do outro (CORE atrás do TARDIS e vice-versa) cai para
 a cadência de fundo; minimizado ou oculto, não desenha. Números medidos em
 `PERFORMANCE_REPORT.md`.
@@ -594,21 +599,21 @@ desta máquina; conexões externas automáticas são bloqueadas e registradas.
 
 | Sintoma | O que fazer |
 |---|---|
-| Não responde ao "Jarvis" | `START_JARVIS.bat --voice-test`; DIAGNÓSTICOS > VOZ > CALIBRAR; veja `VOICE_DIAGNOSTICS.md` |
+| Não responde ao "Safra" | `START_JARVIS.bat --voice-test`; DIAGNÓSTICOS > VOZ > CALIBRAR; veja `VOICE_DIAGNOSTICS.md` |
 | "Silêncio absoluto" no microfone | Configurações do Windows > Privacidade > Microfone: permitir aplicativos da área de trabalho |
 | Responde só por texto | botão VOZ ligado? voz neural instalada (`assets\voices`)? |
 | "Ollama indisponível" | instale/abra o Ollama e baixe `qwen2.5:3b` |
 | Interface pesada | perfil Econômico; feche o TARDIS quando não estiver usando |
 | Lembrete não tocou | horário de silêncio? central de notificações (TARDIS > LEMBRETES) |
 | Algo estranho depois de atualizar | `DIAGNOSTICO_JARVIS.bat`; se preciso, restaure o backup feito pela atualização |
-| "O banco de memória do JARVIS não abriu" | o arquivo não foi alterado. Com o JARVIS fechado: `START_JARVIS.bat --list-backups` e `START_JARVIS.bat --restore-backup ARQUIVO` (o banco danificado fica guardado ao lado) |
+| "O banco de memória do SAFRA não abriu" | o arquivo não foi alterado. Com o SAFRA fechado: `START_JARVIS.bat --list-backups` e `START_JARVIS.bat --restore-backup ARQUIVO` (o banco danificado fica guardado ao lado) |
 | As configurações voltaram ao padrão | o `settings.json` estava ilegível; o original foi guardado como `settings.ilegivel-AAAAMMDD-HHMMSS.json` na mesma pasta |
-| "Não consegui gravar na memória do JARVIS" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
+| "Não consegui gravar na memória do SAFRA" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
 | Demora para responder / quero parar | *"cancelar"*, *"pare"* ou Esc interrompem na hora, mesmo com o modelo ainda carregando |
-| A janela não abre | o JARVIS agora mostra o motivo numa mensagem e oferece o modo console (`START_JARVIS.bat --console`). Para ver o erro no terminal: `START_JARVIS.bat --foreground`; para conferir sem abrir: `START_JARVIS.bat --gui-check`. O erro completo fica em `%LOCALAPPDATA%\ULTRON\logs\ultron.log`. Histórico do defeito corrigido: `AUDITORIA_INICIALIZACAO.md` |
+| A janela não abre | o SAFRA agora mostra o motivo numa mensagem e oferece o modo console (`START_JARVIS.bat --console`). Para ver o erro no terminal: `START_JARVIS.bat --foreground`; para conferir sem abrir: `START_JARVIS.bat --gui-check`. O erro completo fica em `%LOCALAPPDATA%\ULTRON\logs\ultron.log`. Histórico do defeito corrigido: `AUDITORIA_INICIALIZACAO.md` |
 | A central 3D não aparece (rosto 2D no lugar) | DIAGNÓSTICOS e `START_JARVIS.bat --gui-check` dizem o motivo ("cena 3D …"). Sem `PySide6-Addons`: `ATUALIZAR_JARVIS.bat`. Depois de uma falha da placa de vídeo, CONFIGURAÇÕES > APARÊNCIA > Cena 3D: Desligada e depois Automática tenta de novo |
 | A central 3D está lenta | perfil Econômico ou Equilibrado (a qualidade também desce sozinha); `python tools/benchmark_scene3d.py` mede no seu computador |
-| "O JARVIS já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
+| "O SAFRA já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
 
 ## 12. Documentos
 

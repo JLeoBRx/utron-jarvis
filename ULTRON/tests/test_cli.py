@@ -42,9 +42,9 @@ class CommandLineTest(unittest.TestCase):
     def test_1_version_and_status(self):
         code, out = self.run_jarvis("--version")
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"JARVIS \d+\.\d+")
+        self.assertRegex(out, r"SAFRA \d+\.\d+")
         code, out = self.run_jarvis("--status")
-        self.assertEqual((code, out.strip()), (0, "O JARVIS não está em execução."))
+        self.assertEqual((code, out.strip()), (0, "O SAFRA não está em execução."))
 
     def test_2_a_request_from_the_command_line(self):
         code, out = self.run_jarvis("--say", "que horas são?", "--no-voice", "--no-perception", "--no-plugins")

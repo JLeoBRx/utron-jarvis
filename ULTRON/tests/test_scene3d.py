@@ -2,7 +2,7 @@
 
 * ``AvailabilityTest`` e ``WebFilesTest`` não precisam de tela nem de QtWebEngine;
 * ``ControllerSceneTest`` usa uma vista 3D FALSA (mesma interface) para provar a lógica do controlador —
-  troca JARVIS ⇄ TARDIS, pedidos da página e a volta para 2D quando a cena cai; não é um teste de WebGL;
+  troca SAFRA ⇄ TARDIS, pedidos da página e a volta para 2D quando a cena cai; não é um teste de WebGL;
 * ``NativeSceneTest`` abre a cena DE VERDADE num processo próprio (``scene3d_probe.py``): roda no Windows
   nativo e, no Linux, só com JARVIS_TEST_SCENE3D=1 (o CI usa Xvfb). Em máquina sem WebGL 2, o teste aceita a
   falha tratada — e diz qual dos dois aconteceu.
@@ -134,7 +134,7 @@ class WebFilesTest(unittest.TestCase):
     def test_demo_mode_is_labeled_and_only_without_the_bridge(self):
         main = (WEB / "js" / "main.js").read_text(encoding="utf-8")
         self.assertIn("const DEMO = !send.connected", main)
-        self.assertIn("DEMONSTRAÇÃO fora do JARVIS", main)
+        self.assertIn("DEMONSTRAÇÃO fora do SAFRA", main)
         self.assertIn("não são dados reais", main)
 
     def test_humanoid_android_and_tardis_presence(self):
@@ -186,10 +186,15 @@ class DesignTokensTest(unittest.TestCase):
         for key, value in palette.HEX.items():
             self.assertEqual(tokens["color"][key].lower(), value.lower(), f"cor {key} diverge do Qt")
         materials = (WEB / "js" / "materials.js").read_text(encoding="utf-8")
-        for key, token in (("cyan", "cyan"), ("glow", "glow"), ("electric", "electric"), ("amber", "alert")):
+        for key, token in (("primary", "primary"), ("glow", "glow"), ("energy", "energy"), ("amber", "alert"),
+                           ("fault", "error"), ("ultron", "ultron"), ("ultronGlow", "ultron_glow")):
             self.assertIn(f"{key}: 0x{tokens['color'][token][1:].lower()}", materials, f"cor {key} da cena 3D")
+        for key, value in palette.ULTRON_HEX.items():
+            self.assertEqual(tokens["color"][key].lower(), value.lower(), f"cor {key} do ULTRON diverge do Qt")
+        ultron_js = (WEB / "js" / "ultron.js").read_text(encoding="utf-8")
+        self.assertIn(f"0x{tokens['color']['ultron'][1:].lower()}", ultron_js, "violeta do ULTRON na cena 3D")
         css = (WEB / "css" / "scene.css").read_text(encoding="utf-8")
-        self.assertIn("var(--color-cyan)", css)
+        self.assertIn("var(--color-primary)", css)
         self.assertNotRegex(css.split("}")[0], r"#[0-9a-fA-F]{6}", "a camada de interface não define cor própria")
         done = sp.run([sys.executable, str(ROOT / "tools" / "gerar_tokens.py"), "--check"], capture_output=True,
                       text=True, stdin=sp.DEVNULL)
@@ -304,7 +309,7 @@ class ControllerSceneTest(unittest.TestCase):
     def test_one_scene_is_lent_to_the_tardis_and_returned(self):
         c = self.controller
         scene = c.scene3d
-        self.assertIs(c.central(), scene, "a cena 3D é a vista do JARVIS")
+        self.assertIs(c.central(), scene, "a cena 3D é a vista do SAFRA")
         c.open_tardis("telemetria")
         self.pump(lambda: scene.mode == "tardis")
         room = c.tardis_page.room
@@ -321,7 +326,7 @@ class ControllerSceneTest(unittest.TestCase):
         scene.panel_selected.emit("rotinas")                 # clique no console 3D = clique na aba
         self.pump(lambda: room.current_panel == "rotinas")
         self.assertEqual(room.current_panel, "rotinas")
-        scene.action_requested.emit("jarvis")                # botão VOLTAR AO JARVIS da página
+        scene.action_requested.emit("jarvis")                # botão VOLTAR AO SAFRA da página
         self.pump(lambda: c.window.current_key == "jarvis")
         self.assertIs(c.central(), scene)
         self.assertIsNone(room.scene3d)
@@ -355,7 +360,7 @@ class ControllerSceneTest(unittest.TestCase):
         self.assertEqual(len(menus), 1, "botão direito pede o menu")
         QtTest.QTest.mouseDClick(c.orb.overlay, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, QtCore.QPoint(50, 50))
         self.pump(lambda: c.window.isVisible())
-        self.assertIs(c.central(), scene, "duplo clique devolve a cena à página JARVIS")
+        self.assertIs(c.central(), scene, "duplo clique devolve a cena à página SAFRA")
         self.assertFalse(scene.compact)
         self.assertIsNone(c.orb.scene_view)
         self.assertEqual(c.orb.width(), c.orb.SIZE)
@@ -404,7 +409,7 @@ class ControllerSceneTest(unittest.TestCase):
         self.assertTrue(c.tardis_page.room.view.isVisibleTo(c.tardis_page.room), "a sala 2D volta a desenhar")
         c.open_page("jarvis")
         self.pump(lambda: c.central() is c.avatar)
-        self.assertIs(c.central(), c.avatar, "a página JARVIS mostra o rosto 2D")
+        self.assertIs(c.central(), c.avatar, "a página SAFRA mostra o rosto 2D")
         c.frame_rate = c.frame_rate or 30.0                  # health() só detalha depois da primeira medição
         self.assertIn("cena 3D não usada: contexto WebGL perdido", c.health()["detail"])
 
@@ -451,7 +456,7 @@ class NativeSceneTest(unittest.TestCase):
         self.assertFalse(result["failed_after"])
         self.assertEqual(result["jarvis"]["mode"], "jarvis")
         self.assertTrue(result["jarvis"]["deck"])
-        self.assertTrue(result["jarvis"]["connected"], "a página recebe os sinais do JARVIS")
+        self.assertTrue(result["jarvis"]["connected"], "a página recebe os sinais do SAFRA")
         self.assertEqual(result["tardis"]["mode"], "tardis")
         self.assertTrue(result["tardis"]["room"])
         self.assertFalse(result["tardis"]["deck"])

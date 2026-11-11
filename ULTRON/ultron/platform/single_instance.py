@@ -1,4 +1,4 @@
-"""Garante uma única instância do JARVIS (duas instâncias disputariam o microfone)."""
+"""Garante uma única instância do SAFRA (duas instâncias disputariam o microfone)."""
 from __future__ import annotations
 
 import ctypes
@@ -12,7 +12,7 @@ _legacy_handle = None
 _lock_file = None
 # Mutex do JARVIS original (backend.py): segurá-lo impede que a versão antiga e esta rodem juntas
 # disputando o microfone (o original encerra quando encontra o mutex já criado).
-LEGACY_NAME = "JARVIS.PersonalAssistant"
+LEGACY_NAME = "SAFRA.PersonalAssistant"
 blocked_by_legacy = False
 
 

@@ -5,7 +5,7 @@ Como no original:
 * ``JARVIS_AI_PROVIDER=openai`` escolhe a OpenAI como cérebro; ``JARVIS_OPENAI_MODEL`` o modelo;
   ``JARVIS_OPENAI_WEB_SEARCH`` (padrão 1) liga a pesquisa web da própria OpenAI; a chave vem de
   ``OPENAI_API_KEY`` ou do cofre do sistema (nunca de arquivo de configuração);
-* as ferramentas continuam sendo executadas LOCALMENTE pelo JARVIS: a OpenAI só escolhe uma
+* as ferramentas continuam sendo executadas LOCALMENTE pelo SAFRA: a OpenAI só escolhe uma
   ferramenta estruturada (nunca recebe shell);
 * se a API estiver indisponível, o roteador volta ao Ollama local.
 

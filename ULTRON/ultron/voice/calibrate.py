@@ -1,13 +1,13 @@
-"""Calibração da palavra de ativação "Jarvis".
+"""Calibração da palavra de ativação "Safra".
 
-O reconhecedor transcreve "Jarvis" de formas diferentes conforme o sotaque e o microfone
+O reconhecedor transcreve "Safra" de formas diferentes conforme o sotaque e o microfone
 ("jarvis", "jarbas", "aviso", "já vi"…). A calibração ouve algumas repetições com o MESMO
 modelo usado no dia a dia e acrescenta as formas ouvidas: próximas de "jarvis" e que não são
 palavras comuns viram formas fortes; confusões repetidas com palavras comuns viram formas
 fracas (só ativam seguidas de um comando reconhecido).
 
-Uso: ``python -m ultron.voice.calibrate`` (pede para dizer "Jarvis" três vezes) ou, com o
-JARVIS aberto, HUB > Voz > Calibrar (usa a captura já aberta, sem um segundo microfone).
+Uso: ``python -m ultron.voice.calibrate`` (pede para dizer "Safra" três vezes) ou, com o
+SAFRA aberto, HUB > Voz > Calibrar (usa a captura já aberta, sem um segundo microfone).
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def calibrate(stt, recordings: list[bytes], known: tuple, known_weak: tuple = ()
 
 def calibrate_live(core, *, repetitions: int = 3, seconds: float = 4.0,
                    prompt: Callable[[str], None] | None = None, cancel=None) -> CalibrationResult:
-    """Calibração com o JARVIS aberto: usa a captura em andamento (diagnostic_tap), sem abrir outro
+    """Calibração com o SAFRA aberto: usa a captura em andamento (diagnostic_tap), sem abrir outro
     fluxo de microfone. Grava as formas aprendidas nas configurações."""
     import queue
     pipeline = core.voice
@@ -75,7 +75,7 @@ def calibrate_live(core, *, repetitions: int = 3, seconds: float = 4.0,
             if cancel is not None and getattr(cancel, "cancelled", False):
                 break
             if prompt:
-                prompt(f"[{number}/{repetitions}] Diga apenas \"Jarvis\".")
+                prompt(f"[{number}/{repetitions}] Diga apenas \"Safra\".")
             deadline = time.monotonic() + seconds
             while time.monotonic() < deadline:
                 try:
@@ -124,7 +124,7 @@ def main(argv: list[str] | None = None, *, recorder: Callable[[float], bytes] | 
     record = recorder or (lambda secs: record_microphone(secs, name_hint=s.mic_name, index=s.mic_index))
     recordings = []
     for number in range(1, repetitions + 1):
-        input(f"[{number}/{repetitions}] Pressione Enter e diga apenas \"Jarvis\".")
+        input(f"[{number}/{repetitions}] Pressione Enter e diga apenas \"Safra\".")
         recordings.append(record(2.5))
     result = calibrate(stt, recordings, tuple(s.wake_variants), tuple(s.wake_weak_variants))
     print("Ouvido:", "; ".join(result.transcripts) or "(nada reconhecido)")

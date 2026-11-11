@@ -1,18 +1,18 @@
-"""Ponto de entrada do JARVIS.
+"""Ponto de entrada do SAFRA.
 
-    python main.py                 HUB principal (JARVIS CORE) com o TARDIS sob demanda
+    python main.py                 HUB principal (SAFRA CORE) com o TARDIS sob demanda
     python main.py --boot          início automático: começa recolhido no orbe
     python main.py --headless      console de texto, sem interface gráfica
     python main.py --diagnose      verifica saúde, modelos, voz (8 etapas), rede e plugins, e sai
-    python main.py --voice-test    teste de voz interativo: diga "Jarvis, que horas são?"
+    python main.py --voice-test    teste de voz interativo: diga "Safra, que horas são?"
     python main.py --list-mics     lista os microfones
     python main.py --mic 2         escolhe o microfone (número da lista ou parte do nome) e sai
     python main.py --say "texto"   executa um pedido sem interface e sai
     python main.py --backup        cria um backup do banco (memórias, lembretes, rede) e sai
     python main.py --list-backups  lista os backups
-    python main.py --restore-backup ARQUIVO   restaura um backup (com o JARVIS FECHADO; guarda o atual)
+    python main.py --restore-backup ARQUIVO   restaura um backup (com o SAFRA FECHADO; guarda o atual)
     python main.py --export ARQUIVO.json|.csv exporta a memória pessoal para um arquivo novo
-    python main.py --status        diz se o JARVIS está em execução (e o processo)
+    python main.py --status        diz se o SAFRA está em execução (e o processo)
     python main.py --stop          pede à instância em execução que encerre normalmente
 
 Registra em ``<dados>/logs/ultron.log`` (também quando iniciado por ``pythonw``, sem console).
@@ -36,7 +36,7 @@ from .config import paths
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="jarvis", description="JARVIS — inteligência local do computador")
+    parser = argparse.ArgumentParser(prog="jarvis", description="SAFRA — inteligência local do computador")
     parser.add_argument("--headless", action="store_true", help="console de texto, sem interface gráfica")
     parser.add_argument("--boot", action="store_true", help="início automático com o Windows (orbe recolhido)")
     parser.add_argument("--diagnose", action="store_true", help="relatório de saúde e sai")
@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--say", metavar="TEXTO", help="executa um pedido e sai")
     parser.add_argument("--backup", action="store_true", help="cria um backup do banco e sai")
     parser.add_argument("--list-backups", action="store_true", help="lista os backups e sai")
-    parser.add_argument("--restore-backup", metavar="ARQUIVO", help="restaura um backup (JARVIS fechado) e sai")
+    parser.add_argument("--restore-backup", metavar="ARQUIVO", help="restaura um backup (SAFRA fechado) e sai")
     parser.add_argument("--export", metavar="ARQUIVO", help="exporta a memória pessoal (.json ou .csv) e sai")
     parser.add_argument("--import-models", metavar="PASTA",
                         help="copia modelos de fala/voz de uma instalação anterior (só o que falta) e sai")
@@ -60,14 +60,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="confere a entrada de início automático com o Windows e sai")
     parser.add_argument("--gui-check", action="store_true",
                         help="monta a interface sem mostrá-la (sem iniciar serviços), diz se abriu e sai")
-    parser.add_argument("--status", action="store_true", help="diz se o JARVIS está em execução e sai")
+    parser.add_argument("--status", action="store_true", help="diz se o SAFRA está em execução e sai")
     parser.add_argument("--stop", action="store_true", help="encerra a instância em execução (normalmente) e sai")
     parser.add_argument("--profile", help="perfil de configuração (default, performance, privacy, silent, developer)")
     parser.add_argument("--no-voice", action="store_true", help="sem microfone e sem fala")
     parser.add_argument("--no-perception", action="store_true", help="sem sensores de percepção")
     parser.add_argument("--no-plugins", action="store_true", help="não carrega plugins")
     parser.add_argument("--debug", action="store_true", help="registro detalhado")
-    parser.add_argument("--version", action="version", version=f"JARVIS {__version__}")
+    parser.add_argument("--version", action="version", version=f"SAFRA {__version__}")
     return parser
 
 
@@ -118,13 +118,13 @@ def setup_logging(debug: bool = False) -> None:
 
 
 class StartupError(RuntimeError):
-    """O JARVIS não pôde abrir algo essencial; a mensagem diz o que aconteceu e o que fazer."""
+    """O SAFRA não pôde abrir algo essencial; a mensagem diz o que aconteceu e o que fazer."""
 
 
 def _database_problem(exc: Exception) -> StartupError:
     return StartupError(
-        f"O banco de memória do JARVIS não abriu ({exc}). O arquivo NÃO foi alterado: {paths.database_path()}\n"
-        "Para recuperar, com o JARVIS fechado: START_JARVIS.bat --list-backups e depois "
+        f"O banco de memória do SAFRA não abriu ({exc}). O arquivo NÃO foi alterado: {paths.database_path()}\n"
+        "Para recuperar, com o SAFRA fechado: START_JARVIS.bat --list-backups e depois "
         "START_JARVIS.bat --restore-backup ARQUIVO. Para começar com um banco novo, mova o arquivo para outra "
         "pasta antes de iniciar.")
 
@@ -136,7 +136,7 @@ def _show_startup_error(text: str) -> None:
     try:
         from PySide6 import QtWidgets
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-        QtWidgets.QMessageBox.critical(None, "J.A.R.V.I.S. — não foi possível iniciar", text)
+        QtWidgets.QMessageBox.critical(None, "SAFRA — não foi possível iniciar", text)
         del app
     except Exception:                                  # sem interface: fica o registro no log
         pass
@@ -229,7 +229,7 @@ def run_voice_test(args: argparse.Namespace) -> int:
     from .voice.diagnostics import VoiceDiagnostics, format_report
 
     core = _make_core(args, voice=True, perception=False)
-    print("Iniciando o JARVIS para o teste de voz…", flush=True)
+    print("Iniciando o SAFRA para o teste de voz…", flush=True)
     core.boot()
     _wait_voice_ready(core)
     diag = VoiceDiagnostics(core, on_step=lambda st: print(f"  · {st.title}: {st.status} — {st.detail}", flush=True))
@@ -282,7 +282,7 @@ def run_headless(args: argparse.Namespace, core=None) -> int:
 
     def show(event) -> None:
         payload = event.payload
-        prefix = "…" if payload.get("partial") else "JARVIS:"
+        prefix = "…" if payload.get("partial") else "SAFRA:"
         print(f"{prefix} {payload.get('text', '')}", flush=True)
         if not payload.get("partial"):
             done.set()
@@ -418,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if code != 0 and os.environ.get("JARVIS_PAUSE_ON_ERROR") == "1":
             try:
-                input("\nO JARVIS terminou com erro (detalhes acima e no registro). Pressione Enter para fechar.")
+                input("\nO SAFRA terminou com erro (detalhes acima e no registro). Pressione Enter para fechar.")
             except (EOFError, KeyboardInterrupt, RuntimeError, OSError):
                 pass
 
@@ -427,7 +427,7 @@ def _main(argv: list[str] | None) -> int:
     args = parse_args(argv)
     setup_logging(args.debug)
     log = logging.getLogger("ultron")
-    log.info("JARVIS %s iniciando (%s)", __version__, " ".join(sys.argv[1:]) or "HUB")
+    log.info("SAFRA %s iniciando (%s)", __version__, " ".join(sys.argv[1:]) or "HUB")
     try:
         return _dispatch(args, log)
     except StartupError as exc:
@@ -455,7 +455,7 @@ def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
         return 0
     if args.status:
         pid = control.running_pid()
-        print(f"JARVIS em execução (processo {pid})." if pid else "O JARVIS não está em execução.")
+        print(f"SAFRA em execução (processo {pid})." if pid else "O SAFRA não está em execução.")
         return 0
     if args.stop:
         ok, message = control.stop()
@@ -463,7 +463,7 @@ def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
         return 0 if ok else 1
     if args.backup or args.list_backups or args.restore_backup or args.export:
         if args.restore_backup and not single_instance.acquire():
-            print("Feche o JARVIS antes de restaurar um backup (bandeja > Sair).")
+            print("Feche o SAFRA antes de restaurar um backup (bandeja > Sair).")
             return 2
         try:
             return run_data_command(args)
@@ -471,7 +471,7 @@ def _dispatch(args: argparse.Namespace, log: logging.Logger) -> int:
             single_instance.release()
     if args.diagnose or args.voice_test:
         if not single_instance.acquire():
-            print("O JARVIS já está em execução: feche-o (bandeja > Sair) para diagnosticar sem disputar o "
+            print("O SAFRA já está em execução: feche-o (bandeja > Sair) para diagnosticar sem disputar o "
                   "microfone (START_JARVIS.bat --stop), ou use DIAGNÓSTICOS > VOZ > TESTAR na interface.")
             return 2
         try:
@@ -519,26 +519,26 @@ def _already_running(args: argparse.Namespace, log: logging.Logger) -> int:
                 "o microfone.")
         log.warning("JARVIS original em execução (mutex %s); esta instância não foi iniciada",
                     single_instance.LEGACY_NAME)
-        _tell("J.A.R.V.I.S. — já em execução", text, kind="warning")
+        _tell("SAFRA — já em execução", text, kind="warning")
         return 0
     pid = control.running_pid()
     mode = control.running_mode()
     wants_window = not (args.headless or args.say)
     if wants_window and mode != "console" and control.bring_to_front():
-        log.info("JARVIS já em execução (processo %s): janela trazida para a frente", pid)
-        print("O JARVIS já estava aberto: a janela foi trazida para a frente.", flush=True)
+        log.info("SAFRA já em execução (processo %s): janela trazida para a frente", pid)
+        print("O SAFRA já estava aberto: a janela foi trazida para a frente.", flush=True)
         return 0
     which = f" (processo {pid})" if pid else ""
     if mode == "console":
-        text = (f"O JARVIS já está aberto em modo console{which}. Use aquela janela de terminal ou encerre-o com "
+        text = (f"O SAFRA já está aberto em modo console{which}. Use aquela janela de terminal ou encerre-o com "
                 "\"sair\" (ou START_JARVIS.bat --stop) antes de abrir de novo.")
     else:
-        text = (f"O JARVIS já está em execução{which}"
+        text = (f"O SAFRA já está em execução{which}"
                 + (", mas a janela dele não respondeu ao pedido para aparecer" if wants_window else "")
                 + ".\nPara encerrá-lo: START_JARVIS.bat --stop (ou bandeja > Sair). Se ele não responder, finalize o "
-                  "pythonw.exe do JARVIS pelo Gerenciador de Tarefas — os dados ficam íntegros.")
+                  "pythonw.exe do SAFRA pelo Gerenciador de Tarefas — os dados ficam íntegros.")
     log.warning("outra instância em execução%s (modo %s); esta não foi iniciada", which, mode or "desconhecido")
-    _tell("J.A.R.V.I.S. — já em execução", text, kind="warning")
+    _tell("SAFRA — já em execução", text, kind="warning")
     return 0
 
 
@@ -553,13 +553,13 @@ def _interface_failed(args: argparse.Namespace, core, exc: BaseException, log: l
         core.hud_health = None
         core.hud_probe = lambda: False
     logfile = paths.logs_dir() / "ultron.log"
-    text = (f"A interface gráfica do JARVIS não abriu.\n\nMotivo: {type(exc).__name__}: {exc}\n\n"
+    text = (f"A interface gráfica do SAFRA não abriu.\n\nMotivo: {type(exc).__name__}: {exc}\n\n"
             f"O erro completo foi registrado em:\n{logfile}\n\n"
             "Seus dados (memória, lembretes e configurações) não foram alterados.")
     if notice.has_console():
         print(text, flush=True)
         try:
-            answer = input("\nAbrir o JARVIS em modo console agora? [S/n] ").strip().casefold()
+            answer = input("\nAbrir o SAFRA em modo console agora? [S/n] ").strip().casefold()
         except (EOFError, KeyboardInterrupt):
             answer = "n"
         if answer in ("", "s", "sim", "y", "yes"):
@@ -570,8 +570,8 @@ def _interface_failed(args: argparse.Namespace, core, exc: BaseException, log: l
     if sys.stdout is not None:                       # saída redirecionada, sem ninguém para responder
         print(text + "\nPara usar pelo terminal: START_JARVIS.bat --console", flush=True)
         return 4
-    if notice.show("J.A.R.V.I.S. — a interface não abriu",
-                   text + "\n\nAbrir o JARVIS em modo console (pelo terminal) agora?", ask=True):
+    if notice.show("SAFRA — a interface não abriu",
+                   text + "\n\nAbrir o SAFRA em modo console (pelo terminal) agora?", ask=True):
         if core is not None and core.booted:
             core.shutdown()
         control.unregister()

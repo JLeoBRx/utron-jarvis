@@ -1,4 +1,4 @@
-"""Skills de diagnóstico: relatório do sistema, saúde do JARVIS e processos."""
+"""Skills de diagnóstico: relatório do sistema, saúde do SAFRA e processos."""
 from __future__ import annotations
 
 from ..base import Risk, Skill, SkillResult, VerificationResult, check, schema, string
@@ -50,7 +50,7 @@ class SystemReport(Skill):
 
 class HealthReport(Skill):
     name = "diagnostics.health"
-    description = "Saúde do JARVIS: CPU, RAM, GPU, disco, Ollama, voz, visão, rede, memória e HUD."
+    description = "Saúde do SAFRA: CPU, RAM, GPU, disco, Ollama, voz, visão, rede, memória e HUD."
     category = "diagnostics"
     inputs = schema({})
     risk = Risk.NONE

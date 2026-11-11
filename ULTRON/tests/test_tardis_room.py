@@ -1,9 +1,9 @@
-"""TARDIS integrada ao JARVIS: "JARVIS, consulte a TARDIS", sugestões que só rodam com "sim", categorias que
+"""TARDIS integrada ao SAFRA: "SAFRA, consulte a TARDIS", sugestões que só rodam com "sim", categorias que
 pedem confirmação própria (apagar dados), cancelamento, modo "operação" do rotor e a SALA DE CONTROLE na plataforma
 (Qt offscreen, Ollama simulado por HTTP, banco temporário).
 
 Não é teste de GPU, de janela real do Windows nem de microfone: uma skill de exclusão FALSA (só registra o
-pedido) prova que a TARDIS PROPÕE e o JARVIS pede confirmação própria antes de executar.
+pedido) prova que a TARDIS PROPÕE e o SAFRA pede confirmação própria antes de executar.
 """
 import threading
 import time
@@ -47,7 +47,7 @@ class IntentsTest(unittest.TestCase):
         from ultron.cognition.intent_engine import IntentEngine
         engine = IntentEngine()
         cases = {
-            "JARVIS, consulte a TARDIS sobre o projeto Atlas": ("tardis.consult", {"kind": "consulta",
+            "SAFRA, consulte a TARDIS sobre o projeto Atlas": ("tardis.consult", {"kind": "consulta",
                                                                                    "question": "o projeto Atlas"}),
             "pergunte à TARDIS como organizar meu estudo": ("tardis.consult", {"kind": "consulta",
                                                                               "question": "como organizar meu estudo"}),
@@ -112,9 +112,9 @@ class CoreIntegrationTest(unittest.TestCase):
 
     def test_1_consult_answers_with_sources_and_the_same_model(self):
         self.core.second_brain.create("idea", "Painel solar portátil", project="Atlas")
-        response = self.ask("JARVIS, consulte a TARDIS sobre o projeto Atlas")
+        response = self.ask("SAFRA, consulte a TARDIS sobre o projeto Atlas")
         self.assertIn("TARDIS — consulta contextual", response["text"])
-        self.assertIn("qwen2.5:3b (o mesmo do JARVIS)", response["text"])
+        self.assertIn("qwen2.5:3b (o mesmo do SAFRA)", response["text"])
         self.assertIn("Fontes:", response["text"])
         task = next(t for t in self.core.tardis.recent(5) if t.kind == "consulta")
         self.assertEqual((task.origin, task.chain), ("jarvis", ["jarvis"]))
@@ -297,7 +297,7 @@ class RoomUITest(unittest.TestCase):
         self.assertEqual(room.shown_task, task.id)
         text = room.result.toPlainText()
         self.assertIn("<b>Atlas</b>", text, "resposta do modelo é mostrada como texto, nunca como HTML")
-        self.assertIn("qwen2.5:3b (o mesmo do JARVIS)", text)
+        self.assertIn("qwen2.5:3b (o mesmo do SAFRA)", text)
         self.assertIn("pedida por você", text)
         self.assertGreater(room.scene.panels["analise"].flash, 0.1, "o painel ANÁLISE pulsou com a tarefa real")
         self.assertEqual(room.tasks.item(0).data(256), task.id)

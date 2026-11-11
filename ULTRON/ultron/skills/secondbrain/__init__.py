@@ -430,7 +430,7 @@ class Conflicts(_SBSkill):
 
 def _export_target(path: str | None, fmt: str) -> Path:
     """Destino da exportação: um arquivo NOVO, .json/.csv, dentro da pasta pessoal do usuário ou da
-    pasta de dados do JARVIS (um caminho vindo de texto da tela ou de documento não sai dali)."""
+    pasta de dados do SAFRA (um caminho vindo de texto da tela ou de documento não sai dali)."""
     import time
 
     from ...config import paths
@@ -442,7 +442,7 @@ def _export_target(path: str | None, fmt: str) -> Path:
     resolved = target.resolve()
     allowed = [Path.home().resolve(), paths.data_dir().resolve()]
     if not any(resolved == root or root in resolved.parents for root in allowed):
-        raise SecondBrainError("exporto apenas para a sua pasta pessoal ou para a pasta de dados do JARVIS")
+        raise SecondBrainError("exporto apenas para a sua pasta pessoal ou para a pasta de dados do SAFRA")
     return resolved
 
 
@@ -485,12 +485,12 @@ class Export(_SBSkill):
 
 class Backup(_SBSkill):
     name = "memory.backup"
-    description = ("Fazer agora um backup do banco do JARVIS (memórias, memória pessoal, lembretes, grafo e "
+    description = ("Fazer agora um backup do banco do SAFRA (memórias, memória pessoal, lembretes, grafo e "
                    "inventário da rede).")
     inputs = schema({})
 
     def describe_action(self, args):
-        return "criar um backup do banco do JARVIS"
+        return "criar um backup do banco do SAFRA"
 
     def execute(self, ctx, **_) -> SkillResult:
         from ...memory import backup

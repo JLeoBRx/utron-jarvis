@@ -1,14 +1,14 @@
-// O holograma do JARVIS: corpo humano inteiro (1,80 m), construído aqui por seções ao longo de um esqueleto.
+// O holograma do SAFRA: corpo humano inteiro (1,80 m), construído aqui por seções ao longo de um esqueleto.
 //
 // * Esqueleto de 51 ossos (dedos com três falanges); proporções antropométricas.
 // * Cada parte é uma superfície "loft" ao longo do seu osso, com perfis de músculo; a cabeça é a mesma função
-//   do rosto holográfico 2D (ultron/hud/avatar/geometry.py), portada — mantém a identidade do JARVIS.
+//   do rosto holográfico 2D (ultron/hud/avatar/geometry.py), portada — mantém a identidade do SAFRA.
 // * Desenho: linhas topológicas (contornos e meridianos), nós luminosos e casca translúcida (Fresnel), todos
 //   deformados pelos ossos na GPU (materials.js). Mais uma camada interna: o próprio esqueleto, tênue.
-// * Movimento: procedural, por estado REAL resolvido pelo JARVIS (nada é simulado aqui): respiração, apoio,
+// * Movimento: procedural, por estado REAL resolvido pelo SAFRA (nada é simulado aqui): respiração, apoio,
 //   olhar, piscadas, gestos pela energia real da fala, mãos na execução, boca pela trilha labial do áudio.
 import * as THREE from 'three';
-import { ULTRON_RED, ULTRON_GLOW } from './ultron.js';
+import { ULTRON_COLOR, ULTRON_GLOW } from './ultron.js';
 import { holoUniforms, holoLineMaterial, holoPointsMaterial, holoShellMaterial, holoCircuitMaterial, glowMaterial, glowTexture,
          disposer, canvasTexture, PALETTE, holoSolidMaterial } from './materials.js';
 import { buildClothes, buildHair, buildBrows, dressUltron } from './avatar_dress.js';
@@ -589,9 +589,9 @@ class Projector {
     this.group = new THREE.Group();
     group.add(this.group);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.10, 64),
-      disposer.track(new THREE.MeshStandardMaterial({ color: 0x0c1726, metalness: 0.85, roughness: 0.35 })));
+      disposer.track(new THREE.MeshStandardMaterial({ color: 0x1a0c10, metalness: 0.85, roughness: 0.35 })));
     base.position.y = 0.05;
-    const lip = new THREE.Mesh(new THREE.TorusGeometry(0.97, 0.012, 8, 96), glowMaterial(PALETTE.cyan, 0.65));
+    const lip = new THREE.Mesh(new THREE.TorusGeometry(0.97, 0.012, 8, 96), glowMaterial(PALETTE.primary, 0.65));
     lip.rotation.x = Math.PI / 2; lip.position.y = 0.102;
     this.lip = lip;
     this.group.add(base, lip);
@@ -600,26 +600,26 @@ class Projector {
     const ringTex = canvasTexture(1024, 1024, (g, w, h) => {
       g.translate(w / 2, h / 2);
       const ring = (r, width, alpha, dash = null) => {
-        g.beginPath(); g.setLineDash(dash || []); g.lineWidth = width; g.strokeStyle = `rgba(150,235,255,${alpha})`;
+        g.beginPath(); g.setLineDash(dash || []); g.lineWidth = width; g.strokeStyle = `rgba(255,160,168,${alpha})`;
         g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
       };
       ring(500, 3, 0.65); ring(470, 1.5, 0.35, [24, 10]); ring(380, 2, 0.5); ring(352, 10, 0.12, [4, 14]);
       ring(250, 1.5, 0.45, [60, 20]); ring(150, 2, 0.4); ring(90, 1, 0.3, [6, 6]);
       for (let i = 0; i < 120; i++) {
         const a = (i / 120) * Math.PI * 2, r0 = i % 10 === 0 ? 400 : 420;
-        g.strokeStyle = `rgba(150,235,255,${i % 10 === 0 ? 0.7 : 0.3})`; g.lineWidth = i % 10 === 0 ? 3 : 1.4;
+        g.strokeStyle = `rgba(255,160,168,${i % 10 === 0 ? 0.7 : 0.3})`; g.lineWidth = i % 10 === 0 ? 3 : 1.4;
         g.setLineDash([]); g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * 440, Math.sin(a) * 440); g.stroke();
       }
     }, { srgb: true });
-    this.disc = new THREE.Mesh(new THREE.CircleGeometry(0.95, 96), glowMaterial(PALETTE.cyan, 0.55, { map: ringTex }));
+    this.disc = new THREE.Mesh(new THREE.CircleGeometry(0.95, 96), glowMaterial(PALETTE.primary, 0.55, { map: ringTex }));
     this.disc.rotation.x = -Math.PI / 2; this.disc.position.y = 0.103;
-    this.inner = new THREE.Mesh(new THREE.RingGeometry(0.30, 0.62, 96, 1, 0, Math.PI * 1.4), glowMaterial(PALETTE.electric, 0.09));
+    this.inner = new THREE.Mesh(new THREE.RingGeometry(0.30, 0.62, 96, 1, 0, Math.PI * 1.4), glowMaterial(PALETTE.energy, 0.09));
     this.inner.rotation.x = -Math.PI / 2; this.inner.position.y = 0.106;
     this.group.add(this.disc, this.inner);
     disposer.track(this.disc.geometry); disposer.track(this.inner.geometry);
     // feixe de projeção: cone aditivo que esmaece para cima
     const beamMat = disposer.track(new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: new THREE.Color(PALETTE.cyan) }, uTime: { value: 0 }, uPower: { value: 0.55 } },
+      uniforms: { uColor: { value: new THREE.Color(PALETTE.primary) }, uTime: { value: 0 }, uPower: { value: 0.55 } },
       vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv=uv; vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
       fragmentShader: 'uniform vec3 uColor; uniform float uTime; uniform float uPower; varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float fade=pow(1.0-vUv.y,2.2); float side=pow(1.0-abs(dot(vN,vV)),2.0); float streak=0.7+0.3*sin(vUv.x*80.0+uTime*0.7); gl_FragColor=vec4(uColor, fade*(0.03+0.22*side)*streak*uPower); }',
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
@@ -710,7 +710,7 @@ export class Avatar {
     this.group.add(this.root);
     this.rig = new Rig(this.root);
     const info = buildSkeleton(this.rig);
-    this.u = holoUniforms(PALETTE.cyan);
+    this.u = holoUniforms(PALETTE.primary);
     this.u.boneTex.value = this.rig.texture;
     const geo = new BodyGeometry(this.rig);
     buildTorso(geo, this.rig);
@@ -721,7 +721,7 @@ export class Avatar {
     this.counts = body.counts;
     // pele SÓLIDA de androide (escreve profundidade: o que está atrás do corpo não aparece através dele); as linhas
     // topológicas ficam por cima, mais discretas, só onde a superfície é visível
-    this.skinMat = holoSolidMaterial(this.u, { base: 0x9fd6ea, tint: 0.3, opacity: 0.95, gloss: 0.45, rimPower: 3.0,
+    this.skinMat = holoSolidMaterial(this.u, { base: 0xf0c2c6, tint: 0.3, opacity: 0.95, gloss: 0.45, rimPower: 3.0,
                                                rim: 0.55, glow: 0.03 });
     this.skinMat.polygonOffset = true; this.skinMat.polygonOffsetFactor = 1; this.skinMat.polygonOffsetUnits = 2;
     body.shell.material = this.skinMat;
@@ -739,9 +739,9 @@ export class Avatar {
     this.state = 'inicializando';
     this.p = {};
     for (const k of KEYS) this.p[k] = MOTION.inicializando[k] || 0;
-    this.color = new THREE.Color(PALETTE.cyan);
+    this.color = new THREE.Color(PALETTE.primary);
     this.accent = new THREE.Color(PALETTE.glow);
-    this.targetColor = new THREE.Color(PALETTE.cyan);
+    this.targetColor = new THREE.Color(PALETTE.primary);
     this.targetAccent = new THREE.Color(PALETTE.glow);
     this.mouth = { open: 0, wide: 0, round: 0, energy: 0 };
     this.voice = 0; this.mic = 0;
@@ -782,7 +782,7 @@ export class Avatar {
     const mouthShape = new THREE.Shape();
     mouthShape.absellipse(0, 0, 0.019, 0.006, 0, Math.PI * 2, false, 0);
     this.mouthHole = new THREE.Mesh(disposer.track(new THREE.ShapeGeometry(mouthShape, 20)),
-      disposer.track(new THREE.MeshBasicMaterial({ color: 0x02070d, transparent: true, opacity: 0, depthWrite: false })));
+      disposer.track(new THREE.MeshBasicMaterial({ color: 0x070304, transparent: true, opacity: 0, depthWrite: false })));
     this.mouthHole.position.set(0, -0.0045, 0.0035);
     this.mouthHole.renderOrder = 6;
     this.rig.map.mouth.add(this.mouthHole);
@@ -799,7 +799,7 @@ export class Avatar {
 
   setParticleScale(s) { this.projector.setParticleScale(s); }
 
-  /** Metas vindas do JARVIS: estado resolvido, cores reais do estado, trilha labial e níveis de áudio. */
+  /** Metas vindas do SAFRA: estado resolvido, cores reais do estado, trilha labial e níveis de áudio. */
   apply(sig) {
     if (sig.state && MOTION[sig.state]) this.state = sig.state;
     if (sig.rgb) this.targetColor.setRGB(sig.rgb[0] / 255, sig.rgb[1] / 255, sig.rgb[2] / 255, THREE.SRGBColorSpace);
@@ -822,7 +822,7 @@ export class Avatar {
     panel.position.set(0, 1.22, 0.42);
     panel.rotation.x = -0.35;
     this.group.add(panel);
-    const ringMat = glowMaterial(PALETTE.cyan, 0);
+    const ringMat = glowMaterial(PALETTE.primary, 0);
     const halo = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.065, 48), ringMat);
     disposer.track(halo.geometry);
     halo.position.set(0, 1.22, 0.40); halo.rotation.x = -0.35;
@@ -837,9 +837,9 @@ export class Avatar {
     const g = this.taskCanvas.getContext('2d');
     g.clearRect(0, 0, 512, 128);
     if (!text) { this.taskTex.needsUpdate = true; return; }
-    g.strokeStyle = 'rgba(150,235,255,0.7)'; g.lineWidth = 3; g.strokeRect(4, 4, 504, 120);
-    g.fillStyle = 'rgba(150,235,255,0.9)'; g.font = '600 22px Segoe UI, Arial'; g.fillText('EXECUTANDO', 22, 42);
-    g.fillStyle = 'rgba(230,248,255,0.95)'; g.font = '26px Segoe UI, Arial';
+    g.strokeStyle = 'rgba(255,160,168,0.7)'; g.lineWidth = 3; g.strokeRect(4, 4, 504, 120);
+    g.fillStyle = 'rgba(255,160,168,0.9)'; g.font = '600 22px Segoe UI, Arial'; g.fillText('EXECUTANDO', 22, 42);
+    g.fillStyle = 'rgba(255,240,242,0.95)'; g.font = '26px Segoe UI, Arial';
     g.fillText(text.length > 34 ? text.slice(0, 33) + '…' : text, 22, 90);
     this.taskTex.needsUpdate = true;
   }
@@ -853,7 +853,7 @@ export class Avatar {
     this.color.lerp(this.targetColor, k * 0.8);
     this.accent.lerp(this.targetAccent, k * 0.8);
     const uk = this.ultron || 0;                             // Protocolo ULTRON (só aparência)
-    if (uk > 0) { this.color.lerp(ULTRON_RED, uk); this.accent.lerp(ULTRON_GLOW, uk); }
+    if (uk > 0) { this.color.lerp(ULTRON_COLOR, uk); this.accent.lerp(ULTRON_GLOW, uk); }
     const p = this.p, R = this.rig;
     const speed = p.slump > 0.5 ? 0.55 : 1;
     const t = time * speed;

@@ -330,7 +330,7 @@ class BrainView(QtWidgets.QWidget):
     # ---------------------------------------------------------------- estados (sinais reais)
     def _draw_presence(self, p: QtGui.QPainter, fr: Frame) -> None:
         """Escuta: halo ciano que respira com o nível REAL do microfone. Fala: anéis que seguem o nível
-        real da voz do JARVIS. Sem sinal (ou fora desses estados), nada é desenhado."""
+        real da voz do SAFRA. Sem sinal (ou fora desses estados), nada é desenhado."""
         scene = self.scene
         hearing, voice = scene.hearing, scene.voice_level
         listening = scene.runtime_state == "LISTENING"
@@ -808,7 +808,7 @@ class BrainView(QtWidgets.QWidget):
         privacy = scene.state.get("privacy") or {}
         mode = "LOCAL" if privacy.get("local_mode") else str(privacy.get("mode") or "").upper()
         alert = not scene.boot.active and scene.runtime_state in ("AWAITING_AUTHORIZATION", "ERROR")
-        self._centered(p, "JARVIS", theme.font(14, weight=600, spacing=9),
+        self._centered(p, "SAFRA", theme.font(14, weight=600, spacing=9),
                        theme.with_alpha(theme.TEXT_BRIGHT, 0.92 * alpha), fr.rcx, top, shadow=True)
         self._centered(p, "CORE", theme.font(7.5, weight=600, spacing=5),
                        theme.with_alpha(theme.PRIMARY, 0.9 * alpha), fr.rcx, top + 25, shadow=True)
@@ -988,7 +988,7 @@ class BrainView(QtWidgets.QWidget):
         # identidade (canto superior esquerdo)
         p.setFont(theme.font(13, weight=600, spacing=6))
         p.setPen(theme.with_alpha(theme.TEXT_BRIGHT, 0.92 * max(self._core_reveal(), 0.15)))
-        p.drawText(QPointF(26, 38), "JARVIS")
+        p.drawText(QPointF(26, 38), "SAFRA")
         p.setFont(theme.font(7, weight=500, spacing=3))
         p.setPen(theme.with_alpha(theme.PRIMARY, 0.8))
         p.drawText(QPointF(27, 55), "CORE · HUB PRINCIPAL")
@@ -1018,7 +1018,7 @@ class BrainView(QtWidgets.QWidget):
             online = _clamp(scene.boot.shown - 10.0)
             if online > 0:
                 y = min(h - self.bottom_reserved - 24, fr.rcy + RING_BOTTOM * fr.rry + 64)
-                self._centered(p, "JARVIS ONLINE", theme.font(20, weight=300, spacing=14),
+                self._centered(p, "SAFRA ONLINE", theme.font(20, weight=300, spacing=14),
                                theme.with_alpha(theme.TEXT_BRIGHT, online * 0.9), w / 2, y)
             self._draw_boot_track(p, w, h)
         self._draw_telemetry(p, w, h)

@@ -1,4 +1,4 @@
-// O ORBE: o núcleo de inteligência do JARVIS em 3D, no mesmo motor e na mesma linguagem visual da cena.
+// O ORBE: o núcleo de inteligência do SAFRA em 3D, no mesmo motor e na mesma linguagem visual da cena.
 //
 // * Núcleo luminoso com campos de superfície; casca translúcida.
 // * Rede neural COERENTE: nós em três cascas (esfera de Fibonacci) ligados aos vizinhos mais próximos na
@@ -9,9 +9,9 @@
 // * Partículas que entram no núcleo (escuta), saem dele (fala, pela energia REAL da voz) ou orbitam.
 //
 // Estados (só eventos reais): EM ESPERA, ESCUTANDO, PENSANDO, FALANDO, EXECUTANDO, ERRO, ALERTA,
-// PRIVACIDADE, INICIALIZANDO e SEM CONEXÃO (a página não recebe nada do JARVIS — o orbe apaga).
+// PRIVACIDADE, INICIALIZANDO e SEM CONEXÃO (a página não recebe nada do SAFRA — o orbe apaga).
 import * as THREE from 'three';
-import { ULTRON_RED, ULTRON_GLOW } from './ultron.js';
+import { ULTRON_COLOR, ULTRON_GLOW } from './ultron.js';
 import { disposer, canvasTexture, glowMaterial, glowTexture, PALETTE } from './materials.js';
 
 const SHELLS = [[0.27, 26], [0.39, 44], [0.52, 70]];
@@ -49,17 +49,17 @@ function ringTexture(style) {
   return canvasTexture(512, 512, (g, w, h) => {
     g.translate(w / 2, h / 2);
     const R = w / 2 - 4;
-    const arc = (r, a0, a1, width, alpha) => { g.beginPath(); g.lineWidth = width; g.strokeStyle = `rgba(170,240,255,${alpha})`; g.arc(0, 0, r, a0, a1); g.stroke(); };
+    const arc = (r, a0, a1, width, alpha) => { g.beginPath(); g.lineWidth = width; g.strokeStyle = `rgba(255,175,182,${alpha})`; g.arc(0, 0, r, a0, a1); g.stroke(); };
     if (style === 0) {                                  // segmentos com intervalos
       for (let i = 0; i < 12; i++) arc(R - 6, i * Math.PI / 6 + 0.04, (i + 1) * Math.PI / 6 - 0.04, 7, i % 3 ? 0.55 : 0.95);
       arc(R - 18, 0, Math.PI * 2, 1.5, 0.35);
     } else if (style === 1) {                           // marcas de escala (telemetria)
       for (let i = 0; i < 120; i++) { const a = i / 120 * Math.PI * 2, long = i % 10 === 0;
-        g.strokeStyle = `rgba(170,240,255,${long ? 0.9 : 0.4})`; g.lineWidth = long ? 3 : 1.5;
+        g.strokeStyle = `rgba(255,175,182,${long ? 0.9 : 0.4})`; g.lineWidth = long ? 3 : 1.5;
         g.beginPath(); g.moveTo(Math.cos(a) * (R - (long ? 22 : 12)), Math.sin(a) * (R - (long ? 22 : 12))); g.lineTo(Math.cos(a) * R, Math.sin(a) * R); g.stroke(); }
     } else {                                            // arco com indicadores
       arc(R - 8, 0.2, Math.PI * 1.35, 4, 0.8); arc(R - 8, Math.PI * 1.5, Math.PI * 1.9, 4, 0.5);
-      for (let i = 0; i < 6; i++) { const a = 0.2 + i * 0.22; g.fillStyle = 'rgba(200,250,255,0.95)';
+      for (let i = 0; i < 6; i++) { const a = 0.2 + i * 0.22; g.fillStyle = 'rgba(255,225,228,0.95)';
         g.beginPath(); g.arc(Math.cos(a) * (R - 22), Math.sin(a) * (R - 22), 4, 0, Math.PI * 2); g.fill(); }
     }
   }, { srgb: true });
@@ -71,7 +71,7 @@ export class Orb {
     this.group.name = 'orbe';
     this.body = new THREE.Group();
     this.group.add(this.body);
-    this.u = { uTime: { value: 0 }, uColor: { value: new THREE.Color(PALETTE.cyan) }, uAccent: { value: new THREE.Color(PALETTE.glow) },
+    this.u = { uTime: { value: 0 }, uColor: { value: new THREE.Color(PALETTE.primary) }, uAccent: { value: new THREE.Color(PALETTE.glow) },
                uField: { value: 0.4 }, uCore: { value: 0.8 }, uVoice: { value: 0 }, uPixel: { value: 1 } };
 
     // ---------- núcleo: esfera com campos de superfície + brilho interno
@@ -91,7 +91,7 @@ export class Orb {
     this.coreGlow = new THREE.Sprite(disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: PALETTE.glow, transparent: true,
                                                                                 opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })));
     this.coreGlow.scale.setScalar(0.55);
-    this.halo = new THREE.Sprite(disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: PALETTE.cyan, transparent: true,
+    this.halo = new THREE.Sprite(disposer.track(new THREE.SpriteMaterial({ map: glowTexture(), color: PALETTE.primary, transparent: true,
                                                                             opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false })));
     this.halo.scale.setScalar(1.9);
     this.body.add(this.halo, this.nucleus, this.coreGlow);
@@ -188,7 +188,7 @@ export class Orb {
     this.rings = [];
     [[0.64, 0, [1.25, 0, 0.2], 0.18], [0.74, 1, [0.35, 0.4, 0], -0.11], [0.86, 2, [-0.5, 0.9, 0.3], 0.07], [0.97, 1, [1.57, 0, 0], -0.05]]
       .forEach(([r, style, tilt, speed]) => {
-        const mat = glowMaterial(PALETTE.cyan, 0.55, { map: ringTexture(style) });
+        const mat = glowMaterial(PALETTE.primary, 0.55, { map: ringTexture(style) });
         const mesh = new THREE.Mesh(disposer.track(new THREE.RingGeometry(r * 0.9, r, 128, 1)), mat);
         const holder = new THREE.Group();
         holder.rotation.set(...tilt);
@@ -236,7 +236,7 @@ export class Orb {
 
     this.state = 'offline';
     this.p = {}; for (const k of KEYS) this.p[k] = LOOK.offline[k];
-    this.color = new THREE.Color(PALETTE.cyan); this.targetColor = this.color.clone();
+    this.color = new THREE.Color(PALETTE.primary); this.targetColor = this.color.clone();
     this.accent = new THREE.Color(PALETTE.glow); this.targetAccent = this.accent.clone();
     this.voice = 0; this.mic = 0;
     this.expanded = 0; this.expandTarget = 0;
@@ -246,12 +246,12 @@ export class Orb {
 
   setParticleScale(s) { this.particles.geometry.setDrawRange(0, Math.round(this.maxParticles * Math.min(1, 0.45 * s + 0.15))); }
 
-  /** Sinais reais do JARVIS (mesmos do holograma): estado resolvido, cores e níveis de áudio. */
+  /** Sinais reais do SAFRA (mesmos do holograma): estado resolvido, cores e níveis de áudio. */
   apply({ state, rgb, iris, out_level, mic_level, connected = true }) {
     this.state = connected ? (ORB_STATE[state] || 'idle') : 'offline';
     if (rgb) this.targetColor.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
     if (iris) this.targetAccent.setRGB(iris[0] / 255, iris[1] / 255, iris[2] / 255, THREE.SRGBColorSpace);
-    if (!connected) { this.targetColor.set(0x2a4058); this.targetAccent.set(0x4a6a88); }
+    if (!connected) { this.targetColor.set(0x3a3c42); this.targetAccent.set(0x5a5d66); }
     if (typeof out_level === 'number') this.voice = out_level;
     if (typeof mic_level === 'number') this.mic = mic_level;
   }
@@ -268,7 +268,7 @@ export class Orb {
     for (const key of KEYS) this.p[key] += (target[key] - this.p[key]) * k;
     this.color.lerp(this.targetColor, k); this.accent.lerp(this.targetAccent, k);
     const uk = this.ultron || 0;                             // Protocolo ULTRON: núcleo vermelho
-    if (uk > 0) { this.color.lerp(ULTRON_RED, uk); this.accent.lerp(ULTRON_GLOW, uk); }
+    if (uk > 0) { this.color.lerp(ULTRON_COLOR, uk); this.accent.lerp(ULTRON_GLOW, uk); }
     const p = this.p;
     const voice = this.state === 'speaking' ? this.voice : 0;
     const mic = this.state === 'listening' ? this.mic : 0;

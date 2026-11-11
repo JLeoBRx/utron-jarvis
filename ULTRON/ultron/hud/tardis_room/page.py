@@ -1,16 +1,16 @@
 """Página TARDIS da plataforma: a SALA DE CONTROLE (console 3D + painéis) e o ARQUIVO (memória espacial).
 
-Acesso direto à TARDIS, sem passar pelo JARVIS: cada painel do console tem os seus comandos —
+Acesso direto à TARDIS, sem passar pelo SAFRA: cada painel do console tem os seus comandos —
 
 * ANÁLISE: consulta contextual (com fontes) e a memória de projeto (gravar e ler notas e decisões);
 * PLANEJAMENTO: decompor um objetivo em etapas (exige o modelo; sem ele, falha com o motivo);
 * ARQUIVO: organização da memória pessoal e a entrada da memória espacial;
 * ROTINAS: lembretes futuros, recorrências e automações;
-* TELEMETRIA: as métricas reais do próprio JARVIS (modelo, pedidos, interface, memória do processo);
+* TELEMETRIA: as métricas reais do próprio SAFRA (modelo, pedidos, interface, memória do processo);
 * DIAGNÓSTICO: verificação dos módulos e o estado de cada um agora (coordenação).
 
 O resultado mostra o resumo, os itens com a fonte de cada um, o modelo usado e as ações PROPOSTAS. Uma
-ação só roda pelo botão APLICAR, pelo caminho central do JARVIS (permissões, confirmação, verificação).
+ação só roda pelo botão APLICAR, pelo caminho central do SAFRA (permissões, confirmação, verificação).
 Tudo o que aparece aqui vem do motor da TARDIS — sem conexão com ele, a página diz isso.
 """
 from __future__ import annotations
@@ -34,12 +34,12 @@ ACCENT = "#FFB347"
 ROOM_MAX_FPS = 24
 PAINT_BUDGET = 0.25
 ROOM_STYLESHEET = theme.PANEL_STYLESHEET + """
-QFrame#RoomSide { background: #071426; border-left: 1px solid rgba(255, 179, 71, 70); }
+QFrame#RoomSide { background: #0F1013; border-left: 1px solid rgba(255, 179, 71, 70); }
 QLabel#RoomTitle { color: #FFB347; font-size: 11pt; letter-spacing: 3px; }
-QLabel#RoomDim { color: #7F9BB7; font-size: 9pt; }
-QLabel#RoomNote { color: #9FB9D3; font-size: 8pt; }
-QLabel#RoomStatus { color: #DCEEFF; font-size: 9pt; }
-QPushButton#RoomTab { background: #050E1C; color: #C9A46B; border: 1px solid rgba(255, 179, 71, 50);
+QLabel#RoomDim { color: #A1A1AA; font-size: 9pt; }
+QLabel#RoomNote { color: #C4C4CC; font-size: 8pt; }
+QLabel#RoomStatus { color: #F4F4F5; font-size: 9pt; }
+QPushButton#RoomTab { background: #0B0B0E; color: #C9A46B; border: 1px solid rgba(255, 179, 71, 50);
     border-radius: 3px; padding: 6px 4px; font-size: 8pt; letter-spacing: 1px; }
 QPushButton#RoomTab:hover { color: #FFE2B8; border-color: rgba(255, 179, 71, 140); }
 QPushButton#RoomTab:checked { background: rgba(255, 179, 71, 40); color: #FFF4E2; border-color: #FFB347; }
@@ -47,31 +47,31 @@ QPushButton#RoomPrimary { background: rgba(255, 179, 71, 46); color: #FFF4E2; bo
     border-radius: 4px; padding: 6px 12px; font-size: 9pt; letter-spacing: 2px; }
 QPushButton#RoomPrimary:hover { background: rgba(255, 179, 71, 82); }
 QPushButton#RoomPrimary:disabled { color: #6B5A43; background: rgba(120, 80, 20, 30); border-color: rgba(120, 80, 20, 90); }
-QPushButton#RoomButton { background: #050E1C; color: #FFD9A0; border: 1px solid rgba(255, 179, 71, 80);
+QPushButton#RoomButton { background: #0B0B0E; color: #FFD9A0; border: 1px solid rgba(255, 179, 71, 80);
     border-radius: 4px; padding: 6px 10px; font-size: 8pt; letter-spacing: 1px; }
 QPushButton#RoomButton:hover { border-color: rgba(255, 179, 71, 190); color: #FFF4E2; }
 QPushButton#RoomButton:disabled { color: #5B4B36; border-color: rgba(120, 80, 20, 80); }
-QTextBrowser#RoomResult { background: #050E1C; border: 1px solid rgba(255, 179, 71, 40); }
-QListWidget#RoomTasks { background: #050E1C; border: 1px solid rgba(255, 179, 71, 30); font-size: 9pt; }
+QTextBrowser#RoomResult { background: #0B0B0E; border: 1px solid rgba(255, 179, 71, 40); }
+QListWidget#RoomTasks { background: #0B0B0E; border: 1px solid rgba(255, 179, 71, 30); font-size: 9pt; }
 QListWidget#RoomTasks::item:selected { background: rgba(255, 179, 71, 45); color: #FFF4E2; }
 """
 PANEL_HELP = {
     "analise": "Consulta contextual: a TARDIS junta o que existe na memória pessoal, nos fatos, nas notas de "
                "projeto e no histórico — com a fonte de cada item. Nada encontrado = nenhuma resposta inventada.",
-    "planejamento": "Decompõe um objetivo em etapas verificáveis e aponta riscos. Usa o mesmo modelo do JARVIS; "
+    "planejamento": "Decompõe um objetivo em etapas verificáveis e aponta riscos. Usa o mesmo modelo do SAFRA; "
                     "sem modelo disponível, a tarefa falha com o motivo. Nenhuma etapa é executada.",
     "arquivo": "Organização da memória pessoal: atrasados, conflitos, duplicados, tarefas sem data e registros "
                "aguardando revisão. A memória espacial abre aqui.",
     "rotinas": "Lembretes futuros, registros recorrentes e automações configuradas.",
-    "telemetria": "Telemetria do próprio JARVIS: CPU e memória do processo, latência real dos modelos e das "
+    "telemetria": "Telemetria do próprio SAFRA: CPU e memória do processo, latência real dos modelos e das "
                   "respostas, fluidez da interface, Event Bus e workers. Sem métrica coletada, diz que não há dado.",
     "diagnostico": "Verificação de saúde, componentes, workers e voz (diagnóstico) e a fotografia do "
                    "estado de cada módulo agora (coordenação).",
 }
-SEVERITY_COLORS = {"alta": "#FF5D73", "média": "#FFB347", "baixa": "#7F9BB7"}
-STATE_COLORS = {"DONE": "#3DFFA8", "FAILED": "#FF5D73", "REJECTED": "#FF5D73", "CANCELLED": "#7F9BB7",
-                "RUNNING": "#FFB347", "QUEUED": "#67F3FF"}
-ORIGIN_LABELS = {"jarvis": "JARVIS", "usuario": "você", "tardis": "TARDIS", "agendador": "agendador"}
+SEVERITY_COLORS = {"alta": "#FF7B1C", "média": "#FFB347", "baixa": "#A1A1AA"}
+STATE_COLORS = {"DONE": "#3DDC97", "FAILED": "#FF7B1C", "REJECTED": "#FF7B1C", "CANCELLED": "#A1A1AA",
+                "RUNNING": "#FFB347", "QUEUED": "#FF5C6C"}
+ORIGIN_LABELS = {"jarvis": "SAFRA", "usuario": "você", "tardis": "TARDIS", "agendador": "agendador"}
 
 
 def _button(text: str, tip: str = "", *, primary: bool = False) -> QtWidgets.QPushButton:
@@ -103,40 +103,40 @@ def _seconds(ms) -> str:
 def task_html(task) -> str:
     """Resultado de uma tarefa em HTML — todo texto escapado (conteúdo do modelo e do usuário é dado)."""
     e = html.escape
-    color = STATE_COLORS.get(task.state, "#DCEEFF")
+    color = STATE_COLORS.get(task.state, "#F4F4F5")
     head = (f"<div style='color:{ACCENT};letter-spacing:2px'>{e(task.label.upper())}</div>"
             f"<div style='color:{color}'>{e(STATE_LABELS.get(task.state, task.state))}"
             + (f" · {_seconds(task.duration_ms)}" if task.duration_ms is not None else "")
             + f" · pedida por {e(ORIGIN_LABELS.get(task.origin, task.origin))}</div>")
     question = next((task.input.get(k) for k in ("question", "goal", "project", "search") if task.input.get(k)), "")
     if question:
-        head += f"<div style='color:#9FB9D3'>entrada: {e(str(question))}</div>"
-    head += f"<div style='color:#7F9BB7'>modelo: {e(task.model or ('—' if not task.final else 'sem modelo'))}</div>"
+        head += f"<div style='color:#C4C4CC'>entrada: {e(str(question))}</div>"
+    head += f"<div style='color:#A1A1AA'>modelo: {e(task.model or ('—' if not task.final else 'sem modelo'))}</div>"
     parts = [head]
     if task.error:
-        parts.append(f"<p style='color:#FF5D73'><b>{e(str(task.error.get('code', '')))}</b>: "
+        parts.append(f"<p style='color:#FF7B1C'><b>{e(str(task.error.get('code', '')))}</b>: "
                      f"{e(str(task.error.get('message', '')))}</p>")
     result = task.result
     if result is not None:
-        parts.append(f"<p style='color:#F0FAFF'>{e(result.summary)}</p>")
+        parts.append(f"<p style='color:#FFFFFF'>{e(result.summary)}</p>")
         if result.items:
             rows = []
             for item in result.items[:40]:
                 severity = item.get("severity")
-                dot = f"<span style='color:{SEVERITY_COLORS.get(severity, '#67F3FF')}'>●</span> "
-                detail = f" — <span style='color:#9FB9D3'>{e(str(item.get('detail', '')))}</span>" \
+                dot = f"<span style='color:{SEVERITY_COLORS.get(severity, '#FF5C6C')}'>●</span> "
+                detail = f" — <span style='color:#C4C4CC'>{e(str(item.get('detail', '')))}</span>" \
                     if item.get("detail") else ""
-                source = f" <span style='color:#5F7E9C'>[{e(str(item.get('source', '')))}]</span>" \
+                source = f" <span style='color:#7A7D86'>[{e(str(item.get('source', '')))}]</span>" \
                     if item.get("source") else ""
                 rows.append(f"<div>{dot}{e(str(item.get('title', '')))}{detail}{source}</div>")
             parts.append("".join(rows))
         if result.sources:
-            parts.append(f"<p style='color:#7F9BB7'>fontes: {e(', '.join(str(s) for s in result.sources))}</p>")
+            parts.append(f"<p style='color:#A1A1AA'>fontes: {e(', '.join(str(s) for s in result.sources))}</p>")
     elif not task.final:
         parts.append("<p style='color:#FFB347'>em andamento…</p>")
     if task.log:
         log_lines = "<br>".join(e(line) for line in task.log[-8:])
-        parts.append(f"<p style='color:#5F7E9C;font-size:8pt'>{log_lines}</p>")
+        parts.append(f"<p style='color:#7A7D86;font-size:8pt'>{log_lines}</p>")
     return "".join(parts)
 
 
@@ -313,7 +313,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         self.note_text.setPlaceholderText("texto da nota")
         self.note_text.setMaxLength(600)
         self.note_text.returnPressed.connect(self._save_note)
-        save = _button("GRAVAR", "Grava pelo JARVIS (permissão: modificar arquivos e dados pessoais)")
+        save = _button("GRAVAR", "Grava pelo SAFRA (permissão: modificar arquivos e dados pessoais)")
         save.clicked.connect(self._save_note)
         read = _button("LER NOTAS", "Ler a memória de projeto (filtra pelo projeto, se informado)")
         read.clicked.connect(lambda: self.submit("projeto", {"project": self.note_project.text().strip()}))
@@ -327,7 +327,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         page, lay = self._form()
         row = QtWidgets.QHBoxLayout()
         self.goal = QtWidgets.QLineEdit()
-        self.goal.setPlaceholderText("Objetivo (ex.: publicar o JARVIS com segurança)")
+        self.goal.setPlaceholderText("Objetivo (ex.: publicar o SAFRA com segurança)")
         self.goal.setMaxLength(400)
         self.goal.returnPressed.connect(self._plan)
         plan = _button("PLANEJAR", "Decompor em etapas (nada é executado)", primary=True)
@@ -360,7 +360,7 @@ class TardisRoomPage(QtWidgets.QWidget):
 
     def _controls_telemetria(self) -> QtWidgets.QWidget:
         page, lay = self._form()
-        analyze = _button("ANALISAR SISTEMA", "Métricas medidas do JARVIS: processo, modelos, interface, eventos e workers",
+        analyze = _button("ANALISAR SISTEMA", "Métricas medidas do SAFRA: processo, modelos, interface, eventos e workers",
                           primary=True)
         analyze.clicked.connect(lambda: self.submit("telemetria", {}))
         lay.addWidget(analyze, 0, QtCore.Qt.AlignLeft)
@@ -407,7 +407,7 @@ class TardisRoomPage(QtWidgets.QWidget):
         if section in PANELS:
             self.select_panel(section)
 
-    # ------------------------------------------------------------ cena 3D (a mesma do JARVIS, emprestada)
+    # ------------------------------------------------------------ cena 3D (a mesma do SAFRA, emprestada)
     def attach_scene3d(self, view) -> None:
         """A sala passa a ser desenhada pela cena 3D (console, rotor, telas); o desenho 2D fica parado."""
         if self.scene3d is view:
@@ -505,13 +505,13 @@ class TardisRoomPage(QtWidgets.QWidget):
         project = self.note_project.text().strip()
         if project:
             args["project"] = project
-        self.status.setText("Gravando na memória de projeto pelo JARVIS…")
+        self.status.setText("Gravando na memória de projeto pelo SAFRA…")
         self.runner.run("note", self.core.run_skill, "tardis.note", args, origin="user")
 
     def _apply(self, index: int, action: dict) -> None:
         button, label = self._action_rows[index]
         button.setEnabled(False)
-        label.setText("executando pelo JARVIS (pode pedir confirmação)…")
+        label.setText("executando pelo SAFRA (pode pedir confirmação)…")
         self.runner.run(f"apply:{index}:{self.shown_task}", self.core.run_skill, action["skill"],
                         dict(action.get("args") or {}), origin="user")
 
@@ -580,7 +580,7 @@ class TardisRoomPage(QtWidgets.QWidget):
                    (f"  ·  {_seconds(task.duration_ms)}" if task.duration_ms is not None else "")
             item = QtWidgets.QListWidgetItem(text)
             item.setData(QtCore.Qt.UserRole, task.id)
-            item.setForeground(QtGui.QColor(STATE_COLORS.get(task.state, "#DCEEFF")))
+            item.setForeground(QtGui.QColor(STATE_COLORS.get(task.state, "#F4F4F5")))
             item.setToolTip(f"origem: {ORIGIN_LABELS.get(task.origin, task.origin)} · id {task.id}")
             self.tasks.addItem(item)
             if task.id == current:
@@ -630,7 +630,7 @@ class TardisRoomPage(QtWidgets.QWidget):
             row = QtWidgets.QWidget()
             lay = QtWidgets.QHBoxLayout(row)
             lay.setContentsMargins(0, 0, 0, 0)
-            apply = _button("APLICAR", f"Executar pelo JARVIS: {data['skill']} (passa por permissões, confirmação "
+            apply = _button("APLICAR", f"Executar pelo SAFRA: {data['skill']} (passa por permissões, confirmação "
                                        f"e verificação)", primary=True)
             available = registry is None or data["skill"] in registry
             apply.setEnabled(available)
@@ -648,7 +648,7 @@ class TardisRoomPage(QtWidgets.QWidget):
             self._action_rows.append((apply, outcome))
         if actions:
             self.actions_layout.addWidget(_label("Ações PROPOSTAS pela TARDIS: só rodam pelo APLICAR, com as "
-                                                 "permissões e confirmações do JARVIS.", "RoomNote"))
+                                                 "permissões e confirmações do SAFRA.", "RoomNote"))
 
     def _update_screens(self) -> None:
         if self.engine is None:

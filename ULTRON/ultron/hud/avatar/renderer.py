@@ -33,7 +33,7 @@ from .geometry import (DENSITY, EYE_THETA, LIGHT, Y_BROW, Y_CHIN, Y_EYE, Y_MOUTH
 from .rig import Rig, mix
 
 WHITE = (220.0, 238.0, 255.0)
-DEEP = (3, 7, 18)
+DEEP = (7, 7, 10)
 ELECTRIC = (22.0, 139.0, 255.0)
 CORAL = (255.0, 93.0, 115.0)
 CAMERA = 5.5
@@ -133,7 +133,7 @@ class AvatarRenderer:
         p = QtGui.QPainter(image)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         halo = QtGui.QRadialGradient(cx, cy, scale * 1.7)
-        halo.setColorAt(0, qcolor((0, 217, 255), 0.09))
+        halo.setColorAt(0, qcolor((234, 40, 64), 0.09))
         halo.setColorAt(0.5, qcolor(ELECTRIC, 0.035))
         halo.setColorAt(1, qcolor(ELECTRIC, 0.0))
         p.setPen(QtCore.Qt.NoPen)
@@ -146,19 +146,19 @@ class AvatarRenderer:
                 x0 = cx + i * scale * 0.42
                 x1 = cx + i * scale * 0.12
                 alpha = 0.10 * (1 - abs(i) / 11)
-                p.setPen(self.pen((0, 160, 220), alpha))
+                p.setPen(self.pen((190, 30, 52), alpha))
                 p.drawLine(QtCore.QPointF(x0, height), QtCore.QPointF(x1, base.y() - scale * 0.05))
             for j in range(1, 9):
                 y = base.y() - scale * 0.05 + (height - base.y()) * (j / 8) ** 1.6
-                p.setPen(self.pen((0, 160, 220), 0.08 * (1 - j / 10)))
+                p.setPen(self.pen((190, 30, 52), 0.08 * (1 - j / 10)))
                 p.drawLine(QtCore.QPointF(0, y), QtCore.QPointF(width, y))
         p.setBrush(QtCore.Qt.NoBrush)
         for radius, alpha in ((1.05, 0.30), (0.78, 0.22), (0.45, 0.35)):
-            p.setPen(self.pen((0, 217, 255), alpha))
+            p.setPen(self.pen((234, 40, 64), alpha))
             p.drawEllipse(base, scale * radius, scale * radius * 0.12)
         beam = QtGui.QLinearGradient(0, base.y(), 0, cy - scale * 0.2)
-        beam.setColorAt(0, qcolor((0, 217, 255), 0.06))
-        beam.setColorAt(1, qcolor((0, 217, 255), 0.0))
+        beam.setColorAt(0, qcolor((234, 40, 64), 0.06))
+        beam.setColorAt(1, qcolor((234, 40, 64), 0.0))
         p.setPen(QtCore.Qt.NoPen)
         p.setBrush(beam)
         p.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(cx - scale * 0.45, base.y()),
@@ -379,7 +379,7 @@ class AvatarRenderer:
             exy, eq = project(eye)
             seen = float(np.clip(eq[:, 2].mean() * 2.5, 0, 1)) * face_alpha
             lit = seen * (1.0 - 0.85 * visor)
-            p.setBrush(qcolor((0, 30, 50), 0.55 * seen))
+            p.setBrush(qcolor((40, 8, 14), 0.55 * seen))
             p.setPen(self.pen(bright, round(0.95 * lit, 2), 1.4))
             p.drawPolygon(fastpath.polygon(exy))
             bloom_items.append((exy, 3.0, 0.9 * lit, True))
@@ -442,7 +442,7 @@ class AvatarRenderer:
         if jaw > 0.05:
             inner = np.concatenate([txy, bxy[::-1]])
             p.setPen(QtCore.Qt.NoPen)
-            p.setBrush(qcolor((1, 4, 10), 0.92 * face_alpha))
+            p.setBrush(qcolor((6, 3, 4), 0.92 * face_alpha))
             p.drawPolygon(fastpath.polygon(inner))
             calls += 1
             if rig.teeth > 0.3:                                  # linha dos dentes superiores

@@ -4,11 +4,11 @@
 // cilindros internos que sobem e descem, núcleo de luz).
 //
 // Nada aqui inventa atividade: o rotor segue o modo REAL do motor (repouso, processando, operação, consulta
-// do JARVIS, falha), cada painel acende só enquanto uma tarefa real do seu tipo roda, pisca ao terminar
+// do SAFRA, falha), cada painel acende só enquanto uma tarefa real do seu tipo roda, pisca ao terminar
 // (âmbar = concluiu, vermelho = falhou) e as telas mostram o texto que o motor informou. Sem motor, a sala
 // fica apagada e diz isso.
 import * as THREE from 'three';
-import { ULTRON_RED } from './ultron.js';
+import { ULTRON_COLOR } from './ultron.js';
 import { Batch, disposer, canvasTexture, glowMaterial, glowTexture, physical, textPlate, PALETTE } from './materials.js';
 
 export const PANEL_KEYS = ['analise', 'planejamento', 'arquivo', 'rotinas', 'telemetria', 'diagnostico'];
@@ -21,14 +21,14 @@ const R_MID = (R_IN + R_OUT) / 2, Y_MID = (Y_IN + Y_OUT) / 2, L = (R_OUT - R_IN)
 const TAN30 = Math.tan(Math.PI / 6);
 const ROTOR_Y0 = Y_IN + 0.04, ROTOR_H = 2.3;
 export const panelAngle = (i) => -i * Math.PI / 3;                 // ANÁLISE de frente (+z), depois em sentido horário
-// onde o holograma do JARVIS fica dentro da sala: sobre o tablado, à direita do console no enquadramento padrão,
+// onde o holograma do SAFRA fica dentro da sala: sobre o tablado, à direita do console no enquadramento padrão,
 // virado para os painéis (3/4 para quem olha) — a inteligência que opera a nave
 const SPOT_A = 0.78, SPOT_R = 2.25;
 export const JARVIS_SPOT = { x: Math.sin(SPOT_A) * SPOT_R, y: DAIS_H, z: Math.cos(SPOT_A) * SPOT_R,
                              rotY: SPOT_A + Math.PI - 0.95 };
 
 const lerp = (a, b, t) => a + (b - a) * t;
-const AMBER = new THREE.Color(0xffb347), RED = new THREE.Color(0xff4d5e), DIMC = new THREE.Color(0x1a2a3c);
+const AMBER = new THREE.Color(0xffb347), RED = new THREE.Color(0xff7b1c), DIMC = new THREE.Color(0x2a1a1e);
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(),
       _s = new THREE.Vector3(1, 1, 1), _c = new THREE.Color();
 
@@ -87,8 +87,8 @@ export class TardisRoom {
     this.rotorLight.position.set(0, ROTOR_Y0 + 1.0, 0);
     const key = new THREE.SpotLight(0xfff0dc, 18, 16, 0.6, 0.7, 1.4);
     key.position.set(0, 6.2, 3.4); key.target.position.set(0, 1.0, 0);
-    const hemi = new THREE.HemisphereLight(0x6e7f99, 0x140c06, 0.55);
-    const back = new THREE.PointLight(0x2b8cff, 10, 14, 1.8);
+    const hemi = new THREE.HemisphereLight(0x7d7478, 0x140c06, 0.55);
+    const back = new THREE.PointLight(0xff3040, 10, 14, 1.8);
     back.position.set(0, 4.2, -6.5);
     this.group.add(this.rotorLight, key, key.target, hemi, back);
     // estado (alvos vindos do motor; tudo é amortecido)
@@ -176,7 +176,7 @@ export class TardisRoom {
     // colunas de luz entre os roundels
     const colGeo = disposer.track(new THREE.BoxGeometry(0.22, ROOM_H - 1.0, 0.22));
     const stripGeo = disposer.track(new THREE.BoxGeometry(0.03, ROOM_H - 1.6, 0.03));
-    const columns = new THREE.InstancedMesh(colGeo, P.darkMetal, 12), strips = new THREE.InstancedMesh(stripGeo, glowMaterial(0x6fb8ff, 0.6), 12);
+    const columns = new THREE.InstancedMesh(colGeo, P.darkMetal, 12), strips = new THREE.InstancedMesh(stripGeo, glowMaterial(0xff4a5c, 0.6), 12);
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2 + Math.PI / 12;
       _q.setFromEuler(_e.set(0, a, 0));
@@ -190,7 +190,7 @@ export class TardisRoom {
     well.rotation.x = -Math.PI / 2; well.position.y = DAIS_H - 0.02;
     this.daisEdge = new THREE.Mesh(disposer.track(new THREE.TorusGeometry(DAIS_R, 0.015, 6, 200)), glowMaterial(0xffb347, 0.6));
     this.daisEdge.rotation.x = Math.PI / 2; this.daisEdge.position.y = DAIS_H + 0.005;
-    this.faultRing = new THREE.Mesh(disposer.track(new THREE.RingGeometry(DAIS_R + 0.6, DAIS_R + 0.75, 160, 1)), glowMaterial(0xff4d5e, 0));
+    this.faultRing = new THREE.Mesh(disposer.track(new THREE.RingGeometry(DAIS_R + 0.6, DAIS_R + 0.75, 160, 1)), glowMaterial(0xff7b1c, 0));
     this.faultRing.rotation.x = -Math.PI / 2; this.faultRing.position.y = 0.02;
     this.group.add(well, this.daisEdge, this.faultRing);
   }
@@ -226,7 +226,7 @@ export class TardisRoom {
     this.btnCap = new Parts(new THREE.CylinderGeometry(0.021, 0.023, 0.02, 16), glowBasic(), 72);
     this.dialBody = new Parts(new THREE.CylinderGeometry(0.072, 0.078, 0.03, 32), P.brass, 12);
     const dialTex = canvasTexture(128, 128, (g, w, h) => {
-      g.fillStyle = '#0b1622'; g.beginPath(); g.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#160b0e'; g.beginPath(); g.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2); g.fill();
       g.strokeStyle = '#e8d6b0'; g.lineWidth = 3;
       for (let i = 0; i <= 10; i++) { const a = Math.PI * (0.75 + 1.5 * i / 10); g.beginPath();
         g.moveTo(w / 2 + Math.cos(a) * 44, h / 2 + Math.sin(a) * 44); g.lineTo(w / 2 + Math.cos(a) * 56, h / 2 + Math.sin(a) * 56); g.stroke(); }
@@ -317,15 +317,15 @@ export class TardisRoom {
   }
 
   _paintPanelScreen(g, w, h, key, d) {
-    g.fillStyle = 'rgba(8,16,26,0.92)'; g.fillRect(0, 0, w, h);
-    const color = d.state === 'fault' ? '#ff6b7d' : (d.state === 'running' ? '#ffc070' : (d.state === 'off' ? '#5d6f82' : '#9fd8ff'));
+    g.fillStyle = 'rgba(16,8,10,0.92)'; g.fillRect(0, 0, w, h);
+    const color = d.state === 'fault' ? '#ff9a4d' : (d.state === 'running' ? '#ffc070' : (d.state === 'off' ? '#6a6d75' : '#ff9aa4'));
     g.strokeStyle = color; g.globalAlpha = 0.6; g.lineWidth = 3; g.strokeRect(6, 6, w - 12, h - 12); g.globalAlpha = 1;
     g.fillStyle = color; g.font = '600 34px Segoe UI, Arial'; g.fillText(PANEL_LABELS[key], 24, 54);
-    g.font = '26px Segoe UI, Arial'; g.fillStyle = '#dcefff';
+    g.font = '26px Segoe UI, Arial'; g.fillStyle = '#f4f4f5';
     const status = { running: `em execução${d.running > 1 ? ` (${d.running})` : ''}`, fault: 'a última tarefa falhou',
                      done: 'última tarefa concluída', idle: 'sem tarefa nesta sessão', off: 'TARDIS indisponível' }[d.state] || '';
     g.fillText(status, 24, 100);
-    g.font = '22px Segoe UI, Arial'; g.fillStyle = 'rgba(200,225,245,0.85)';
+    g.font = '22px Segoe UI, Arial'; g.fillStyle = 'rgba(235,225,227,0.85)';
     const words = String(d.last || '').split(/\s+/); let line = '', y = 148;
     for (const word of words) {
       if (g.measureText(line + word).width > w - 48) { g.fillText(line, 24, y); y += 32; line = ''; if (y > h - 30) break; }
@@ -358,7 +358,7 @@ export class TardisRoom {
       vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv=uv; vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
       fragmentShader: `uniform vec3 uColor; uniform float uTime; uniform float uPulse; uniform float uBright; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
         void main(){ float rim=pow(1.0-abs(dot(vN,vV)),2.0); float band=exp(-pow((vUv.y-fract(uTime*0.35))*9.0,2.0))*uPulse;
-          float lines=0.5+0.5*sin(vUv.x*6.2831*12.0); gl_FragColor=vec4(mix(vec3(0.75,0.9,1.0),uColor,0.6), (0.03+rim*0.22)*(0.6+0.4*lines)*(0.4+0.6*uBright) + band*0.28); }`,
+          float lines=0.5+0.5*sin(vUv.x*6.2831*12.0); gl_FragColor=vec4(mix(vec3(1.0,0.82,0.84),uColor,0.6), (0.03+rim*0.22)*(0.6+0.4*lines)*(0.4+0.6*uBright) + band*0.28); }`,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     const glass = new THREE.Mesh(disposer.track(new THREE.CylinderGeometry(0.36, 0.36, ROTOR_H - 0.12, 48, 1, true)), this.glassMat);
     glass.position.y = ROTOR_Y0 + ROTOR_H / 2;
@@ -419,7 +419,7 @@ export class TardisRoom {
       strands.push(g);
     }
     this.strandMat = disposer.track(new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uFlow: { value: 0.1 }, uBright: { value: 0.4 }, uColor: { value: new THREE.Color(0x3aa8ff) } },
+      uniforms: { uTime: { value: 0 }, uFlow: { value: 0.1 }, uBright: { value: 0.4 }, uColor: { value: new THREE.Color(0xff3b4e) } },
       vertexShader: 'attribute float along; varying float vA; void main(){ vA=along; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: 'uniform float uTime; uniform float uFlow; uniform float uBright; uniform vec3 uColor; varying float vA; void main(){ float h=fract(vA*3.0-uTime*uFlow); float pulse=smoothstep(0.75,1.0,h); gl_FragColor=vec4(uColor*(1.4+pulse*2.2),(0.3+1.2*pulse)*uBright); }',
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -439,11 +439,11 @@ export class TardisRoom {
       if (!data) return;
       const [title, lines, rgb] = data;
       const col = `rgb(${rgb.map((v) => Math.round(v)).join(',')})`;
-      g.fillStyle = 'rgba(6,18,30,0.55)'; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(22,8,10,0.55)'; g.fillRect(0, 0, w, h);
       g.strokeStyle = col; g.globalAlpha = 0.7; g.lineWidth = 2; g.strokeRect(2, 2, w - 4, h - 4); g.globalAlpha = 1;
       g.fillStyle = col; g.fillRect(2, 2, 120, 5);
       g.font = '600 30px Segoe UI, Arial'; g.fillText(String(title).slice(0, 34), 22, 50);
-      g.font = '24px Segoe UI, Arial'; g.fillStyle = '#e6f3ff';
+      g.font = '24px Segoe UI, Arial'; g.fillStyle = '#fff0f1';
       let y = 96;
       for (const raw of lines || []) {
         let line = '';
@@ -467,7 +467,7 @@ export class TardisRoom {
     this.group.add(this.screenGroup);
   }
 
-  // ------------------------------------------------------------ elo JARVIS ⇄ TARDIS (só com tarefa do JARVIS rodando)
+  // ------------------------------------------------------------ elo SAFRA ⇄ TARDIS (só com tarefa do SAFRA rodando)
   _buildLink(particleScale) {
     this.maxLink = 220;
     const seeds = new Float32Array(this.maxLink * 2);
@@ -478,7 +478,7 @@ export class TardisRoom {
     disposer.track(g);
     this.linkMat = disposer.track(new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uA: { value: new THREE.Vector3(0, 1.6, ROOM_R - 0.6) }, uB: { value: new THREE.Vector3(0, ROTOR_Y0 + 1.0, 0) },
-                  uPower: { value: 0 }, map: { value: glowTexture() }, uColor: { value: new THREE.Color(PALETTE.cyan) }, uPixel: { value: 1 } },
+                  uPower: { value: 0 }, map: { value: glowTexture() }, uColor: { value: new THREE.Color(PALETTE.primary) }, uPixel: { value: 1 } },
       vertexShader: `attribute vec2 seed; uniform float uTime; uniform vec3 uA; uniform vec3 uB; uniform float uPixel; varying float vA;
         void main(){ float t=fract(seed.x+uTime*(0.25+0.2*seed.y)); vec3 p=mix(uA,uB,t);
           p.y+=sin(t*3.1416)*1.2; float a=seed.y*6.2831+uTime*2.0; p.x+=cos(a)*0.08*sin(t*3.1416); p.z+=sin(a)*0.08*sin(t*3.1416);
@@ -616,10 +616,10 @@ export class TardisRoom {
       b.put(new THREE.CylinderGeometry(0.025, 0.025, 0.63, 8), 'brass', [-0.2, 0.32, -0.7], [0, 0, 0], [1, 1, 1], frame);
       b.put(new THREE.TorusGeometry(0.16, 0.012, 6, 24), 'brass', [-0.2, 0.18, -0.7], [Math.PI / 2, 0, 0], [1, 1, 1], frame);
       const screenTex = canvasTexture(256, 160, (g, w, h) => {
-        g.fillStyle = '#04121c'; g.fillRect(0, 0, w, h);
-        g.strokeStyle = 'rgba(103,243,255,0.8)'; g.lineWidth = 3; g.strokeRect(3, 3, w - 6, h - 6);
-        g.fillStyle = 'rgba(103,243,255,0.9)'; g.font = '600 16px Segoe UI, Arial'; g.fillText('J.A.R.V.I.S.', 14, 28);
-        g.fillStyle = 'rgba(160,220,240,0.7)';
+        g.fillStyle = '#140608'; g.fillRect(0, 0, w, h);
+        g.strokeStyle = 'rgba(255,92,108,0.8)'; g.lineWidth = 3; g.strokeRect(3, 3, w - 6, h - 6);
+        g.fillStyle = 'rgba(255,92,108,0.9)'; g.font = '600 16px Segoe UI, Arial'; g.fillText('SAFRA', 14, 28);
+        g.fillStyle = 'rgba(240,170,176,0.7)';
         for (let i = 0; i < 6; i++) g.fillRect(14, 46 + i * 17, 40 + ((i * 53) % 170), 6);
       });
       const screenMat = glowMaterial(0xffffff, 0.85, { map: screenTex });
@@ -704,8 +704,8 @@ export class TardisRoom {
     st.brightness += (t.brightness - st.brightness) * k; st.spin += (t.spin - st.spin) * k;
     st.color.lerp(t.color, k); st.beam += (t.beam - st.beam) * k; st.fault += (t.fault - st.fault) * k;
     const uk = this.ultron || 0;                             // Protocolo ULTRON: sala em alerta (só cor)
-    if (uk > 0) st.color.lerp(ULTRON_RED, uk);
-    this.roundelMat.emissive.copy(this._roundelBase).lerp(ULTRON_RED, uk * 0.8);
+    if (uk > 0) st.color.lerp(ULTRON_COLOR, uk);
+    this.roundelMat.emissive.copy(this._roundelBase).lerp(ULTRON_COLOR, uk * 0.8);
     const avail = st.available ? 1 : 0.25;
     this.phase = (this.phase + dt * st.speed * Math.PI * 2) % (Math.PI * 2);
     this.spinA = (this.spinA + dt * st.spin * Math.PI * 2) % (Math.PI * 2);
@@ -756,7 +756,7 @@ export class TardisRoom {
       });
       lay.buttons.forEach((idx, j) => {
         const on = ((j * 7 + i * 3) % 5 === 0) ? 0.35 : 0;                      // padrão fixo; acende com a atividade
-        _c.copy(DIMC).lerp(j % 3 ? AMBER : _tmp.set(0x7fd4ff), Math.min(1, on * avail + lvl * 0.8 + p.flash * 0.6));
+        _c.copy(DIMC).lerp(j % 3 ? AMBER : _tmp.set(0xff5c6c), Math.min(1, on * avail + lvl * 0.8 + p.flash * 0.6));
         if (p.fault > 0.02) _c.lerp(RED, p.fault * 0.8);
         _c.multiplyScalar(1 + lvl);
         this.btnCap.color(idx, _c);

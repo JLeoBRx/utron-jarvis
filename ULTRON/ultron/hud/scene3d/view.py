@@ -110,7 +110,7 @@ class Scene3DView(QtWebEngineWidgets.QWebEngineView, _AvatarCore):
     READY_TIMEOUT_MS = 25000
     PUSH_ACTIVE = 1 / 30          # fala e escuta: boca e níveis de áudio a 30 por segundo
     PUSH_IDLE = 0.25
-    HEARTBEAT = 1.0               # sem mudança, um sinal por segundo (a página sabe que o JARVIS está vivo)
+    HEARTBEAT = 1.0               # sem mudança, um sinal por segundo (a página sabe que o SAFRA está vivo)
 
     def __init__(self, parent=None, *, profile_name: str = "balanced", effects: bool = True, **sources: Any):
         super().__init__(parent)

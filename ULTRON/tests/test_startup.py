@@ -1,4 +1,4 @@
-"""Inicialização — os dois jeitos de usar o JARVIS, de verdade, como processos separados.
+"""Inicialização — os dois jeitos de usar o SAFRA, de verdade, como processos separados.
 
 * **Janela** com a bandeja do sistema disponível (como num Windows de mesa): abre, responde a uma segunda
   abertura trazendo a janela para a frente, encerra com ``--stop`` e abre de novo sem conflito de instância.
@@ -95,7 +95,7 @@ class _Processes(unittest.TestCase):
             if "processo" in out:
                 return out
             time.sleep(0.5)
-        self.fail("o JARVIS não ficou em execução")
+        self.fail("o SAFRA não ficou em execução")
 
     def log_text(self) -> str:
         path = self.data / "logs" / "ultron.log"
@@ -138,7 +138,7 @@ class WindowStartupTest(_Processes):
             finally:
                 code, out = self.stop(proc)
             self.assertEqual(code, 0, out)
-            self.assertIn("JARVIS encerrado", out)
+            self.assertIn("SAFRA encerrado", out)
             self.assertEqual(proc.returncode, 0)
             self.assertIn("não está em execução", self.jarvis("--status")[1])
         self.assertNotIn("CRITICAL", self.log_text())
@@ -147,7 +147,7 @@ class WindowStartupTest(_Processes):
         env = {**self.env, "JARVIS_TEST_GUI_FAIL": "falha simulada da interface"}
         code, out = self.jarvis("--no-voice", "--no-perception", "--no-plugins", script=self.harness, env=env)
         self.assertEqual(code, 4, out[-2000:])
-        self.assertIn("A interface gráfica do JARVIS não abriu", out)
+        self.assertIn("A interface gráfica do SAFRA não abriu", out)
         self.assertIn("Motivo: RuntimeError: falha simulada da interface", out)
         self.assertIn("START_JARVIS.bat --console", out)
         self.assertIn("não foram alterados", out)
@@ -206,7 +206,7 @@ class InterfaceFallbackInTerminalTest(unittest.TestCase):
         self.assertEqual(code, 0, text)
         self.assertIn("Motivo: RuntimeError: Qt sem plataforma", text)
         self.assertIn("CONSOLE INTERFACE", text)
-        self.assertRegex(text, r"JARVIS > São \d{2}:\d{2}")
+        self.assertRegex(text, r"SAFRA > São \d{2}:\d{2}")
         self.assertIn("Até logo.", text)
         self.assertIsNotNone(core.started_at, "o console iniciou o MESMO núcleo que a janela ia usar")
 
@@ -222,22 +222,22 @@ class ConsoleModeTest(_Processes):
             db.close()
 
     def test_1_conversation_memory_tardis_authorization_and_exit(self):
-        lines = ["Olá, Jarvis.", "que horas são?", "anote uma ideia: horta vertical na varanda",
+        lines = ["Olá, Safra.", "que horas são?", "anote uma ideia: horta vertical na varanda",
                  "o que anotei sobre horta?", "consulte a TARDIS sobre a horta vertical", "encerre o jarvis", "não",
                  "sair"]
         code, out = self.jarvis("--headless", "--no-voice", "--no-perception", "--no-plugins",
                                 stdin="\n".join(lines) + "\n")
         self.assertEqual(code, 0, out[-3000:])
-        for expected in ("J.A.R.V.I.S. 2.0", "CONSOLE INTERFACE", "Sistema: ONLINE", "Modelo: qwen2.5:3b",
+        for expected in ("SAFRA 3.0", "CONSOLE INTERFACE", "Sistema: ONLINE", "Modelo: qwen2.5:3b",
                          "Memória: CONECTADA", "TARDIS: DISPONÍVEL", "Voz: DESATIVADA nesta execução (--no-voice)",
-                         "JARVIS aguardando instruções."):
+                         "SAFRA aguardando instruções."):
             self.assertIn(expected, out)
         self.assertIn("LEO > ", out, "o prompt usa o nome configurado, não um nome fixo")
-        self.assertIn("JARVIS > Boa noite, senhor. Como posso ajudar?", out, "conversa pelo modelo")
-        self.assertRegex(out, r"JARVIS > São \d{2}:\d{2}")
+        self.assertIn("SAFRA > Boa noite, senhor. Como posso ajudar?", out, "conversa pelo modelo")
+        self.assertRegex(out, r"SAFRA > São \d{2}:\d{2}")
         self.assertIn("Ideia registrada: Horta vertical na varanda", out)
         self.assertIn("Encontrei 1 registro(s) sobre \"horta\"", out, "memória pessoal consultada")
-        self.assertIn("(o mesmo do JARVIS)", out, "TARDIS com o mesmo modelo")
+        self.assertIn("(o mesmo do SAFRA)", out, "TARDIS com o mesmo modelo")
         self.assertIn("[CONFIRMAÇÃO]", out)
         self.assertIn("Não autorizado: encerre o jarvis", out, "autorização negada: nada executado")
         self.assertIn("Até logo.", out)
@@ -269,7 +269,7 @@ class ConsoleModeTest(_Processes):
 
 class ChildProcessInputTest(unittest.TestCase):
     def test_no_child_process_inherits_the_user_input(self):
-        """Todo processo filho do JARVIS diz de onde vem a entrada. O PowerShell (nome da GPU, no boot) lia a entrada
+        """Todo processo filho do SAFRA diz de onde vem a entrada. O PowerShell (nome da GPU, no boot) lia a entrada
         padrão até o fim quando ela era redirecionada: no CI do Windows, as linhas digitadas para o console sumiam
         antes do primeiro prompt."""
         import ast

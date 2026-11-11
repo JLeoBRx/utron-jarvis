@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 <nul >nul
-title JARVIS - Atualizacao
+title SAFRA - Atualizacao
 cd /d "%~dp0"
 
 rem Uso: extraia a nova versao POR CIMA desta pasta (substituindo os arquivos do programa) e rode
@@ -14,10 +14,10 @@ if not exist ".venv\Scripts\python.exe" (
 )
 set "VPY=.venv\Scripts\python.exe"
 
-echo 1/4 Encerrando o JARVIS em execucao (se houver) ...
+echo 1/4 Encerrando o SAFRA em execucao (se houver) ...
 "%VPY%" main.py --stop
 if errorlevel 1 (
-    echo [ERRO] O JARVIS continua aberto. Feche pela bandeja ^(Sair^) e rode este script de novo.
+    echo [ERRO] O SAFRA continua aberto. Feche pela bandeja ^(Sair^) e rode este script de novo.
     pause
     exit /b 1
 )

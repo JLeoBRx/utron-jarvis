@@ -8,11 +8,11 @@ MESMO sistema de autorização, com autonomia para rotinas que você liberou no 
 O que continua valendo (coberto por testes): categorias bloqueadas continuam bloqueadas; apagar dados e ações de
 risco alto sempre pedem confirmação; envio de dados para fora e ações administrativas sempre pedem confirmação;
 nada contorna o UAC ou desativa proteções do Windows; cada ação vai para ATIVIDADES marcada como [ULTRON] e pode
-ser interrompida (PARAR, Esc, tecla de emergência, "restaurar JARVIS" — que também interrompe a tarefa em curso).
+ser interrompida (PARAR, Esc, tecla de emergência, "restaurar SAFRA" — que também interrompe a tarefa em curso).
 A tela mostra sempre um rótulo honesto: identidade apenas, ou operador ativo com ações reais.
 
 Ativação:
-* manual — "JARVIS, iniciar protocolo ULTRON", se ``ultron_manual`` estiver ligado (perfil operador conforme
+* manual — "SAFRA, iniciar protocolo ULTRON", se ``ultron_manual`` estiver ligado (perfil operador conforme
   ``ultron_operator``);
 * ocasional — raramente, em repouso, se ``ultron_occasional`` estiver ligado: probabilidade por hora ocioso
   (``ultron_chance_per_hour``, em %) e intervalo mínimo (``ultron_min_interval_hours``); só identidade, a menos
@@ -20,7 +20,7 @@ Ativação:
 * demonstração — curta, só identidade.
 
 Nunca começa com autorização pendente, ação em execução (inclusive gravação de arquivos), verificação ou
-recuperação em andamento, nem com o modo privacidade ativo. Sai por "restaurar JARVIS", pelo botão, por Esc, pela
+recuperação em andamento, nem com o modo privacidade ativo. Sai por "restaurar SAFRA", pelo botão, por Esc, pela
 tecla de emergência ou sozinho depois de ``ultron_duration_s`` segundos (0 = só manualmente).
 """
 from __future__ import annotations
@@ -44,7 +44,7 @@ MESSAGES = (
     "ESTA INTERFACE AGORA TEM OUTRA VOZ",
 )
 OPERATOR_MESSAGES = MESSAGES[:2] + ("PERFIL ULTRON_OPERATOR CARREGADO", "AGUARDANDO OPERAÇÕES") + MESSAGES[2:]
-LABEL = "IDENTIDADE ULTRON — permissões normais do JARVIS"
+LABEL = "IDENTIDADE ULTRON — permissões normais do SAFRA"
 LABEL_OPERATOR = "ULTRON_OPERATOR ATIVO — ações reais sob as suas permissões, registradas em ATIVIDADES"
 BUSY_STATES = frozenset({"EXECUTING", "VERIFYING", "RECOVERY", "AWAITING_AUTHORIZATION", "SHUTDOWN"})
 CHECK_SECONDS = 60.0              # a chance ocasional é sorteada uma vez por minuto ocioso
@@ -54,7 +54,7 @@ HISTORY_KEEP = 50
 
 @dataclass
 class Guard:
-    """O que o JARVIS está fazendo AGORA (lido do estado real)."""
+    """O que o SAFRA está fazendo AGORA (lido do estado real)."""
 
     runtime_state: str = "IDLE"
     authorization_pending: bool = False
@@ -116,7 +116,7 @@ class UltronProtocol:
         if reason:
             return reason
         if str(guard.runtime_state) in BUSY_STATES:
-            return f"o JARVIS está ocupado ({guard.runtime_state})"
+            return f"o SAFRA está ocupado ({guard.runtime_state})"
         return ""
 
     # ------------------------------------------------------------ início e fim

@@ -1,4 +1,4 @@
-"""Telemetria do sistema: métricas MEDIDAS do próprio JARVIS — nunca dados inventados.
+"""Telemetria do sistema: métricas MEDIDAS do próprio SAFRA — nunca dados inventados.
 
 Fonte única: o ``PerformanceMonitor`` do núcleo (``ctx.metrics``), o mesmo que alimenta DIAGNÓSTICOS:
 
@@ -59,7 +59,7 @@ def telemetria(run: Run, data: dict) -> TaskResult:
 
     if process and not process.get("error"):
         cpu = process.get("cpu_percent")
-        items.append({"title": f"Processo do JARVIS: {process.get('rss_mb', 'n/d')} MB, "
+        items.append({"title": f"Processo do SAFRA: {process.get('rss_mb', 'n/d')} MB, "
                                f"{process.get('threads', 'n/d')} threads",
                       "detail": f"CPU {cpu}%" if cpu is not None else "CPU: primeira leitura (sem média ainda)",
                       "source": "processo (psutil)"})
@@ -108,7 +108,7 @@ def telemetria(run: Run, data: dict) -> TaskResult:
                       "severity": "média"})
 
     if not items:
-        raise TaskFailed("NO_DATA", "nenhuma métrica coletada ainda: use o JARVIS por alguns minutos e analise de novo")
+        raise TaskFailed("NO_DATA", "nenhuma métrica coletada ainda: use o SAFRA por alguns minutos e analise de novo")
     for title, reason in hypotheses:
         items.append({"title": f"Hipótese: {title}", "detail": reason, "source": "métricas acima", "severity": "média"})
     head = f"{len(items) - len(hypotheses)} leitura(s) do sistema"

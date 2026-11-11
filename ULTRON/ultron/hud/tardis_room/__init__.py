@@ -2,6 +2,6 @@
 do motor da TARDIS, telas flutuantes com a fila e os resultados, e o ARQUIVO (a memória espacial).
 
 * ``scene`` — estado e animação, sem Qt (testável);
-* ``view`` — desenho 3D em QPainter (CPU), no mesmo estilo do rosto do JARVIS;
+* ``view`` — desenho 3D em QPainter (CPU), no mesmo estilo do rosto do SAFRA;
 * ``page`` — a página da plataforma: sala + painéis laterais + o ARQUIVO.
 """

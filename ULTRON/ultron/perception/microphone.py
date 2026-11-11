@@ -1,7 +1,7 @@
 """Sensor do microfone: nível real de entrada e estado de captura.
 
 Não abre o microfone: lê o que o pipeline de voz mede a cada bloco de áudio (RMS em dB
-mapeado para 0..1, método do JARVIS preservado).
+mapeado para 0..1, método do SAFRA preservado).
 """
 from __future__ import annotations
 

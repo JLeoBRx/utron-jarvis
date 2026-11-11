@@ -1,6 +1,6 @@
-"""HISTÓRICO DE ATIVIDADES — um só registro do que o JARVIS recebeu, decidiu e fez.
+"""HISTÓRICO DE ATIVIDADES — um só registro do que o SAFRA recebeu, decidiu e fez.
 
-Cada atividade segue o protocolo comum do JARVIS ULTIMATE (o mesmo que a TARDIS usa):
+Cada atividade segue o protocolo comum do SAFRA ULTIMATE (o mesmo que a TARDIS usa):
 ``id``, ``kind`` (tipo), ``origin`` (origem), ``input`` (entrada), ``state`` (estado), ``result``
 (resultado), ``error`` (erros), ``started_at``/``finished_at``/``seconds`` (tempo) e ``parent``/``ref``
 (o pedido que originou uma ação; a ação, a consulta ou o comando a que o registro se refere).
@@ -16,7 +16,7 @@ Quem escreve:
 Nada é inventado: um registro só muda de estado quando o módulo responsável informa o resultado.
 Privacidade: textos que parecem segredo são redigidos antes de gravar; com ``activity_history``
 desligado nada é gravado. Retenção: ``activity_keep`` registros (os mais antigos saem primeiro).
-A tabela fica no mesmo banco SQLite do JARVIS (migração v4); não há banco paralelo.
+A tabela fica no mesmo banco SQLite do SAFRA (migração v4); não há banco paralelo.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ FINAL_STATES = frozenset({"concluido", "verificado", "nao_confirmado", "pergunta
                           "cancelado", "recusado", "aviso"})
 ORIGINS = {"voice": "voz", "text": "texto", "hud": "interface", "user": "usuário", "plan": "plano",
            "agent": "agente", "recovery": "recuperação", "proactive": "proatividade", "automation": "automação",
-           "reminders": "lembretes", "core": "JARVIS", "system": "sistema", "tardis": "TARDIS"}
+           "reminders": "lembretes", "core": "SAFRA", "system": "sistema", "tardis": "TARDIS"}
 _EXECUTION_STATES = {"executed": "concluido", "skipped": "concluido", "failed": "falhou", "refused": "recusado",
                      "denied": "negado", "cancelled": "cancelado", "unavailable": "falhou"}
 _VERIFICATION_STATES = {"VERIFIED": "verificado", "UNCONFIRMED": "nao_confirmado", "FAILED": "falhou"}
@@ -290,7 +290,7 @@ class ActivityLog:
 
     # ------------------------------------------------------------ pedidos (núcleo)
     def finish_request(self, activity_id: str, response: Any, *, cancelled: bool = False) -> None:
-        """Encerra o pedido com a resposta que o JARVIS deu (``Response`` do orquestrador)."""
+        """Encerra o pedido com a resposta que o SAFRA deu (``Response`` do orquestrador)."""
         if not activity_id:
             return
         kind = getattr(response, "kind", "answer")
@@ -407,8 +407,8 @@ class ActivityLog:
         if event.type is EventType.SYSTEM_READY:
             failed = list(event.get("failed") or [])
             seconds = float(event.get("seconds") or 0.0)
-            self.record("sistema", "JARVIS pronto", origin="system", state="concluido" if not failed else "aviso",
+            self.record("sistema", "SAFRA pronto", origin="system", state="concluido" if not failed else "aviso",
                         result=f"inicialização em {seconds:.1f} s" + (f"; com falha: {', '.join(map(str, failed))}"
                                                                      if failed else ""))
         else:
-            self.record("sistema", "Encerramento do JARVIS solicitado", origin=str(event.get("by") or "user"))
+            self.record("sistema", "Encerramento do SAFRA solicitado", origin=str(event.get("by") or "user"))

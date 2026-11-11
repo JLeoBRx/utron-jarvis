@@ -1,4 +1,4 @@
-"""ATIVIDADES — o histórico de atividades do JARVIS na tela.
+"""ATIVIDADES — o histórico de atividades do SAFRA na tela.
 
 Pedidos, ações, confirmações, verificações, lembretes e falhas, com origem, estado, duração e o
 resultado ou o erro REAIS (``core.activity``). A tabela é atualizada ao vivo pelo evento
@@ -23,10 +23,10 @@ STATE_GROUPS = {"": ("Todos os estados", None),
                 "done": ("Concluídos e verificados", ("concluido", "verificado", "pergunta")),
                 "unconfirmed": ("Sem confirmação", ("nao_confirmado",)),
                 "failed": ("Falhas, negados e recusados", ("falhou", "negado", "recusado", "cancelado"))}
-STATE_COLORS = {"verificado": "#3DFFA8", "concluido": "#9FE8C9", "pergunta": "#DCEEFF", "recebido": "#67F3FF",
-                "executando": "#00D9FF", "aguardando_confirmacao": "#FFB547", "nao_confirmado": "#FFC870",
-                "falhou": "#FF5D73", "negado": "#FF8A9A", "recusado": "#FF8A9A", "cancelado": "#9FB9D3",
-                "aviso": "#FFC870"}
+STATE_COLORS = {"verificado": "#3DDC97", "concluido": "#9FE8C9", "pergunta": "#F4F4F5", "recebido": "#FF5C6C",
+                "executando": "#EA2840", "aguardando_confirmacao": "#F7C948", "nao_confirmado": "#FAD776",
+                "falhou": "#FF7B1C", "negado": "#FFA25C", "recusado": "#FFA25C", "cancelado": "#C4C4CC",
+                "aviso": "#FAD776"}
 MAX_ROWS = 1000
 
 
@@ -74,9 +74,9 @@ class ActivityModel(QtCore.QAbstractTableModel):
                     item.get("error") or item.get("result") or "")[column]
         if role == QtCore.Qt.ForegroundRole:
             if column == 4:
-                return QtGui.QColor(STATE_COLORS.get(item.get("state"), "#DCEEFF"))
+                return QtGui.QColor(STATE_COLORS.get(item.get("state"), "#F4F4F5"))
             if column == 6 and item.get("error"):
-                return QtGui.QColor("#FF8A9A")
+                return QtGui.QColor("#FFA25C")
         if role == QtCore.Qt.ToolTipRole and column in (3, 6):
             return item.get("title") if column == 3 else (item.get("error") or item.get("result") or "")
         if role == QtCore.Qt.UserRole:
@@ -121,7 +121,7 @@ class ActivityPage(QtWidgets.QWidget):
         self._closed = False
         self._notice = ""                         # resultado da última ação, mantido na próxima recarga
         title = _label("HISTÓRICO DE ATIVIDADES", "PanelTitle")
-        intro = _label("Tudo o que o JARVIS recebeu, decidiu e fez — com o resultado real. Uma ação só aparece como "
+        intro = _label("Tudo o que o SAFRA recebeu, decidiu e fez — com o resultado real. Uma ação só aparece como "
                        "verificada quando a verificação independente confirmou.", "PanelDim")
         self.kind = QtWidgets.QComboBox()
         self.kind.addItem("Todos os tipos", "")
@@ -267,10 +267,10 @@ class ActivityPage(QtWidgets.QWidget):
             return
         item = self.model.rows[index.row()]
         children = self.core.activity.children(item["id"]) if getattr(self.core, "activity", None) else []
-        lines = [f"<b style='color:#67F3FF'>{_html(item['kind_label'])}</b> · "
-                 f"<span style='color:{STATE_COLORS.get(item['state'], '#DCEEFF')}'>{item['state_label']}</span>",
+        lines = [f"<b style='color:#FF5C6C'>{_html(item['kind_label'])}</b> · "
+                 f"<span style='color:{STATE_COLORS.get(item['state'], '#F4F4F5')}'>{item['state_label']}</span>",
                  f"<b>{_html(item['title'])}</b>",
-                 f"<span style='color:#7F9BB7'>id {item['id']} · origem {_html(item['origin'])} · início "
+                 f"<span style='color:#A1A1AA'>id {item['id']} · origem {_html(item['origin'])} · início "
                  f"{time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(item['started_at']))} · duração "
                  f"{_duration(item['seconds'])}</span>"]
         if item.get("input"):
@@ -278,15 +278,15 @@ class ActivityPage(QtWidgets.QWidget):
         if item.get("result"):
             lines.append(f"<p><b>Resultado</b><br>{_html(item['result'])}</p>")
         if item.get("error"):
-            lines.append(f"<p><b style='color:#FF8A9A'>Erro</b><br>{_html(item['error'])}</p>")
+            lines.append(f"<p><b style='color:#FFA25C'>Erro</b><br>{_html(item['error'])}</p>")
         if item.get("detail"):
-            lines.append("<p><b>Detalhes</b><br><span style='color:#9FB9D3'>"
+            lines.append("<p><b>Detalhes</b><br><span style='color:#C4C4CC'>"
                          + "<br>".join(f"{_html(k)}: {_html(json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v)}"
                                        for k, v in item["detail"].items()) + "</span></p>")
         if children:
             lines.append("<p><b>Ações deste pedido</b><br>" + "<br>".join(
-                f"<span style='color:{STATE_COLORS.get(c['state'], '#DCEEFF')}'>● {c['state_label']}</span> "
-                f"{_html(c['title'])} <span style='color:#7F9BB7'>({_duration(c['seconds'])})</span>"
+                f"<span style='color:{STATE_COLORS.get(c['state'], '#F4F4F5')}'>● {c['state_label']}</span> "
+                f"{_html(c['title'])} <span style='color:#A1A1AA'>({_duration(c['seconds'])})</span>"
                 for c in children) + "</p>")
         self.detail.setHtml("<br>".join(lines[:3]) + "".join(lines[3:]))
 

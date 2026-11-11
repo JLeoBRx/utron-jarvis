@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 <nul >nul
-title JARVIS - Instalacao
+title SAFRA - Instalacao
 cd /d "%~dp0"
 
 rem INSTALL_JARVIS.bat               instalacao com perguntas (modelos de uma instalacao anterior, modelos do
@@ -13,7 +13,7 @@ if /i "%~1"=="--unattended" set "UNATTENDED=1"
 set "DEPS_FAILED="
 
 echo ============================================================
-echo   JARVIS - instalacao local (Windows 10/11, 64 bits)
+echo   SAFRA - instalacao local (Windows 10/11, 64 bits)
 echo   Nada e apagado: .venv, modelos em assets e seus dados ficam.
 echo ============================================================
 echo.
@@ -36,7 +36,7 @@ echo Python encontrado:
 %PY% --version
 %PY% -c "import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] <= (3, 13) else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo [AVISO] Versao do Python nao testada com o JARVIS: a interface ^(PySide6 6.8^) pede Python 3.10 a 3.13.
+    echo [AVISO] Versao do Python nao testada com o SAFRA: a interface ^(PySide6 6.8^) pede Python 3.10 a 3.13.
     echo         Recomendado: Python 3.11 de https://www.python.org/downloads/
 )
 
@@ -62,7 +62,7 @@ echo Instalando dependencias (requirements.txt) ...
 if errorlevel 1 (
     set "DEPS_FAILED=1"
     echo.
-    echo [AVISO] Alguma dependencia falhou. O JARVIS inicia em modo degradado e
+    echo [AVISO] Alguma dependencia falhou. O SAFRA inicia em modo degradado e
     echo         o diagnostico abaixo mostra exatamente o que falta.
 )
 
@@ -93,7 +93,7 @@ if not exist "assets\voices\pt_BR-faber-medium.onnx" (
     echo.
     echo Voz neural: baixe pt_BR-faber-medium.onnx e pt_BR-faber-medium.onnx.json em
     echo   https://huggingface.co/rhasspy/piper-voices  ^(pasta pt/pt_BR/faber/medium^)
-    echo   e coloque em assets\voices. Sem ela, o JARVIS usa a voz do Windows ^(SAPI^).
+    echo   e coloque em assets\voices. Sem ela, o SAFRA usa a voz do Windows ^(SAPI^).
 )
 if defined UNATTENDED (
     echo Copiar de uma instalacao anterior, sem sobrescrever nada: .venv\Scripts\python.exe main.py --import-models PASTA
@@ -125,7 +125,7 @@ if defined UNATTENDED (
     echo Inicio automatico com o Windows: nao alterado ^(--unattended^). Para ligar: START_JARVIS.bat --autostart
     goto autostart_done
 )
-choice /c SN /m "Iniciar o JARVIS automaticamente com o Windows (orbe recolhido)?"
+choice /c SN /m "Iniciar o SAFRA automaticamente com o Windows (orbe recolhido)?"
 if errorlevel 2 (
     "%VPY%" -m ultron.platform.autostart off
 ) else (
@@ -143,7 +143,7 @@ echo Diagnostico do sistema:
 echo.
 if defined DEPS_FAILED (
     echo Instalacao concluida COM FALHAS: alguma dependencia nao foi instalada ^(mensagens do pip acima^).
-    echo O JARVIS inicia em modo degradado; o diagnostico acima mostra o que falta.
+    echo O SAFRA inicia em modo degradado; o diagnostico acima mostra o que falta.
 ) else (
     echo Instalacao concluida. Inicie com START_JARVIS.bat
 )

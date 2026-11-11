@@ -22,7 +22,7 @@ export class Hud {
     this.setButtons('jarvis', 'frente');
   }
 
-  /** Botões de vista conforme o modo (JARVIS: frente, núcleo, cabine, entrar; TARDIS: console, painel, sair). */
+  /** Botões de vista conforme o modo (SAFRA: frente, núcleo, cabine, entrar; TARDIS: console, painel, sair). */
   setButtons(mode, active) {
     this.mode = mode;
     const sets = {
@@ -33,7 +33,7 @@ export class Hud {
                ['entrar', 'ENTRAR NA TARDIS', 'Abre a sala de controle (página TARDIS)']],
       tardis: [['tardis', 'CONSOLE', 'Visão geral da sala de controle'],
                ['painel', 'PAINEL', 'Diante do painel escolhido à direita'],
-               ['sair', 'VOLTAR AO JARVIS', 'Sai pela porta e volta ao convés do JARVIS']],
+               ['sair', 'VOLTAR AO SAFRA', 'Sai pela porta e volta ao convés do SAFRA']],
     };
     this.el.views.innerHTML = sets[mode].map(([k, t, tip]) => `<button data-view="${k}" title="${esc(tip)}">${t}</button>`).join('');
     this.setActive(active);

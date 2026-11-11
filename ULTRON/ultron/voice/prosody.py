@@ -7,7 +7,7 @@ O Piper lê bem uma frase isolada, mas fala tudo no mesmo ritmo e com as pausas 
 2. **planeja** a fala em frases e respirações: pausas por pontuação (vírgula curta, ponto mais longo, parágrafo
    maior), quebra de frases longas nas vírgulas, alongamento no fim da frase, perguntas um pouco mais lentas,
    variação pequena e determinística de velocidade entre frases (nada de "metrônomo");
-3. dá a cada trecho a **expressividade** do perfil (``noise_scale``/``noise_w_scale`` do Piper: o JARVIS varia a
+3. dá a cada trecho a **expressividade** do perfil (``noise_scale``/``noise_w_scale`` do Piper: o SAFRA varia a
    entonação e o ritmo; o ULTRON é mais plano e deliberado).
 
 O sintetizador (``tts.py``) gera cada trecho, remove o silêncio que o modelo coloca nas pontas e insere as pausas

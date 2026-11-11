@@ -3,7 +3,7 @@
 Duas origens:
 
 * ``learned``: sequências de ações que levaram a objetivos verificados;
-* ``automation``: automações do usuário disparadas por frase exata (compatível com o JARVIS).
+* ``automation``: automações do usuário disparadas por frase exata (compatível com o SAFRA).
 
 Uma sequência só é reutilizada se a taxa de sucesso continuar alta.
 """

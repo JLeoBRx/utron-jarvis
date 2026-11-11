@@ -1,4 +1,4 @@
-"""Janela principal do JARVIS NEURAL HUB e seus controles.
+"""Janela principal do SAFRA NEURAL HUB e seus controles.
 
 A janela é só apresentação e entrada: o texto digitado, os botões de autorização e o
 microfone são repassados ao Neural Core pelo controlador. F11 alterna tela cheia; Esc
@@ -13,7 +13,7 @@ from .brain_view import BrainView
 
 
 def _icon_pixmap(size: int) -> QtGui.QPixmap:
-    """Disco azul profundo, anel ciano e núcleo luminoso — o mesmo símbolo do JARVIS CORE."""
+    """Disco azul profundo, anel ciano e núcleo luminoso — o mesmo símbolo do SAFRA CORE."""
     pix = QtGui.QPixmap(size, size)
     pix.fill(QtCore.Qt.transparent)
     p = QtGui.QPainter(pix)
@@ -46,7 +46,7 @@ _ICON: QtGui.QIcon | None = None
 
 
 def app_icon(size: int = 64) -> QtGui.QIcon:
-    """Ícone do JARVIS em vários tamanhos (bandeja do Windows, barra de tarefas, janelas)."""
+    """Ícone do SAFRA em vários tamanhos (bandeja do Windows, barra de tarefas, janelas)."""
     global _ICON
     if _ICON is None:
         icon = QtGui.QIcon()
@@ -75,7 +75,7 @@ class InputBar(QtWidgets.QWidget):
         layout.setSpacing(8)
         self.line = QtWidgets.QLineEdit()
         self.line.setObjectName("HudLine")
-        self.line.setPlaceholderText("Diga \"Jarvis\" ou digite um pedido…")
+        self.line.setPlaceholderText("Diga \"Safra\" ou digite um pedido…")
         self.line.returnPressed.connect(self._submit)
         self.line.installEventFilter(self)
         self.send = self._button("ENVIAR", "Enviar o pedido (Enter)")
@@ -83,7 +83,7 @@ class InputBar(QtWidgets.QWidget):
         self.mic = self._button("MIC", "Microfone ligado/desligado (Ctrl+M)", checkable=True)
         self.mic.setChecked(True)
         self.mic.toggled.connect(self.mic_toggled)
-        self.voice = self._button("VOZ", "Fala do JARVIS ligada/desligada", checkable=True)
+        self.voice = self._button("VOZ", "Fala do SAFRA ligada/desligada", checkable=True)
         self.voice.setChecked(True)
         self.voice.toggled.connect(self.voice_toggled)
         self.orb = self._button("ORBE", "Recolher para o orbe compacto (Esc)")
@@ -201,7 +201,7 @@ class HudWindow(QtWidgets.QWidget):
 
     def __init__(self, view: BrainView):
         super().__init__()
-        self.setWindowTitle("JARVIS — Core")
+        self.setWindowTitle("SAFRA — Core")
         self.setWindowIcon(app_icon())
         self.resize(1320, 820)
         self.setMinimumSize(820, 540)

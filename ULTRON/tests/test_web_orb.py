@@ -1,4 +1,4 @@
-"""JARVIS WEB ORB: gateway + agente da matriz-mãe + "navegador" — de ponta a ponta, em 127.0.0.1.
+"""SAFRA WEB ORB: gateway + agente da matriz-mãe + "navegador" — de ponta a ponta, em 127.0.0.1.
 
 O gateway roda de verdade (aiohttp), o agente é o de produção ligado a um NeuralCore REAL (com o servidor que imita
 o Ollama) e o navegador é um cliente HTTP/WebSocket com cookies. Nada sai do computador; nenhuma URL pública é

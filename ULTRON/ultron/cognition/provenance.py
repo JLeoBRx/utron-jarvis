@@ -2,7 +2,7 @@
 
 Tipos (podem se combinar):
 
-* ``sistema``      — dado do próprio JARVIS (relógio, estado, configurações, ajuda);
+* ``sistema``      — dado do próprio SAFRA (relógio, estado, configurações, ajuda);
 * ``memoria``      — memória pessoal lida do banco (Second Brain, memória, TARDIS);
 * ``acao``         — uma ação executada (com ou sem verificação confirmada);
 * ``internet``     — o provedor consultou a internet (pesquisa web da OpenAI);
@@ -51,7 +51,7 @@ def describe(*, response_kind: str, text: str, success, verified, skills: list[s
             parts.append("indisponível — nenhuma fonte respondeu")
         else:
             kinds.append("sistema")
-            parts.append("dados do próprio JARVIS")
+            parts.append("dados do próprio SAFRA")
     return {"kinds": kinds, "label": " · ".join(parts), "notes": list((route or {}).get("notes") or []),
             "profile": (route or {}).get("profile", ""), "reason": (route or {}).get("reason", "")}
 

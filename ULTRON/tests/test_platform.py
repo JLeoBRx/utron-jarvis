@@ -1,4 +1,4 @@
-"""Plataforma JARVIS ULTIMATE com o núcleo real (Qt offscreen, Ollama simulado, banco temporário).
+"""Plataforma SAFRA ULTIMATE com o núcleo real (Qt offscreen, Ollama simulado, banco temporário).
 
 Cobre: navegação entre os seis módulos sem perder estado, transição holográfica, indicadores lidos do
 estado real, conversa com horários e botões do original, Esc/PARAR, histórico de atividades na tela,
@@ -115,7 +115,7 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(self.window.current_key, page, key)
         self.assertIn("DIAGNÓSTICOS", self.window.windowTitle())
         shortcuts["F1"].activated.emit()
-        self.assertEqual(self.window.windowTitle(), "J.A.R.V.I.S.")
+        self.assertEqual(self.window.windowTitle(), "SAFRA")
         self.assertTrue(self.window.escape.isEnabled(), "fora do TARDIS, Esc é da plataforma")
         shortcuts["F2"].activated.emit()
         self.assertFalse(self.window.escape.isEnabled(), "no TARDIS, Esc fecha a região aberta (sem conflito)")
@@ -195,15 +195,15 @@ class PlatformTest(unittest.TestCase):
         conversation = self.window.conversation
         conversation.clear()
         self.core.submit("que horas são?", source="text")
-        self.assertTrue(self.pump_until(lambda: "J.A.R.V.I.S." in conversation.text(), 10))
+        self.assertTrue(self.pump_until(lambda: "SAFRA" in conversation.text(), 10))
         text = conversation.text()
         self.assertRegex(text, r"\[\d\d:\d\d\] VOCÊ \(texto\) ▸ que horas são\?")
-        self.assertRegex(text, r"\[\d\d:\d\d\] J.A.R.V.I.S. ▸ São ")
+        self.assertRegex(text, r"\[\d\d:\d\d\] SAFRA ▸ São ")
         self.assertTrue(conversation.copy_last())
         self.assertTrue(QtGui.QGuiApplication.clipboard().text().startswith("São "))
         conversation.clear()
         conversation.time_button.click()
-        self.assertTrue(self.pump_until(lambda: "J.A.R.V.I.S." in conversation.text(), 10), "HORAS → núcleo")
+        self.assertTrue(self.pump_until(lambda: "SAFRA" in conversation.text(), 10), "HORAS → núcleo")
         shortcut = next(s for s in self.window.findChildren(QtGui.QShortcut) if s.key().toString() == "Ctrl+L")
         shortcut.activated.emit()
         self.assertEqual(conversation.text(), "", "Ctrl+L limpa a conversa")
@@ -448,7 +448,7 @@ class TrayStartupTest(unittest.TestCase):
         self.assertIsNotNone(self.controller.tray, "bandeja criada")
         menu = self.controller.tray.contextMenu()
         labels = [a.text() for a in menu.actions()]
-        for expected in ("Abrir o JARVIS", "Observador", "Iniciar com o Windows", "Sair"):
+        for expected in ("Abrir o SAFRA", "Observador", "Iniciar com o Windows", "Sair"):
             self.assertIn(expected, labels)
         actions = self.observer_actions(menu)
         self.assertTrue(actions["Desligado"].isChecked(), "antes do boot vale a configuração (desligado)")
@@ -486,7 +486,7 @@ class VoiceNavigationTest(unittest.TestCase):
             intent = engine.classify(phrase)
             self.assertEqual((intent.kind, intent.args), (kind, args), phrase)
         self.assertEqual(engine.classify("abra as configurações").skill, "app.open",
-                         "sem o nome do JARVIS continua abrindo as configurações do Windows (original)")
+                         "sem o nome do SAFRA continua abrindo as configurações do Windows (original)")
         self.assertEqual(engine.classify("diagnóstico do jarvis").skill, "diagnostics.health")
         self.assertEqual(engine.classify("o que você fez hoje?").skill, "activity.recent")
 

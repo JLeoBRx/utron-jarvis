@@ -1,6 +1,6 @@
 """Perfil de voz efetivo.
 
-O timbre do JARVIS é definido em ``personality/voice_profile.py`` (personalidade); este
+O timbre do SAFRA é definido em ``personality/voice_profile.py`` (personalidade); este
 módulo combina esse perfil com as preferências do usuário (volume e velocidade) e o
 descreve de forma legível para a HUD e o diagnóstico.
 """
@@ -14,7 +14,7 @@ PRESETS = {"jarvis": JARVIS, "neutral": NEUTRAL, "ultron": ULTRON}
 
 
 def effective_profile(settings: Any = None, preset: str | None = None) -> VoiceProfile:
-    """Perfil da persona ativa: com o Protocolo ULTRON, ``ULTRON_VOICE_PROFILE``; senão o escolhido (JARVIS)."""
+    """Perfil da persona ativa: com o Protocolo ULTRON, ``ULTRON_VOICE_PROFILE``; senão o escolhido (SAFRA)."""
     from ..personality import persona
     from ..personality.voice_profile import ULTRON_VOICE_PROFILE
     if preset is None and persona.current().ultron:

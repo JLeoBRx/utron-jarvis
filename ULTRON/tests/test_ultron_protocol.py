@@ -122,8 +122,8 @@ class IntentTest(unittest.TestCase):
     def test_secret_phrases(self):
         from ultron.cognition.intent_engine import IntentEngine
         engine = IntentEngine()
-        cases = {"JARVIS, iniciar protocolo ULTRON.": "start", "protocolo ultron demonstração": "demo",
-                 "encerrar protocolo ultron": "stop", "restaurar JARVIS": "stop"}
+        cases = {"SAFRA, iniciar protocolo ULTRON.": "start", "protocolo ultron demonstração": "demo",
+                 "encerrar protocolo ultron": "stop", "restaurar SAFRA": "stop"}
         for phrase, action in cases.items():
             intent = engine.classify(phrase)
             self.assertEqual((intent.kind, intent.args), ("control", {"ultron": action}), phrase)
@@ -155,13 +155,13 @@ class ConsoleModeTest(unittest.TestCase):
             from ultron.personality.voice_profile import ULTRON_VOICE_PROFILE
             from ultron.voice.profile import effective_profile
             engine = IntentEngine()
-            response = core._control(engine.classify("JARVIS, iniciar protocolo ULTRON."))
+            response = core._control(engine.classify("SAFRA, iniciar protocolo ULTRON."))
             self.assertIn("console", response.text)
             self.assertIn("ULTRON_OPERATOR", response.text)
             self.assertTrue(persona.current().ultron and persona.current().operator)
             self.assertEqual(effective_profile(manager.settings).pitch, ULTRON_VOICE_PROFILE.pitch, "voz do ULTRON")
             self.assertEqual((core.state.get("persona") or {}).get("name"), "ultron", "estado para a ORBE")
-            self.assertEqual(core._control(engine.classify("restaurar JARVIS")).text, "JARVIS restaurado.")
+            self.assertEqual(core._control(engine.classify("restaurar SAFRA")).text, "SAFRA restaurado.")
             self.assertFalse(persona.current().ultron)
         finally:
             core.memory.db.close()
@@ -179,7 +179,7 @@ class ControllerSafetyTest(unittest.TestCase):
         from ultron.core.neural_core import NeuralCore
         from ultron.hud.controller import HudController
         self.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-        self.app.setStyleSheet("QWidget { color: #00D9FF; border: 1px solid rgba(0, 217, 255, 70); }")
+        self.app.setStyleSheet("QWidget { color: #EA2840; border: 1px solid rgba(234, 40, 64, 70); }")
         self.fake = FakeOllama(["qwen2.5:3b"], responder=lambda payload: "ok")
         self.fake.__enter__()
         self.data = Path(tempfile.mkdtemp(prefix="jarvis-ultron-"))
@@ -223,16 +223,16 @@ class ControllerSafetyTest(unittest.TestCase):
         self.assertTrue(c.ultron_start("manual"))
         self.assertEqual(c.window.windowTitle(), "U.L.T.R.O.N.")
         self.assertEqual(c.window.top.brand.title, "U.L.T.R.O.N.")
-        self.assertIn("255, 31, 61", self.app.styleSheet(), "cores trocadas")
+        self.assertIn("139, 92, 246", self.app.styleSheet(), "cores trocadas")
         self.assertTrue(c.orb.ultron)
-        self.assertTrue(any("255, 31, 61" in w.styleSheet() for w in c.window.findChildren(QtWidgets.QWidget)),
+        self.assertTrue(any("139, 92, 246" in w.styleSheet() for w in c.window.findChildren(QtWidgets.QWidget)),
                         "os painéis também mudam de cor")
         self.assertTrue(any("ULTRON_OPERATOR ATIVO" in line and "ações reais" in line for line in said),
                         "a conversa diz, com honestidade, que há um operador ativo")
         self.assertTrue(persona.current().ultron and persona.current().operator, "persona no núcleo")
         self.assertEqual(self.core.autonomy.level, "autonomous", "perfil operador em vigor")
-        self.assertEqual(c.escape(), "ultron", "Esc restaura o JARVIS primeiro")
-        self.assertFalse(persona.current().ultron, "voz, tom e permissões voltam ao JARVIS")
+        self.assertEqual(c.escape(), "ultron", "Esc restaura o SAFRA primeiro")
+        self.assertFalse(persona.current().ultron, "voz, tom e permissões voltam ao SAFRA")
         self.assertNotEqual(self.core.autonomy.level, "autonomous")
         self.assertFalse(c.ultron.active)
 
@@ -240,7 +240,7 @@ class ControllerSafetyTest(unittest.TestCase):
         self.assertEqual(c.window.windowTitle(), title_before)
         self.assertEqual({id(w): w.styleSheet() for w in c.window.findChildren(QtWidgets.QWidget) if w.styleSheet()},
                          panels_before, "cada painel volta exatamente ao estilo de antes")
-        self.assertEqual(c.window.top.brand.title, "J.A.R.V.I.S.")
+        self.assertEqual(c.window.top.brand.title, "SAFRA")
         self.assertFalse(c.orb.ultron)
         self.assertEqual(json.dumps(self.manager.settings.to_dict(), sort_keys=True, default=str), settings_before,
                          "nenhuma configuração (inclusive permissões) mudou")
@@ -261,7 +261,7 @@ class ControllerSafetyTest(unittest.TestCase):
         c._ui_request({"ultron": "demo"})
         self.assertEqual(c.ultron.current.source, "demonstracao")
         c._scene3d_request("restore")
-        self.assertFalse(c.ultron.active, "o botão RESTAURAR JARVIS da cena encerra")
+        self.assertFalse(c.ultron.active, "o botão RESTAURAR SAFRA da cena encerra")
 
     def test_real_work_during_the_event_stays_visible_and_the_emergency_key_stops_it(self):
         c = self.controller
@@ -309,9 +309,9 @@ class ControllerSafetyTest(unittest.TestCase):
         c.ultron_start("manual")
         c.tardis_page.room._escape()
         self.assertFalse(c.ultron.active, "o Esc da sala também encerra o evento primeiro")
-        self.assertEqual(c.window.windowTitle(), "J.A.R.V.I.S. — TARDIS", "volta com o nome da página atual")
+        self.assertEqual(c.window.windowTitle(), "SAFRA — TARDIS", "volta com o nome da página atual")
         c.window.navigate("jarvis", animate=False)
-        self.assertEqual(c.window.windowTitle(), "J.A.R.V.I.S.")
+        self.assertEqual(c.window.windowTitle(), "SAFRA")
 
     def test_settings_page_controls_demo_and_history(self):
         from ultron.hud.settings_page import ultron_history_text
@@ -351,7 +351,7 @@ class OperatorPolicyTest(unittest.TestCase):
     def test_operator_relaxes_only_what_the_user_allows(self):
         settings = helpers.make_settings(permission_policy=("arquivos=confirmar", "executar_programas=bloquear"))
         note = ("memory.session_note", {"note": "teste"})
-        self.assertEqual(self._decide(settings, *note), "authorize", "JARVIS: a categoria pede confirmação")
+        self.assertEqual(self._decide(settings, *note), "authorize", "SAFRA: a categoria pede confirmação")
         persona.set_persona("ultron", operator=True)
         self.assertEqual(self._decide(settings, *note), "execute", "operador: rotina liberada no perfil")
         self.assertEqual(self._decide(settings, "app.open", {"name": "notepad"}), "refuse",

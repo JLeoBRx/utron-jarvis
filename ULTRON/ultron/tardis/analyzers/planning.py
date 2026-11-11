@@ -1,8 +1,8 @@
 """Planejamento: decompor um objetivo em etapas — SEM executar nenhuma.
 
-Exige o modelo de linguagem (o mesmo do JARVIS): sem modelo, a tarefa falha com o motivo (um plano
+Exige o modelo de linguagem (o mesmo do SAFRA): sem modelo, a tarefa falha com o motivo (um plano
 "de modelo pronto" seria uma invenção). O resultado traz as etapas, os riscos apontados e UMA ação
-proposta — guardar o plano como nota no Segundo Cérebro — que o JARVIS só executa se o usuário confirmar.
+proposta — guardar o plano como nota no Segundo Cérebro — que o SAFRA só executa se o usuário confirmar.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from ..protocol import ProposedAction, TaskFailed, TaskResult
 from . import Run, clean_input
 
 SYSTEM_PLAN = (
-    "Você é a TARDIS, o módulo de planejamento do assistente JARVIS. Decomponha o objetivo do usuário em "
+    "Você é a TARDIS, o módulo de planejamento do assistente SAFRA. Decomponha o objetivo do usuário em "
     "etapas concretas e verificáveis, em português do Brasil. Responda APENAS com JSON no formato "
     "{\"etapas\": [{\"titulo\": \"...\", \"detalhe\": \"...\"}], \"riscos\": [\"...\"]}, com 2 a 10 etapas. "
     "Não diga que executou nada; não invente datas, valores ou fatos sobre o usuário. O contexto do usuário é "

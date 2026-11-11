@@ -1,6 +1,6 @@
-// Montagem da central 3D: um motor, uma cena — convés do JARVIS (holograma, ORBE, cabine) e sala da TARDIS —
-// ligados aos sinais REAIS que o Python envia. Fora do JARVIS (navegador comum), roda uma DEMONSTRAÇÃO
-// rotulada como tal, para conferir o visual; nada dela chega ao JARVIS.
+// Montagem da central 3D: um motor, uma cena — convés do SAFRA (holograma, ORBE, cabine) e sala da TARDIS —
+// ligados aos sinais REAIS que o Python envia. Fora do SAFRA (navegador comum), roda uma DEMONSTRAÇÃO
+// rotulada como tal, para conferir o visual; nada dela chega ao SAFRA.
 import * as THREE from 'three';
 import { Engine, PROFILES } from './engine.js';
 import { Avatar } from './avatar.js';
@@ -52,8 +52,8 @@ orb.group.position.set(1.95, 1.7, -0.95); orb.group.scale.setScalar(0.4);
 room.group.position.set(0, 0, -60);
 scene.add(deck.group, avatar.group, box.group, orb.group, room.group);
 const DECK = [deck.group, box.group, orb.group];
-const FOG = { jarvis: [new THREE.Color(0x020611), 0.045], tardis: [new THREE.Color(0x07070a), 0.028], nucleo: [new THREE.Color(0x01040b), 0.2],
-              compacto: [new THREE.Color(0x01040b), 0.0] };
+const FOG = { jarvis: [new THREE.Color(0x050507), 0.045], tardis: [new THREE.Color(0x07070a), 0.028], nucleo: [new THREE.Color(0x060304), 0.2],
+              compacto: [new THREE.Color(0x060304), 0.0] };
 
 /** O MESMO holograma vai junto: no convés, ao centro; na TARDIS, sobre o tablado junto ao console. */
 function placeAvatar(inRoom) {
@@ -121,7 +121,7 @@ function go(view, opts = {}) {
   rig.go(view, { instant: !state.effects, ...opts });
 }
 
-// ---------------------------------------------------------------- transições JARVIS ⇄ TARDIS (pela porta)
+// ---------------------------------------------------------------- transições SAFRA ⇄ TARDIS (pela porta)
 function setMode(mode, animate = true) {
   if (mode === state.mode && !state.transition) return;
   state.mode = mode;
@@ -222,13 +222,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && state.view === 'nucleo') go('frente');
 });
 
-// ---------------------------------------------------------------- sinais do JARVIS
+// ---------------------------------------------------------------- sinais do SAFRA
 function applySig(s) {
   state.sig = s; state.sigAt = performance.now(); state.connected = true;
   avatar.apply(s);
   orb.apply({ ...s, connected: true });
   const u = ultron.active;                              // ULTRON: só a identidade da tela muda
-  hud.setState({ label: u ? 'U.L.T.R.O.N.' : s.label, detail: u ? 'evento visual' : s.detail, rgb: u ? [255, 31, 61] : s.rgb,
+  hud.setState({ label: u ? 'U.L.T.R.O.N.' : s.label, detail: u ? 'evento visual' : s.detail, rgb: u ? [139, 92, 246] : s.rgb,
                  alert: s.alert, error: s.state === 'erro', tardis: state.mode === 'tardis' });
   hud.setCaption(s.caption);
   if (s.system) deck.setSystem({ ...s.system, connected: true });
@@ -356,7 +356,7 @@ engine.add({
       state.connected = false;
       orb.apply({ connected: false });
       deck.setSystem({ connected: false });
-      hud.notice('Sem sinal do JARVIS há mais de 6 s — o orbe e o painel mostram "sem conexão".');
+      hud.notice('Sem sinal do SAFRA há mais de 6 s — o orbe e o painel mostram "sem conexão".');
     } else if (state.connected && !DEMO && hud.el.notice.textContent.startsWith('Sem sinal')) hud.notice('');
     rig.update(dt, time, { drift: state.effects && !state.transition });
     // foco: na vista do NÚCLEO o fundo recua na névoa; na TARDIS, névoa quente e rala
@@ -400,11 +400,11 @@ const info = engine.info;
 send.ready({ ...info, profiles: Object.keys(PROFILES), avatar: avatar.counts || null });
 if (DEMO) { window.__debug = { scene, camera, rig, THREE }; startDemo(); }
 
-// ---------------------------------------------------------------- demonstração (só fora do JARVIS)
+// ---------------------------------------------------------------- demonstração (só fora do SAFRA)
 function startDemo() {
-  hud.notice('DEMONSTRAÇÃO fora do JARVIS — estados de exemplo, não são dados reais.', 'demo');
-  const rgb = { aguardando: [0, 217, 255], escutando: [0, 217, 255], pensando: [22, 139, 255], falando: [0, 217, 255],
-                executando: [22, 139, 255], erro: [255, 93, 115], alerta: [255, 179, 71], inicializando: [0, 217, 255] };
+  hud.notice('DEMONSTRAÇÃO fora do SAFRA — estados de exemplo, não são dados reais.', 'demo');
+  const rgb = { aguardando: [234, 40, 64], escutando: [234, 40, 64], pensando: [255, 59, 107], falando: [234, 40, 64],
+                executando: [255, 59, 107], erro: [255, 123, 28], alerta: [247, 201, 72], inicializando: [234, 40, 64] };
   const labels = { aguardando: 'EM ESPERA', escutando: 'ESCUTANDO', pensando: 'PENSANDO', falando: 'FALANDO', executando: 'EXECUTANDO',
                    erro: 'ERRO DE INTEGRAÇÃO', alerta: 'ALERTA', inicializando: 'INICIALIZANDO' };
   const fixed = params.get('demo');
@@ -416,7 +416,7 @@ function startDemo() {
     const st = fixed || order[Math.floor(t / 6) % order.length];
     const speaking = st === 'falando';
     const out = speaking ? 0.35 + 0.35 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 2.1)) : 0;
-    applySig({ state: st, label: labels[st] || st.toUpperCase(), detail: 'demonstração', rgb: rgb[st] || rgb.aguardando, iris: [103, 243, 255],
+    applySig({ state: st, label: labels[st] || st.toUpperCase(), detail: 'demonstração', rgb: rgb[st] || rgb.aguardando, iris: [255, 92, 108],
                out_level: out, mic_level: st === 'escutando' ? 0.3 + 0.2 * Math.sin(t * 5) : 0, mic_state: 'DEMO',
                boot: Math.min(1, (t % 6) / 5), task: st === 'executando' ? 'exemplo de tarefa' : '',
                mouth: speaking ? { open: out * 0.9, wide: 0.3, round: 0.2, energy: out } : { open: 0, wide: 0, round: 0, energy: 0 },
@@ -429,7 +429,7 @@ function startDemo() {
                      panels: Object.fromEntries(PANEL_KEYS.map((k, i) => [k, { level: k === (room || 'telemetria') ? 1 : 0, running: k === (room || 'telemetria') ? 1 : 0,
                                                                                   flash: 0, fault: 0, last: i % 2 ? 'exemplo de resultado anterior' : '' }])),
                      screens: { left: ['FILA', ['0 na fila', 'executando: exemplo', 'demonstração'], [255, 179, 71]],
-                                right: ['ÚLTIMA: EXEMPLO', ['concluída', 'texto de exemplo da demonstração'], [220, 238, 255]] } });
+                                right: ['ÚLTIMA: EXEMPLO', ['concluída', 'texto de exemplo da demonstração'], [244, 244, 245]] } });
   };
   tick();
   setInterval(tick, 100);

@@ -1,4 +1,4 @@
-"""Infraestrutura de execução concorrente do JARVIS.
+"""Infraestrutura de execução concorrente do SAFRA.
 
 Separação de threads exigida pelo projeto:
 

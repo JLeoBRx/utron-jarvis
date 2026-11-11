@@ -2,7 +2,7 @@
 
 Cada chamada a um modelo (local ou na nuvem) vira uma linha: quando, provedor, modelo, finalidade, rota,
 tokens de entrada e saída, duração, se deu certo e o custo estimado. O custo só é calculado quando o preço do
-modelo está configurado (CONFIGURAÇÕES > INTELIGÊNCIA, em US$ por milhão de tokens): o JARVIS não inventa
+modelo está configurado (CONFIGURAÇÕES > INTELIGÊNCIA, em US$ por milhão de tokens): o SAFRA não inventa
 preços. Sem preço, o limite mensal vale em TOKENS (``cloud_monthly_token_limit``).
 
 Nada do conteúdo das conversas é gravado aqui — só números e nomes de modelo.

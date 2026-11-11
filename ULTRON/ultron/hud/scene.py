@@ -1,4 +1,4 @@
-"""NEURAL SCENE — o estado visual do JARVIS NEURAL HUB (sem Qt, testável).
+"""NEURAL SCENE — o estado visual do SAFRA NEURAL HUB (sem Qt, testável).
 
 A cena só muda por dados reais: eventos do Event Bus, o JARVIS_STATE e a telemetria.
 Nada aqui é decorativo ou aleatório sem causa:
@@ -387,9 +387,9 @@ class NeuralScene:
         self._camera_override: tuple[str, str, float] | None = None
         self._time = 0.0
         self.graph_version = 0              # muda quando a geometria de nós/arestas muda (cache da view)
-        # sinais reais dos estados (identidade visual do JARVIS)
+        # sinais reais dos estados (identidade visual do SAFRA)
         self.hearing = 0.0                  # nível do microfone suavizado, só enquanto escuta (halo ciano)
-        self.voice_level = 0.0              # nível da fala do JARVIS suavizado (anéis sincronizados com a voz)
+        self.voice_level = 0.0              # nível da fala do SAFRA suavizado (anéis sincronizados com a voz)
         self.waves: deque = deque(maxlen=6)  # ondas de percepção: instante de nascimento
         self._last_wave = -1e9
         self._telemetry_at = -1e9

@@ -1,6 +1,6 @@
-// JARVIS WEB ORB — a presença remota da matriz-mãe. Esta página NÃO tem inteligência, memória, chaves nem estados
+// SAFRA WEB ORB — a presença remota da matriz-mãe. Esta página NÃO tem inteligência, memória, chaves nem estados
 // próprios: tudo o que a ORBE mostra (estado, voz, autorização, identidade ULTRON) chega da matriz-mãe pelo
-// gateway; o que o usuário digita ou fala vai para o MESMO JARVIS do computador principal.
+// gateway; o que o usuário digita ou fala vai para o MESMO SAFRA do computador principal.
 import * as THREE from 'three';
 import { Orb } from '/scene/js/orb.js';
 
@@ -14,7 +14,7 @@ const STATE_LABEL = { aguardando: 'EM ESPERA', escutando: 'ESCUTANDO', reconhece
 const canvas = $('stage');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-renderer.setClearColor(0x030712, 1);
+renderer.setClearColor(0x07070a, 1);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 50);
 camera.position.set(0, 0, 3.2);
@@ -52,7 +52,7 @@ function line({ role, text, source, provenance }) {
   const el = document.createElement('div');
   el.className = `line ${role === 'user' ? 'user' : 'jarvis'}`;
   const who = document.createElement('span'); who.className = 'who';
-  who.textContent = role === 'user' ? `VOCÊ${source ? ` (${source})` : ''}` : (role === 'system' ? '//' : 'JARVIS');
+  who.textContent = role === 'user' ? `VOCÊ${source ? ` (${source})` : ''}` : (role === 'system' ? '//' : 'SAFRA');
   el.append(who, document.createTextNode(text));
   if (provenance) { const s = document.createElement('span'); s.className = 'src'; s.textContent = provenance; el.append(s); }
   $('log').append(el);
@@ -69,7 +69,7 @@ function applyState(s) {
   const ultron = !!(s.persona && s.persona.name === 'ultron');
   ultronTarget = ultron ? 1 : 0;
   document.body.classList.toggle('ultron', ultron);
-  $('brand').firstChild.textContent = ultron ? 'U.L.T.R.O.N.' : 'J.A.R.V.I.S.';
+  $('brand').firstChild.textContent = ultron ? 'U.L.T.R.O.N.' : 'SAFRA';
   const auth = s.authorization;
   authId = auth ? auth.id : null;
   $('auth').classList.toggle('hidden', !auth || !matrizOnline);
@@ -261,6 +261,6 @@ function defaultName() {
   catch (e) { setConn('offline', 'SEM CONEXÃO COM O GATEWAY'); return; }
   const link = (location.pathname.match(/^\/p\/([A-Za-z0-9_-]{10,120})$/) || [])[1];
   if (session.paired) { if (link) history.replaceState(null, '', '/'); connect(); return; }
-  showPairing(session.matriz ? '' : 'A matriz-mãe está desconectada: ligue o JARVIS no computador principal.');
+  showPairing(session.matriz ? '' : 'A matriz-mãe está desconectada: ligue o SAFRA no computador principal.');
   if (link) { history.replaceState(null, '', '/'); await claim({ link, device_name: defaultName() }); }
 })();

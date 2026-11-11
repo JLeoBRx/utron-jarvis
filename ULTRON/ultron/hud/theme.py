@@ -1,17 +1,12 @@
-"""Sistema de tema do JARVIS — azul profundo e ciano. FONTE ÚNICA de cores e estilos.
+"""Sistema de tema do SAFRA — vermelho, bordô, preto e grafite. FONTE ÚNICA de cores e estilos do Qt.
 
-Paleta (especificação):
+Os valores vêm de ``palette.py`` (que espelha ``design/tokens.json``). Semântica: o VERMELHO SAFRA é
+atividade, escuta e dados em movimento; o BORDÔ é repouso e profundidade; o vermelho-framboesa marca
+pensamento, planejamento e execução; texto em branco e cinza. Atenção usa âmbar e falha usa laranja —
+fora da família do vermelho, para nunca se confundirem com a identidade —, sem piscar nem alarmar.
 
-    preto espacial #030712 · azul quase preto #071426 · azul profundo #0B1F3A
-    azul tecnológico #075985 · ciano #00D9FF · ciano luminoso #67F3FF
-    azul elétrico #168BFF · branco azulado #DCEEFF
-
-Semântica: o CIANO é atividade, percepção e circulação de dados; o AZUL PROFUNDO é repouso,
-memória e profundidade; o azul elétrico marca execução e conexões de planejamento. Aviso usa
-um âmbar suave e erro um coral — identificáveis, sem piscar nem alarmar.
-
-Nenhum outro módulo define cores próprias: HUB principal, orbe, painéis e o TARDIS leem
-daqui (tokens, tons de partícula, cores por estado e folhas de estilo).
+Nenhum outro módulo define cores próprias: plataforma, ORBE, painéis e a TARDIS leem daqui (tokens, tons
+de partícula, cores por estado e folhas de estilo geradas da paleta).
 """
 from __future__ import annotations
 
@@ -28,18 +23,18 @@ state_glow, state_label = palette.state_glow, palette.state_label
 BG = QtGui.QColor(HEX["space"])              # fundo
 BG2 = QtGui.QColor(HEX["abyss"])             # camadas e painéis
 PANEL = QtGui.QColor(HEX["deep"])            # superfícies, trilhos, repouso
-PRIMARY_DIM = QtGui.QColor(HEX["tech"])      # contornos, estados apagados
-PRIMARY = QtGui.QColor(HEX["cyan"])          # atividade, percepção, dados
+PRIMARY_DIM = QtGui.QColor(HEX["muted"])      # contornos, estados apagados
+PRIMARY = QtGui.QColor(HEX["primary"])          # atividade, percepção, dados
 GLOW = QtGui.QColor(HEX["glow"])             # brilho, destaque luminoso
-ELECTRIC = QtGui.QColor(HEX["electric"])     # execução, planejamento, memória
-TEXT = QtGui.QColor(HEX["ice"])
-TEXT_BRIGHT = QtGui.QColor(240, 250, 255)
+ELECTRIC = QtGui.QColor(HEX["energy"])     # execução, planejamento, memória
+TEXT = QtGui.QColor(HEX["text"])
+TEXT_BRIGHT = QtGui.QColor(255, 255, 255)
 TEXT_DIM = QtGui.QColor(HEX["dim_text"])
 ALERT = QtGui.QColor(HEX["alert"])           # aviso / autorização pendente
 ERROR = QtGui.QColor(HEX["error"])           # falha real
 CYAN = PRIMARY
 
-# Aliases da identidade anterior (mantidos para código externo/plugins): já apontam para o azul.
+# Aliases das identidades anteriores (mantidos para código externo/plugins): já apontam para o vermelho.
 BLACK, GRAPHITE, GRAPHITE_LIGHT = BG, BG2, PANEL
 GOLD, GOLD_DIM, AMBER, WARM_WHITE = PRIMARY, PRIMARY_DIM, ALERT, TEXT_BRIGHT
 
@@ -78,11 +73,11 @@ def mix(a: QtGui.QColor, b: QtGui.QColor, t: float) -> QtGui.QColor:
 
 
 def _core_of(tone: str) -> QtGui.QColor:
-    """Centro do brilho: quase branco-azulado; aviso e erro mantêm o próprio matiz."""
+    """Centro do brilho: quase branco; aviso e erro mantêm o próprio matiz."""
     if tone in ("alert", "amber"):
-        return QtGui.QColor(255, 226, 170)
+        return QtGui.QColor(255, 236, 180)
     if tone == "error":
-        return QtGui.QColor(255, 196, 204)
+        return QtGui.QColor(255, 214, 176)
     return QtGui.QColor(TEXT_BRIGHT)
 
 
@@ -137,73 +132,81 @@ def soft_sprite(tone: str, size: int = 128) -> QtGui.QPixmap:
     return pix
 
 
-STYLESHEET = """
-QWidget#HudInput { background: transparent; }
-QLineEdit#HudLine {
-    background: rgba(7, 20, 38, 215); color: #DCEEFF; border: 1px solid rgba(0, 217, 255, 70);
-    border-radius: 4px; padding: 8px 12px; selection-background-color: rgba(0, 217, 255, 110);
-    font-size: 11pt;
-}
-QLineEdit#HudLine:focus { border: 1px solid rgba(0, 217, 255, 170); }
-QPushButton#HudButton {
-    background: rgba(7, 20, 38, 215); color: #67F3FF; border: 1px solid rgba(0, 217, 255, 80);
-    border-radius: 4px; padding: 7px 12px; font-size: 9pt; letter-spacing: 2px;
-}
-QPushButton#HudButton:hover { border: 1px solid rgba(0, 217, 255, 190); color: #E6FBFF; }
-QPushButton#HudButton:checked { background: rgba(0, 217, 255, 38); }
-QPushButton#HudButton:disabled { color: #3D5873; border-color: rgba(7, 89, 133, 90); }
-QPushButton#HudPrimary {
-    background: rgba(0, 217, 255, 46); color: #F0FAFF; border: 1px solid rgba(0, 217, 255, 200);
-    border-radius: 4px; padding: 7px 16px; font-size: 9pt; letter-spacing: 2px;
-}
-QPushButton#HudPrimary:hover { background: rgba(0, 217, 255, 82); }
-QPushButton#HudPrimary:disabled { color: #5B7B97; background: rgba(7, 89, 133, 40); border-color: rgba(7, 89, 133, 90); }
-QLabel#HudLabel { color: #DCEEFF; font-size: 10pt; }
-QMenu { background: #071426; color: #DCEEFF; border: 1px solid rgba(0, 217, 255, 90); }
-QMenu::item:selected { background: rgba(0, 217, 255, 55); }
-QToolTip { background: #0B1F3A; color: #DCEEFF; border: 1px solid rgba(0, 217, 255, 120); }
-"""
+# --------------------------------------------------------------- folhas de estilo (geradas da paleta)
+def _style_values() -> dict:
+    h, r = palette.HEX, palette.rgb
+    return {"bg": h["space"], "layer": h["abyss"], "surface": h["deep"], "raised": h["graphite"],
+            "text": h["text"], "bright": "#FFFFFF", "dim": h["dim_text"], "accent": h["primary"], "glow": h["glow"],
+            "muted": h["muted"], "a": r("primary"), "g": r("glow"), "m": r("muted"), "l": r("abyss"), "w": r("wine")}
 
-# Painéis (diagnóstico de voz, rede, painel de memória do TARDIS, diálogos): mesma paleta.
+
+STYLESHEET = """
+QWidget#HudInput {{ background: transparent; }}
+QLineEdit#HudLine {{
+    background: rgba({l}, 225); color: {text}; border: 1px solid rgba({a}, 70);
+    border-radius: 2px; padding: 8px 12px; selection-background-color: rgba({a}, 110);
+    font-size: 11pt;
+}}
+QLineEdit#HudLine:focus {{ border: 1px solid rgba({a}, 190); }}
+QPushButton#HudButton {{
+    background: rgba({l}, 225); color: {glow}; border: 1px solid rgba({a}, 80);
+    border-radius: 2px; padding: 7px 12px; font-size: 9pt; letter-spacing: 2px;
+}}
+QPushButton#HudButton:hover {{ border: 1px solid rgba({a}, 200); color: {bright}; }}
+QPushButton#HudButton:checked {{ background: rgba({a}, 40); }}
+QPushButton#HudButton:disabled {{ color: {dim}; border-color: rgba({m}, 120); }}
+QPushButton#HudPrimary {{
+    background: rgba({a}, 60); color: {bright}; border: 1px solid rgba({a}, 210);
+    border-radius: 2px; padding: 7px 16px; font-size: 9pt; letter-spacing: 2px;
+}}
+QPushButton#HudPrimary:hover {{ background: rgba({a}, 100); }}
+QPushButton#HudPrimary:disabled {{ color: {dim}; background: rgba({m}, 50); border-color: rgba({m}, 120); }}
+QLabel#HudLabel {{ color: {text}; font-size: 10pt; }}
+QMenu {{ background: {layer}; color: {text}; border: 1px solid rgba({a}, 90); }}
+QMenu::item:selected {{ background: rgba({a}, 60); }}
+QToolTip {{ background: {surface}; color: {text}; border: 1px solid rgba({a}, 120); }}
+""".format(**_style_values())
+
+# Painéis (diagnóstico de voz, rede, memória da TARDIS, diálogos): mesma paleta.
 PANEL_STYLESHEET = """
-QDialog, QWidget#Panel, QWidget#Hub2 { background: #071426; color: #DCEEFF; }
-QWidget#Panel QLabel, QDialog QLabel, QWidget#Hub2 QLabel { color: #DCEEFF; }
-QLabel#PanelTitle, QLabel#H2Title { color: #00D9FF; font-size: 10pt; letter-spacing: 3px; }
-QLabel#PanelDim, QLabel#H2Dim { color: #7F9BB7; font-size: 9pt; }
-QLabel#PanelPrompt, QLabel#H2Answer { color: #E6FBFF; background: rgba(0, 217, 255, 18);
-    border-left: 2px solid #00D9FF; padding: 8px; }
-QLabel#H2Big { color: #F0FAFF; font-size: 13pt; }
-QListWidget#H2Nav { background: #030712; border: none; border-right: 1px solid rgba(0, 217, 255, 40);
-    color: #9FB9D3; font-size: 9pt; outline: none; }
-QListWidget#H2Nav::item { padding: 11px 14px; letter-spacing: 2px; }
-QListWidget#H2Nav::item:selected { background: rgba(0, 217, 255, 30); color: #E6FBFF; border-left: 2px solid #00D9FF; }
-QFrame#H2Card { background: #0B1F3A; border: 1px solid rgba(0, 217, 255, 38); border-radius: 6px; }
-QListWidget, QTreeWidget, QTableView, QPlainTextEdit, QTextBrowser {
-    background: #050E1C; color: #DCEEFF; border: 1px solid rgba(0, 217, 255, 30);
-    selection-background-color: rgba(0, 217, 255, 70); selection-color: #F0FAFF;
-    alternate-background-color: #08162A; }
-QHeaderView::section { background: #0B1F3A; color: #67F3FF; border: none;
-    border-bottom: 1px solid rgba(0, 217, 255, 60); padding: 5px 6px; font-size: 8pt; letter-spacing: 1px; }
-QTableView { gridline-color: rgba(0, 217, 255, 14); }
-QLineEdit, QComboBox, QSpinBox, QDateTimeEdit { background: #050E1C; color: #DCEEFF;
-    border: 1px solid rgba(0, 217, 255, 60); border-radius: 4px; padding: 5px 8px; }
-QComboBox QAbstractItemView { background: #071426; color: #DCEEFF; selection-background-color: rgba(0, 217, 255, 70); }
-QCheckBox { color: #DCEEFF; }
-QScrollBar:vertical { background: #050E1C; width: 10px; }
-QScrollBar::handle:vertical { background: rgba(0, 217, 255, 60); border-radius: 4px; min-height: 24px; }
-QScrollBar:horizontal { background: #050E1C; height: 10px; }
-QScrollBar::handle:horizontal { background: rgba(0, 217, 255, 60); border-radius: 4px; min-width: 24px; }
-QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
-QSplitter::handle { background: rgba(0, 217, 255, 20); }
-QTabWidget::pane { border: 1px solid rgba(0, 217, 255, 40); border-radius: 4px; top: -1px; }
-QTabBar::tab { background: #050E1C; color: #9FB9D3; padding: 8px 18px; letter-spacing: 2px; font-size: 9pt;
-    border: 1px solid rgba(0, 217, 255, 30); border-bottom: none; margin-right: 2px; }
-QTabBar::tab:selected { background: #0B1F3A; color: #E6FBFF; border-color: rgba(0, 217, 255, 120); }
-QFrame#Panel { background: #071426; border-left: 1px solid rgba(0, 217, 255, 60); }
-"""
+QDialog, QWidget#Panel, QWidget#Hub2 {{ background: {layer}; color: {text}; }}
+QWidget#Panel QLabel, QDialog QLabel, QWidget#Hub2 QLabel {{ color: {text}; }}
+QLabel#PanelTitle, QLabel#H2Title {{ color: {glow}; font-size: 10pt; letter-spacing: 3px; }}
+QLabel#PanelDim, QLabel#H2Dim {{ color: {dim}; font-size: 9pt; }}
+QLabel#PanelPrompt, QLabel#H2Answer {{ color: {bright}; background: rgba({a}, 20);
+    border-left: 2px solid {accent}; padding: 8px; }}
+QLabel#H2Big {{ color: {bright}; font-size: 13pt; }}
+QListWidget#H2Nav {{ background: {bg}; border: none; border-right: 1px solid rgba({a}, 40);
+    color: {dim}; font-size: 9pt; outline: none; }}
+QListWidget#H2Nav::item {{ padding: 11px 14px; letter-spacing: 2px; }}
+QListWidget#H2Nav::item:selected {{ background: rgba({a}, 32); color: {bright}; border-left: 2px solid {accent}; }}
+QFrame#H2Card {{ background: {surface}; border: 1px solid rgba({a}, 38); border-radius: 2px; }}
+QListWidget, QTreeWidget, QTableView, QPlainTextEdit, QTextBrowser {{
+    background: {bg}; color: {text}; border: 1px solid rgba({a}, 30);
+    selection-background-color: rgba({a}, 80); selection-color: {bright};
+    alternate-background-color: {layer}; }}
+QHeaderView::section {{ background: {surface}; color: {glow}; border: none;
+    border-bottom: 1px solid rgba({a}, 60); padding: 5px 6px; font-size: 8pt; letter-spacing: 1px; }}
+QTableView {{ gridline-color: rgba({a}, 16); }}
+QLineEdit, QComboBox, QSpinBox, QDateTimeEdit {{ background: {bg}; color: {text};
+    border: 1px solid rgba({a}, 60); border-radius: 2px; padding: 5px 8px; }}
+QComboBox QAbstractItemView {{ background: {layer}; color: {text}; selection-background-color: rgba({a}, 80); }}
+QCheckBox {{ color: {text}; }}
+QScrollBar:vertical {{ background: {bg}; width: 10px; }}
+QScrollBar::handle:vertical {{ background: rgba({a}, 70); border-radius: 1px; min-height: 24px; }}
+QScrollBar:horizontal {{ background: {bg}; height: 10px; }}
+QScrollBar::handle:horizontal {{ background: rgba({a}, 70); border-radius: 1px; min-width: 24px; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
+QSplitter::handle {{ background: rgba({a}, 22); }}
+QTabWidget::pane {{ border: 1px solid rgba({a}, 40); border-radius: 2px; top: -1px; }}
+QTabBar::tab {{ background: {bg}; color: {dim}; padding: 8px 18px; letter-spacing: 2px; font-size: 9pt;
+    border: 1px solid rgba({a}, 30); border-bottom: none; margin-right: 2px; }}
+QTabBar::tab:selected {{ background: {surface}; color: {bright}; border-color: rgba({a}, 130);
+    border-top: 2px solid {accent}; }}
+QFrame#Panel {{ background: {layer}; border-left: 1px solid rgba({a}, 60); }}
+""".format(**_style_values())
 
 STYLESHEET = STYLESHEET + PANEL_STYLESHEET
-
 
 
 @lru_cache(maxsize=640)
@@ -273,13 +276,23 @@ def dot_size(radius: float) -> int:
     return 2 * int(math.ceil(radius + 1.4))
 
 
-ULTRON_SWAPS = (("0, 217, 255", "255, 31, 61"), ("103, 243, 255", "255, 90, 107"), ("#00D9FF", "#FF1F3D"),
-                ("#67F3FF", "#FF5A6B"), ("#E6FBFF", "#FFE6E9"), ("#F0FAFF", "#FFF0F2"), ("7, 20, 38", "26, 5, 9"),
-                ("#071426", "#1A0509"), ("#0B1F3A", "#2A0A10"), ("#DCEEFF", "#FFE1E4"))
+def _swaps() -> tuple:
+    """Cores do SAFRA → cores do Protocolo ULTRON (violeta e cromo), nas duas grafias usadas nos estilos."""
+    pairs = (("primary", "ultron"), ("glow", "ultron_glow"), ("energy", "ultron_glow"), ("wine", "ultron_deep"),
+             ("muted", "ultron_deep"))
+    hexes = {**palette.HEX, **palette.ULTRON_HEX}
+    out = []
+    for safra, ultron in pairs:
+        out.append((hexes[safra], hexes[ultron]))
+        out.append((palette.rgb(safra), palette.rgb(ultron)))
+    return tuple(out)
+
+
+ULTRON_SWAPS = _swaps()
 
 
 def ultron_stylesheet(base: str) -> str:
-    """O mesmo estilo com as cores do Protocolo ULTRON (evento visual): só troca cores."""
+    """O mesmo estilo com as cores do Protocolo ULTRON: só troca cores (a restauração usa o original salvo)."""
     for old, new in ULTRON_SWAPS:
-        base = base.replace(old, new)
+        base = base.replace(old, new).replace(old.lower(), new)
     return base

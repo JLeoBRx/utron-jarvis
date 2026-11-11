@@ -1,4 +1,4 @@
-"""Central 3D do JARVIS: holograma de corpo inteiro, ORBE, cabine e sala da TARDIS num só motor 3D.
+"""Central 3D do SAFRA: holograma de corpo inteiro, ORBE, cabine e sala da TARDIS num só motor 3D.
 
 Arquitetura (AUDITORIA_VISUAL_3D.md):
 

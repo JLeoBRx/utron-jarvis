@@ -1,4 +1,4 @@
-"""NEURAL CORE — o JARVIS montado.
+"""NEURAL CORE — o SAFRA montado.
 
 Responsabilidades:
 
@@ -12,7 +12,7 @@ Responsabilidades:
 * ligar o SECOND BRAIN (registros, lembretes, captura automática e esclarecimentos) ao mesmo
   caminho de execução usado por voz, texto e HUB 2 (``run_skill``);
 * ligar a TARDIS (segundo cérebro: fila e analisadores próprios, o MESMO modelo de linguagem): o
-  JARVIS consulta pela skill ``tardis.consult`` e as ações que ela propõe viram sugestões que só
+  SAFRA consulta pela skill ``tardis.consult`` e as ações que ela propõe viram sugestões que só
   rodam com "sim", pelo executor.
 
 Toda inferência roda no worker ``ai``; a interface nunca espera por nada daqui.
@@ -139,7 +139,7 @@ class NeuralCore:
         self.runtime = WorkerPool(WorkerPool.NAMES + ("health", "actions"))
         self.lifecycle = LifecycleManager(self.bus)
         from ..personality import persona
-        persona.reset()                                 # todo núcleo começa como JARVIS
+        persona.reset()                                 # todo núcleo começa como SAFRA
         self.metrics = PerformanceMonitor(bus=self.bus, runtime=self.runtime)
         self.state.update(_source="core", identity={**identity.describe(), "version": __version__})
 
@@ -152,7 +152,7 @@ class NeuralCore:
         # consumo dos modelos no MESMO banco (migração v7); primeiro uso pago só com autorização do usuário
         from ..models.usage import UsageLedger
         self.usage = UsageLedger(self.memory.db, settings_getter=s)
-        from ..remote import RemoteAgent                # JARVIS WEB ORB: o MESMO núcleo, acessado de fora
+        from ..remote import RemoteAgent                # SAFRA WEB ORB: o MESMO núcleo, acessado de fora
         self.remote = RemoteAgent(self, settings_getter=s)
         self.router = ModelRouter(self.client, settings_getter=s, bus=self.bus, state=self.state, privacy=self.privacy,
                                   usage=self.usage, consent=self._cloud_consent)
@@ -215,7 +215,7 @@ class NeuralCore:
         self.proactive = ProactiveIntelligence(bus=self.bus, state=self.state, decisions=self.decisions,
                                                settings_getter=s)
         self.health = HealthMonitor(bus=self.bus, state=self.state, model_probe=self._running_models)
-        # TARDIS — segundo cérebro: módulo lógico com fila própria; usa o MESMO modelo do JARVIS (router)
+        # TARDIS — segundo cérebro: módulo lógico com fila própria; usa o MESMO modelo do SAFRA (router)
         self.tardis = TardisEngine(TardisStore(self.memory.db), TardisContext(
             second_brain=self.second_brain, memory=self.memory, activity=self.activity, health=self.health,
             router=self.router, voice_probe=self.voice.mic_probe if self.enable_voice else None, state=self.state,
@@ -289,10 +289,10 @@ class NeuralCore:
         self.state.set_runtime_state("IDLE", "", source="core")
         self.bus.publish(EventType.SYSTEM_READY, {"seconds": seconds, "components": statuses, "failed": failed},
                          source="core")
-        log.info("JARVIS online em %.2fs (%d componentes, %d com falha)", seconds, len(statuses), len(failed))
+        log.info("SAFRA online em %.2fs (%d componentes, %d com falha)", seconds, len(statuses), len(failed))
         self.runtime.submit("health", self.health.check_all, name="health:boot")
         if self.remote.start():                         # só com a ORBE remota ligada e inscrita no gateway
-            log.info("JARVIS WEB ORB: conectando ao gateway %s", self.remote.url)
+            log.info("SAFRA WEB ORB: conectando ao gateway %s", self.remote.url)
         self.say(dialogue.say("online"))
         return statuses
 
@@ -505,7 +505,7 @@ class NeuralCore:
             cancelled = True
         self.authorizations.cancel_all()
         self.speaker.interrupt()
-        if self.tardis.cancel_all(reason, origin="jarvis"):   # consultas do JARVIS à TARDIS também param
+        if self.tardis.cancel_all(reason, origin="jarvis"):   # consultas do SAFRA à TARDIS também param
             cancelled = True
         return cancelled
 
@@ -523,9 +523,9 @@ class NeuralCore:
             response = Response(dialogue.say("cancelled"), "info", success=False)
         except sqlite3.OperationalError as exc:          # disco cheio, banco somente leitura ou bloqueado
             log.exception("banco de memória recusou a gravação")
-            response = Response(f"Não consegui gravar na memória do JARVIS ({exc}). Nada foi registrado; confira o "
+            response = Response(f"Não consegui gravar na memória do SAFRA ({exc}). Nada foi registrado; confira o "
                                 "espaço em disco e se a pasta de dados aceita gravação.", "error", success=False)
-        except Exception as exc:  # o JARVIS nunca cai por causa de um pedido
+        except Exception as exc:  # o SAFRA nunca cai por causa de um pedido
             log.exception("falha ao processar pedido")
             response = Response(f"Falha interna ao processar o pedido ({type(exc).__name__}). Registrado.", "error",
                                 success=False)
@@ -563,14 +563,14 @@ class NeuralCore:
 
     # ================================================================ persona (Protocolo ULTRON)
     def set_persona(self, name: str, *, operator: bool = False, source: str = "", interrupt: bool = True) -> dict:
-        """Troca JARVIS ↔ ULTRON para TODO o núcleo: voz (perfil), tom das respostas, política de permissões
-        (``ULTRON_OPERATOR``) e o estado que a interface, a cena 3D e a ORBE remota leem. Voltar ao JARVIS
+        """Troca SAFRA ↔ ULTRON para TODO o núcleo: voz (perfil), tom das respostas, política de permissões
+        (``ULTRON_OPERATOR``) e o estado que a interface, a cena 3D e a ORBE remota leem. Voltar ao SAFRA
         interrompe o que o ULTRON estiver fazendo (a tarefa e a fala em curso)."""
         from ..personality import persona
         previous = persona.current()
         current = persona.set_persona(name, operator=operator, source=source)
         if previous.ultron and not current.ultron and interrupt:
-            self.cancel("Protocolo ULTRON encerrado: JARVIS restaurado")
+            self.cancel("Protocolo ULTRON encerrado: SAFRA restaurado")
         info = current.to_dict()
         self.state.update(_source="core", persona=info)
         self.bus.publish(EventType.PERSONA_CHANGED, info, source="core")
@@ -582,16 +582,16 @@ class NeuralCore:
         from ..personality import persona
         if action == "stop":
             if not persona.current().ultron:
-                return Response("O JARVIS já está ativo.", "info")
+                return Response("O SAFRA já está ativo.", "info")
             self.set_persona("jarvis", source="console", interrupt=False)    # este pedido é o próprio "restaurar"
-            return Response("JARVIS restaurado.", "info")
+            return Response("SAFRA restaurado.", "info")
         if self.authorizations.pending() is not None:
             return Response("Protocolo ULTRON não iniciado: há uma autorização pendente.", "info")
         operator = action != "demo" and bool(getattr(self.settings(), "ultron_operator", True))
         self.set_persona("ultron", operator=operator, source="console")
         profile = " Perfil ULTRON_OPERATOR ativo: ações reais sob as suas permissões." if operator else ""
         return Response("Protocolo ULTRON ativo no console (voz e tom; sem efeitos visuais)." + profile +
-                        " Diga \"restaurar JARVIS\" para voltar.", "info")
+                        " Diga \"restaurar SAFRA\" para voltar.", "info")
 
     # ================================================================ uso pago da nuvem
     def _cloud_consent(self, description: str) -> bool:
@@ -658,7 +658,7 @@ class NeuralCore:
             if self.hud_health is None:
                 return self._ultron_console(str(args["ultron"]))
             self.bus.publish(EventType.UI_REQUEST, {"ultron": str(args["ultron"])}, source="core")
-            return Response("Restaurando o JARVIS." if args["ultron"] == "stop" else "Protocolo ULTRON solicitado.",
+            return Response("Restaurando o SAFRA." if args["ultron"] == "stop" else "Protocolo ULTRON solicitado.",
                             "info")
         if "open_view" in args:
             if self.hud_health is None:
@@ -666,7 +666,7 @@ class NeuralCore:
             self.bus.publish(EventType.UI_REQUEST, {"view": args["open_view"], "section": args.get("section", "")},
                              source="core")
             label = {"systems": "o painel de Sistemas", "voice": "o diagnóstico de voz", "network": "a rede local",
-                     "autonomy": "o painel de autonomia", "configuracoes": "as configurações do JARVIS",
+                     "autonomy": "o painel de autonomia", "configuracoes": "as configurações do SAFRA",
                      "atividades": "o histórico de atividades", "diagnosticos": "os diagnósticos",
                      "jarvis": "a conversa",
                      "second_brain": "o arquivo da TARDIS (memória espacial)",
@@ -819,7 +819,7 @@ class NeuralCore:
 
     # ================================================================ TARDIS
     def _on_tardis_finished(self, event) -> None:
-        """Tarefa pedida pelo JARVIS terminou com ação proposta: vira sugestão ("sim"/"não"). Categorias que
+        """Tarefa pedida pelo SAFRA terminou com ação proposta: vira sugestão ("sim"/"não"). Categorias que
         exigem confirmação própria (apagar dados) NÃO são pré-aprovadas: o executor pergunta de novo."""
         payload = event.payload
         if payload.get("origin") != "jarvis" or not payload.get("actions"):
@@ -840,7 +840,7 @@ class NeuralCore:
                             "expires": time.time() + SUGGESTION_TTL}
 
     def _on_action_operation(self, event) -> None:
-        """Backups, exportações e escritas que o JARVIS executa acendem o modo "operação" do rotor."""
+        """Backups, exportações e escritas que o SAFRA executa acendem o modo "operação" do rotor."""
         payload = event.payload
         if payload.get("skill") not in OPERATION_SKILLS:
             return
@@ -972,7 +972,7 @@ class NeuralCore:
     def _on_wake(self, event) -> None:
         if event.get("command"):
             return
-        # só "Jarvis.": o pulso neural confirma; sem mixagem de efeitos, a confirmação é falada
+        # só "Safra.": o pulso neural confirma; sem mixagem de efeitos, a confirmação é falada
         if not getattr(self.audio_out, "mixes_effects", False):
             self.say(dialogue.say("wake"))
 

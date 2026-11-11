@@ -1,4 +1,4 @@
-"""Widget do avatar na página JARVIS.
+"""Widget do avatar na página SAFRA.
 
 * Recebe do controlador o estado central, os eventos e a telemetria REAIS; resolve um dos 12 estados
   (``states.resolve``) e o animador leva o rosto até a expressão daquele estado.
@@ -158,7 +158,7 @@ class _AvatarCore:
         # estado (canto superior esquerdo) e motivo
         p.setPen(theme.TEXT_BRIGHT)
         p.setFont(theme.font(13, weight=700, spacing=4.0))
-        p.drawText(QtCore.QRectF(26, 18, width * 0.6, 26), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, "JARVIS")
+        p.drawText(QtCore.QRectF(26, 18, width * 0.6, 26), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, "SAFRA")
         p.setPen(color)
         p.setFont(theme.font(8, weight=600, spacing=2.6))
         p.drawText(QtCore.QRectF(28, 44, width * 0.7, 18), QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,

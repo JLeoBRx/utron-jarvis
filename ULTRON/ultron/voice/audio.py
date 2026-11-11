@@ -519,7 +519,7 @@ def list_input_devices(backend: str = "auto") -> dict:
 
 def _candidates(devices: list[dict], default: int | None, name_hint: str, index: int) -> list[dict]:
     """Ordem: nome escolhido → índice configurado → padrão do sistema. Outros dispositivos NÃO são
-    tentados sozinhos (poderiam ser 'Mixagem estéreo' e captar a própria voz do JARVIS)."""
+    tentados sozinhos (poderiam ser 'Mixagem estéreo' e captar a própria voz do SAFRA)."""
     out: list[dict] = []
     if name_hint:
         out += [d for d in devices if name_hint.lower() in d["name"].lower()]
