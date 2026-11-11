@@ -1,0 +1,16 @@
+flowchart TD
+  A["Action(skill, args, origem)"] --> B{"skill existe e<br/>argumentos válidos?"}
+  B -- "não" --> R1["recusa: argumento inválido"]
+  B -- "sim" --> C{"alvo protegido?<br/>(sistema, inicialização,<br/>programa, dados)"}
+  C -- "sim" --> R2["recusa antes de pedir autorização"]
+  C -- "não" --> D{"categoria da permissão"}
+  D -- "bloquear" --> R3["bloqueada pelo usuário"]
+  D -- "permitir" --> E{"política de autonomia<br/>risco × reversibilidade × origem"}
+  D -- "confirmar" --> F["pedido de autorização<br/>(uma pendência por vez)"]
+  E -- "executar" --> G["executa com prazo"]
+  E -- "autorizar" --> F
+  F -- "sim" --> G
+  F -- "não / expirou" --> R4["negada"]
+  G --> H["verificação independente do efeito"]
+  H --> I["resultado + atividade + auditoria"]
+  G -- "erro recuperável" --> J["recuperação<br/>(tentativas limitadas)"] --> G

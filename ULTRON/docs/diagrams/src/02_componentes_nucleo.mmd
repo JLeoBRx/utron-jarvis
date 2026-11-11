@@ -1,0 +1,43 @@
+flowchart LR
+  metrics["metrics"]
+  privacy["privacy"]
+  memory["memory"]
+  world["world_model"]
+  models["models"]
+  goals["goals"]
+  sb["second_brain"]
+  rem["reminders"]
+  tardis["tardis"]
+  net["network"]
+  skills["skills"]
+  agent["agent"]
+  imag["imagination"]
+  vout["voice_output"]
+  naudio["neural_audio"]
+  voice["voice"]
+  perc["perception"]
+  pro["proactive"]
+  plug["plugins"]
+  health["health"]
+  memory --> world
+  privacy --> models
+  memory --> goals
+  memory --> sb
+  sb --> rem
+  memory --> tardis
+  sb --> tardis
+  memory --> net
+  world --> net
+  privacy --> net
+  skills --> agent
+  memory --> agent
+  memory --> imag
+  models --> imag
+  vout --> naudio
+  vout --> voice
+  world --> perc
+  models --> perc
+  net --> perc
+  memory --> pro
+  skills --> plug
+  models --> plug

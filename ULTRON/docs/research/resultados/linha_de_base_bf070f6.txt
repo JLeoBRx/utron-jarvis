@@ -1,0 +1,66 @@
+# Linha de base da suíte de testes — commit bf070f6 (antes da fase SAFRA)
+# Ambiente: contêiner Linux 6.18.44-fc-v378, Python 3.13.18, PySide6 6.8.3, Qt offscreen, sem Ollama, sem microfone
+# Comando: python TEST_JARVIS.py   Data: 2026-11-11T02:09Z
+JARVIS 2.0.0 · Python 3.13.18 · Linux 6.18.44-fc-v378
+  [ok] numpy        numpy
+  [ok] psutil       psutil
+  [ok] PySide6      JARVIS CORE e TARDIS (sem ele: modo console)
+  [ok] vosk         reconhecimento de fala offline
+  [ — ] pyaudio      microfone e saída de áudio (PyAudio)
+  [ok] sounddevice  microfone e saída de áudio (alternativa ao PyAudio)
+  [ok] piper        voz neural do JARVIS
+  [ok] pyttsx3      voz alternativa (SAPI)
+  [ok] pyautogui    teclado, mouse e mídia
+  [ — ] pywinauto    elementos de interface do Windows
+  [ — ] pycaw        volume do sistema
+  [ok] send2trash   exclusão segura (Lixeira)
+  [ok] mss          captura de tela
+  [ok] PIL          imagens (Pillow)
+  [ — ] pytesseract  OCR (requer Tesseract OCR)
+  [ok] modelo de fala grande (vosk-model-pt-fb-v0.1.1-20220516_2113)
+  [ok] modelo de fala pequeno (vosk-model-small-pt-0.3)
+  [ok] voz pt_BR-faber-medium
+  [ — ] Ollama local não está em execução (os testes não precisam dele)
+
+Resumo por módulo (ok / falhas / pulados):
+  test_activity            7 /  0 /  0   ok
+  test_avatar             12 /  0 /  0   ok
+  test_cli                 7 /  0 /  0   ok
+  test_core               15 /  0 /  0   ok
+  test_event_bus           7 /  0 /  0   ok
+  test_executor           12 /  0 /  0   ok
+  test_failures            7 /  0 /  0   ok
+  test_hud                22 /  0 /  0   ok
+  test_imagination         6 /  0 /  0   ok
+  test_integrity           8 /  0 /  0   ok
+  test_intelligence       22 /  0 /  0   ok
+  test_jarvis_voice        5 /  0 /  0   ok
+  test_lipsync             9 /  0 /  0   ok
+  test_memory              8 /  0 /  0   ok
+  test_model_router        9 /  0 /  0   ok
+  test_network            14 /  0 /  0   ok
+  test_openai_provider     6 /  0 /  0   ok
+  test_original_recovery  22 /  0 /  0   ok
+  test_performance        10 /  0 /  0   ok
+  test_permissions        10 /  0 /  0   ok
+  test_planner             8 /  0 /  0   ok
+  test_platform           22 /  0 /  0   ok
+  test_plugins             4 /  0 /  0   ok
+  test_recovery            7 /  0 /  0   ok
+  test_scene3d            23 /  0 /  1   ok
+  test_second_brain       25 /  0 /  0   ok
+  test_security           17 /  0 /  0   ok
+  test_startup            10 /  0 /  0   ok
+  test_tardis              7 /  0 /  0   ok
+  test_tardis_logic       30 /  0 /  0   ok
+  test_tardis_room        12 /  0 /  0   ok
+  test_tardis_sfx          5 /  0 /  0   ok
+  test_transitions         6 /  0 /  0   ok
+  test_ultron_protocol    21 /  0 /  0   ok
+  test_verifier            5 /  0 /  0   ok
+  test_voice              28 /  0 /  0   ok
+  test_voice_prosody      10 /  0 /  0   ok
+  test_web_orb             7 /  0 /  0   ok
+  test_world_model         5 /  0 /  0   ok
+
+APROVADO: 471 testes em 158.9s · 0 falha(s) · 1 pulado(s)

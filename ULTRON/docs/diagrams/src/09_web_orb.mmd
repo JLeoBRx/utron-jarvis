@@ -1,0 +1,6 @@
+flowchart LR
+  CEL["Celular / navegador<br/>site da ORBE"] -->|"HTTPS + WSS<br/>cookie HttpOnly · CSRF · origem"| GW["Gateway (servidor do autor)<br/>aiohttp · Caddy · Docker"]
+  AG["RemoteAgent<br/>no computador"] -->|"WSS de SAÍDA<br/>token Bearer"| GW
+  AG --> CORE["NeuralCore<br/>mesma memória · mesmo executor"]
+  GW --- GDB[("banco do gateway<br/>dispositivos · auditoria<br/>(sem conversas)")]
+  CORE --- DB[("SQLite local")]

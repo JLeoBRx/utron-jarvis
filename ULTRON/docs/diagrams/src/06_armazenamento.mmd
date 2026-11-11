@@ -1,0 +1,22 @@
+erDiagram
+  EPISODES { int id text kind text goal_id text summary text outcome int success text evidence }
+  FACTS { int id text subject text fact text source real confidence }
+  PROCEDURES { int id text name text trigger text steps int success_count }
+  PREFERENCES { text name text value }
+  GOALS { text id text description text status real confidence text risk }
+  GRAPH_NODES { text id text type text label real strength }
+  GRAPH_EDGES { text src text dst text type real weight }
+  SB_RECORDS { text id text kind text title text due_at text status text origin }
+  SB_REMINDERS { text id text record_id text next_at text recurrence text status }
+  SB_FIRED { text reminder_id text occurrence text fired_at }
+  SB_NOTIFICATIONS { text id text record_id text reminder_id text state }
+  TARDIS_TASKS { text id text kind text state text result int duration_ms }
+  ACTIVITY { int id text kind text origin text state text result text parent }
+  AUDIT { int id text source text action int verified }
+  MODEL_USAGE { int id text provider text model int input_tokens real cost_usd }
+  GOALS ||--o{ EPISODES : "goal_id"
+  GRAPH_NODES ||--o{ GRAPH_EDGES : "src / dst"
+  SB_RECORDS ||--o{ SB_REMINDERS : "record_id"
+  SB_REMINDERS ||--o{ SB_FIRED : "reminder_id (um disparo por ocorrência)"
+  SB_RECORDS ||--o{ SB_NOTIFICATIONS : "record_id"
+  ACTIVITY ||--o{ ACTIVITY : "parent"

@@ -1,0 +1,35 @@
+flowchart TB
+  subgraph L1["1 · Entradas"]
+    direction LR
+    VOZ["Voz<br/>microfone → Vosk → palavra de ativação"]
+    TXT["Texto e botões<br/>interface Qt · modo console"]
+    REM["WEB ORB<br/>agente de saída do computador"]
+  end
+  subgraph L2["2 · NeuralCore"]
+    direction LR
+    ORC["Orchestrator<br/>intenção · contexto · decisão · plano"]
+    EXE["Execução controlada<br/>permissões · autorização · verificação · recuperação"]
+    MR["ModelRouter<br/>Ollama local · OpenAI opcional"]
+    BUS[("Event Bus + StateStore")]
+  end
+  subgraph L3["3 · Serviços"]
+    direction LR
+    MEM["Memória<br/>e memória pessoal"]
+    SK["102 skills"]
+    TAR["Motor TARDIS"]
+    SPK["Fala<br/>prosódia · Piper · trilha labial"]
+    PER["Percepção<br/>saúde · métricas"]
+  end
+  subgraph L4["4 · Persistência"]
+    DB[("SQLite WAL — banco único, migrações v1–v7")]
+  end
+  subgraph L5["5 · Apresentação"]
+    direction LR
+    HUD["Plataforma Qt + cena 3D<br/>holograma · ORBE · TARDIS"]
+    SND["Alto-falante"]
+    SITE["Site da ORBE"]
+  end
+  L1 -->|"submit() · run_skill()"| L2
+  L2 --> L3
+  L3 --> L4
+  L2 -. "eventos e estado (somente leitura)" .-> L5
