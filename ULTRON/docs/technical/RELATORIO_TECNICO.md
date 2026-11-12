@@ -8,7 +8,7 @@
 | Versão do aplicativo | 3.0.0 (fase SAFRA; a versão anterior, JARVIS, era 2.0.0) |
 | Repositório | `JLeoBRx/utron-jarvis`, branch `claude/adoring-brahmagupta-vcejpt` |
 | Commit de referência do estado inicial | `bf070f6` (2026-11-03) |
-| Commits desta fase | `07fcda6` (etapa 1), `c5f8313` (2), `35a7554` (3), `456fe23` (4) e o commit da etapa 5 — ver seção 8 |
+| Commits desta fase | `07fcda6` (etapa 1), `c5f8313` (2), `35a7554` (3), `456fe23` (4), `d32e938` (5), `f1a9e2e` (correção do CI) — ver seção 8 |
 | Data de início da fase | 2026-11-11 |
 | Responsável | autor do TCC (dados institucionais em `docs/academic/00_pre_textuais.md`) |
 | Desenvolvimento assistido | assistente de programação por IA, sob instruções e revisão do autor |
@@ -170,7 +170,7 @@ palavra do Vosk se acumulavam entre frases no PV-05 (erros de dezenas de segundo
 recriado por frase). Na revisão do código, antes das rodadas finais: o PV-02 passou a ignorar respostas parciais
 de progresso e as sementes de ruído do PV-01, que dependiam de `hash()`, passaram a ser fixas.
 
-### Etapa 5 — TCC e relatório
+### Etapa 5 — TCC e relatório (commit `d32e938`; correção do CI em `f1a9e2e`)
 
 **Criados:** `docs/academic/00…15_*.md` (capítulos editáveis), `docs/academic/TCC_SAFRA.md` (montado),
 `tools/montar_documentos.py` (monta o TCC resolvendo as inclusões dos documentos técnicos — fonte única —, gera
@@ -191,7 +191,9 @@ Detalhes em [`TESTES.md`](TESTES.md). Síntese:
 | Linha de base (`bf070f6`) | 471 testes, 0 falhas (contêiner); CI 61 aprovado em Linux e Windows |
 | Fim da etapa 3 | 474 testes, 0 falhas; cena 3D real 24/24 |
 | Fim da etapa 4 | **475 testes, 0 falhas**; pyflakes e compileall limpos; pacote ZIP validado |
-| Defeitos encontrados na fase | 10 (6 da renomeação, 3 da recuperação de memória, 1 risco na calibração), todos corrigidos com teste |
+| CI da etapa 3 (execução 62, `35a7554`) | **falhou** em duas conferências: texto "JARVIS x.y" esperado pelo workflow do Windows e prazo curto da sonda da cena 3D no Linux 3.13 |
+| CI depois da correção (execução 64, `f1a9e2e`) | **aprovado** em Linux 3.11/3.13 e Windows, incluindo a instalação pelo ZIP e o atalho `START_SAFRA.bat` |
+| Defeitos encontrados na fase | 12 (6 da renomeação, 3 da recuperação de memória, 1 risco na calibração, 2 no CI), todos corrigidos |
 
 ## 10. Segurança e integridade
 
@@ -231,7 +233,8 @@ cronograma; (5) confirmar o manual de formatação da instituição.
 O SAFRA é um sistema real e funcional na sua lógica: 475 testes automatizados aprovados, CI em Linux e Windows,
 arquitetura de núcleo único documentada a partir do código e camadas de segurança que bloquearam todas as
 tentativas medidas sem bloquear as ações legítimas. A nova identidade foi aplicada sem quebrar instalações nem
-dados — e os testes impediram seis regressões que a renomeação introduziria. As medições desta fase também
+dados — e os testes impediram seis regressões que a renomeação introduziria; o CI pegou ainda duas
+conferências desatualizadas, corrigidas (execução 64 aprovada em Linux e Windows). As medições desta fase também
 mostraram o que **não** está bom: a nova palavra de ativação não foi mais bem reconhecida com voz sintética, e a
 recuperação de memória não entende paráfrases; três defeitos de memória foram encontrados e corrigidos pelas
 próprias medições. O que falta para o TCC é medir a fronteira com o hardware (voz humana, GPU, modelo real,

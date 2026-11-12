@@ -177,10 +177,13 @@ horas com o modelo real ainda precisa ser medida.
 ## 12.8 Testes automatizados e integração contínua
 
 A suíte cresceu de 471 casos (início da fase) para 475, todos aprovados em Python 3.13; a cena 3D real
-(QtWebEngine) passou em 24 de 24 testes sob servidor X virtual. A última execução do CI anterior a esta fase (61,
-commit `bf070f6`) foi aprovada em Linux 3.11/3.13 e Windows, incluindo a instalação a partir do pacote. Durante a
-fase, os testes detectaram **seis** regressões introduzidas pela renomeação (Seção 10.11) e o protocolo de memória
-detectou **três** defeitos de recuperação (Seção 12.3), todos corrigidos antes do envio.
+(QtWebEngine) passou em 24 de 24 testes sob servidor X virtual. Durante a fase, os testes detectaram **seis**
+regressões introduzidas pela renomeação (Seção 10.11) e o protocolo de memória detectou **três** defeitos de
+recuperação (Seção 12.3), todos corrigidos antes do envio. O CI da etapa de identidade (execução 62) **falhou** em
+duas conferências que os testes locais não cobriam — o workflow do Windows ainda esperava "JARVIS x.y" na saída de
+`--version`, e a sonda da cena 3D desistia de ler o estado da página após 5 s no Linux, onde a renderização por
+software é lenta. Corrigidas as duas, a execução 64 foi aprovada em Linux (Python 3.11 e 3.13, com a cena 3D real)
+e em Windows, incluindo a instalação a partir do pacote e o atalho novo `START_SAFRA.bat`.
 
 ## 12.9 Discussão
 

@@ -37,6 +37,8 @@ python tools/experimentos/pvNN_*.py --rotulo NOME                       protocol
 | Depois das correções | trabalho local | C | 1 falha (quebras de linha CRLF dos `.bat`) |
 | Etapa 3 entregue | `35a7554` | C | **474 testes, 0 falhas**; cena 3D real 24/24 (a 1ª tentativa revelou a ponte `window.JARVIS` renomeada, com 1 erro de JavaScript) |
 | Etapa 4 (correções de memória) | ver `CHANGELOG.md` | C | **475 testes, 0 falhas** (novo teste de regressão da recuperação de memória) |
+| Etapa 3 no CI | `35a7554` | CI (execução 62) | **falhou**: o workflow do Windows esperava "JARVIS x.y" em `--version`; no Linux 3.13 a sonda da cena 3D leu o estado com prazo curto (5 s) e voltou vazia |
+| Correção do CI | `f1a9e2e` | CI (execução [64](https://github.com/JLeoBRx/utron-jarvis/actions/runs/43215305694)) | **aprovado** em Linux 3.11/3.13 (suíte, cena 3D real, estáticos, pacote extraído) e Windows (suíte, pacote, instalação pelo ZIP, `START_SAFRA.bat`) |
 
 ## 4. Defeitos encontrados nesta fase
 
@@ -52,6 +54,8 @@ python tools/experimentos/pvNN_*.py --rotulo NOME                       protocol
 | 8 | Fato sem palavra em comum passava pelo limite só com bônus de recência/uso | protocolo PV-03 | exige sobreposição lexical > 0 | idem |
 | 9 | Pré-filtro do banco sensível a acentos ("medico" não achava "médico") | protocolo PV-03 | comparação sem acentos, por palavra | idem |
 | 10 | Calibração poderia aprender "faça" como forma da palavra de ativação | análise do PV-01 | "faça" (e afins) proibidas como forma forte | `test_voice.test_calibration_never_learns_common_words_near_safra` |
+| 11 | Conferência do CI do Windows esperava o nome antigo | CI (execução 62) | conferência passa a esperar "SAFRA x.y" e testa `START_SAFRA.bat` | o próprio CI |
+| 12 | Sonda da cena 3D desistia após 5 s sem resposta da página (CI lento) | CI (execução 62, Linux 3.13) | leitura repetida até ~30 s; conferências inalteradas | `test_scene3d.NativeSceneTest` |
 | — | Instrumento PV-05: tempos do Vosk acumulavam entre frases | revisão dos dados (erros de dezenas de segundos) | reconhecedor novo por frase | — (instrumento) |
 | — | Instrumento PV-07: inclinação misturava aquecimento | revisão das amostras | métrica após o aquecimento | — (instrumento) |
 
