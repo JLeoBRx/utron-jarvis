@@ -24,7 +24,7 @@ comprimido (§3), que preserva as etapas essenciais e corta primeiro o que é se
 
 | Mês | Etapas (numeração do plano) | Entregáveis | Situação |
 |---|---|---|---|
-| nov/2026 | 1 Auditoria e documentação · 2 Problema e escopo · 4 Requisitos (versão 1) · 5 Redesign do SAFRA (início) | `AUDITORIA_INICIAL.md`, `INVENTARIO_FUNCIONALIDADES.md`, `ARQUITETURA.md`, `REQUISITOS.md`, identidade SAFRA, rascunho completo do TCC, protocolos PV-01…PV-07 | **em andamento** |
+| nov/2026 | 1 Auditoria e documentação · 2 Problema e escopo · 4 Requisitos (versão 1) · 5 Redesign do SAFRA (início) | `AUDITORIA_INICIAL.md`, `INVENTARIO_FUNCIONALIDADES.md`, `ARQUITETURA.md`, `REQUISITOS.md`, identidade SAFRA, rascunho completo do TCC, protocolos PV-01…PV-07 | **concluído** (12/11/2026: rascunho completo, medições no ambiente C) |
 | dez/2026 | 3 Pesquisa bibliográfica (ampliação) · validação do escopo com o orientador | fundamentação revisada com o orientador; registro de referências ampliado; título definitivo | planejado |
 | jan/2027 | 6 Evolução da arquitetura (somente o necessário à pesquisa) · 5 Redesign (acabamento) | instrumentação de medição no aplicativo; ajustes de interface apontados pelo orientador | planejado |
 | fev/2027 | 7 Integração · **piloto dos protocolos** no computador de referência | execução-piloto de PV-01…PV-07 (poucas repetições); correção dos protocolos | planejado |

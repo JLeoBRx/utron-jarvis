@@ -10,7 +10,8 @@ mas o estado atual está aqui.
 
 | Pasta / arquivo | Conteúdo |
 |---|---|
-| [`academic/`](academic/) | o TCC: capítulos editáveis em Markdown, o documento montado `TCC_SAFRA.md` e as versões DOCX/PDF |
+| [`academic/`](academic/) | o TCC: capítulos editáveis em Markdown (`NN_*.md`) e o documento montado `TCC_SAFRA.md` (gerado — edite os capítulos) |
+| [`export/`](export/) | versões DOCX (editáveis no Word/LibreOffice) e PDF do TCC e do relatório técnico |
 | [`technical/RELATORIO_TECNICO.md`](technical/RELATORIO_TECNICO.md) | relatório técnico de desenvolvimento e evolução (engenharia) |
 | [`technical/AUDITORIA_INICIAL.md`](technical/AUDITORIA_INICIAL.md) | auditoria do repositório antes da fase SAFRA |
 | [`technical/INVENTARIO_FUNCIONALIDADES.md`](technical/INVENTARIO_FUNCIONALIDADES.md) | cada funcionalidade com estado e evidência |
@@ -20,7 +21,7 @@ mas o estado atual está aqui.
 | [`technical/CRONOGRAMA.md`](technical/CRONOGRAMA.md) | cronograma mensal até a entrega em 2027 |
 | [`technical/CHANGELOG.md`](technical/CHANGELOG.md) | marcos de versão (o detalhe fica em `../CHANGELOG_JARVIS.md`) |
 | [`diagrams/`](diagrams/) | diagramas (fontes Mermaid em `src/`, imagens SVG/PNG) |
-| [`research/`](research/) | protocolos de validação experimental, registro das referências verificadas, resultados das medições |
+| [`research/`](research/) | protocolos de validação experimental, registro das referências verificadas, resultados das medições (`resultados/`, com índice) |
 | `benchmarks/`, `capturas/`, `inventario/` | evidências das fases anteriores (medições, capturas, inventário do original) |
 
 ## Gerar diagramas e documentos
@@ -31,8 +32,8 @@ mkdir -p /tmp/mmd && cd /tmp/mmd && npm init -y && npm install mermaid@11.4.1 pl
 node <repo>/ULTRON/docs/diagrams/render.js <repo>/ULTRON/docs/diagrams/src <repo>/ULTRON/docs/diagrams \
      /tmp/mmd/node_modules/mermaid/dist/mermaid.min.js
 
-# TCC e relatório técnico em DOCX e PDF (precisa de pandoc; o PDF usa o LibreOffice)
-python tools/montar_documentos.py
+# TCC e relatório técnico em DOCX e PDF (precisa de pandoc, python-docx e Node com Playwright)
+python tools/montar_documentos.py            # --so-md: só monta docs/academic/TCC_SAFRA.md
 ```
 
 ## Nomes e compatibilidade
@@ -41,5 +42,5 @@ python tools/montar_documentos.py
 |---|---|
 | Produto, interface, voz, documentos | **SAFRA** |
 | Pasta do código, pacote Python, pasta de dados, banco | `ULTRON/`, `ultron`, `%LOCALAPPDATA%\ULTRON`, `ultron.sqlite3` (mantidos para não quebrar instalações e dados) |
-| Scripts do Windows | `START_JARVIS.bat`, `INSTALL_JARVIS.bat`… (mantidos; atalhos com o nome SAFRA são acrescentados, sem remover os antigos) |
+| Scripts do Windows | `START_JARVIS.bat`, `INSTALL_JARVIS.bat`… (mantidos) e os atalhos `START_SAFRA.bat`, `INSTALL_SAFRA.bat`, `ATUALIZAR_SAFRA.bat`, `DIAGNOSTICO_SAFRA.bat` |
 | Identidade alternativa | Protocolo ULTRON (evento de identidade reversível) |

@@ -481,3 +481,28 @@ Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 pergun
   Chromium (celular) e a imagem Docker construída e executada. CI instala as dependências do gateway e passa o lint
   também nele; imports sem uso de testes anteriores corrigidos.
 
+
+# SAFRA (versão 3.0) — transformação em TCC técnico
+
+Detalhe completo em `docs/technical/RELATORIO_TECNICO.md`; marcos em `docs/technical/CHANGELOG.md`.
+
+## SAFRA 1 — auditoria (`07fcda6`)
+* Auditoria do repositório, inventário de 84 funcionalidades com nível de evidência, arquitetura com 9 diagramas
+  desenhados do código, análise de dependências do NOCTARIO (sem dependência funcional), linha de base da suíte.
+
+## SAFRA 2 — escopo, requisitos e cronograma (`c5f8313`)
+* Problema, hipótese (H1–H4 com critério de decisão), justificativa e objetivos; RF01–RF37, RNF01–RNF16 (metas),
+  RS01–RS11, RT01–RT08, CA01–CA05; cronograma mensal até 2027 com congelamento em maio.
+
+## SAFRA 3 — identidade (`35a7554`)
+* Nome SAFRA, versão 3.0.0, paleta vermelha nos tokens (contraste AA), folhas de estilo do Qt geradas da paleta,
+  cena 3D e WEB ORB recoloridas (cabine da TARDIS mantida azul), ULTRON em violeta e cromo; "safra" como palavra de
+  ativação com "jarvis" aceita; migração de configurações v2 → v3 com cópia; identificadores internos preservados.
+
+## SAFRA 4 — medições (`456fe23`)
+* `tools/experimentos` (PV-01…PV-07), protocolos, resultados no contêiner; correções da recuperação de memória
+  (palavra inteira, sem acentos, sem bônus para fatos sem relação) e da calibração ("faça" proibida como forma forte).
+
+## SAFRA 5 — TCC e relatório
+* `docs/academic` (capítulos 1–13, referências verificadas, apêndices), `tools/montar_documentos.py`, DOCX e PDF em
+  `docs/export`, relatório técnico completo.

@@ -7,8 +7,8 @@ complementados pelos objetivos da fase SAFRA. A estrutura segue as recomendaçõ
 rastreabilidade).
 
 * **Prioridade** (MoSCoW): **E** essencial · **D** desejável · **O** opcional.
-* **Situação** remete ao `INVENTARIO_FUNCIONALIDADES.md`: ✔ atendido com evidência · ◐ parcial ·
-  ? não verificado · ○ planejado.
+* **Situação** (ao fim da fase SAFRA, 11/2026) remete ao `INVENTARIO_FUNCIONALIDADES.md`: ✔ atendido com
+  evidência · ◐ parcial · ? não verificado · ○ planejado.
 * **Verificação** indica o teste automatizado (arquivo em `tests/`) ou o protocolo experimental
   (`docs/research/PROTOCOLOS_DE_VALIDACAO.md`, códigos `PV-xx`).
 
@@ -37,7 +37,7 @@ treinamento de modelos de IA, execução em sistemas operacionais além do Windo
 | ID | Requisito | Prior. | Situação | Verificação |
 |---|---|---|---|---|
 | RF08 | O sistema deve reconhecer fala em português sem conexão com a internet. | E | ✔ (fala sintetizada) / ? (voz humana) | `test_voice`, PV-01 |
-| RF09 | O sistema deve ser ativado por voz pela palavra **"Safra"** no início da frase, mantendo **"Jarvis"** como forma aceita para compatibilidade. | E | ○ (fase SAFRA) | `test_voice`, PV-01 |
+| RF09 | O sistema deve ser ativado por voz pela palavra **"Safra"** no início da frase, mantendo **"Jarvis"** como forma aceita para compatibilidade. | E | ◐ implementado; reconhecimento abaixo da meta com voz sintética (PV-01) | `test_voice`, PV-01 |
 | RF10 | Após uma interação, o usuário deve poder continuar falando por alguns segundos sem repetir a palavra de ativação. | D | ✔ | `test_voice` |
 | RF11 | O sistema deve responder por voz sintetizada localmente em português, com perfil de voz próprio. | E | ✔ | `test_jarvis_voice`, `test_voice_prosody` |
 | RF12 | A síntese deve tratar números, horas, valores, siglas e endereços para leitura natural (prosódia). | D | ✔ | `test_voice_prosody` |
@@ -49,7 +49,7 @@ treinamento de modelos de IA, execução em sistemas operacionais além do Windo
 | ID | Requisito | Prior. | Situação | Verificação |
 |---|---|---|---|---|
 | RF15 | O sistema deve guardar episódios, fatos, procedimentos e preferências num banco local persistente. | E | ✔ | `test_memory` |
-| RF16 | O sistema deve recuperar memórias relevantes para compor o contexto de cada pedido. | E | ✔ (funcional) / ? (taxa) | `test_memory`, PV-03 |
+| RF16 | O sistema deve recuperar memórias relevantes para compor o contexto de cada pedido. | E | ◐ lexical 100 %, paráfrase 45 % (PV-03) | `test_memory`, PV-03 |
 | RF17 | O usuário deve poder registrar compromissos, lembretes e anotações por voz ou texto, e consultá-los em português. | E | ✔ | `test_second_brain` |
 | RF18 | Respostas sobre a memória pessoal devem usar **somente** registros salvos; sem registro, o sistema deve dizer que não encontrou. | E | ✔ | `test_second_brain` |
 | RF19 | Lembretes devem disparar no horário, sem duplicação, e lembretes perdidos com o programa fechado devem ser avisados uma vez. | E | ✔ | `test_second_brain` |
@@ -63,7 +63,7 @@ treinamento de modelos de IA, execução em sistemas operacionais além do Windo
 | RF22 | A boca do holograma deve acompanhar o áudio real da fala, fechando no silêncio. | E | ✔ (funcional) / ? (atraso medido) | `test_lipsync`, PV-05 |
 | RF23 | A interface deve exibir a conversa, as autorizações pendentes, o histórico de atividades, as configurações e os diagnósticos. | E | ✔ | `test_platform` |
 | RF24 | Na falta de WebGL, a interface deve passar para uma vista 2D sem perder funções, registrando o motivo. | E | ✔ | CI Windows, `test_scene3d` |
-| RF25 | A identidade visual deve ser a do SAFRA (vermelho, bordô, preto/grafite), definida numa fonte única de tokens usada pelo Qt, pela cena 3D e pela web. | E | ○ (fase SAFRA) | `test_scene3d.DesignTokensTest` |
+| RF25 | A identidade visual deve ser a do SAFRA (vermelho, bordô, preto/grafite), definida numa fonte única de tokens usada pelo Qt, pela cena 3D e pela web. | E | ✔ (fase SAFRA) | `test_scene3d.DesignTokensTest` |
 
 ### 1.5 Ambiente virtual TARDIS
 

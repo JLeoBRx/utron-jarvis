@@ -26,7 +26,8 @@ PREFIX = "JARVIS/"
 EXCLUDE = ("assets/stt/*", "assets/voices/*", "*.pyc", "*/__pycache__/*", ".venv/*", "venv/*",
            "*.sqlite3*", "*.sqlite3-*", "*.db", "*.db-*", "settings.json", "settings.*.json",
            "logs/*", "*.log", "*.zip", "*.partial", "world_model.json", "autorizacoes_permanentes.json",
-           ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", ".DS_Store", "Thumbs.db")
+           ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", ".DS_Store", "Thumbs.db",
+           "docs/export/*")                     # DOCX/PDF do TCC e do relatório: ficam no repositório, não no pacote
 FORBIDDEN = (".venv/", "venv/", "__pycache__/", ".pyc", ".sqlite3", ".db", "settings.json", "/logs/",
              ".git/", ".onnx", "final.mdl", "HCLr.fst", "autorizacoes_permanentes.json",
              ".env", ".pem", ".key", ".p12", ".pfx")

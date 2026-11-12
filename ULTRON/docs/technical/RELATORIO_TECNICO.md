@@ -8,7 +8,7 @@
 | Versão do aplicativo | 3.0.0 (fase SAFRA; a versão anterior, JARVIS, era 2.0.0) |
 | Repositório | `JLeoBRx/utron-jarvis`, branch `claude/adoring-brahmagupta-vcejpt` |
 | Commit de referência do estado inicial | `bf070f6` (2026-11-03) |
-| Commits desta fase | registrados na seção 8 |
+| Commits desta fase | `07fcda6` (etapa 1), `c5f8313` (2), `35a7554` (3), `456fe23` (4) e o commit da etapa 5 — ver seção 8 |
 | Data de início da fase | 2026-11-11 |
 | Responsável | autor do TCC (dados institucionais em `docs/academic/00_pre_textuais.md`) |
 | Desenvolvimento assistido | assistente de programação por IA, sob instruções e revisão do autor |
@@ -78,7 +78,7 @@ Tabela P1–P12 em `AUDITORIA_INICIAL.md` §10. Os de maior impacto para o TCC:
   `ARQUITETURA.md`, `docs/diagrams/` (9 diagramas + `render.js`), `docs/research/resultados/linha_de_base_bf070f6.txt`.
 * Nenhum arquivo de código alterado, movido ou removido.
 
-### Etapa 2 — escopo, requisitos e cronograma
+### Etapa 2 — escopo, requisitos e cronograma (commit `c5f8313`)
 
 * Criados: `docs/technical/REQUISITOS.md` (RF01–RF37, RNF01–RNF16, RS01–RS11, RT01–RT08, CA01–CA05,
   rastreabilidade), `docs/technical/CRONOGRAMA.md` (+ diagrama `10_cronograma`), capítulos 2–5 do TCC
@@ -86,7 +86,7 @@ Tabela P1–P12 em `AUDITORIA_INICIAL.md` §10. Os de maior impacto para o TCC:
 * Decisões: título revisado sem robótica; hipótese com quatro condições verificáveis (H1–H4) e critério
   de decisão; congelamento de funcionalidades em maio de 2027.
 
-### Etapa 3 — identidade SAFRA
+### Etapa 3 — identidade SAFRA (commit `35a7554`)
 
 **O que mudou**
 
@@ -140,26 +140,100 @@ regressões.
 e aprovada: 24/24 com QtWebEngine e WebGL por software); pyflakes e compileall limpos; pacote ZIP validado;
 capturas em `docs/capturas/safra_*.jpg`.
 
+### Etapa 4 — instrumentos, protocolos e medições (commit `456fe23`)
+
+**Criados:** `tools/experimentos/` (`_comum.py` e um instrumento por protocolo PV-01…PV-07, mais a análise
+exploratória das formas de ativação), `docs/research/PROTOCOLOS_DE_VALIDACAO.md`,
+`docs/research/REFERENCIAS_VERIFICADAS.md`, `docs/research/resultados/*.json` e `README.md`, `TESTES.md`.
+
+**Alterados (código):**
+
+| Arquivo | Mudança | Motivo |
+|---|---|---|
+| `ultron/memory/retrieval.py` | comparação por palavra inteira (com variação de plural/gênero de até 3 letras no fim); fatos e episódios sem palavra em comum não entram | PV-03: "ana" casava com "losartana", "avo" com "favorito"; bônus de recência e uso deixavam passar fatos sem relação |
+| `ultron/memory/semantic_memory.py`, `episodic_memory.py` | pré-filtro sem acentos, por palavra, sobre os 5.000 registros mais recentes | PV-03: o `LIKE` do SQL comparava "medico" com "médico" e não achava o fato |
+| `ultron/voice/wake_word.py` | "faça" e afins proibidas como forma forte | PV-01: o Vosk grande ouviu o "Safra" sintetizado como "faça" em 156 de 180 frases |
+| `tests/test_memory.py`, `tests/test_voice.py` | testes de regressão dos itens acima | — |
+
+**Decisões:**
+
+| ID | Decisão | Justificativa |
+|---|---|---|
+| D8 | Separar ambiente C (contêiner) e R (computador de referência) em todos os resultados | o contêiner não tem GPU, microfone nem alto-falante; nada medido nele pode representar o hardware |
+| D9 | Repetir cada síntese de voz e reportar intervalos de confiança | o Piper (VITS) é estocástico: a mesma frase gera áudios diferentes |
+| D10 | Não adotar "faça" como forma fraca por padrão | a análise exploratória mostrou ganho (2,2 % → 88,9 %) com custo (0 → 0,9 % de indevidas), mas sobre UMA voz sintética: seria ajustar o sistema ao teste |
+| D11 | Avaliar a memória "antes" e "depois" das correções e guardar os dois arquivos | permite mostrar o efeito de cada correção sem reescrever o histórico |
+| D12 | Métrica de estabilidade após o aquecimento | a série de 30 min mostrou um aquecimento de ~4 min (55,6 → 70 MB) seguido de crescimento lento; a regressão sobre a série inteira (19,2 MB/h) misturava as fases |
+
+**Problemas dos próprios instrumentos (encontrados e corrigidos antes dos resultados finais):** os tempos por
+palavra do Vosk se acumulavam entre frases no PV-05 (erros de dezenas de segundos — o reconhecedor passou a ser
+recriado por frase). Na revisão do código, antes das rodadas finais: o PV-02 passou a ignorar respostas parciais
+de progresso e as sementes de ruído do PV-01, que dependiam de `hash()`, passaram a ser fixas.
+
+### Etapa 5 — TCC e relatório
+
+**Criados:** `docs/academic/00…15_*.md` (capítulos editáveis), `docs/academic/TCC_SAFRA.md` (montado),
+`tools/montar_documentos.py` (monta o TCC resolvendo as inclusões dos documentos técnicos — fonte única —, gera
+DOCX com estilos no padrão de trabalhos acadêmicos e PDF A4 numerado), `docs/export/` (DOCX e PDF do TCC e deste
+relatório).
+
+**Decisões:** os capítulos de requisitos, arquitetura e os apêndices **incluem** os documentos técnicos em vez
+de copiá-los (uma alteração vale para os dois); campos institucionais ficam como `[campo]` editável; nenhuma
+conformidade com uma edição específica da ABNT é declarada (a NBR 14724 e a NBR 6023 receberam edições novas
+em 2024–2025); a referência de Cohen e Massaro (1993) foi descartada por não ter sido confirmada.
+
 ## 9. Testes
 
-Ver [`TESTES.md`](TESTES.md) (atualizado ao fim de cada etapa).
+Detalhes em [`TESTES.md`](TESTES.md). Síntese:
+
+| Momento | Resultado |
+|---|---|
+| Linha de base (`bf070f6`) | 471 testes, 0 falhas (contêiner); CI 61 aprovado em Linux e Windows |
+| Fim da etapa 3 | 474 testes, 0 falhas; cena 3D real 24/24 |
+| Fim da etapa 4 | **475 testes, 0 falhas**; pyflakes e compileall limpos; pacote ZIP validado |
+| Defeitos encontrados na fase | 10 (6 da renomeação, 3 da recuperação de memória, 1 risco na calibração), todos corrigidos com teste |
 
 ## 10. Segurança e integridade
 
-* Nenhum dado do usuário é lido ou alterado pelos testes (pastas temporárias definidas antes de qualquer
-  import).
-* Nenhum banco foi apagado; as tabelas do módulo descontinuado continuam no esquema.
-* Backup: o estado inicial está preservado no histórico remoto (`bf070f6`) e nas branches de segurança do
-  autor (`safety/backup-before-phase-7-8-20261029`, `work/phase-7-8-safe-release`), não modificadas.
+* **Dados do usuário:** nenhum teste ou experimento lê ou altera `%LOCALAPPDATA%\ULTRON`; todos usam pastas
+  temporárias definidas antes de importar o pacote.
+* **Compatibilidade:** pasta, pacote, banco, scripts antigos, serviço do cofre, entrada do início automático,
+  pasta de imagens, pasta do ZIP e ponte `window.JARVIS` mantidos (decisão D1). A migração de configurações
+  v2 → v3 guarda `settings.jarvis-backup.json` e não altera preferências pessoais; "jarvis" continua aceita.
+* **Banco:** nenhuma tabela apagada (as duas do módulo descontinuado continuam inertes); nenhuma migração nova.
+* **Permissões:** nenhuma regra afrouxada; a PV-06 confirmou 11/11 bloqueios com 4/4 controles.
+* **Backups:** estado inicial preservado no histórico remoto (`bf070f6`) e nas branches de segurança do autor,
+  não modificadas. Nada foi mesclado na `main`.
 
 ## 11. Limitações
 
-Registradas ao fim do trabalho (ver seção 13).
+| Limitação | Efeito no TCC | Como será tratada |
+|---|---|---|
+| Voz medida só com uma voz sintética | a taxa de ativação não representa a voz humana | PV-01 etapa B (voz do autor e, se permitido, de voluntários) |
+| WebGL por software no contêiner | quadros/s sem valor para a meta RNF04 | PV-04 no computador de referência |
+| Inferência simulada | tempo com o modelo real desconhecido | PV-02 com `--ollama` |
+| Atraso áudio × tela não medido | RNF08 não avaliado | PV-05 etapa B (vídeo a 60 q/s) |
+| Estabilidade de 30 min | meta é 8 h | PV-07 de 8 h |
+| Recuperação lexical | paráfrases 45 % | recuperação semântica local (trabalho futuro) |
+| "Safra" mal reconhecida com voz sintética | ativação abaixo do esperado | calibração; teste com voz humana; nova escolha de palavra se necessário |
+| Conjuntos de teste pequenos e escritos pelo autor | generalização limitada | declarado no TCC |
+| Bandeja, notificações nativas, UI Automation, SAPI, OCR, visão, início automático não verificados | itens "não verificados" no inventário | fora das hipóteses; verificação manual no Windows |
 
 ## 12. Próximas etapas
 
-Ver [`CRONOGRAMA.md`](CRONOGRAMA.md).
+Ver [`CRONOGRAMA.md`](CRONOGRAMA.md). Prioridades até o congelamento (maio/2027): (1) validar o escopo e o título
+com o orientador; (2) rodadas no computador de referência (piloto em fevereiro, oficiais em março e maio);
+(3) decisão sobre a palavra de ativação com base na voz humana; (4) recuperação semântica local, se couber no
+cronograma; (5) confirmar o manual de formatação da instituição.
 
 ## 13. Conclusão técnica
 
-Redigida ao fim da fase.
+O SAFRA é um sistema real e funcional na sua lógica: 475 testes automatizados aprovados, CI em Linux e Windows,
+arquitetura de núcleo único documentada a partir do código e camadas de segurança que bloquearam todas as
+tentativas medidas sem bloquear as ações legítimas. A nova identidade foi aplicada sem quebrar instalações nem
+dados — e os testes impediram seis regressões que a renomeação introduziria. As medições desta fase também
+mostraram o que **não** está bom: a nova palavra de ativação não foi mais bem reconhecida com voz sintética, e a
+recuperação de memória não entende paráfrases; três defeitos de memória foram encontrados e corrigidos pelas
+próprias medições. O que falta para o TCC é medir a fronteira com o hardware (voz humana, GPU, modelo real,
+atraso de apresentação e 8 horas de execução) no computador de referência. Com os instrumentos e protocolos
+prontos, essa medição depende de tempo e do equipamento do autor, não de desenvolvimento novo.
