@@ -45,15 +45,22 @@ def main() -> int:
                 return True
         return bool(condition and condition())
 
-    def page_info() -> dict:
-        box: dict = {}
-        view.page().runJavaScript("JSON.stringify(window.JARVIS ? window.JARVIS.debugInfo() : null)", 0,
-                                  lambda value: box.update(value=value))
-        pump(5, lambda: "value" in box)
-        try:
-            return json.loads(box.get("value") or "null") or {}
-        except ValueError:
-            return {}
+    def page_info(attempts: int = 6) -> dict:
+        """Estado que a página mostra. Com WebGL por software (CI), a thread da página pode demorar a responder:
+        tenta de novo (até ~30 s) em vez de devolver vazio na primeira espera — a conferência não muda."""
+        for _ in range(attempts):
+            box: dict = {}
+            view.page().runJavaScript("JSON.stringify(window.JARVIS ? window.JARVIS.debugInfo() : null)", 0,
+                                      lambda value: box.update(value=value))
+            pump(5, lambda: "value" in box)
+            try:
+                info = json.loads(box.get("value") or "null") or {}
+            except ValueError:
+                info = {}
+            if info.get("mode"):
+                return info
+            pump(0.5)
+        return {}
 
     started = time.monotonic()
     pump(90, lambda: view.is_ready or bool(view.failed))

@@ -160,7 +160,9 @@ jobs:
           }
 
           $out = Invoke-Bat "START_JARVIS.bat --version"
-          Assert-Text $out "JARVIS \d+\.\d+" "START_JARVIS.bat --version"
+          Assert-Text $out "SAFRA \d+\.\d+" "START_JARVIS.bat --version"
+          $out = Invoke-Bat "START_SAFRA.bat --version"
+          Assert-Text $out "SAFRA \d+\.\d+" "START_SAFRA.bat (atalho com o nome novo) --version"
           $out = Invoke-Bat "START_JARVIS.bat --status"
           Assert-Text $out "execu" "START_JARVIS.bat --status"
           $out = Invoke-Bat "START_JARVIS.bat --backup"
