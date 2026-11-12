@@ -137,7 +137,10 @@ class WakeWordDetector:
 _NEVER_VARIANTS = {"aviso", "avisos", "aves", "a vez", "vez", "vezes", "ja vi", "ja", "vi", "vis", "jovens", "jovem",
                    "javista", "jardim", "jantar", "janeiro", "janela", "jarra", "jogar", "davis", "travis", "avis",
                    "e vi", "ja vou", "garfo", "gravis", "jabes", "chaves", "javali", "harvard",
-                   "sobra", "sobre", "cifra", "zafra", "sabia", "sabe", "safári", "safari", "safira", "sacra"}
+                   "sobra", "sobre", "cifra", "zafra", "sabia", "sabe", "safári", "safari", "safira", "sacra",
+                   # PV-01 (nov/2026): o Vosk grande ouviu o "Safra" sintetizado como "faça" em 156 de 180 frases;
+                   # "faça" abre comandos comuns e nunca pode virar forma forte (ativaria em "faça um bolo")
+                   "faca", "faco", "fala", "basta", "safety", "so"}
 
 
 def _close_to(candidate: str, targets: tuple = TARGETS) -> bool:

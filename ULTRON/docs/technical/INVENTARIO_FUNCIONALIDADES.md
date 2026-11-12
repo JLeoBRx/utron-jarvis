@@ -1,7 +1,7 @@
 # Inventário de funcionalidades do SAFRA
 
-Estado do código no commit de referência `bf070f6` (início da fase SAFRA) e evidência que sustenta cada
-classificação. Este inventário **não** confunde código existente com funcionalidade validada: o que não
+Estado do código no commit de referência `bf070f6` (início da fase SAFRA), atualizado com as mudanças e
+medições da fase SAFRA (11/11/2026), e a evidência que sustenta cada classificação. Este inventário **não** confunde código existente com funcionalidade validada: o que não
 tem evidência está marcado assim.
 
 ## Critérios
@@ -69,7 +69,7 @@ tem evidência está marcado assim.
 |---|---|---|---|---|
 | Captura do microfone (sounddevice/PyAudio, reamostragem para 16 kHz) | `voice/audio.py` | Não verificada | TD | sem microfone em nenhum ambiente de teste |
 | Reconhecimento offline (Vosk, pt-BR) | `voice/stt.py`, `voice/processor.py` | Funcional (com fala sintetizada) | TR (Piper → Vosk com os modelos do repositório) | voz humana **não medida** |
-| Palavra de ativação "Jarvis", formas fortes/fracas, calibração | `voice/wake_word.py`, `voice/calibrate.py` | Parcial | TR | "Jarvis" fora do vocabulário do Vosk: transcrita como "aves", "aviso"… (medido); exige calibração |
+| Palavra de ativação "Safra" (e "Jarvis" aceita), formas fortes/fracas, calibração | `voice/wake_word.py`, `voice/calibrate.py` | Parcial | TR, PV-01 | com voz sintética, "Safra" ativou em 2–4 % (ouvida como "faça") e "Jarvis" em 17–18 %; ativação indevida ≤ 0,5 %. Exige calibração; voz humana ainda não medida |
 | Proteção contra autoescuta e janela de continuação | `voice/processor.py` | Funcional | TR + TD | |
 | Síntese neural (Piper, `pt_BR-faber-medium`) com perfil de voz | `voice/tts.py`, `voice/dsp.py` | Funcional | TR (`test_jarvis_voice`, `test_voice`), MV (amostras WAV) | reprodução em alto-falante não verificada; qualidade percebida não avaliada por ouvintes |
 | Prosódia (pausas, ritmo, normalização de números, horas e valores) | `voice/prosody.py` | Funcional | TR (`test_voice_prosody`) | |
@@ -83,7 +83,7 @@ tem evidência está marcado assim.
 |---|---|---|---|---|
 | Banco único SQLite (WAL), migrações v1–v7 idempotentes | `memory/store.py` | Funcional | TR (`test_memory`, `test_integrity`) | |
 | Memórias de trabalho, episódica, semântica, procedural e preferências | `memory/*` | Funcional | TR (`test_memory`) | |
-| Recuperação unificada de memória para o contexto | `memory/retrieval.py`, `cognition/context_engine.py` | Funcional | TR | **taxa de recuperação correta nunca medida** |
+| Recuperação unificada de memória para o contexto | `memory/retrieval.py`, `cognition/context_engine.py` | Parcial | TR, PV-03 | medida (nov/2026): perguntas lexicais 100 % (após corrigir 3 defeitos), **paráfrases 45 %** (abaixo da meta de 80 %) |
 | Memória pessoal: registros, busca sem acentos (FTS5), perguntas respondidas só com o que está salvo | `secondbrain/` | Funcional | TR (`test_second_brain`) | |
 | Lembretes persistentes, sem duplicação, aviso de lembretes perdidos | `secondbrain/reminders.py` | Funcional | TR (relógio controlado) | |
 | Recusa de segredos antes de gravar | `memory/store.py`, `secondbrain/service.py` | Funcional | TR | |
@@ -115,11 +115,11 @@ tem evidência está marcado assim.
 |---|---|---|---|---|
 | Plataforma Qt com 5 páginas e atalhos | `hud/platform.py` | Funcional | TR (`test_platform`), CIW | |
 | Conversa na página principal | `hud/conversation.py` | Funcional | TR | |
-| Cena 3D: holograma de corpo inteiro (51 ossos, *skinning* na GPU), estados reais, olhar, gestos | `hud/scene3d/web/js/avatar*.js` | Funcional (WebGL por software) | 3D, TR (`test_scene3d`), MV (capturas) | **GPU real não verificada** |
+| Cena 3D: holograma de corpo inteiro (57 ossos, *skinning* na GPU), estados reais, olhar, gestos | `hud/scene3d/web/js/avatar*.js` | Funcional (WebGL por software) | 3D, TR (`test_scene3d`), MV (capturas) | **GPU real não verificada** |
 | ORBE 3D e ORBE compacta flutuante | `orb.js`, `hud/orb.py` | Funcional (WebGL por software) | 3D, TR | |
 | Reserva 2D quando o WebGL falha | `hud/scene3d/view.py`, `hud/avatar/` | Funcional | CIW (no Windows do CI o WebGL não abriu e a reserva funcionou, `34f1fa0`) | |
 | Perfis de qualidade visual | `hud/quality.py` | Funcional | MV (`PERFORMANCE_REPORT.md`) | |
-| Tema centralizado (tokens) | `hud/design/tokens.json`, `palette.py`, `theme.py` | Parcial | TR (`DesignTokensTest`) | ainda há cores literais fora dos tokens |
+| Tema centralizado (tokens) — identidade SAFRA | `hud/design/tokens.json`, `palette.py`, `theme.py` | Funcional | TR (`DesignTokensTest`), MV (capturas) | folhas de estilo do Qt geradas da paleta; cores literais restantes são de materiais físicos (latão, madeira da cabine) |
 | Sons da interface | `audio/neural_audio.py` | Funcional (geração) | TR | reprodução não verificada |
 
 ## 7. Ambiente virtual TARDIS
@@ -158,8 +158,7 @@ tem evidência está marcado assim.
 | NOCTARIO (robô seguidor de linha: firmware ESP32, Bluetooth, skills, painel) | **Descontinuada — fora do escopo do SAFRA e do TCC** | removida em `4f540b1`/`7385b99`; manifesto `REMOCAO_NOCTARIO.md`; análise de dependências em `AUDITORIA_INICIAL.md` §9 |
 | HUB 2D antigo (cérebro desenhado em QPainter como vista principal) | Descontinuada como vista principal; mantida como vista alternativa e reserva | `hud/brain_view.py` |
 | Identidade visual azul/ciano do JARVIS | Substituída nesta fase pela identidade SAFRA | `RELATORIO_TECNICO.md` |
-| Palavra de ativação "Safra" | Em desenvolvimento | `docs/research` (experimento de reconhecimento) |
-| Medições experimentais do TCC (reconhecimento com voz humana, latência com modelo real, recuperação de memória, sincronização labial, desempenho com GPU, estabilidade prolongada) | Planejada (protocolos nesta fase) | `docs/research/PROTOCOLOS_DE_VALIDACAO.md` |
+| Medições no computador de referência (voz humana, modelo real, GPU, atraso áudio × tela, 8 h) | Planejada (protocolos e instrumentos prontos; ambiente C já medido) | `docs/research/PROTOCOLOS_DE_VALIDACAO.md` |
 | Publicação da WEB ORB | Planejada (depende de servidor e domínio do autor) | `WEB_ORB.md` |
 
 ## Resumo
@@ -169,10 +168,14 @@ tem evidência está marcado assim.
 | Funcional | 68 |
 | Parcial | 2 |
 | Não verificada | 8 |
-| Em desenvolvimento | 1 |
 | Planejada | 2 |
 | Descontinuada ou substituída | 3 |
-| **Total** | **84** |
+| **Total** | **83** |
+
+No início da fase (commit `bf070f6`) eram 84 itens: 68 funcionais, 2 parciais, 8 não verificados, 1 em
+desenvolvimento, 2 planejados e 3 descontinuados. As mudanças da fase: a palavra de ativação "Safra" foi
+implementada (fundida ao item da ativação por voz, que continua parcial pelas medições), o tema centralizado
+passou a funcional e a recuperação de memória passou a parcial depois de medida (PV-03).
 
 Das 68 funcionais, várias dependem de dublê para um serviço externo ou foram conferidas só com WebGL por
 software; a coluna de evidência diz qual. Contagem feita por script sobre as tabelas acima.

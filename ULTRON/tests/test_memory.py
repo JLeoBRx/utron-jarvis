@@ -25,6 +25,19 @@ class MemoryTest(unittest.TestCase):
         self.assertTrue(results)
         self.assertIn("Flask", results[0].text)
 
+    def test_recall_ignores_accents_and_never_matches_pieces_of_words(self):
+        """Defeitos medidos no protocolo PV-03 (docs/research): o filtro comparava "medico" com "médico" e não
+        achava o fato; e "ana" casava com "losartana", "avo" com "favorito" (pedaço no meio da palavra)."""
+        self.memory.remember_fact("médico da família", "doutor Paulo, clínica Santa Luzia")
+        self.memory.remember_fact("remédio da pressão", "losartana às 8 horas")
+        self.memory.remember_fact("filme favorito do Rafa", "Interestelar")
+        found = [r.data.get("subject") for r in self.memory.recall("quem é o medico da familia?")]
+        self.assertIn("médico da família", found, "acentos não impedem a recuperação")
+        self.assertNotIn("remédio da pressão", [r.data.get("subject") for r in self.memory.recall("qual a altura da Ana?")])
+        self.assertNotIn("filme favorito do Rafa", [r.data.get("subject") for r in self.memory.recall("CEP da avó")])
+        plural = [r.data.get("subject") for r in self.memory.recall("quais remedios eu tomo?")]
+        self.assertIn("remédio da pressão", plural, "plural ainda casa com o singular")
+
     def test_secrets_are_never_stored(self):
         self.assertTrue(looks_secret("minha senha é hunter2"))
         with self.assertRaises(ValueError):

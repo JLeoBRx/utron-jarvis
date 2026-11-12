@@ -81,6 +81,8 @@ class WakeWordTest(unittest.TestCase):
         self.assertIn("safras", learned)
         for word in ("sobra", "cifra", "zafra"):
             self.assertNotIn(word, learned)
+        # confusão medida no PV-01: "Safra" ouvido como "faça" — palavra comum que abre comandos
+        self.assertNotIn("faca", learn_variants(["faça", "faça que horas são", "faça"], known=("safra",)))
 
     def test_strong_and_weak_forms(self):
         d = WakeWordDetector()                         # formas medidas do JARVIS

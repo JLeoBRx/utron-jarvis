@@ -1,6 +1,6 @@
 // O holograma do SAFRA: corpo humano inteiro (1,80 m), construído aqui por seções ao longo de um esqueleto.
 //
-// * Esqueleto de 51 ossos (dedos com três falanges); proporções antropométricas.
+// * Esqueleto de 57 ossos (dedos com três falanges, olhos, sobrancelhas, mandíbula); proporções antropométricas.
 // * Cada parte é uma superfície "loft" ao longo do seu osso, com perfis de músculo; a cabeça é a mesma função
 //   do rosto holográfico 2D (ultron/hud/avatar/geometry.py), portada — mantém a identidade do SAFRA.
 // * Desenho: linhas topológicas (contornos e meridianos), nós luminosos e casca translúcida (Fresnel), todos

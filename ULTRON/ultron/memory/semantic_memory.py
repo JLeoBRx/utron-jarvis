@@ -54,17 +54,25 @@ class SemanticMemory:
         for fid in ids:
             self.db.execute("UPDATE facts SET access_count=access_count+1, last_access=? WHERE id=?", (now, fid))
 
-    def candidates(self, terms: list[str], limit: int = 200) -> list[Fact]:
+    def candidates(self, terms: list[str], limit: int = 200, scan: int = 5000) -> list[Fact]:
+        """Fatos que contêm algum dos termos — SEM acento dos dois lados ("medico" acha "médico").
+
+        O filtro antigo (``LIKE`` no SQL) comparava o termo sem acento com o texto acentuado e perdia fatos
+        como "médico da família" (medido no protocolo PV-03). A comparação agora é feita na mesma
+        normalização dos termos, sobre os ``scan`` fatos mais recentes (volume de uma máquina pessoal)."""
         if not terms:
             rows = self.db.query("SELECT * FROM facts ORDER BY updated_at DESC LIMIT ?", (min(limit, 50),))
-        else:
-            clauses = " OR ".join(["lower(subject) LIKE ? OR lower(fact) LIKE ?"] * len(terms))
-            params: list[Any] = []
-            for t in terms:
-                params += [f"%{t}%", f"%{t}%"]
-            rows = self.db.query(f"SELECT * FROM facts WHERE {clauses} ORDER BY updated_at DESC LIMIT ?",
-                                 params + [limit])
-        return [_row(r) for r in rows]
+            return [_row(r) for r in rows]
+        from .retrieval import _matches, terms as split_terms
+        wanted = [t for t in terms if t]
+        out: list[Fact] = []
+        for r in self.db.query("SELECT * FROM facts ORDER BY updated_at DESC LIMIT ?", (scan,)):
+            words = set(split_terms(f"{r['subject']} {r['fact']}", 256))
+            if any(_matches(t, words) for t in wanted):
+                out.append(_row(r))
+                if len(out) >= limit:
+                    break
+        return out
 
     def all(self, limit: int = 500) -> list[Fact]:
         return [_row(r) for r in self.db.query("SELECT * FROM facts ORDER BY updated_at DESC LIMIT ?", (limit,))]

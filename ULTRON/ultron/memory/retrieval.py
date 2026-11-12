@@ -17,9 +17,14 @@ _STOP = {"o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "em", "no", 
          "quais", "como", "onde", "quando", "isso", "isto", "esse", "essa", "sobre", "lembra", "lembrar"}
 
 
-def terms(text: str, limit: int = 8) -> list[str]:
+def normalized(text: str) -> str:
+    """Minúsculas e sem acentos (a mesma forma dos termos de busca)."""
     value = unicodedata.normalize("NFD", str(text or "").casefold())
-    value = "".join(c for c in value if unicodedata.category(c) != "Mn")
+    return "".join(c for c in value if unicodedata.category(c) != "Mn")
+
+
+def terms(text: str, limit: int = 8) -> list[str]:
+    value = normalized(text)
     words = [w for w in re.findall(r"[a-z0-9_#+.\-]{2,}", value) if w not in _STOP]
     seen: list[str] = []
     for w in words:
@@ -28,11 +33,23 @@ def terms(text: str, limit: int = 8) -> list[str]:
     return seen[:limit]
 
 
+def _matches(term: str, words: set[str]) -> bool:
+    """Palavra inteira; ou variação no FIM da palavra (plural/gênero: "remedio" ~ "remedios"), com 4+ letras.
+    Nunca um pedaço no meio de outra palavra: "ana" não casa com "losartana", nem "avo" com "favorito"
+    (defeito medido no protocolo PV-03 e corrigido)."""
+    if term in words:
+        return True
+    if len(term) < 4:
+        return False
+    return any((w.startswith(term) and len(w) - len(term) <= 3) or
+               (len(w) >= 4 and term.startswith(w) and len(term) - len(w) <= 3) for w in words)
+
+
 def _overlap(query_terms: list[str], text: str) -> float:
     if not query_terms:
         return 0.0
-    hay = " ".join(terms(text, 64))
-    hits = sum(1 for t in query_terms if t in hay)
+    words = set(terms(text, 64))
+    hits = sum(1 for t in query_terms if _matches(t, words))
     return hits / len(query_terms)
 
 
@@ -67,11 +84,15 @@ class Retriever:
         results: list[Recall] = []
         for fact in self.semantic.candidates(q):
             lexical = _overlap(q, f"{fact.subject} {fact.fact}")
+            if lexical <= 0:                       # sem palavra em comum, recência e uso não bastam
+                continue
             score = 0.7 * lexical + 0.2 * _recency(fact.updated_at, 120) + 0.1 * min(1.0, fact.access_count / 10)
             results.append(Recall("fact", f"{fact.subject}: {fact.fact}", score, fact.id,
                                   {"subject": fact.subject}))
         for ep in self.episodic.candidates(q):
             lexical = _overlap(q, ep.summary + " " + ep.outcome)
+            if lexical <= 0:
+                continue
             bonus = 0.1 if ep.success else 0.0
             score = 0.6 * lexical + 0.2 * _recency(ep.started_at) + 0.1 * ep.importance + bonus
             status = "sucesso" if ep.success else ("falha" if ep.success is False else "sem verificação")

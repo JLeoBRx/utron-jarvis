@@ -67,10 +67,15 @@ class EpisodicMemory:
     def candidates(self, terms: list[str], limit: int = 200) -> list[Episode]:
         if not terms:
             return self.recent(min(limit, 50))
-        clauses = " OR ".join(["lower(summary) LIKE ?"] * len(terms))
-        rows = self.db.query(f"SELECT * FROM episodes WHERE {clauses} ORDER BY id DESC LIMIT ?",
-                             [f"%{t}%" for t in terms] + [limit])
-        return [_row(r) for r in rows]
+        from .retrieval import _matches, terms as split_terms   # sem acento, por palavra (como nos fatos)
+        wanted = [t for t in terms if t]
+        out = []
+        for r in self.db.query("SELECT * FROM episodes ORDER BY id DESC LIMIT ?", (5000,)):
+            if any(_matches(t, set(split_terms(r["summary"] or "", 256))) for t in wanted):
+                out.append(_row(r))
+                if len(out) >= limit:
+                    break
+        return out
 
     def for_goal(self, goal_id: str) -> list[Episode]:
         return [_row(r) for r in self.db.query("SELECT * FROM episodes WHERE goal_id=? ORDER BY id", (goal_id,))]
