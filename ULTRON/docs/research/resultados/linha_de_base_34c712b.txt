@@ -1,0 +1,118 @@
+# Linha de base da suíte de testes — commit 34c712b (auditoria da transformação em SAFRA, antes de qualquer migração)
+# Ambiente: contêiner Linux 6.18.44-fc-v445, Python 3.13.18, PySide6 6.8.3, Qt offscreen, sem Ollama, sem microfone, sem GPU
+# Comando: python TEST_JARVIS.py   Data: 2026-11-13   Duração total: 3 min 08 s
+SAFRA 3.0.0 · Python 3.13.18 · Linux 6.18.44-fc-v445
+  [ok] numpy        numpy
+  [ok] psutil       psutil
+  [ok] PySide6      SAFRA CORE e TARDIS (sem ele: modo console)
+  [ok] vosk         reconhecimento de fala offline
+  [ — ] pyaudio      microfone e saída de áudio (PyAudio)
+  [ok] sounddevice  microfone e saída de áudio (alternativa ao PyAudio)
+  [ok] piper        voz neural do SAFRA
+  [ok] pyttsx3      voz alternativa (SAPI)
+  [ok] pyautogui    teclado, mouse e mídia
+  [ — ] pywinauto    elementos de interface do Windows
+  [ — ] pycaw        volume do sistema
+  [ok] send2trash   exclusão segura (Lixeira)
+  [ok] mss          captura de tela
+  [ok] PIL          imagens (Pillow)
+  [ — ] pytesseract  OCR (requer Tesseract OCR)
+  [ok] modelo de fala grande (vosk-model-pt-fb-v0.1.1-20220516_2113)
+  [ok] modelo de fala pequeno (vosk-model-small-pt-0.3)
+  [ok] voz pt_BR-faber-medium
+  [ — ] Ollama local não está em execução (os testes não precisam dele)
+Executando 475 testes…
+.....................................................----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 46192)
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/server.py", line 451, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/server.py", line 439, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/home/user/utron-jarvis/ULTRON/tests/fake_ollama.py", line 89, in do_POST
+    result = owner.responder(payload)
+  File "/home/user/utron-jarvis/ULTRON/tests/test_failures.py", line 132, in responder
+    raise RuntimeError("o servidor do modelo quebrou no meio do pedido")
+RuntimeError: o servidor do modelo quebrou no meio do pedido
+----------------------------------------
+.................................Attribute Qt::AA_ShareOpenGLContexts must be set before QCoreApplication is created.
+...qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+..........----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58358)
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/server.py", line 451, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/server.py", line 439, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/home/user/utron-jarvis/ULTRON/tests/fake_ollama.py", line 89, in do_POST
+    result = owner.responder(payload)
+  File "/home/user/utron-jarvis/ULTRON/tests/test_transitions.py", line 55, in responder
+    raise RuntimeError("o servidor do modelo quebrou")
+RuntimeError: o servidor do modelo quebrou
+----------------------------------------
+----------------------------------------------------------------------
+Ran 475 tests in 178.663s
+OK (skipped=1)
+Resumo por módulo (ok / falhas / pulados):
+  test_activity            7 /  0 /  0   ok
+  test_avatar             12 /  0 /  0   ok
+  test_cli                 7 /  0 /  0   ok
+  test_core               15 /  0 /  0   ok
+  test_event_bus           7 /  0 /  0   ok
+  test_executor           12 /  0 /  0   ok
+  test_failures            7 /  0 /  0   ok
+  test_hud                22 /  0 /  0   ok
+  test_imagination         6 /  0 /  0   ok
+  test_integrity           8 /  0 /  0   ok
+  test_intelligence       22 /  0 /  0   ok
+  test_jarvis_voice        6 /  0 /  0   ok
+  test_lipsync             9 /  0 /  0   ok
+  test_memory              9 /  0 /  0   ok
+  test_model_router        9 /  0 /  0   ok
+  test_network            14 /  0 /  0   ok
+  test_openai_provider     6 /  0 /  0   ok
+  test_original_recovery  22 /  0 /  0   ok
+  test_performance        10 /  0 /  0   ok
+  test_permissions        10 /  0 /  0   ok
+  test_planner             8 /  0 /  0   ok
+  test_platform           22 /  0 /  0   ok
+  test_plugins             4 /  0 /  0   ok
+  test_recovery            7 /  0 /  0   ok
+  test_scene3d            23 /  0 /  1   ok
+  test_second_brain       25 /  0 /  0   ok
+  test_security           17 /  0 /  0   ok
+  test_startup            10 /  0 /  0   ok
+  test_tardis              7 /  0 /  0   ok
+  test_tardis_logic       30 /  0 /  0   ok
+  test_tardis_room        12 /  0 /  0   ok
+  test_tardis_sfx          5 /  0 /  0   ok
+  test_transitions         6 /  0 /  0   ok
+  test_ultron_protocol    21 /  0 /  0   ok
+  test_verifier            5 /  0 /  0   ok
+  test_voice              30 /  0 /  0   ok
+  test_voice_prosody      10 /  0 /  0   ok
+  test_web_orb             7 /  0 /  0   ok
+  test_world_model         5 /  0 /  0   ok
+APROVADO: 475 testes em 178.7s · 0 falha(s) · 1 pulado(s)

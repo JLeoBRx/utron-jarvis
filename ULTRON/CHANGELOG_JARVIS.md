@@ -506,3 +506,11 @@ Detalhe completo em `docs/technical/RELATORIO_TECNICO.md`; marcos em `docs/techn
 ## SAFRA 5 — TCC e relatório
 * `docs/academic` (capítulos 1–13, referências verificadas, apêndices), `tools/montar_documentos.py`, DOCX e PDF em
   `docs/export`, relatório técnico completo.
+
+## Transformação em SAFRA — Fase 1: auditoria (13/11/2026)
+* **Nenhuma mudança de código.** Documento novo: `docs/technical/AUDITORIA_TRANSFORMACAO_SAFRA.md` (diagnóstico,
+  mapa dos módulos e das dependências, funcionalidades, problemas, riscos, arquitetura proposta, plano por
+  etapas, preservação de dados, plano de testes e as onze decisões que dependem de aprovação).
+* Linha de base registrada: 475 testes, 0 falhas, 1 pulado no commit `34c712b`
+  (`docs/research/resultados/linha_de_base_34c712b.txt`).
+* A migração estrutural só começa depois da aprovação da auditoria.

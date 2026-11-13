@@ -7,6 +7,7 @@ data) e as listas `real` e `simulado`. Os protocolos estão em `../PROTOCOLOS_DE
 | Arquivo | Protocolo | Ambiente | Resumo |
 |---|---|---|---|
 | `linha_de_base_bf070f6.txt` | suíte | C | 471 testes, 0 falhas, 1 pulado (antes da fase SAFRA) |
+| `linha_de_base_34c712b.txt` | suíte | C | 475 testes, 0 falhas, 1 pulado (auditoria da transformação, antes de qualquer migração) |
 | `pv01_ativacao_conteiner-sintetico.json` | PV-01 A | C, voz sintética | "Safra" 3,9 % (pequeno) / 2,2 % (grande); "Jarvis" 17,2 % / 18,3 %; indevidas 0,46 % / 0 % |
 | `pv01_analise_formas_conteiner-sintetico.json` | PV-01 (exploratório) | C | "faça" como forma fraca: "Safra" 88,9 % no modelo grande, indevidas 0,9 % — **não adotado** |
 | `pv02_latencia_conteiner-modelo-simulado.json` | PV-02 | C, inferência simulada | determinísticos p95 9,3 ms; sobrecarga do modelo p95 20,7 ms; núcleo inicia em 52 ms |

@@ -11,3 +11,4 @@ por compatibilidade). Aqui ficam só os marcos, para o TCC e o relatório técni
 | JARVIS ULTIMATE | 21/10–02/11 | `a725f56`…`34f1fa0` | permissões por categoria, rosto 3D, TARDIS 3D, CI em Linux e Windows, Fase 7 (10 defeitos), central 3D |
 | Phoenix e Aprimoramentos | 02–03/11 | `4f540b1`…`bf070f6` | holograma humanoide, Protocolo ULTRON, perfis de inteligência, WEB ORB; módulo de robótica removido |
 | **SAFRA 3.0** | 11–12/11 | `07fcda6`…(etapa 5) | auditoria acadêmica, requisitos, nova identidade, instrumentos de medição, TCC e relatório técnico |
+| Transformação em SAFRA — Fase 1 (auditoria) | 13/11 | ver histórico do Git | auditoria do estado atual frente às novas regras (sem 3D, sem rosto, sem TARDIS, NOCTARIO e JARVIS); **nenhuma mudança de código**; migração aguardando aprovação |
