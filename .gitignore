@@ -46,3 +46,8 @@ ULTRON/firmware/noctario/test/host/replay
 Thumbs.db
 .vscode/
 .idea/
+
+# Nova geração: interfaces e casca
+node_modules/
+frontend/**/dist/
+desktop/**/target/

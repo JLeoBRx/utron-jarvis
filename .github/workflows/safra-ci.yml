@@ -1,0 +1,66 @@
+name: SAFRA CI
+
+# Nova geração do SAFRA (backend/). O legado em ULTRON/ continua com o seu próprio fluxo.
+on:
+  push:
+    branches:
+      - "claude/adoring-brahmagupta-vcejpt"
+    paths:
+      - "backend/**"
+      - ".github/workflows/safra-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/safra-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: safra-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend · ${{ matrix.os }} · Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout (só a nova plataforma)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            .github
+
+      - name: Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Instalar
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Testes
+        run: python -m pytest
+
+      - name: Linha de comando (configuração, migração e saúde em pasta temporária)
+        env:
+          SAFRA_DATA_DIR: ${{ runner.temp }}/safra-dados
+          SAFRA_ENVIRONMENT: test
+        run: |
+          safra-core --version
+          safra-core --check
+          safra-core --check

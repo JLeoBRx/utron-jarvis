@@ -1,0 +1,176 @@
+{
+  "o_que_e": "linha de base de desempenho do sistema legado (ULTRON/)",
+  "rapido": false,
+  "data_utc": "2026-11-14T21:24Z",
+  "ambiente": {
+    "sistema": "Linux 6.18.44-fc-v470",
+    "maquina": "x86_64",
+    "python": "3.13.18",
+    "cpus_logicas": 4,
+    "memoria_total_gb": 15.7,
+    "commit": "470359f",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.30GHz",
+    "vosk": "0.3.45",
+    "piper-tts": "1.8.0",
+    "numpy": "2.5.4",
+    "psutil": "7.2.2",
+    "PySide6-Essentials": "6.8.3",
+    "correcao": "o campo PySide6 saiu como 'ausente' por erro no nome do pacote consultado; corrigido para PySide6-Essentials sem repetir as medições"
+  },
+  "real": [
+    "processo completo do programa",
+    "NeuralCore completo com SQLite",
+    "síntese Piper",
+    "reconhecimento Vosk"
+  ],
+  "simulado": [
+    "inferência do modelo de linguagem (servidor local que responde em 0 ms)"
+  ],
+  "nao_medido": [
+    "microfone e alto-falante",
+    "GPU",
+    "Windows",
+    "modelo de linguagem real",
+    "tempo até o primeiro token",
+    "interface em tela real"
+  ],
+  "processo": {
+    "versao": {
+      "n": 7,
+      "min": 0.059,
+      "p50": 0.06,
+      "p95": 0.064,
+      "p99": 0.065,
+      "max": 0.065,
+      "media": 0.061,
+      "falhas": 0,
+      "unidade": "s"
+    },
+    "pedido_texto": {
+      "n": 7,
+      "min": 1.901,
+      "p50": 1.94,
+      "p95": 1.986,
+      "p99": 1.99,
+      "max": 1.991,
+      "media": 1.94,
+      "falhas": 0,
+      "unidade": "s"
+    },
+    "montar_interface": {
+      "n": 7,
+      "min": 1.038,
+      "p50": 1.115,
+      "p95": 1.131,
+      "p99": 1.134,
+      "max": 1.135,
+      "media": 1.095,
+      "falhas": 0,
+      "unidade": "s"
+    }
+  },
+  "nucleo": {
+    "inicializacao_nucleo_s": {
+      "n": 5,
+      "min": 0.013,
+      "p50": 0.015,
+      "p95": 0.041,
+      "p99": 0.046,
+      "max": 0.048,
+      "media": 0.021,
+      "amostras": [
+        0.048,
+        0.015,
+        0.015,
+        0.013,
+        0.013
+      ],
+      "observacao": "a primeira cria o banco; as seguintes reabrem o mesmo banco"
+    },
+    "comando_deterministico_ms": {
+      "n": 300,
+      "min": 0.94,
+      "p50": 5.48,
+      "p95": 12.57,
+      "p99": 17.68,
+      "max": 23.71,
+      "media": 5.57
+    },
+    "caminho_do_modelo_inferencia_simulada_ms": {
+      "n": 100,
+      "min": 9.39,
+      "p50": 12.57,
+      "p95": 23.13,
+      "p99": 35.69,
+      "max": 35.93,
+      "media": 13.56
+    },
+    "sem_resposta": 0,
+    "memoria_residente_mb": {
+      "apos_inicializar": 56.1,
+      "apos_a_carga": 75.2
+    },
+    "repouso": {
+      "segundos": 60,
+      "cpu_processo_pct": {
+        "n": 60,
+        "min": 0.0,
+        "p50": 1.0,
+        "p95": 1.0,
+        "p99": 2.0,
+        "max": 2.0,
+        "media": 0.55
+      },
+      "observacao": "100 % = um núcleo lógico; núcleo sem voz, sem percepção e sem interface",
+      "memoria_residente_mb": 75.5,
+      "threads": 18
+    },
+    "threads_apos_encerrar": 1
+  },
+  "voz": {
+    "sintese_piper": {
+      "carregar_voz_s": 1.283,
+      "por_frase_ms": {
+        "n": 20,
+        "min": 63.1,
+        "p50": 83.8,
+        "p95": 121.6,
+        "p99": 129.7,
+        "max": 131.7,
+        "media": 90.8
+      },
+      "fator_tempo_real": {
+        "n": 20,
+        "min": 0.027,
+        "p50": 0.029,
+        "p95": 0.037,
+        "p99": 0.039,
+        "max": 0.04,
+        "media": 0.03
+      },
+      "observacao": "fator < 1 = sintetiza mais rápido do que a fala dura"
+    },
+    "reconhecimento_vosk": {
+      "carregar_modelo_s": 0.246,
+      "por_frase_ms": {
+        "n": 5,
+        "min": 925.0,
+        "p50": 954.2,
+        "p95": 1913.9,
+        "p99": 2056.0,
+        "max": 2091.5,
+        "media": 1224.4
+      },
+      "fator_tempo_real": {
+        "n": 5,
+        "min": 0.346,
+        "p50": 0.355,
+        "p95": 0.494,
+        "p99": 0.509,
+        "max": 0.513,
+        "media": 0.396
+      },
+      "modelo": "vosk-model-small-pt-0.3"
+    }
+  }
+}

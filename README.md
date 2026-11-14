@@ -1,23 +1,31 @@
 # SAFRA
 
-Plataforma inteligente local para Windows (antes chamada JARVIS): entende pedidos em português por voz ou
-texto, responde com voz sintetizada e um holograma 3D com sincronização labial, guarda a memória pessoal num
-banco local, acompanha tarefas no ambiente virtual TARDIS e executa ações no computador sob permissões,
-autorizações e verificação. Cérebro principal: Ollama local. Objeto do TCC técnico em Desenvolvimento de
-Sistemas (conclusão prevista para 2027).
+Plataforma inteligente integrada: um assistente que roda no computador do usuário, com interface operacional,
+e um portal público com painel administrativo. Projeto de conclusão de curso técnico em Desenvolvimento de
+Sistemas, com conclusão prevista para 2027.
 
-- Instalação e uso: [`ULTRON/README_JARVIS.md`](ULTRON/README_JARVIS.md)
-- Documentação técnica e acadêmica (TCC, relatório técnico, arquitetura, requisitos, testes, cronograma):
-  [`ULTRON/docs/README.md`](ULTRON/docs/README.md)
-- Mudanças: [`ULTRON/CHANGELOG_JARVIS.md`](ULTRON/CHANGELOG_JARVIS.md)
+O repositório está em **reconstrução integral**. Há duas coisas aqui:
 
-```
-ULTRON\INSTALL_SAFRA.bat      instala (Python 3.11 + Ollama; não apaga nada)   = INSTALL_JARVIS.bat
-ULTRON\START_SAFRA.bat        inicia o SAFRA (--console, --stop, --status, --diagnose, --voice-test)   = START_JARVIS.bat
-ULTRON\DIAGNOSTICO_SAFRA.bat  diagnóstico (componentes ausentes, saúde, voz)   = DIAGNOSTICO_JARVIS.bat
-python ULTRON\TEST_JARVIS.py   testes
-```
+| Pasta | O que é | Situação |
+|---|---|---|
+| `backend/`, `docs/`, `scripts/` (e, nas próximas fases, `frontend/`, `desktop/`, `infra/`) | a **nova geração** (4.x) | fundação do backend implementada e testada; o restante é plano |
+| `ULTRON/` | o **legado** (3.0.0): o aplicativo que funciona hoje | preservado, executável e intocado até a nova versão ser validada |
 
-A pasta `ULTRON/`, o pacote Python `ultron`, a pasta de dados `%LOCALAPPDATA%\ULTRON` e os nomes antigos dos
-scripts são mantidos para preservar dados, configurações e atalhos existentes. O projeto JARVIS original
-(anterior às reconstruções) está no histórico do Git: `git checkout 53e5a31 -- JARVIS`.
+## Por onde começar
+
+- O que foi decidido e por quê: [`docs/decisions/ARCHITECTURE_DECISIONS.md`](docs/decisions/ARCHITECTURE_DECISIONS.md)
+- Para onde o projeto vai: [`docs/architecture/TARGET_ARCHITECTURE.md`](docs/architecture/TARGET_ARCHITECTURE.md)
+- O plano, fase a fase: [`docs/engineering/MIGRATION_PLAN.md`](docs/engineering/MIGRATION_PLAN.md)
+- Índice de toda a documentação: [`docs/README.md`](docs/README.md)
+- Backend novo: [`backend/README.md`](backend/README.md)
+
+## Usar o SAFRA hoje
+
+A versão utilizável continua sendo o legado: instalação e uso em
+[`ULTRON/README_JARVIS.md`](ULTRON/README_JARVIS.md) (`ULTRON\INSTALL_SAFRA.bat`, `ULTRON\START_SAFRA.bat`).
+A nova geração ainda não substitui nenhuma função do aplicativo.
+
+## Estado declarado
+
+Nada da nova geração foi validado em Windows real. Cada documento distingue o que está planejado, implementado,
+testado e validado.
