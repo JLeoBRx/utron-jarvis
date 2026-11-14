@@ -13,6 +13,7 @@ mas o estado atual está aqui.
 | [`academic/`](academic/) | o TCC: capítulos editáveis em Markdown (`NN_*.md`) e o documento montado `TCC_SAFRA.md` (gerado — edite os capítulos) |
 | [`export/`](export/) | versões DOCX (editáveis no Word/LibreOffice) e PDF do TCC e do relatório técnico |
 | [`technical/RELATORIO_TECNICO.md`](technical/RELATORIO_TECNICO.md) | relatório técnico de desenvolvimento e evolução (engenharia) |
+| [`especificacao/`](especificacao/) | **especificação da transformação (Fase 2, 14/11/2026)**: decisões, arquitetura de destino, contrato da API, requisitos, interface e plano de migração |
 | [`technical/AUDITORIA_TRANSFORMACAO_SAFRA.md`](technical/AUDITORIA_TRANSFORMACAO_SAFRA.md) | **auditoria da transformação em SAFRA (13/11/2026)**: diagnóstico, mapas, riscos, arquitetura proposta, plano e decisões que aguardam aprovação |
 | [`technical/AUDITORIA_INICIAL.md`](technical/AUDITORIA_INICIAL.md) | auditoria do repositório antes da fase SAFRA (histórico, para o TCC da fase anterior) |
 | [`technical/INVENTARIO_FUNCIONALIDADES.md`](technical/INVENTARIO_FUNCIONALIDADES.md) | cada funcionalidade com estado e evidência |

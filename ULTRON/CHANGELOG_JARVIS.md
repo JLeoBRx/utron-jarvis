@@ -514,3 +514,12 @@ Detalhe completo em `docs/technical/RELATORIO_TECNICO.md`; marcos em `docs/techn
 * Linha de base registrada: 475 testes, 0 falhas, 1 pulado no commit `34c712b`
   (`docs/research/resultados/linha_de_base_34c712b.txt`).
 * A migração estrutural só começa depois da aprovação da auditoria.
+
+## Transformação em SAFRA — Fase 2: especificação (14/11/2026)
+* **Nenhuma mudança de código.** Pasta nova `docs/especificacao/`: registro de decisões (27), arquitetura de
+  destino, contrato de comunicação v1, requisitos do novo escopo, especificação da interface e do símbolo e
+  plano de migração (etapas M3 a M8, mapas de código, banco v8, configurações v4, reversão).
+* Sete diagramas novos (11 a 17) em `docs/diagrams/`.
+* Incorporadas as sete decisões do autor: função da TARDIS e do ULTRON preservada com nomes próprios;
+  exportação das tabelas do NOCTARIO antes da remoção; troca gradual dos nomes internos; ativação só por
+  "Safra" com tecla de atalho; documentos históricos em `legado/`; TCC reescrito; painel local primeiro.

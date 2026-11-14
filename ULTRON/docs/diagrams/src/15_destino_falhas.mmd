@@ -1,0 +1,23 @@
+flowchart LR
+  subgraph F1["Falha da interface"]
+    direction LR
+    A1["a casca trava<br/>ou é encerrada"] --> A2["o núcleo continua:<br/>voz, memória e API no ar"]
+    A2 --> A3{"menos de 3 vezes<br/>em 5 min?"}
+    A3 -->|sim| A4["o núcleo reabre a casca"]
+    A3 -->|não| A5["fica sem janela;<br/>registra e avisa"]
+  end
+  subgraph F2["Falha da voz"]
+    direction LR
+    B1["microfone, modelo<br/>ou saída falha"] --> B2["componente 'falhou',<br/>com o motivo"]
+    B2 --> B3["texto, memória e interface seguem;<br/>'reiniciar voz' disponível"]
+  end
+  subgraph F3["Falha de habilidade"]
+    direction LR
+    C1["exceção ou demora"] --> C2["prazo e cancelamento<br/>cooperativo"]
+    C2 --> C3["erro classificado na atividade;<br/>o aplicativo continua"]
+  end
+  subgraph F4["Queda do núcleo"]
+    direction LR
+    D1["o núcleo para"] --> D2["a casca mostra<br/>'o núcleo parou'"]
+    D2 --> D3["botão reiniciar;<br/>log preservado"]
+  end

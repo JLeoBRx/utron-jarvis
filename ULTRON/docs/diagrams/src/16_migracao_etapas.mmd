@@ -1,0 +1,17 @@
+flowchart TB
+  M3["M3<br/>Preservação"] --> M4["M4<br/>Redesign"]
+  M3 --> M51["M5.1<br/>pacote safra<br/>testes de arquitetura"]
+  M51 --> M52["M5.2<br/>armazenamento<br/>erros e logs"] --> M53["M5.3<br/>contrato<br/>ponte de eventos"] --> M54["M5.4<br/>API local"]
+  M54 --> M55["M5.5<br/>casca · tecla<br/>só 'Safra'"]
+  M54 --> M57["M5.7<br/>Análises e Projetos<br/>banco v8"]
+  M54 --> M58["M5.8<br/>Modo Operador"]
+  M4 --> M56["M5.6<br/>interface real<br/>paridade"]
+  M55 --> M56
+  M56 --> M59["M5.9<br/>nova interface<br/>como padrão"]
+  M57 --> M59
+  M58 --> M59
+  M59 --> V{{"validação no<br/>Windows real"}}
+  V --> M510["M5.10<br/>retirada"] --> M511["M5.11<br/>domínios"] --> M512["M5.12<br/>identificadores"]
+  M512 --> M6["M6<br/>Validação"] --> M7["M7<br/>Documentação"]
+  M7 -.-> M8["M8<br/>opcional"]
+  E1{{"escolha do<br/>símbolo e telas"}} --- M4

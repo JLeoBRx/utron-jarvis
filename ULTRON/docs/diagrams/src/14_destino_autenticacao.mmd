@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant N as Núcleo
+  participant K as Casca
+  participant B as Navegador local
+  participant A as API (127.0.0.1)
+  Note over N,A: Casca — bilhete de uso único
+  N->>K: bilhete (entrada padrão, 30 s)
+  K->>A: POST /auth/desktop {ticket}
+  A-->>K: cookie de sessão (desktop) + anti-CSRF
+  Note over N,A: Navegador — código de uso único
+  K->>A: POST /auth/codes (pedido do usuário)
+  A-->>K: código (60 s)
+  K->>B: abrir o painel com o código
+  B->>A: POST /auth/code {code}
+  A-->>B: cookie de sessão (painel_local) + anti-CSRF
+  Note over B,A: Todo pedido
+  B->>A: pedido + cookie + X-SAFRA-CSRF
+  A->>A: conferir Origin, Host, sessão, escopo, limites
+  A-->>B: resposta ou erro com código

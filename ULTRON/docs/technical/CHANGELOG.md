@@ -12,3 +12,4 @@ por compatibilidade). Aqui ficam só os marcos, para o TCC e o relatório técni
 | Phoenix e Aprimoramentos | 02–03/11 | `4f540b1`…`bf070f6` | holograma humanoide, Protocolo ULTRON, perfis de inteligência, WEB ORB; módulo de robótica removido |
 | **SAFRA 3.0** | 11–12/11 | `07fcda6`…(etapa 5) | auditoria acadêmica, requisitos, nova identidade, instrumentos de medição, TCC e relatório técnico |
 | Transformação em SAFRA — Fase 1 (auditoria) | 13/11 | ver histórico do Git | auditoria do estado atual frente às novas regras (sem 3D, sem rosto, sem TARDIS, NOCTARIO e JARVIS); **nenhuma mudança de código**; migração aguardando aprovação |
+| Transformação em SAFRA — Fase 2 (especificação) | 14/11 | ver histórico do Git | 27 decisões registradas, arquitetura de destino (dois processos, API local, 14 domínios), contrato v1, requisitos do novo escopo, especificação da interface e plano de migração M3–M8; **nenhuma mudança de código** |

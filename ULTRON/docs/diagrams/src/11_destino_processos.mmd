@@ -1,0 +1,26 @@
+flowchart TB
+  subgraph PC["Computador do usuário"]
+    direction TB
+    subgraph CAS["Processo 2 · Casca"]
+      UI1["Interface: Cotidiano · Central de Comando<br/>janela · bandeja · janela compacta"]
+    end
+    NAV["Navegador local<br/>o mesmo painel"]
+    subgraph NUC["Processo 1 · Núcleo"]
+      direction TB
+      API["API local · HTTP + WebSocket · só 127.0.0.1"]
+      COM["Comunicação<br/>contrato v1 · ponte de eventos · agente de enlace"]
+      BOOT["Composição · fachada do núcleo"]
+      DOM["Domínios<br/>inteligência · memória · projetos · voz<br/>habilidades · segurança · saúde · plataforma"]
+      KER["Kernel<br/>eventos · estado · ciclo de vida · workers"]
+      STO[("Armazenamento<br/>um banco SQLite")]
+      API --> COM --> BOOT --> DOM
+      DOM --> KER
+      DOM --> STO
+    end
+    UI1 <-->|"contrato v1 · sessão por bilhete"| API
+    NAV <-->|"contrato v1 · sessão por código"| API
+  end
+  GW["Retransmissor (etapa posterior)"]
+  CEL["Outro dispositivo"]
+  COM -->|"conexão de saída"| GW
+  CEL <--> GW
