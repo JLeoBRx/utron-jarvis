@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safra-assistant"
+dynamic = ["version"]
+description = "SAFRA Assistant — o assistente: roda no computador do usuário, com banco privado e API local"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "safra-foundation",        # biblioteca de base (backend/foundation)
+    "uvicorn>=0.30,<1",        # servidor ASGI local
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27,<1"]
+
+[project.scripts]
+safra-assistant = "safra.api.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "safra.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"safra.storage" = ["migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

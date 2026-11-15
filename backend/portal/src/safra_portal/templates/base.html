@@ -1,0 +1,75 @@
+{% from "_symbol.html" import symbol %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ seo.title }}</title>
+  {% if seo.description %}<meta name="description" content="{{ seo.description }}">{% endif %}
+  {% if seo.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  {% if seo.canonical and not seo.noindex %}<link rel="canonical" href="{{ seo.canonical }}">{% endif %}
+  <meta property="og:site_name" content="SAFRA">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:type" content="{{ seo.type }}">
+  <meta property="og:title" content="{{ seo.title }}">
+  {% if seo.description %}<meta property="og:description" content="{{ seo.description }}">{% endif %}
+  {% if seo.canonical %}<meta property="og:url" content="{{ seo.canonical }}">{% endif %}
+  {% if seo.image %}<meta property="og:image" content="{{ seo.image }}">{% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if seo.image else 'summary' }}">
+  <meta name="theme-color" content="#101114">
+  <link rel="icon" href="/static/img/symbol.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+  {% if preview %}
+  <div class="faixa faixa--previa" role="status">Pré-visualização do rascunho — este conteúdo não está publicado</div>
+  {% endif %}
+  <header class="topo">
+    <div class="topo__interior">
+      <a class="marca" href="/" aria-label="SAFRA — página inicial">{{ symbol("pequeno") }}<span class="marca__nome">SAFRA</span></a>
+      {% if nav %}
+      <nav class="navegacao" aria-label="Principal">
+        <ul>
+          {% for href, label in nav %}
+          <li><a href="{{ href }}" {% if current_path == href or current_path.startswith(href + "/") %}aria-current="page"{% endif %}>{{ label }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </header>
+  <main id="conteudo" tabindex="-1">
+    {% block main %}{% endblock %}
+  </main>
+  <footer class="rodape">
+    <div class="rodape__interior">
+      <div class="rodape__marca">
+        {{ symbol("pequeno") }}
+        <p class="rodape__nome">SAFRA</p>
+        {% if site.tagline %}<p class="rodape__lema">{{ site.tagline }}</p>{% endif %}
+      </div>
+      {% if nav %}
+      <nav aria-label="Seções">
+        <p class="rodape__titulo">Seções</p>
+        <ul>{% for href, label in nav %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>
+      </nav>
+      {% endif %}
+      {% if footer_nav or site.footer_links %}
+      <nav aria-label="Informações">
+        <p class="rodape__titulo">Informações</p>
+        <ul>
+          {% for href, label in footer_nav %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}
+          {% for link in site.footer_links %}<li><a href="{{ link.href }}" {% if link.href.startswith('http') %}rel="noopener noreferrer"{% endif %}>{{ link.label }}</a></li>{% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+    <div class="rodape__base">
+      {% if site.footer_text %}<p>{{ site.footer_text }}</p>{% endif %}
+      <p class="rodape__versao">SAFRA Portal {{ version }}</p>
+    </div>
+  </footer>
+</body>
+</html>

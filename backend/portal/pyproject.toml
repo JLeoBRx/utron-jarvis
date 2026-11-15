@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safra-portal"
+dynamic = ["version"]
+description = "SAFRA Portal — site público e painel administrativo (CMS), em servidor próprio e banco próprio"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "safra-foundation",        # biblioteca de base (backend/foundation)
+    "uvicorn>=0.30,<1",        # servidor ASGI
+    "jinja2>=3.1,<4",          # HTML do site público gerado no servidor, com escape automático (AD-06)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27,<1"]
+postgres = ["psycopg[binary]>=3.1,<4"]     # banco de produção (AD-04)
+
+[project.scripts]
+safra-portal = "safra_portal.api.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "safra_portal.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+safra_portal = ["templates/**/*.html", "templates/*.html", "templates/*.xml", "templates/*.txt", "static/**/*",
+                "infrastructure/migrations/*.py", "infrastructure/migrations/versions/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_blocks.html" import render_blocks %}
+{% block main %}
+<article class="pagina">
+  <header class="pagina__cabecalho">
+    <div class="pagina__interior">
+      <h1>{{ page.title }}</h1>
+      {% if page.summary %}<p class="pagina__resumo">{{ page.summary }}</p>{% endif %}
+    </div>
+  </header>
+  <div class="pagina__interior prosa">
+    {% if cover %}<figure class="figura figura--capa"><img src="{{ cover.url }}" alt="{{ cover.alt }}" {% if cover.width %}width="{{ cover.width }}" height="{{ cover.height }}"{% endif %}></figure>{% endif %}
+    {{ render_blocks(page.blocks, media) }}
+    {% block after_content %}{% endblock %}
+  </div>
+</article>
+{% endblock %}

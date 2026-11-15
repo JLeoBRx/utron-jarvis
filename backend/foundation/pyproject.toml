@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safra-foundation"
+dynamic = ["version"]
+description = "SAFRA — biblioteca de base comum aos dois serviços (sem domínio, sem dados)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1",       # API HTTP com esquema gerado do código
+    "pydantic>=2.7,<3",        # validação de configuração e de entradas
+    "sqlalchemy>=2.0.30,<3",   # acesso a dados portátil (SQLite e PostgreSQL)
+    "alembic>=1.13,<2",        # migrações versionadas, com retorno
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27,<1"]
+
+[tool.setuptools.dynamic]
+version = { attr = "safra_foundation.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

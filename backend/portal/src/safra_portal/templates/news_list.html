@@ -1,0 +1,22 @@
+{% extends "page.html" %}
+{% block after_content %}
+{% if news %}
+<ul class="noticias noticias--lista">
+  {% for item in news %}
+  <li class="noticia">
+    <p class="noticia__data"><time datetime="{{ item.published_at | iso_date }}">{{ item.published_at | long_date }}</time></p>
+    <h2><a href="/atualizacoes/{{ item.slug }}">{{ item.title }}</a></h2>
+    {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if has_previous or has_next %}
+<nav class="paginacao" aria-label="Páginas de atualizações">
+  {% if has_previous %}<a class="elo" href="/atualizacoes?pagina={{ page_number - 1 }}" rel="prev">Mais recentes</a>{% endif %}
+  {% if has_next %}<a class="elo" href="/atualizacoes?pagina={{ page_number + 1 }}" rel="next">Mais antigas</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p class="vazio">Ainda não há atualizações publicadas.</p>
+{% endif %}
+{% endblock %}

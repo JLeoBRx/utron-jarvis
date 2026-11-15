@@ -1,0 +1,44 @@
+{# Desenha os blocos de conteúdo. Todo texto passa pelo escape automático; `inline` escapa antes de converter. #}
+{% macro tag(value) %}{% if value %}<span class="selo selo--{{ value | replace(' ', '-') }}">{{ value }}</span>{% endif %}{% endmacro %}
+{% macro render_blocks(blocks, media) %}
+{% for block in blocks %}
+  {% if block.type == "heading" %}
+    {% if block.level == 3 %}<h3>{{ block.text }}</h3>{% else %}<h2>{{ block.text }}</h2>{% endif %}
+  {% elif block.type == "paragraph" %}
+    <p>{{ block.text | inline }}</p>
+  {% elif block.type == "list" %}
+    {% if block.ordered %}<ol class="lista">{% else %}<ul class="lista">{% endif %}
+      {% for item in block["items"] %}<li>{{ item | inline }}</li>{% endfor %}
+    {% if block.ordered %}</ol>{% else %}</ul>{% endif %}
+  {% elif block.type == "quote" %}
+    <blockquote class="citacao"><p>{{ block.text | inline }}</p>{% if block.cite %}<cite>{{ block.cite }}</cite>{% endif %}</blockquote>
+  {% elif block.type == "callout" %}
+    <aside class="aviso aviso--{{ block.tone }}">
+      {% if block.title %}<p class="aviso__titulo">{{ block.title }}</p>{% endif %}
+      <p>{{ block.text | inline }}</p>
+    </aside>
+  {% elif block.type == "image" and media.get(block.media_id) %}
+    {% set image = media[block.media_id] %}
+    <figure class="figura">
+      <img src="{{ image.url }}" alt="{{ image.alt }}" {% if image.width %}width="{{ image.width }}" height="{{ image.height }}"{% endif %} loading="lazy" decoding="async">
+      {% if block.caption %}<figcaption>{{ block.caption }}</figcaption>{% endif %}
+    </figure>
+  {% elif block.type == "cards" %}
+    <ul class="cartoes">
+      {% for item in block["items"] %}
+      <li class="cartao">{{ tag(item.tag) }}<h3 class="cartao__titulo">{{ item.title }}</h3><p>{{ item.text | inline }}</p></li>
+      {% endfor %}
+    </ul>
+  {% elif block.type == "faq" %}
+    <div class="perguntas">
+      {% for item in block["items"] %}
+      <details class="pergunta"><summary>{{ item.question }}</summary><p>{{ item.answer | inline }}</p></details>
+      {% endfor %}
+    </div>
+  {% elif block.type == "button" %}
+    <p><a class="botao botao--principal" href="{{ block.href }}">{{ block.label }}</a></p>
+  {% elif block.type == "divider" %}
+    <hr class="divisor">
+  {% endif %}
+{% endfor %}
+{% endmacro %}

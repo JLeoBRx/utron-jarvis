@@ -1,0 +1,13 @@
+{# Símbolo provisório do SAFRA (estudo "Sulcos"): linhas paralelas curvas em camadas. Abstrato, sem rosto. #}
+{% macro symbol(size="medio", label="") %}
+<svg class="simbolo simbolo--{{ size }}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true" focusable="false"{% endif %}>
+  <rect class="simbolo__fundo" x="5" y="7" width="54" height="54" rx="14"/>
+  <rect class="simbolo__placa" x="3" y="3" width="54" height="54" rx="14"/>
+  <g class="simbolo__sulcos" fill="none" stroke-linecap="round" stroke-width="3.4">
+    <path class="sulco sulco--1" d="M13 17 C 23 11, 37 23, 47 16"/>
+    <path class="sulco sulco--2" d="M13 25 C 23 19, 37 31, 47 24"/>
+    <path class="sulco sulco--3" d="M13 33 C 23 27, 37 39, 47 32"/>
+    <path class="sulco sulco--4" d="M13 41 C 23 35, 37 47, 47 40"/>
+  </g>
+</svg>
+{% endmacro %}

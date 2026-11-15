@@ -1,16 +1,22 @@
 name: SAFRA CI
 
-# Nova geração do SAFRA (backend/). O legado em ULTRON/ continua com o seu próprio fluxo.
+# Nova geração do SAFRA. O legado em ULTRON/ continua com o seu próprio fluxo.
 on:
   push:
     branches:
       - "claude/adoring-brahmagupta-vcejpt"
     paths:
       - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "tests/**"
       - ".github/workflows/safra-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "tests/**"
       - ".github/workflows/safra-ci.yml"
   workflow_dispatch:
 
@@ -30,15 +36,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python: ["3.11", "3.13"]
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - name: Checkout (só a nova plataforma)
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
             backend
+            apps
+            packages
+            tests
             .github
 
       - name: Python ${{ matrix.python }}
@@ -46,21 +52,73 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: backend/*/pyproject.toml
 
-      - name: Instalar
+      - name: Instalar os três pacotes
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e backend/foundation -e "backend/assistant[dev]" -e "backend/portal[dev]"
 
-      - name: Testes
+      - name: Testes da biblioteca de base
+        working-directory: backend/foundation
         run: python -m pytest
 
-      - name: Linha de comando (configuração, migração e saúde em pasta temporária)
+      - name: Testes do Assistant
+        working-directory: backend/assistant
+        run: python -m pytest
+
+      - name: Testes do Portal
+        working-directory: backend/portal
+        run: python -m pytest
+
+      - name: Testes de isolamento entre os serviços e regras do repositório
+        run: python -m pytest tests
+
+      - name: Linha de comando dos dois serviços (pastas temporárias)
         env:
-          SAFRA_DATA_DIR: ${{ runner.temp }}/safra-dados
+          SAFRA_DATA_DIR: ${{ runner.temp }}/safra-assistant
           SAFRA_ENVIRONMENT: test
+          SAFRA_PORTAL_DATA_DIR: ${{ runner.temp }}/safra-portal
+          SAFRA_PORTAL_ENVIRONMENT: test
         run: |
-          safra-core --version
-          safra-core --check
-          safra-core --check
+          safra-assistant --version
+          safra-assistant --check
+          safra-portal --version
+          safra-portal check
+          safra-portal seed
+
+  portal-postgres:
+    name: Portal · PostgreSQL 16
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: safra
+          POSTGRES_PASSWORD: apenas-para-o-ci
+          POSTGRES_DB: portal_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U safra -d portal_teste"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/*/pyproject.toml
+      - name: Instalar o Portal com o driver do PostgreSQL
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/foundation -e "backend/portal[dev,postgres]"
+      - name: Migrações e fluxo do CMS sobre PostgreSQL
+        working-directory: backend/portal
+        env:
+          SAFRA_PORTAL_TEST_POSTGRES_URL: postgresql+psycopg://safra:apenas-para-o-ci@localhost:5432/portal_teste
+        run: python -m pytest tests/test_postgres.py -rs

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_symbol.html" import symbol %}
+{% from "_blocks.html" import tag %}
+{% block main %}
+<section class="heroi" aria-labelledby="titulo-principal">
+  <div class="heroi__interior">
+    <div class="heroi__texto">
+      <p class="sobretitulo">{{ site.tagline or "Plataforma inteligente integrada" }}</p>
+      <h1 id="titulo-principal">{{ home.title }}</h1>
+      {% if home.subtitle %}<p class="heroi__subtitulo">{{ home.subtitle }}</p>{% endif %}
+      {% if home.buttons %}
+      <p class="heroi__acoes">
+        {% for button in home.buttons %}
+        <a class="botao {{ 'botao--principal' if loop.first else 'botao--secundario' }}" href="{{ button.href }}">{{ button.label }}</a>
+        {% endfor %}
+      </p>
+      {% endif %}
+    </div>
+    <div class="heroi__painel" aria-hidden="{{ 'false' if hero_image else 'true' }}">
+      {% if hero_image %}
+      <img class="heroi__imagem" src="{{ hero_image.url }}" alt="{{ hero_image.alt }}" {% if hero_image.width %}width="{{ hero_image.width }}" height="{{ hero_image.height }}"{% endif %}>
+      {% else %}
+      <div class="console">
+        <div class="console__camada console__camada--fundo"></div>
+        <div class="console__camada console__camada--meio"></div>
+        <div class="console__frente">
+          <div class="console__barra"><span></span><span></span><span></span></div>
+          <div class="console__simbolo">{{ symbol("grande") }}</div>
+          <p class="console__estado">em reconstrução</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% for section in home.sections if section.enabled %}
+<section class="secao secao--{{ section.key }}" aria-labelledby="secao-{{ section.key }}">
+  <div class="secao__interior">
+    <header class="secao__cabecalho">
+      <h2 id="secao-{{ section.key }}">{{ section.title }}</h2>
+      {% if section.text %}<p>{{ section.text }}</p>{% endif %}
+    </header>
+    {% if section.key == "news" %}
+      {% if news %}
+      <ul class="noticias">
+        {% for item in news %}
+        <li class="noticia">
+          <p class="noticia__data"><time datetime="{{ item.published_at | iso_date }}">{{ item.published_at | long_date }}</time></p>
+          <h3><a href="/atualizacoes/{{ item.slug }}">{{ item.title }}</a></h3>
+          {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="vazio">Ainda não há novidades publicadas.</p>
+      {% endif %}
+    {% elif section["items"] %}
+      <ul class="cartoes {{ 'cartoes--estado' if section.key == 'status' else '' }}">
+        {% for item in section["items"] %}
+        <li class="cartao">{{ tag(item.tag) }}<h3 class="cartao__titulo">{{ item.title }}</h3><p>{{ item.text }}</p></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if section.links %}
+    <p class="secao__links">
+      {% for link in section.links %}<a class="elo" href="{{ link.href }}">{{ link.label }}</a>{% endfor %}
+    </p>
+    {% endif %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
