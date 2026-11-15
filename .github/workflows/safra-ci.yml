@@ -157,6 +157,10 @@ jobs:
         run: npm run build
       - name: Sem script embutido no HTML compilado (exigência da CSP do Portal)
         run: "! grep -E '<script>|<script [^>]*>[^<]' dist/index.html"
+      - name: Avisos de licença das bibliotecas incluídas na compilação
+        run: |
+          grep -q "react .* — MIT" dist/licencas-de-terceiros.txt
+          grep -q "Licenças de terceiros" dist/assets/*.js
 
   portal-e2e:
     name: Portal · ponta a ponta no navegador

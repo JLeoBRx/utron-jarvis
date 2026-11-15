@@ -1,0 +1,30 @@
+pacote,versão,licença,direta_de,usada_por,tipo
+alembic,1.20.1,MIT,safra-foundation,Assistant e Portal (execução),execução
+annotated-doc,0.0.6,MIT,transitiva,Assistant e Portal (execução),execução
+annotated-types,0.8.0,MIT,transitiva,Assistant e Portal (execução),execução
+anyio,4.16.0,MIT,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)","desenvolvimento, execução"
+certifi,2026.10.23,Mozilla Public License 2.0 (MPL 2.0),transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+click,8.5.1,BSD-3-Clause,transitiva,"Assistant (execução, distribuído no instalador); Portal (execução no servidor, não distribuído)",execução
+fastapi,0.163.0,MIT,safra-foundation,Assistant e Portal (execução),execução
+h11,0.16.0,MIT License,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)","desenvolvimento, execução"
+httpcore,1.0.9,BSD-3-Clause,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+httpx,0.28.1,BSD License,"safra-assistant, safra-foundation, safra-portal","Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+idna,3.20,BSD-3-Clause,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)","desenvolvimento, execução"
+iniconfig,2.3.1,MIT,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+Jinja2,3.1.6,BSD License,safra-portal,"Portal (execução no servidor, não distribuído)",execução
+Mako,1.4.3,MIT,transitiva,Assistant e Portal (execução),execução
+MarkupSafe,3.0.4,BSD-3-Clause,transitiva,"Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",execução
+opentelemetry-api,1.45.2,Apache-2.0,transitiva,Assistant e Portal (execução),execução
+packaging,26.3,Apache-2.0 OR BSD-2-Clause,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+pluggy,1.7.0,MIT License,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+psycopg,3.3.9,LGPL-3.0-only,safra-portal,"Portal (execução no servidor, não distribuído)",execução (produção do Portal)
+psycopg-binary,3.3.9,LGPL-3.0-only,safra-portal,"Portal (execução no servidor, não distribuído)",execução (produção do Portal)
+pydantic,2.14.3,MIT,safra-foundation,Assistant e Portal (execução),execução
+pydantic_core,2.50.4,MIT,transitiva,Assistant e Portal (execução),execução
+Pygments,2.21.0,BSD-2-Clause,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+pytest,9.2.0,MIT,"safra-assistant, safra-foundation, safra-portal","Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)",desenvolvimento
+SQLAlchemy,2.1.8,MIT,transitiva,Assistant e Portal (execução),execução
+starlette,1.10.0,BSD-3-Clause,transitiva,Assistant e Portal (execução),execução
+typing-inspection,0.4.5,MIT,transitiva,Assistant e Portal (execução),execução
+typing_extensions,4.16.0,PSF-2.0,transitiva,"Assistant (execução, distribuído no instalador); Assistant e Portal (execução); Portal (execução no servidor, não distribuído)","desenvolvimento, execução, execução (produção do Portal)"
+uvicorn,0.54.0,BSD-3-Clause,"safra-assistant, safra-portal","Assistant (execução, distribuído no instalador); Portal (execução no servidor, não distribuído)",execução
