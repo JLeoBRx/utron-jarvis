@@ -42,7 +42,8 @@ def main() -> int:
     env = {**os.environ, "SAFRA_PORTAL_DATA_DIR": str(folder), "SAFRA_PORTAL_ENVIRONMENT": "test",
            "SAFRA_PORTAL_PORT": str(port), "SAFRA_PORTAL_LOG_TO_FILE": "0",
            "SAFRA_PORTAL_ADMIN_DIST": str(REPO / "apps" / "admin" / "dist")}
-    email, password = "e2e@exemplo.test", "e2e-" + secrets.token_urlsafe(18)
+    email = "e2e@exemplo.test"
+    password = "e2e-" + secrets.token_urlsafe(18)          # gerada na hora; nunca gravada
     cli = [sys.executable, "-m", "safra_portal.api.cli"]
     created = subprocess.run(cli + ["create-admin", "--email", email, "--name", "Administrador E2E", "--password-stdin"],
                              input=password + "\n", text=True, capture_output=True, env=env, timeout=120)
