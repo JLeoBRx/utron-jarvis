@@ -1,0 +1,193 @@
+{
+ "ambiente": "runner windows-latest do GitHub Actions, Python 3.13.17; sem sessão de usuário interativa visível; Assistant iniciado pela casca",
+ "data": "2026-11-15",
+ "commit": "58571cddc3dbafd1c925db9e90324401d2246b62",
+ "origem": "https://github.com/JLeoBRx/utron-jarvis/actions/runs/43775067299/job/132999452549",
+ "nota": "transcrito das linhas de resumo do log do job (o artefato 'cascas-windows' não pôde ser baixado desta sessão); os nomes dos processos não aparecem no log",
+ "executavel_tauri_bytes": 3521536,
+ "compilacao_tauri": "4 min 19 s, cargo build --release --locked",
+ "tauri": [
+  {
+   "shell": "tauri",
+   "report": {
+    "ready_ms": 3283,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "windows",
+    "backend": {
+     "ok": true,
+     "latency_ms": 1528,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 4.849,
+   "processes": 10,
+   "rss_total_mb": {
+    "median": 401.5,
+    "max": 402.8
+   },
+   "cpu_idle_percent": {
+    "mean": 0.0,
+    "max": 0.0
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  },
+  {
+   "shell": "tauri",
+   "report": {
+    "ready_ms": 520,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "windows",
+    "backend": {
+     "ok": true,
+     "latency_ms": 1508,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 6.549,
+   "processes": 10,
+   "rss_total_mb": {
+    "median": 385.7,
+    "max": 386.6
+   },
+   "cpu_idle_percent": {
+    "mean": 0.11,
+    "max": 1.6
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  },
+  {
+   "shell": "tauri",
+   "report": {
+    "ready_ms": 509,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "windows",
+    "backend": {
+     "ok": true,
+     "latency_ms": 1508,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 6.569,
+   "processes": 10,
+   "rss_total_mb": {
+    "median": 383.3,
+    "max": 384.2
+   },
+   "cpu_idle_percent": {
+    "mean": 0.0,
+    "max": 0.0
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  }
+ ],
+ "qtwebengine": [
+  {
+   "shell": "qtwebengine",
+   "report": {
+    "ready_ms": 3549,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "win32",
+    "backend": {
+     "ok": true,
+     "latency_ms": 75,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 3.734,
+   "processes": 4,
+   "rss_total_mb": {
+    "median": 314.8,
+    "max": 317.1
+   },
+   "cpu_idle_percent": {
+    "mean": 0.11,
+    "max": 1.6
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  },
+  {
+   "shell": "qtwebengine",
+   "report": {
+    "ready_ms": 4476,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "win32",
+    "backend": {
+     "ok": true,
+     "latency_ms": 107,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 4.717,
+   "processes": 4,
+   "rss_total_mb": {
+    "median": 313.4,
+    "max": 313.4
+   },
+   "cpu_idle_percent": {
+    "mean": 0.31,
+    "max": 3.1
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  },
+  {
+   "shell": "qtwebengine",
+   "report": {
+    "ready_ms": 531,
+    "tray": "ok",
+    "notification": "ok",
+    "platform": "win32",
+    "backend": {
+     "ok": true,
+     "latency_ms": 1129,
+     "health": {
+      "status": "ok",
+      "service": "assistant",
+      "version": "4.0.0.dev0"
+     }
+    }
+   },
+   "ready_seen_by_harness_s": 1.807,
+   "processes": 4,
+   "rss_total_mb": {
+    "median": 281.1,
+    "max": 281.1
+   },
+   "cpu_idle_percent": {
+    "mean": 0.21,
+    "max": 1.6
+   },
+   "left_running_after_terminate": 0,
+   "error": null
+  }
+ ]
+}

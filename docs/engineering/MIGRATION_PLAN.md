@@ -65,23 +65,34 @@ A importação pode ser repetida: apaga só o banco **novo** e recomeça. Voltar
 **Critérios:** suíte do legado executada e registrada ✔ · medições com ambiente declarado ✔ · nenhuma
 alteração em `ULTRON/` ✔ · decisões de alto impacto apresentadas com alternativas ✔.
 
-### Fase 2 — Arquitetura e fundação *(em andamento)*
+### Fase 2 — Arquitetura, workspace, Portal e Assistant *(entregue em 15/11/2026; ver relatório)*
+
+O escopo foi ampliado pelo autor em 15/11/2026: além da fundação, a Fase 2 passou a incluir a primeira versão do
+Portal (site público e CMS), antes prevista para as Fases 8 e 9, e a prova de conceito da casca do desktop.
+Relatório de execução: `docs/engineering/PHASE_2_REPORT.md`.
 
 | Entrega | Situação |
 |---|---|
-| Estrutura do repositório e da documentação | feita |
-| Fundação do backend: configuração, erros, logs, armazenamento com migrações e backup, primitivas de segurança, saúde, aplicação base da API | feita e testada |
-| Teste de arquitetura (camadas, ciclos, proibições, identidade) | feito |
-| CI do backend em Linux e Windows | feito — [execução 1](https://github.com/JLeoBRx/utron-jarvis/actions/runs/43644206084) aprovada no commit `f54f616`: Linux e Windows, Python 3.11 e 3.13 (testes e linha de comando) |
-| Espaço de trabalho das interfaces (React, TypeScript, testes) | pendente |
-| Requisitos atualizados (portal, CMS, gateway de IA) | pendente |
-| Modelo de dados dos dois serviços, com diagramas | pendente |
-| Matriz de permissões e modelo de ameaças do Portal | pendente |
-| Inventário de dependências e de licenças | pendente |
-| Composição local (contêineres) para desenvolvimento | pendente |
+| Workspace e estrutura dos dois serviços (`backend/foundation`, `backend/assistant`, `backend/portal`, `apps/admin`, `packages/design-tokens`, `desktop/`) | feita |
+| Isolamento entre os serviços, conferido por teste | feito (15 testes) |
+| Modelos de dados e migrações iniciais dos dois serviços | feitos e testados (Assistant: 11 tabelas; Portal: 16) |
+| Autenticação, sessões, permissões, auditoria do Portal | feitas e testadas |
+| Matriz de permissões, modelo de ameaças, política de autenticação conferida com a OWASP | feitos (`docs/security/`) |
+| Site público inicial (12 páginas, SEO, sitemap, 404) | feito e testado |
+| Painel administrativo com CMS persistente | feito e testado (unidade, componente e ponta a ponta no navegador) |
+| Prova de conceito da casca (Tauri × QtWebEngine) | feita; medida no contêiner e no Windows do CI; falta o Windows do autor |
+| Inventário de licenças | feito (`docs/engineering/LICENSE_INVENTORY.md`) |
+| CI em Linux e Windows | feito: backend (3.11 e 3.13), PostgreSQL 16, painel, ponta a ponta, prova de conceito no Windows |
+| Requisitos atualizados (portal, CMS, gateway de IA) | **pendente** → Fase 3 |
+| Composição local com contêineres | **pendente** → Fase 11 |
 
-**Critérios:** testes do backend verdes em Linux e Windows · teste de arquitetura sem exceções · interfaces
-compilam do arquivo de trava · AD-02 e AD-06 confirmadas pelo autor · matriz de permissões revisada.
+**Critérios de aceitação da Fase 2 (enunciado do autor) e onde cada um é conferido:** ver o relatório, §4.
+
+### Fases 8 e 9 depois da Fase 2
+
+O que resta do portal e do CMS: agendamento de publicação, galeria pública, gestão das seções de documentação
+pública, envio e conferência dos arquivos de instalação (depois da decisão de licença), segundo fator de
+autenticação, envio de e-mail para recuperação de acesso, revisão dos textos legais pelo autor.
 
 ### Fase 3 — Design system e interfaces
 

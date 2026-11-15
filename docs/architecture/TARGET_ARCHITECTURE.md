@@ -1,7 +1,7 @@
 # Arquitetura alvo do SAFRA
 
 Data: 14/11/2026. Descreve o destino da reconstrução. O que já existe em código está marcado na seção 9; o
-resto é plano. As decisões citadas (AD-nn) estão em `docs/decisions/ARCHITECTURE_DECISIONS.md`.
+resto é plano. Os nomes "Core" e "SAFRA Core" desta versão do texto correspondem ao **SAFRA Assistant**. As decisões citadas (AD-nn) estão em `docs/decisions/ARCHITECTURE_DECISIONS.md`.
 
 ## 1. Os quatro ambientes e os dois serviços
 
@@ -36,31 +36,28 @@ resto é plano. As decisões citadas (AD-nn) estão em `docs/decisions/ARCHITECT
 ## 2. Estrutura de pastas
 
 ```
-/                         raiz do repositório = a nova plataforma
+/                                 raiz do repositório = a nova plataforma
 ├── backend/
-│   ├── pyproject.toml
-│   ├── src/
-│   │   ├── safra/                  SAFRA Core (13 módulos, seção 3)
-│   │   └── safra_portal/           SAFRA Portal (seção 5)
-│   └── tests/
-├── frontend/
-│   ├── packages/
-│   │   ├── design-system/          tokens, componentes, símbolo
-│   │   └── api-client/             tipos gerados do OpenAPI, cliente HTTP e de eventos
-│   └── apps/
-│       ├── console/                interface operacional (desktop e navegador)
-│       └── admin/                  painel administrativo do portal
-├── desktop/                        casca do Windows (AD-07)
-├── infra/                          contêineres, composição local, proxy, scripts de publicação
-├── scripts/                        medição, importação do legado, utilitários
-├── docs/
-│   ├── architecture/  engineering/  security/  performance/  migration/
-│   ├── deployment/    user-guide/   academic/  decisions/
-└── ULTRON/                         LEGADO — preservado, não importado pela nova versão
+│   ├── foundation/               safra_foundation — biblioteca de base, sem domínio (AD-20)
+│   ├── assistant/                safra — SAFRA Assistant (13 módulos, seção 3)
+│   ├── portal/                   safra_portal — SAFRA Portal (seção 5)
+│   └── requirements.lock         versões com que as suítes passaram
+├── apps/
+│   └── admin/                    painel administrativo (React + TypeScript), servido pelo Portal em /admin/
+├── packages/
+│   └── design-tokens/            fonte única da identidade visual (gera o CSS do site e do painel)
+├── desktop/                      provas de conceito da casca (Tauri e QtWebEngine) e o instrumento de medição
+├── tests/
+│   ├── isolation/                os dois serviços não se conhecem
+│   └── workspace/                regras do repositório inteiro
+├── scripts/                      medição, teste de ponta a ponta, inventário de licenças
+├── docs/                         architecture, engineering, security, performance, decisions…
+└── ULTRON/                       LEGADO — preservado, não importado pela nova versão
 ```
 
-As páginas públicas do portal ficam em `backend/src/safra_portal/` se a AD-06 for confirmada como proposta, ou
-em `frontend/apps/portal/` se a escolha for React com renderização no servidor.
+Previsto para as próximas fases, e só quando houver conteúdo: `apps/console` (interface operacional),
+`apps/desktop` (casca escolhida), `packages/contracts` (tipos do contrato da API do Assistant), `deployment/`
+(publicação do Portal e empacotamento do Assistant).
 
 ## 3. SAFRA Core: módulos
 
@@ -168,11 +165,14 @@ contas, acesso a rascunhos) é entregue em `docs/security/` antes das rotas admi
 
 ## 9. O que já existe em código
 
-| Parte | Situação em 14/11/2026 |
+| Parte | Situação em 15/11/2026 |
 |---|---|
-| Estrutura de pastas e documentação | criada |
-| `backend/`: `core` (configuração, erros, logs), `storage` (motor, migrações, backup), `security` (senhas e *tokens*), `monitoring` (saúde), `api` (aplicação base e rota de saúde) | **implementada e testada** — ver `backend/README.md` |
-| Demais módulos do Core | só o pacote e a descrição da responsabilidade |
-| Portal, interfaces, casca, infraestrutura | planejados |
+| Biblioteca de base | implementada e testada (62 testes) |
+| SAFRA Assistant | configuração, armazenamento (modelo inicial de 11 tabelas), aplicação base, rota de saúde, linha de comando — implementados e testados (32 testes); os demais módulos são só pacotes com a responsabilidade |
+| SAFRA Portal | autenticação, permissões, CMS, mídia, site público, linha de comando — implementados e testados (159 testes + 2 sobre PostgreSQL no CI) |
+| Painel administrativo | implementado e testado (15 testes de unidade e componente; 15 etapas de ponta a ponta no navegador) |
+| Isolamento entre serviços e regras do repositório | 23 testes |
+| Casca do desktop | duas provas de conceito; decisão aberta |
+| Console operacional, gateway de IA, voz, memória, ferramentas, infraestrutura | planejados |
 
-Nada disso foi validado em ambiente real.
+Nada foi validado no Windows do autor nem publicado na internet.

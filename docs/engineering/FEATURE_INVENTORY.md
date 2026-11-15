@@ -190,18 +190,18 @@ separadamente: planejada → implementada → testada → validada em ambiente r
 
 ## 13. Novo: portal público e painel administrativo
 
-Nada disto existe no legado.
+Nada disto existe no legado. Situação em 15/11/2026 na coluna da direita (I implementado, T testado; nada validado em produção).
 
 | Funcionalidade | Fase |
 |---|:-:|
-| Portal público: início, sobre, funcionalidades, IA, arquitetura, segurança, novidades, galeria, documentação, downloads, perguntas frequentes, contato, privacidade, termos | 8 |
-| Página inicial configurável (título, seções, ordem, destaques, rodapé) | 8, 9 |
-| CMS: páginas com rascunho, publicação, despublicação, agendamento, *slug*, SEO, pré-visualização e histórico | 9 |
-| CMS: notícias, atualizações, artigos, funcionalidades, perguntas frequentes, galeria, documentação, *links*, contato | 9 |
-| Gerenciador de mídia com validação de tipo e tamanho, nomes seguros, texto alternativo, categorias | 9 |
-| Downloads: versões, plataforma, canal (estável, beta, experimental), notas, integridade do arquivo | 9 |
-| Usuários administrativos: entrada, saída, recuperação de acesso, papéis, sessões, histórico de ações, bloqueio por tentativas | 9 |
-| Separação entre conteúdo público e dados privados, conferida no servidor | 2, 8, 9 |
+| Portal público: início, sobre, funcionalidades, IA, segurança, atualizações, documentação, downloads, perguntas frequentes, contato, privacidade, termos | 8 → **I T** (Fase 2); galeria e página de arquitetura: pendentes |
+| Página inicial configurável (título, seções, ordem, destaques, rodapé) | **I T** (Fase 2) |
+| CMS: páginas com rascunho, publicação, despublicação, agendamento, *slug*, SEO, pré-visualização e histórico | **I T** (Fase 2), exceto agendamento |
+| CMS: notícias, atualizações, artigos, funcionalidades, perguntas frequentes, galeria, documentação, *links*, contato | notícias com categorias, perguntas frequentes (blocos), *links* e contato: **I T**; galeria e seções de documentação: pendentes |
+| Gerenciador de mídia com validação de tipo e tamanho, nomes seguros, texto alternativo, categorias | **I T** (Fase 2) |
+| Downloads: versões, plataforma, canal (estável, beta, experimental), notas, integridade do arquivo | cadastro **I T**; arquivos e publicação: bloqueados até a decisão de licença |
+| Usuários administrativos: entrada, saída, recuperação de acesso, papéis, sessões, histórico de ações, bloqueio por tentativas | **I T** (Fase 2) |
+| Separação entre conteúdo público e dados privados, conferida no servidor | **I T** (Fase 2) |
 | Infraestrutura: ambientes, contêineres, banco para uso concorrente, mídia, backups, CI/CD, retorno de versão | 11 |
 
 ## 14. Resumo

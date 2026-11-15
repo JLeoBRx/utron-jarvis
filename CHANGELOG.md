@@ -4,6 +4,45 @@ O registro do legado (até a versão 3.0.0) continua em `ULTRON/CHANGELOG_JARVIS
 
 ## 4.0.0.dev0 — em desenvolvimento
 
+### 15/11/2026 — Fase 2: arquitetura, workspace, Portal e Assistant
+
+Relatório completo: `docs/engineering/PHASE_2_REPORT.md`.
+
+**Arquitetura**
+- AD-02 e AD-06 confirmadas pelo autor: dois serviços independentes (SAFRA Assistant e SAFRA Portal) e site
+  público gerado no servidor. Decisões AD-20 a AD-24 registradas.
+- Backend dividido em três pacotes: `safra_foundation` (biblioteca sem domínio), `safra` (Assistant, antes
+  `safra-core`) e `safra_portal`. Cada banco grava o serviço dono e recusa o do outro.
+- 15 testes de isolamento entre os serviços, inclusive subindo cada um num processo que não consegue importar o
+  outro.
+
+**SAFRA Assistant**
+- Modelo de dados inicial (migração 0002, 11 tabelas), linha de comando `safra-assistant`.
+
+**SAFRA Portal**
+- Autenticação com scrypt (parâmetros conferidos na OWASP), sessões no servidor, anti-CSRF, bloqueio por
+  tentativas, limite por endereço, recuperação de acesso por código de uso único; nenhuma conta padrão.
+- Papéis Administrador, Editor e Publicador, conferidos no servidor em cada rota, com teste que percorre todas as
+  rotas com cada papel e sem sessão.
+- CMS: páginas e notícias em blocos tipados, rascunho, publicação, despublicação, versões imutáveis e restauração,
+  pré-visualização, exclusão lógica, categorias, mídia validada pelo conteúdo do arquivo, página inicial
+  configurável, cadastro de versões para download (publicação bloqueada até a decisão de licença), auditoria.
+- Site público com 12 páginas, SEO, Open Graph, mapa do site, `robots.txt`, página 404, sem JavaScript.
+- Testes também sobre PostgreSQL 16 no CI.
+
+**Painel administrativo** (`apps/admin`)
+- React + TypeScript compilado para arquivos estáticos servidos pelo Portal em `/admin/`; testes de unidade e de
+  componente; teste de ponta a ponta num navegador real (`scripts/e2e/portal_e2e.py`).
+
+**Workspace e documentação**
+- `packages/design-tokens` como fonte única das cores; modelo de dados, matriz de permissões, modelo de ameaças,
+  política de autenticação, inventário de licenças (Python, npm e Rust).
+- Prova de conceito da casca do desktop em Tauri e casca de comparação em QtWebEngine, medidas no contêiner e no
+  Windows do CI; decisão AD-07 continua aberta.
+
+**Legado**
+- Nenhum arquivo de `ULTRON/` foi alterado.
+
 ### 14/11/2026 — Fase 1 (auditoria do legado) e início da Fase 2 (fundação)
 
 **Documentação** (`docs/`)

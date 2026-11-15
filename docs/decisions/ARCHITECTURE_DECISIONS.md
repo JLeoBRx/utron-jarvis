@@ -13,12 +13,12 @@ escrito antes da missão de reconstrução integral. A última seção diz o que
 | # | Decisão | Situação |
 |---|---|---|
 | AD-01 | Reconstrução integral em base de código nova; legado preservado | definida |
-| AD-02 | Dois serviços com uma base de código: SAFRA Core (local) e SAFRA Portal (hospedado) | proposta |
+| AD-02 | Dois serviços independentes: SAFRA Assistant (local) e SAFRA Portal (hospedado) | **definida** (autor, 15/11) |
 | AD-03 | Backend em Python com FastAPI e Pydantic | definida |
 | AD-04 | Persistência por SQLAlchemy e Alembic; SQLite no Core, PostgreSQL no Portal | decidida |
-| AD-05 | Interfaces em React e TypeScript, num espaço de trabalho único | definida |
-| AD-06 | Renderização do portal público | proposta |
-| AD-07 | Casca do desktop: Tauri como primeira opção, decidida por prova de conceito | aberta |
+| AD-05 | Interfaces em React e TypeScript, em `apps/` | definida |
+| AD-06 | Site público em HTML gerado no servidor | **definida** (autor, 15/11) |
+| AD-07 | Casca do desktop: Tauri como primeira opção, decidida por prova de conceito | aberta — prova de conceito feita; falta o Windows do autor |
 | AD-08 | Treze módulos do Core e regra de dependência verificada por teste | decidida |
 | AD-09 | Gateway de IA híbrido, independente de provedor | definida |
 | AD-10 | Autenticação e autorização sempre no servidor | decidida |
@@ -31,6 +31,11 @@ escrito antes da missão de reconstrução integral. A última seção diz o que
 | AD-17 | Licenciamento | **aberta — bloqueia a publicação de downloads** |
 | AD-18 | Idioma: código em inglês; documentos e interface em português | decidida |
 | AD-19 | Versão: a nova geração começa em 4.0.0 | decidida |
+| AD-20 | Biblioteca de base compartilhada sem domínio (`safra_foundation`) | decidida |
+| AD-21 | Todo banco tem dono gravado; um serviço recusa o banco do outro | decidida |
+| AD-22 | Conteúdo do CMS em blocos tipados, nunca HTML | decidida |
+| AD-23 | Publicação de instaladores bloqueada no código até a decisão de licença | decidida |
+| AD-24 | Dependências: versões publicadas há pelo menos duas semanas, arquivos de trava | decidida |
 
 ---
 
@@ -258,3 +263,82 @@ em português do Brasil.
 | ADR-018 (painel local primeiro) | vale (AD-12) |
 | ADR-019 a ADR-023 (paleta, tipografia, banco, logs, testes) | valem, com AD-04 no lugar da parte de banco |
 | ADR-024 (licença), ADR-026 (tom do assistente) | continuam abertas (AD-17; tom: vale a proposta) |
+
+---
+
+## Atualizações de 15/11/2026 (Fase 2)
+
+### AD-02 — confirmada pelo autor
+
+Os dois serviços são **completamente independentes**: sem comunicação, sem rotas entre eles, sem banco, sessão,
+credencial ou configuração em comum; cada um funciona sem o outro. Implementação: três pacotes Python instaláveis
+separadamente em `backend/` — `safra_foundation` (AD-20), `safra` (Assistant) e `safra_portal` (Portal). A
+separação é conferida por `tests/isolation/` (15 testes), inclusive subindo cada serviço num processo em que o
+outro não pode ser importado.
+
+### AD-05 — estrutura das interfaces
+
+As aplicações ficam em `apps/` (`apps/admin` nesta fase; `apps/console` e a casca definitiva nas Fases 3 e 10) e
+os pacotes compartilhados em `packages/` (`packages/design-tokens` nesta fase). Pastas sem conteúdo não foram
+criadas. O npm precisa de `legacy-peer-deps` no painel (falha conhecida do npm 10 com os pares opcionais do
+Vitest); os pares necessários estão declarados.
+
+### AD-06 — confirmada pelo autor
+
+Site público em HTML gerado pelo próprio Portal (Jinja2, escape automático), **sem JavaScript e sem cookies para o
+visitante**, CSP `default-src 'none'`. O painel administrativo é React + TypeScript compilado para arquivos
+estáticos servidos pelo Portal em `/admin/`. Nenhum Node.js em produção.
+
+### AD-07 — prova de conceito
+
+`desktop/poc-tauri` (Tauri 2.12.5) e `desktop/poc-qt` (PySide6 6.8 + QtWebEngine) fazem a mesma coisa e são medidos
+pelo mesmo instrumento (`desktop/measure_shell.py`). Resultados e comparação em
+`docs/architecture/DESKTOP_SHELL_POC.md`. No Windows do CI as duas compilaram, abriram a interface em cerca de meio
+segundo depois da execução a frio, iniciaram e encerraram o Assistant sem deixar processos, e as chamadas de
+bandeja e notificação retornaram sem erro. Pela RSS somada da árvore, o Tauri ficou **acima** do Qt (~390 MB contra
+~300 MB), o que, pela regra acima, pesaria contra ele; mas essa medida superestima quem tem mais processos (10 no
+Tauri, 4 no Qt), e a regra precisa ser aplicada com a memória privada medida no computador do autor. Não foram
+cobertos pela prova de conceito: iniciar com o Windows, tecla de atalho global, clique na notificação, áudio no
+Assistant iniciado pela casca e o Assistant sobrevivendo à queda da casca. **A decisão continua aberta.**
+
+### AD-10 — parâmetros conferidos na fonte oficial
+
+A folha de armazenamento de senhas da OWASP (repositório oficial, lido em 15/11/2026) recomenda Argon2id e, na
+falta dele, scrypt com N=2^17, r=8, p=1. O Portal usa exatamente esses parâmetros do scrypt. Detalhes em
+`docs/security/PORTAL_AUTHENTICATION.md`.
+
+### AD-20 — biblioteca de base compartilhada
+
+**Contexto.** Os dois serviços precisam do mesmo formato de erro, dos mesmos logs, de migrações com backup e da
+mesma guarda de senhas. **Decisão.** `safra_foundation` reúne só isso: não tem domínio, rotas, tabelas nem estado,
+e não importa nenhum dos serviços (teste). Compartilhar código de biblioteca não cria comunicação entre os
+serviços. **Alternativa rejeitada:** copiar o código nos dois serviços — duplicaria as correções de segurança.
+
+### AD-21 — todo banco tem dono
+
+**Decisão.** A primeira migração de cada serviço grava o seu nome na tabela `safra_service`, e cada serviço usa a
+sua própria tabela de versão. Ao migrar, um banco de outro dono, ou com tabelas de origem desconhecida, é recusado.
+**Consequência.** Apontar por engano o Portal para o banco do Assistant (ou o contrário) falha na inicialização,
+sem tocar no banco.
+
+### AD-22 — conteúdo em blocos tipados
+
+**Contexto.** Aceitar HTML do painel exigiria um sanitizador e confiaria nele. **Decisão.** O painel envia blocos
+tipados (título, parágrafo, lista, citação, aviso, imagem, cartões, perguntas, botão, divisória), validados no
+servidor; dentro do texto vale só um subconjunto mínimo de marcação, convertido depois do escape; endereços
+restritos a `https:`, `mailto:`, `/…` e `#…`. **Consequência.** O editor é menos livre que um editor de HTML, e o
+risco de XSS pelo CMS cai a um ponto testável.
+
+### AD-23 — publicação de instaladores bloqueada no código
+
+**Decisão.** `RELEASE_PUBLICATION_ENABLED = False` em `cms/releases.py`, não em configuração: liberar exige uma
+alteração de código acompanhada de decisão registrada aqui, depois de AD-17 e do inventário de licenças do
+instalador real. O cadastro de versões funciona; a tentativa de publicar é recusada e auditada.
+
+### AD-24 — escolha e trava de dependências
+
+**Decisão.** Versões novas de pacotes npm e Rust só entram depois de duas semanas publicadas (reduz o risco de
+pacote comprometido recém-publicado), e ficam travadas (`package-lock.json`, `Cargo.lock`). As versões Python
+testadas ficam em `backend/requirements.lock`. Cada dependência direta nova é justificada no inventário de
+licenças.
+
