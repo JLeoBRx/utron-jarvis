@@ -80,7 +80,7 @@ Relatório de execução: `docs/engineering/PHASE_2_REPORT.md`.
 | Matriz de permissões, modelo de ameaças, política de autenticação conferida com a OWASP | feitos (`docs/security/`) |
 | Site público inicial (12 páginas, SEO, sitemap, 404) | feito e testado |
 | Painel administrativo com CMS persistente | feito e testado (unidade, componente e ponta a ponta no navegador) |
-| Prova de conceito da casca (Tauri × QtWebEngine) | feita; medida no contêiner e no Windows do CI; falta o Windows do autor |
+| Prova de conceito da casca (Tauri × QtWebEngine) | feita; medida no contêiner e no Windows do CI; áudio e microfone não testados; falta o Windows do autor |
 | Inventário de licenças | feito (`docs/engineering/LICENSE_INVENTORY.md`) |
 | CI em Linux e Windows | feito: backend (3.11 e 3.13), PostgreSQL 16, painel, ponta a ponta, prova de conceito no Windows |
 | Requisitos atualizados (portal, CMS, gateway de IA) | **pendente** → Fase 3 |
