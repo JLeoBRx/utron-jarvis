@@ -50,4 +50,6 @@ Thumbs.db
 # Nova geração: interfaces e casca
 node_modules/
 frontend/**/dist/
+apps/**/dist/
+apps/**/e2e-capturas/
 desktop/**/target/
