@@ -19,7 +19,10 @@ Dois pacotes Python numa só base de código (decisão AD-02):
 | regras de arquitetura | camadas, ciclos, construções proibidas, independência do legado, identidade | `test_architecture.py` |
 
 Os outros oito módulos do Core existem só como pacote com a descrição da responsabilidade.
-**Nada foi validado em Windows real.**
+A suíte passa no CI em Linux e em Windows Server (Python 3.11 e 3.13). **Nada foi validado no Windows do autor.**
+
+Pendência conhecida: o cliente de teste avisa que a biblioteca `httpx` será substituída; a troca fica para
+quando a dependência nova puder ser conferida.
 
 ## Como usar
 

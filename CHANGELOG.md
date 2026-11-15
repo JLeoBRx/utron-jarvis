@@ -19,7 +19,8 @@ O registro do legado (até a versão 3.0.0) continua em `ULTRON/CHANGELOG_JARVIS
   `Host`, cabeçalhos de segurança); rota de saúde; linha de comando `safra-core`.
 - Regras de arquitetura conferidas por teste: camadas, ciclos, construções proibidas, independência do legado,
   ausência de nomes de terceiros.
-- CI próprio (`.github/workflows/safra-ci.yml`): Linux e Windows, Python 3.11 e 3.13.
+- CI próprio (`.github/workflows/safra-ci.yml`): Linux e Windows, Python 3.11 e 3.13. Primeira execução
+  aprovada nos quatro ambientes, no commit `f54f616`.
 
 **Legado**
 - Nenhum arquivo de `ULTRON/` foi alterado.

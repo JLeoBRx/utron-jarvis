@@ -72,7 +72,7 @@ alteração em `ULTRON/` ✔ · decisões de alto impacto apresentadas com alter
 | Estrutura do repositório e da documentação | feita |
 | Fundação do backend: configuração, erros, logs, armazenamento com migrações e backup, primitivas de segurança, saúde, aplicação base da API | feita e testada |
 | Teste de arquitetura (camadas, ciclos, proibições, identidade) | feito |
-| CI do backend em Linux e Windows | feito; resultado no relatório da fase |
+| CI do backend em Linux e Windows | feito — [execução 1](https://github.com/JLeoBRx/utron-jarvis/actions/runs/43644206084) aprovada no commit `f54f616`: Linux e Windows, Python 3.11 e 3.13 (testes e linha de comando) |
 | Espaço de trabalho das interfaces (React, TypeScript, testes) | pendente |
 | Requisitos atualizados (portal, CMS, gateway de IA) | pendente |
 | Modelo de dados dos dois serviços, com diagramas | pendente |
