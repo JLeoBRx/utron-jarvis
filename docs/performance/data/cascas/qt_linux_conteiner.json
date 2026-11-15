@@ -1,0 +1,141 @@
+{
+  "runs": [
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 14667,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": true,
+          "latency_ms": 17,
+          "health": {
+            "status": "ok",
+            "service": "assistant",
+            "version": "4.0.0.dev0"
+          }
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 14.739,
+      "idle_seconds": 15.0,
+      "processes": 5,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python",
+        "safra-assistant"
+      ],
+      "rss_total_mb": {
+        "median": 543.9,
+        "max": 544.9
+      },
+      "cpu_idle_percent": {
+        "mean": 0.13,
+        "max": 2.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 456,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": true,
+          "latency_ms": 4,
+          "health": {
+            "status": "ok",
+            "service": "assistant",
+            "version": "4.0.0.dev0"
+          }
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 0.814,
+      "idle_seconds": 15.0,
+      "processes": 5,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python",
+        "safra-assistant"
+      ],
+      "rss_total_mb": {
+        "median": 551.2,
+        "max": 551.3
+      },
+      "cpu_idle_percent": {
+        "mean": 0.07,
+        "max": 1.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 433,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": true,
+          "latency_ms": 4,
+          "health": {
+            "status": "ok",
+            "service": "assistant",
+            "version": "4.0.0.dev0"
+          }
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 0.756,
+      "idle_seconds": 15.0,
+      "processes": 5,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python",
+        "safra-assistant"
+      ],
+      "rss_total_mb": {
+        "median": 549.0,
+        "max": 549.9
+      },
+      "cpu_idle_percent": {
+        "mean": 0.0,
+        "max": 0.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    }
+  ],
+  "ambiente": "contêiner Linux 6.18, 4 CPUs, Xvfb, renderização por software; sem GPU, sem área de notificação real",
+  "data": "2026-11-15"
+}

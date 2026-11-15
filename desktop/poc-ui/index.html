@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SAFRA — prova de conceito da casca</title>
+  <link rel="stylesheet" href="poc.css">
+</head>
+<body>
+  <main>
+    <svg class="simbolo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="5" y="7" width="54" height="54" rx="14" class="fundo"/>
+      <rect x="3" y="3" width="54" height="54" rx="14" class="placa"/>
+      <g fill="none" stroke-linecap="round" stroke-width="3.4">
+        <path d="M13 17 C 23 11, 37 23, 47 16"/><path d="M13 25 C 23 19, 37 31, 47 24"/>
+        <path d="M13 33 C 23 27, 37 39, 47 32"/><path d="M13 41 C 23 35, 37 47, 47 40"/>
+      </g>
+    </svg>
+    <h1>Prova de conceito da casca</h1>
+    <p id="casca">Casca: verificando…</p>
+    <p id="assistant" role="status">Assistant: verificando…</p>
+    <p><button id="notificar" type="button">Enviar notificação de teste</button></p>
+    <p class="nota">Esta janela não é o aplicativo SAFRA: serve só para medir e comparar as cascas.</p>
+  </main>
+  <script src="poc.js"></script>
+</body>
+</html>
