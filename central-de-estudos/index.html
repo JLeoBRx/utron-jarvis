@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Central de Estudos — organização escolar e preparação para provas." />
+    <meta name="theme-color" content="#0c0d10" />
+    <title>Central de Estudos</title>
+    <script>
+      // Aplica o tema antes do carregamento do app (evita "piscar" claro/escuro).
+      (function () {
+        try {
+          var pref = localStorage.getItem('ce:theme') || 'dark';
+          var light = pref === 'light' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+          if (light) document.documentElement.classList.remove('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

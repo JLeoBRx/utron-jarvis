@@ -1,0 +1,212 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Tema escuro via classe `.dark` no <html> (padrão da aplicação). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   CENTRAL DE ESTUDOS — Identidade visual
+   Tokens semânticos: a interface usa somente estes nomes; os valores mudam
+   conforme o tema (claro/escuro).
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --ce-bg: #f7f7f9;
+  --ce-surface: #ffffff;
+  --ce-surface-2: #f2f2f5;
+  --ce-surface-3: #e9e9ee;
+  --ce-elevated: #ffffff;
+  --ce-sidebar: #fbfbfc;
+  --ce-border: rgb(16 18 27 / 0.08);
+  --ce-border-strong: rgb(16 18 27 / 0.15);
+  --ce-fg: #14151a;
+  --ce-fg-muted: #565a66;
+  --ce-fg-subtle: #8a8e99;
+  --ce-accent: #5a54e6;
+  --ce-accent-hover: #4b45d6;
+  --ce-accent-fg: #ffffff;
+  --ce-accent-soft: rgb(90 84 230 / 0.09);
+  --ce-accent-text: #4c46d4;
+  --ce-success: #15803d;
+  --ce-success-soft: rgb(21 128 61 / 0.09);
+  --ce-warning: #b45309;
+  --ce-warning-soft: rgb(180 83 9 / 0.09);
+  --ce-danger: #d92d2d;
+  --ce-danger-soft: rgb(217 45 45 / 0.08);
+  --ce-info: #2563eb;
+  --ce-info-soft: rgb(37 99 235 / 0.08);
+  --ce-shadow: 0 1px 2px rgb(16 18 27 / 0.04), 0 4px 16px rgb(16 18 27 / 0.04);
+  --ce-shadow-lg: 0 8px 32px rgb(16 18 27 / 0.12), 0 2px 6px rgb(16 18 27 / 0.06);
+  --ce-overlay: rgb(16 18 27 / 0.4);
+  --ce-ring: rgb(90 84 230 / 0.45);
+}
+
+.dark {
+  color-scheme: dark;
+  --ce-bg: #0c0d10;
+  --ce-surface: #121317;
+  --ce-surface-2: #17191e;
+  --ce-surface-3: #1e2026;
+  --ce-elevated: #17181d;
+  --ce-sidebar: #0f1013;
+  --ce-border: rgb(255 255 255 / 0.065);
+  --ce-border-strong: rgb(255 255 255 / 0.12);
+  --ce-fg: #ececf1;
+  --ce-fg-muted: #a1a4ae;
+  --ce-fg-subtle: #6c707b;
+  --ce-accent: #7a75f4;
+  --ce-accent-hover: #8a86f6;
+  --ce-accent-fg: #ffffff;
+  --ce-accent-soft: rgb(122 117 244 / 0.14);
+  --ce-accent-text: #a5a2fa;
+  --ce-success: #4cc38a;
+  --ce-success-soft: rgb(76 195 138 / 0.12);
+  --ce-warning: #e8b04b;
+  --ce-warning-soft: rgb(232 176 75 / 0.12);
+  --ce-danger: #f2706f;
+  --ce-danger-soft: rgb(242 112 111 / 0.12);
+  --ce-info: #63a8f8;
+  --ce-info-soft: rgb(99 168 248 / 0.12);
+  --ce-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --ce-shadow-lg: 0 12px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --ce-overlay: rgb(0 0 0 / 0.6);
+  --ce-ring: rgb(122 117 244 / 0.55);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  --color-bg: var(--ce-bg);
+  --color-surface: var(--ce-surface);
+  --color-surface-2: var(--ce-surface-2);
+  --color-surface-3: var(--ce-surface-3);
+  --color-elevated: var(--ce-elevated);
+  --color-sidebar: var(--ce-sidebar);
+  --color-border: var(--ce-border);
+  --color-border-strong: var(--ce-border-strong);
+  --color-fg: var(--ce-fg);
+  --color-fg-muted: var(--ce-fg-muted);
+  --color-fg-subtle: var(--ce-fg-subtle);
+  --color-accent: var(--ce-accent);
+  --color-accent-hover: var(--ce-accent-hover);
+  --color-accent-fg: var(--ce-accent-fg);
+  --color-accent-soft: var(--ce-accent-soft);
+  --color-accent-text: var(--ce-accent-text);
+  --color-success: var(--ce-success);
+  --color-success-soft: var(--ce-success-soft);
+  --color-warning: var(--ce-warning);
+  --color-warning-soft: var(--ce-warning-soft);
+  --color-danger: var(--ce-danger);
+  --color-danger-soft: var(--ce-danger-soft);
+  --color-info: var(--ce-info);
+  --color-info-soft: var(--ce-info-soft);
+  --color-overlay: var(--ce-overlay);
+  --color-ring: var(--ce-ring);
+
+  --shadow-card: var(--ce-shadow);
+  --shadow-pop: var(--ce-shadow-lg);
+}
+
+@theme {
+  --animate-fade-in: fade-in 180ms ease-out both;
+  --animate-rise: rise 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-scale-in: scale-in 160ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-slide-in-left: slide-in-left 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; scale: 0.97; }
+    to { opacity: 1; scale: 1; }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-bg text-fg font-sans text-sm;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--ce-accent-soft);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ce-ring);
+    outline-offset: 2px;
+  }
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ce-border-strong) transparent;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Cor da disciplina (definida por `subjectColorStyle()` via --sc-l / --sc-d)
+   -------------------------------------------------------------------------- */
+@layer components {
+  .sc {
+    --sc: var(--sc-l, #64748b);
+  }
+  .dark .sc,
+  .dark.sc {
+    --sc: var(--sc-d, #94a3b8);
+  }
+  .sc-text {
+    color: var(--sc);
+  }
+  .sc-bg {
+    background-color: var(--sc);
+  }
+  .sc-soft {
+    background-color: color-mix(in oklab, var(--sc) 13%, transparent);
+  }
+  .sc-border {
+    border-color: color-mix(in oklab, var(--sc) 35%, transparent);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
