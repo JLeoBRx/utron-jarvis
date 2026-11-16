@@ -1,0 +1,2 @@
+three.js r170 (https://threejs.org), licença MIT — ver LICENSE.
+Só os arquivos usados pela cena 3D do JARVIS; nada é carregado da internet em tempo de execução.

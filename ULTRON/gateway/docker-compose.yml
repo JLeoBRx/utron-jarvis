@@ -1,0 +1,43 @@
+# JARVIS WEB ORB — gateway + proxy HTTPS (Caddy, certificado automático do Let's Encrypt).
+# Uso (no servidor, a partir da pasta ULTRON):  cp gateway/.env.example gateway/.env  (preencha)
+#                                               docker compose -f gateway/docker-compose.yml --env-file gateway/.env up -d --build
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      JARVIS_PUBLIC_URL: ${JARVIS_PUBLIC_URL}
+      JARVIS_ENROLL_SECRET_HASH: ${JARVIS_ENROLL_SECRET_HASH}
+      JARVIS_DEVICE_DAYS: ${JARVIS_DEVICE_DAYS:-30}
+      JARVIS_PAIR_TTL: ${JARVIS_PAIR_TTL:-300}
+    volumes:
+      - gateway-data:/data
+    expose:
+      - "8080"                     # só para o proxy: a porta do Python não fica exposta à internet
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  proxy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      JARVIS_DOMAIN: ${JARVIS_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  gateway-data:
+  caddy-data:
+  caddy-config:

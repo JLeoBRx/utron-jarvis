@@ -1,0 +1,120 @@
+{
+  "runs": [
+    {
+      "shell": "tauri",
+      "command": [
+        "<tauri-target>/release/safra-poc-tauri"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "backend": {
+          "error": "sem conexão com o Assistant: Connection refused (os error 111)",
+          "ok": false
+        },
+        "notification": "ok",
+        "platform": "linux",
+        "ready_ms": 908,
+        "shell": "tauri",
+        "tray": "ok"
+      },
+      "ready_seen_by_harness_s": 1.006,
+      "idle_seconds": 15.0,
+      "processes": 3,
+      "process_names": [
+        "WebKitNetworkProcess",
+        "WebKitWebProcess",
+        "safra-poc-tauri"
+      ],
+      "rss_total_mb": {
+        "median": 468.1,
+        "max": 470.6
+      },
+      "cpu_idle_percent": {
+        "mean": 0.0,
+        "max": 0.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "tauri",
+      "command": [
+        "<tauri-target>/release/safra-poc-tauri"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "backend": {
+          "error": "sem conexão com o Assistant: Connection refused (os error 111)",
+          "ok": false
+        },
+        "notification": "ok",
+        "platform": "linux",
+        "ready_ms": 714,
+        "shell": "tauri",
+        "tray": "ok"
+      },
+      "ready_seen_by_harness_s": 0.753,
+      "idle_seconds": 15.0,
+      "processes": 3,
+      "process_names": [
+        "WebKitNetworkProcess",
+        "WebKitWebProcess",
+        "safra-poc-tauri"
+      ],
+      "rss_total_mb": {
+        "median": 466.9,
+        "max": 469.2
+      },
+      "cpu_idle_percent": {
+        "mean": 0.07,
+        "max": 1.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "tauri",
+      "command": [
+        "<tauri-target>/release/safra-poc-tauri"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "backend": {
+          "error": "sem conexão com o Assistant: Connection refused (os error 111)",
+          "ok": false
+        },
+        "notification": "ok",
+        "platform": "linux",
+        "ready_ms": 697,
+        "shell": "tauri",
+        "tray": "ok"
+      },
+      "ready_seen_by_harness_s": 0.753,
+      "idle_seconds": 15.0,
+      "processes": 3,
+      "process_names": [
+        "WebKitNetworkProcess",
+        "WebKitWebProcess",
+        "safra-poc-tauri"
+      ],
+      "rss_total_mb": {
+        "median": 458.4,
+        "max": 460.6
+      },
+      "cpu_idle_percent": {
+        "mean": 0.0,
+        "max": 0.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    }
+  ],
+  "ambiente": "contêiner Linux 6.18, 4 CPUs, Xvfb, renderização por software; sem GPU, sem área de notificação real",
+  "data": "2026-11-15"
+}

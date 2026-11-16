@@ -1,2 +1,0 @@
-# Integração OpenAI via urllib: não requer SDK.
-# Nenhum pacote adicional é obrigatório para a API.

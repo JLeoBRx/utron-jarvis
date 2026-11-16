@@ -1,0 +1,236 @@
+{
+  "protocolo": "PV-04",
+  "real": [
+    "interface Qt",
+    "QtWebEngine + WebGL desta máquina"
+  ],
+  "simulado": [],
+  "observacao": "WebGL por software quando não há GPU: não avalia a meta RNF04",
+  "ambiente": {
+    "sistema": "Linux 6.18.44-fc-v378",
+    "maquina": "x86_64",
+    "processador": "x86_64",
+    "cpus_logicas": 4,
+    "memoria_gb": 15.7,
+    "python": "3.13.18",
+    "pacotes": {
+      "PySide6-Essentials": "6.8.3",
+      "vosk": "0.3.45",
+      "piper-tts": "1.8.0",
+      "numpy": "2.5.4",
+      "psutil": "7.2.2"
+    },
+    "commit": "35a7554+alterações",
+    "data_utc": "2026-11-11T03:26:55Z",
+    "display": ":99",
+    "qpa": ""
+  },
+  "rapido": false,
+  "metricas": {
+    "montagem_interface_s": {
+      "n": 10,
+      "media": 1.4796,
+      "desvio": 0.068,
+      "mediana": 1.458,
+      "p95": 1.636,
+      "min": 1.412,
+      "max": 1.636,
+      "ic95": [
+        1.4375,
+        1.5217
+      ]
+    },
+    "montagem_falhas": 0,
+    "cena_pronta_s": {
+      "n": 10,
+      "media": 0.73,
+      "desvio": 0.0483,
+      "mediana": 0.7,
+      "p95": 0.8,
+      "min": 0.7,
+      "max": 0.8,
+      "ic95": [
+        0.7001,
+        0.7599
+      ]
+    },
+    "cena_abriu": {
+      "acertos": 10,
+      "total": 10,
+      "taxa": 1.0,
+      "ic95_wilson": [
+        0.7225,
+        1.0
+      ]
+    },
+    "cena_erros_js": 0,
+    "renderizadores": [
+      "llvmpipe (LLVM 20.1.2, 256 bits)"
+    ],
+    "fps_equilibrado": [
+      {
+        "perfil": "balanced",
+        "q/s mediana": 5.3,
+        "alvo": 45,
+        "redução": 1,
+        "desenhos": 108,
+        "triângulos": 65017,
+        "python ms/passo": 0.341
+      }
+    ]
+  },
+  "montagem": [
+    {
+      "s": 1.636,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.5 s"
+      ]
+    },
+    {
+      "s": 1.448,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.504,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.428,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.456,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.548,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.4 s"
+      ]
+    },
+    {
+      "s": 1.46,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.476,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.428,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.3 s"
+      ]
+    },
+    {
+      "s": 1.412,
+      "codigo": 0,
+      "saida": [
+        "INTERFACE OK: Qt 6.8.3, plataforma xcb, bandeja do sistema indisponível, rosto cena 3D — WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), cena 3D pronta, WebGL 2 (llvmpipe (LLVM 20.1.2, 256 bits)), montada em 1.2 s"
+      ]
+    }
+  ],
+  "cena": [
+    {
+      "processo_s": 6.216,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.179,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.329,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.14,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.372,
+      "pronta_s": 0.8,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.244,
+      "pronta_s": 0.8,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.212,
+      "pronta_s": 0.8,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.256,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.224,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    },
+    {
+      "processo_s": 6.22,
+      "pronta_s": 0.7,
+      "pronta": true,
+      "renderizador": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "erros_js": 0,
+      "falha": ""
+    }
+  ]
+}

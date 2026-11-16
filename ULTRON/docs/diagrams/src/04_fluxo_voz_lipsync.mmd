@@ -1,0 +1,14 @@
+flowchart TB
+  A["Microfone<br/>16 kHz"] --> B["Vosk<br/>reconhecimento offline"]
+  B --> C{"Palavra de ativação<br/>no início da frase?"}
+  C -- "não" --> X["descarta<br/>(ou janela de continuação)"]
+  C -- "sim" --> D["submit(texto, origem=voz)"]
+  D --> E["Resposta do núcleo"]
+  E --> F["Prosódia<br/>normaliza · divide em frases · pausas"]
+  F --> G["Piper (VITS)<br/>síntese por frase"]
+  G --> H["DSP do perfil de voz<br/>altura · graves · sala"]
+  H --> I["Áudio real"]
+  I --> J["Alto-falante"]
+  I --> K["Trilha labial<br/>fonemas → visemas × energia do áudio"]
+  K --> L["Holograma 3D<br/>boca e mandíbula"]
+  J -. "escuta suspensa enquanto fala<br/>(sem autoescuta)" .-> A

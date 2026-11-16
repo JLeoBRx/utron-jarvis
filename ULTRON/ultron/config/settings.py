@@ -1,0 +1,536 @@
+"""Configuração do SAFRA.
+
+Ordem de carga (a última vence):
+
+1. valores padrão desta classe;
+2. perfil escolhido (``profiles.py``);
+3. ``settings.json`` na pasta de dados do usuário (migrado das identidades anteriores, se preciso);
+4. variáveis de ambiente ``SAFRA_<CAMPO>`` ou, por compatibilidade, ``JARVIS_<CAMPO>`` e ``ULTRON_<CAMPO>``
+   (ex.: ``JARVIS_MODEL=qwen2.5:7b``).
+
+Todo valor passa por validação: campos desconhecidos são ignorados e números fora da faixa
+são limitados. A configuração nunca guarda credenciais.
+
+Migrações de identidade (só os campos que eram IDENTIDADE mudam; preferências pessoais — microfone,
+volume, modelos, horários… — nunca são tocadas):
+
+* **versão 2 (ULTRON → JARVIS):** palavra de ativação "ultron" → "jarvis" (variantes do ULTRON trocadas;
+  formas calibradas pelo usuário que não são do ULTRON são mantidas), tema dourado → azul, perfil
+  "performance" → "economy". Cópia do original em ``settings.ultron-backup.json``.
+* **versão 3 (JARVIS → SAFRA):** "safra" passa a ser a primeira palavra de ativação e "jarvis" continua
+  aceita (nada do que o usuário calibrou se perde); tema azul → vermelho SAFRA. Cópia do original em
+  ``settings.jarvis-backup.json``.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import threading
+import time
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path
+from typing import Any
+
+from . import paths
+
+log = logging.getLogger("ultron.config")
+_QUIET_RE = re.compile(r"([01]?\d|2[0-3]):[0-5]\d-([01]?\d|2[0-3]):[0-5]\d")
+
+AUTONOMY_LEVELS = ("restricted", "balanced", "autonomous")
+PERFORMANCE_PROFILES = ("economy", "balanced", "high", "cinematic")
+LEGACY_PROFILES = {"performance": "economy"}           # nome antigo (ULTRON) → nome atual
+PRIVACY_MODES = ("local", "standard")
+THEMES = ("safra-red",)
+STT_ENGINES = ("auto", "vosk-large", "vosk-small")
+MIC_BACKENDS = ("auto", "pyaudio", "sounddevice")
+OBSERVER_MODES = ("off", "assistant", "observer")
+AI_PROVIDERS = ("ollama", "openai")
+INTELLIGENCE_PROFILES = ("", "local", "hibrido", "avancado", "economico", "privacidade")   # "" = como antes
+START_PAGES = ("jarvis", "tardis", "atividades", "configuracoes", "diagnosticos")
+PERMISSION_CATEGORIES = ("consultar", "configurar", "executar_programas", "arquivos", "apagar_dados")
+PERMISSION_MODES = ("permitir", "confirmar", "bloquear")
+SETTINGS_VERSION = 3                                   # 2 = identidade JARVIS · 3 = identidade SAFRA
+
+WAKE_WORDS = ("safra", "jarvis")                       # "safra" primeiro; "jarvis" aceito por compatibilidade
+# Formas fortes padrão: as palavras de ativação e sequências incomuns que o reconhecedor produz para "Jarvis".
+DEFAULT_WAKE_VARIANTS = ("safra", "jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
+# Nomes próprios que soam como "Jarvis": fortes só no início da frase.
+DEFAULT_WAKE_NAMES = ("jarbas", "javi")
+# Confusões com palavras comuns (medidas para "Jarvis"): só ativam seguidas de um comando reconhecido.
+DEFAULT_WEAK_WAKE_VARIANTS = ("aviso", "aves", "a vez", "ja vi", "e vi", "davis", "travis", "avis")
+LEGACY_WAKE_VARIANTS = ("ultron", "ultrom", "ultrão", "ultrao", "últron", "ultrón", "altron", "ultro",
+                        "ul tron", "u tron", "ultrone", "outron")
+LEGACY_WEAK_WAKE_VARIANTS = ("o tom", "o trom", "o tron", "u tom", "u trom", "ultra", "outro", "autor")
+
+
+@dataclass
+class Settings:
+    # ------------------------------------------------------------ modelos
+    model: str = "qwen2.5:3b"
+    vision_model: str = "qwen2.5vl:3b"
+    model_robust: str = ""                    # modelo local para tarefas pesadas ("" = o maior instalado)
+    ollama_url: str = "http://127.0.0.1:11434"
+    ollama_autostart: bool = True
+    llm_timeout: float = 120.0
+    llm_temperature: float = 0.4
+    max_agent_steps: int = 8
+    max_tool_calls: int = 10
+    # ------------------------------------------------------------ voz
+    voice: str = "pt_BR-faber-medium"
+    volume: float = 0.9
+    speech_speed: float = 0.9
+    voice_enabled: bool = True
+    voice_profile: str = "jarvis"          # jarvis (masculina, grave, natural) | neutral
+    stt_engine: str = "auto"
+    wake_words: tuple = WAKE_WORDS
+    wake_variants: tuple = DEFAULT_WAKE_VARIANTS
+    wake_names: tuple = DEFAULT_WAKE_NAMES
+    wake_weak_variants: tuple = DEFAULT_WEAK_WAKE_VARIANTS
+    mic_backend: str = "auto"              # auto (PyAudio, depois sounddevice) | pyaudio | sounddevice
+    mic_name: str = ""
+    mic_index: int = -1
+    followup_seconds: float = 12.0
+    # ------------------------------------------------------------ memória
+    memory: bool = True
+    consolidation_interval: float = 300.0
+    # ------------------------------------------------------------ percepção
+    screen_observation: bool = True
+    vision_interval: float = 20.0
+    window_interval: float = 1.0
+    process_interval: float = 5.0
+    system_interval: float = 2.0
+    device_interval: float = 30.0
+    filesystem_interval: float = 10.0
+    watch_dirs: tuple = ()
+    excluded_apps: tuple = ()
+    # ------------------------------------------------------------ rede
+    network_interval: float = 30.0
+    network_discovery: bool = True
+    network_ssdp: bool = False             # anúncios SSDP/UPnP (opcional): nomes de TVs, impressoras, roteadores
+    discovery_interval: float = 600.0
+    discovery_max_hosts: int = 256
+    # ------------------------------------------------------------ Observador (como no JARVIS original:
+    # sempre começa DESLIGADO; a observação da tela só roda com o Observador ligado)
+    observer_mode: str = "off"                # off | assistant (sugere na tela) | observer (sugere e fala)
+    observer_restore_on_start: bool = False   # True = volta ao último modo ao iniciar
+    # ------------------------------------------------------------ privacidade e autonomia
+    privacy_mode: str = "local"
+    privacy_shield_on_start: bool = False     # modo privacidade (microfone fechado) já ao iniciar
+    allow_external_models: bool = False
+    autonomy_level: str = "balanced"
+    proactive: bool = True
+    authorization_timeout: float = 30.0
+    permission_policy: tuple = ()             # "categoria=permitir|confirmar|bloquear"; vazio = padrões
+    # ------------------------------------------------------------ inteligência externa opcional (JARVIS original:
+    # JARVIS_AI_PROVIDER, JARVIS_OPENAI_MODEL, JARVIS_OPENAI_WEB_SEARCH; a chave OPENAI_API_KEY nunca fica aqui)
+    ai_provider: str = "ollama"               # ollama | openai
+    openai_model: str = "gpt-5.6-sol"
+    openai_web_search: bool = True
+    openai_model_fast: str = ""               # modelo da nuvem para tarefas leves ("" = o mesmo de openai_model)
+    # ------------------------------------------------------------ perfis de inteligência e consumo (Phoenix D)
+    intelligence_profile: str = ""            # local | hibrido | avancado | economico | privacidade ("" = como antes)
+    cloud_monthly_limit_usd: float = 5.0      # 0 = nenhum gasto na nuvem
+    cloud_monthly_token_limit: int = 1000000  # vale também sem preço configurado; 0 = nenhum gasto
+    cloud_price_fast_in: float = 0.0          # US$ por milhão de tokens (0 = preço não configurado)
+    cloud_price_fast_out: float = 0.0
+    cloud_price_robust_in: float = 0.0
+    cloud_price_robust_out: float = 0.0
+    cloud_consent_at: float = 0.0             # quando o usuário autorizou o primeiro uso pago (0 = nunca)
+    cloud_share_memory: bool = False          # enviar memória pessoal/tela como contexto à nuvem (padrão: não)
+    cloud_images: bool = False                # enviar imagens/capturas de tela à nuvem (padrão: não)
+    openai_base_url: str = "https://api.openai.com/v1"
+    # ------------------------------------------------------------ imaginação
+    image_provider: str = "auto"
+    dream_mode: bool = True
+    dream_idle_minutes: float = 15.0
+    # ------------------------------------------------------------ second brain e lembretes
+    second_brain: bool = True
+    auto_capture: bool = True            # registra sozinho tarefas/lembretes com intenção clara (reversível)
+    reminders: bool = True
+    reminder_default_leads: tuple = ("10",)   # minutos de antecedência padrão p/ compromissos (ex.: 10, 60, 1440)
+    reminder_repeat_minutes: float = 10.0     # um lembrete ignorado é repetido após este intervalo...
+    reminder_max_repeats: int = 2             # ...no máximo esta quantidade de vezes (nunca indefinidamente)
+    overdue_alerts: bool = True               # aviso diário de tarefas atrasadas
+    notifications_muted: bool = False
+    quiet_hours: str = ""                     # "22:00-07:00": sem som, voz ou pop-up (fica na central)
+    timezone: str = ""                        # vazio = fuso do sistema; ou IANA (ex.: America/Sao_Paulo)
+    auto_backup: bool = True                  # backup diário do banco (memórias, Second Brain, lembretes, rede)
+    backup_interval_hours: float = 24.0
+    backup_keep: int = 10                     # backups automáticos/manuais guardados (os mais antigos saem)
+    activity_history: bool = True             # histórico de atividades (pedidos, ações, confirmações, erros)
+    activity_keep: int = 5000                 # registros guardados (os mais antigos saem primeiro)
+    # ------------------------------------------------------------ interface e som
+    theme: str = "safra-red"
+    performance_profile: str = "balanced"     # economy | balanced | high | cinematic (custo visual)
+    ambient_sound: bool = False               # som ambiente discreto do TARDIS (desligado por padrão)
+    hud_fps: int = 60
+    hud_start_minimized: bool = False
+    hud_auto_expand: bool = True
+    sound_effects: bool = True
+    sfx_volume: float = 0.35
+    # ------------------------------------------------------------ SAFRA WEB ORB (agente da matriz-mãe)
+    remote_enabled: bool = False              # conexão de SAÍDA com o gateway (nenhuma porta aberta aqui)
+    remote_gateway_url: str = ""              # ex.: https://orb.seudominio.com (o token fica no cofre do sistema)
+    remote_audio: bool = True                 # enviar a voz das respostas aos dispositivos que pedirem
+    tardis_sfx: bool = True                   # sons da TARDIS (originais; arquivos autorizados do usuário substituem)
+    tardis_sfx_volume: float = 0.6
+    start_page: str = "jarvis"                # página aberta ao iniciar
+    avatar_mode: str = "face"                 # face (rosto holográfico) | neural (núcleo neural)
+    captions: bool = True                     # legendas sincronizadas com a fala
+    heavy_effects: bool = True                # brilho, partículas e varredura (desligue em máquinas modestas)
+    render_backend: str = "cpu"               # cpu (padrão, roda em qualquer máquina) | gpu (OpenGL, opcional)
+    scene3d: str = "auto"                     # auto (central 3D quando há QtWebEngine e WebGL 2) | desligado (2D)
+    # Protocolo ULTRON: evento VISUAL e narrativo (nenhuma ação real no sistema)
+    ultron_manual: bool = True                # a frase secreta inicia o evento
+    ultron_occasional: bool = False           # ocorrências raras em repouso (desligado por padrão)
+    ultron_chance_per_hour: float = 2.0       # % de chance por hora ociosa (sorteio por minuto)
+    ultron_min_interval_hours: float = 24.0   # intervalo mínimo entre ocorrências ocasionais
+    ultron_operator: bool = True              # ativação pedida por você liga o perfil ULTRON_OPERATOR
+    ultron_operator_occasional: bool = False  # ativação ocasional também liga o perfil (padrão: só identidade)
+    ultron_operator_policy: tuple = ()        # "categoria=permitir|confirmar|bloquear" do operador; vazio = padrões
+    ultron_emergency_key: str = "Ctrl+Shift+U"   # restaura o SAFRA e interrompe o que o ULTRON estiver fazendo
+    ultron_duration_s: float = 45.0           # encerramento automático (0 = só por "restaurar SAFRA"/Esc/botão)
+    orb_position: tuple = ()                  # posição do orbe compacto (x, y), guardada ao mover
+    audio_output_name: str = ""               # saída de áudio (vazio = padrão do sistema)
+    audio_output_index: int = -1
+    # ------------------------------------------------------------ plugins
+    plugins: bool = True
+    plugins_enabled: tuple = ()          # plugins desativados por padrão que o usuário ativou
+    plugins_disabled: tuple = ()
+    # ------------------------------------------------------------ sistema
+    startup: bool = False
+    debug: bool = False
+    profile: str = "default"
+    settings_version: int = SETTINGS_VERSION
+
+    # Faixas numéricas aceitas.
+    _RANGES = {
+        "llm_timeout": (5.0, 600.0), "llm_temperature": (0.0, 1.5),
+        "max_agent_steps": (1, 25), "max_tool_calls": (1, 40),
+        "volume": (0.0, 1.0), "speech_speed": (0.6, 1.4), "followup_seconds": (0.0, 120.0),
+        "consolidation_interval": (30.0, 86400.0), "vision_interval": (5.0, 3600.0),
+        "window_interval": (0.25, 30.0), "process_interval": (1.0, 120.0),
+        "system_interval": (0.5, 60.0), "device_interval": (5.0, 3600.0),
+        "filesystem_interval": (2.0, 3600.0), "network_interval": (5.0, 3600.0),
+        "discovery_interval": (60.0, 86400.0), "discovery_max_hosts": (1, 1024),
+        "authorization_timeout": (5.0, 300.0), "dream_idle_minutes": (1.0, 1440.0),
+        "hud_fps": (15, 144), "sfx_volume": (0.0, 1.0), "tardis_sfx_volume": (0.0, 1.0), "mic_index": (-1, 64),
+        "reminder_repeat_minutes": (1.0, 1440.0), "reminder_max_repeats": (0, 10),
+        "backup_interval_hours": (1.0, 720.0), "backup_keep": (1, 100),
+        "audio_output_index": (-1, 64), "activity_keep": (100, 100000),
+        "ultron_chance_per_hour": (0.0, 100.0), "ultron_min_interval_hours": (1.0, 720.0),
+        "ultron_duration_s": (0.0, 600.0),
+        "cloud_monthly_limit_usd": (0.0, 10000.0), "cloud_monthly_token_limit": (0, 1000000000),
+        "cloud_price_fast_in": (0.0, 1000.0), "cloud_price_fast_out": (0.0, 1000.0),
+        "cloud_price_robust_in": (0.0, 1000.0), "cloud_price_robust_out": (0.0, 1000.0),
+    }
+    _CHOICES = {
+        "autonomy_level": AUTONOMY_LEVELS, "privacy_mode": PRIVACY_MODES,
+        "theme": THEMES, "stt_engine": STT_ENGINES, "performance_profile": PERFORMANCE_PROFILES,
+        "mic_backend": MIC_BACKENDS, "voice_profile": ("jarvis", "neutral"),
+        "observer_mode": OBSERVER_MODES, "ai_provider": AI_PROVIDERS, "start_page": START_PAGES,
+        "avatar_mode": ("face", "neural"), "render_backend": ("cpu", "gpu"), "scene3d": ("auto", "desligado"),
+        "intelligence_profile": INTELLIGENCE_PROFILES,
+    }
+
+    # ------------------------------------------------------------ utilidades
+    @classmethod
+    def field_names(cls) -> set[str]:
+        return {f.name for f in fields(cls)}
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        for key, value in data.items():
+            if isinstance(value, tuple):
+                data[key] = list(value)
+        return data
+
+    def apply(self, values: dict[str, Any], *, source: str = "") -> list[str]:
+        """Aplica valores validados. Devolve a lista de campos alterados."""
+        changed = []
+        names = self.field_names()
+        for key, raw in (values or {}).items():
+            if key not in names:
+                log.debug("campo de configuração ignorado (%s): %s", source, key)
+                continue
+            try:
+                value = self._coerce(key, raw)
+            except (TypeError, ValueError) as exc:
+                log.warning("valor inválido para %s (%s): %s", key, source, exc)
+                continue
+            if getattr(self, key) != value:
+                setattr(self, key, value)
+                changed.append(key)
+        return changed
+
+    def _coerce(self, key: str, raw: Any) -> Any:
+        current = getattr(self, key)
+        if isinstance(current, bool):
+            if isinstance(raw, str):
+                value = raw.strip().lower() in ("1", "true", "sim", "yes", "on")
+            else:
+                value = bool(raw)
+        elif isinstance(current, int) and not isinstance(current, bool):
+            value = int(float(raw))
+        elif isinstance(current, float):
+            value = float(raw)
+        elif isinstance(current, tuple):
+            if isinstance(raw, str):
+                raw = [x for x in raw.split(",")]
+            value = tuple(str(x).strip() for x in raw if str(x).strip())
+        else:
+            value = str(raw).strip()
+        if key == "performance_profile":
+            value = LEGACY_PROFILES.get(value, value)
+        if key in self._RANGES:
+            low, high = self._RANGES[key]
+            value = type(value)(max(low, min(high, value)))
+        if key in self._CHOICES and value not in self._CHOICES[key]:
+            raise ValueError(f"{value!r} não está em {self._CHOICES[key]}")
+        if key in ("model", "vision_model") and not value:
+            raise ValueError("nome de modelo vazio")
+        if key == "ollama_url" and not str(value).startswith(("http://", "https://")):
+            raise ValueError("URL do Ollama deve começar com http:// ou https://")
+        if key == "quiet_hours" and value and not _QUIET_RE.fullmatch(str(value)):
+            raise ValueError("horário de silêncio no formato HH:MM-HH:MM")
+        if key == "reminder_default_leads":
+            value = tuple(str(int(float(x))) for x in value if 0 < float(x) <= 43200)
+        if key == "timezone" and value:
+            from ..secondbrain import timeutil
+            if timeutil.zone(str(value)) is None:
+                raise ValueError(f"fuso horário desconhecido: {value}")
+        if key == "permission_policy":
+            clean = []
+            for item in value:
+                category, _, mode = str(item).partition("=")
+                if category.strip() in PERMISSION_CATEGORIES and mode.strip() in PERMISSION_MODES:
+                    clean.append(f"{category.strip()}={mode.strip()}")
+            value = tuple(dict.fromkeys(clean))
+        if key == "openai_base_url" and not str(value).startswith(("https://", "http://127.0.0.1", "http://localhost")):
+            raise ValueError("a API externa só é aceita por https:// (ou servidor local de teste)")
+        if key == "orb_position":
+            value = tuple(str(int(float(x))) for x in value[:2]) if len(value) >= 2 else ()
+        return value
+
+
+def _close_to_ultron(form: str) -> bool:
+    import difflib
+    import unicodedata
+    value = unicodedata.normalize("NFD", str(form).casefold())
+    value = "".join(c for c in value if unicodedata.category(c) != "Mn").replace(" ", "")
+    return difflib.SequenceMatcher(None, value, "ultron").ratio() >= 0.6
+
+
+def migrate(stored: dict) -> tuple[dict, list[str]]:
+    """Migra um settings.json das identidades anteriores, passo a passo (1 → 2 → 3)."""
+    stored = dict(stored or {})
+    try:
+        version = int(stored.get("settings_version", 1))
+    except (TypeError, ValueError):
+        version = 1
+    if version >= SETTINGS_VERSION or not stored:
+        return stored, []
+    notes: list[str] = []
+    if version < 2:
+        notes += _migrate_ultron_to_jarvis(stored)
+    if version < 3:
+        notes += _migrate_jarvis_to_safra(stored)
+    if stored.get("performance_profile") in LEGACY_PROFILES:
+        stored["performance_profile"] = LEGACY_PROFILES[stored["performance_profile"]]
+        notes.append("perfil performance → economy")
+    stored["settings_version"] = SETTINGS_VERSION
+    return stored, notes or ["versão das configurações atualizada"]
+
+
+def _migrate_ultron_to_jarvis(stored: dict) -> list[str]:
+    """Versão 2: a palavra e as formas do ULTRON saem; as formas do JARVIS entram."""
+    notes: list[str] = []
+    jarvis_forms = ("jarvis", "javis", "ja vis", "jar vis", "jarvis jarvis")
+    words = [str(w) for w in stored.get("wake_words") or []]
+    if words:
+        new_words = list(dict.fromkeys("jarvis" if _close_to_ultron(w) else w for w in words))
+        if new_words != words:
+            stored["wake_words"] = new_words
+            notes.append("palavra de ativação ultron → jarvis")
+    variants = [str(v) for v in stored.get("wake_variants") or []]
+    if variants:
+        kept = [v for v in variants if v not in LEGACY_WAKE_VARIANTS and not _close_to_ultron(v)]
+        stored["wake_variants"] = list(dict.fromkeys(list(jarvis_forms) + kept))
+        if len(kept) != len(variants):
+            notes.append("variantes do ULTRON trocadas pelas do JARVIS")
+    weak = [str(v) for v in stored.get("wake_weak_variants") or []]
+    if weak:
+        kept = [v for v in weak if v not in LEGACY_WEAK_WAKE_VARIANTS and not _close_to_ultron(v)]
+        stored["wake_weak_variants"] = list(dict.fromkeys(list(DEFAULT_WEAK_WAKE_VARIANTS) + kept))
+        if len(kept) != len(weak):
+            notes.append("formas fracas do ULTRON trocadas pelas do JARVIS")
+    return notes
+
+
+def _migrate_jarvis_to_safra(stored: dict) -> list[str]:
+    """Versão 3: "safra" vira a primeira palavra de ativação; "jarvis" e o que foi calibrado continuam."""
+    notes: list[str] = []
+    words = [str(w) for w in stored.get("wake_words") or []]
+    if words and "safra" not in words:
+        stored["wake_words"] = ["safra"] + words
+        notes.append("palavra de ativação: safra (jarvis continua aceita)")
+    variants = [str(v) for v in stored.get("wake_variants") or []]
+    if variants and "safra" not in variants:
+        stored["wake_variants"] = ["safra"] + variants
+    if stored.get("theme") not in (None, *THEMES):
+        stored["theme"] = THEMES[0]
+        notes.append("tema → vermelho SAFRA")
+    return notes
+
+
+class SettingsManager:
+    """Carrega, valida, persiste e notifica mudanças de configuração."""
+
+    def __init__(self, path: Path | None = None):
+        self.path = Path(path) if path else paths.data_file("settings.json")
+        self._lock = threading.RLock()
+        self._listeners: list = []
+        self.settings = Settings()
+        self.migration_notes: list[str] = []
+
+    def load(self, profile: str | None = None) -> Settings:
+        from . import profiles
+
+        with self._lock:
+            settings = Settings()
+            stored: dict[str, Any] = {}
+            unreadable = ""
+            if self.path.is_file():
+                try:
+                    stored = json.loads(self.path.read_text(encoding="utf-8")) or {}
+                except (OSError, ValueError) as exc:
+                    log.warning("settings.json ilegível (%s); usando padrões", exc)
+                    stored = {}
+                    unreadable = self._keep_unreadable()
+            stored, notes = migrate(stored)
+            if unreadable:
+                notes = [*notes, f"settings.json ilegível: padrões em uso; o arquivo original foi guardado em "
+                                 f"{unreadable}"]
+            if notes and self.path.is_file():
+                self._backup_and_rewrite(stored, notes)
+            chosen = (profile or os.environ.get("JARVIS_PROFILE") or os.environ.get("ULTRON_PROFILE")
+                      or stored.get("profile") or "default")
+            settings.apply(profiles.get(chosen), source=f"perfil {chosen}")
+            settings.apply(stored, source="settings.json")
+            if profile:
+                settings.profile = profile
+            env = {}
+            for name in Settings.field_names():
+                value = os.environ.get("SAFRA_" + name.upper(), os.environ.get("JARVIS_" + name.upper(),
+                                                                    os.environ.get("ULTRON_" + name.upper())))
+                if value is not None:
+                    env[name] = value
+            settings.apply(env, source="ambiente")
+            self.settings = settings
+            self.migration_notes = notes
+            return settings
+
+    def _keep_unreadable(self) -> str:
+        """Guarda o settings.json ilegível ANTES que a próxima gravação o substitua (uma cópia por conteúdo)."""
+        try:
+            raw = self.path.read_bytes()
+            for old in self.path.parent.glob("settings.ilegivel-*.json"):
+                if old.read_bytes() == raw:
+                    return str(old)
+            copy = self.path.with_name(f"settings.ilegivel-{time.strftime('%Y%m%d-%H%M%S')}.json")
+            copy.write_bytes(raw)
+        except OSError as exc:
+            log.warning("não foi possível guardar o settings.json ilegível: %s", exc)
+            return ""
+        log.warning("settings.json ilegível guardado em %s", copy)
+        return str(copy)
+
+    def _backup_and_rewrite(self, stored: dict, notes: list[str]) -> None:
+        """Guarda o arquivo original e grava a versão migrada (só campos de identidade mudam)."""
+        try:
+            version = int(json.loads(self.path.read_text(encoding="utf-8")).get("settings_version", 1))
+        except (OSError, ValueError, TypeError, AttributeError):
+            version = 1
+        backup = self.path.with_name("settings.ultron-backup.json" if version < 2 else "settings.jarvis-backup.json")
+        try:
+            if not backup.exists():
+                backup.write_text(self.path.read_text(encoding="utf-8"), encoding="utf-8")
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, self.path)
+            log.info("configurações migradas para a identidade SAFRA: %s (cópia em %s)", "; ".join(notes),
+                     backup.name)
+        except OSError as exc:
+            log.warning("não foi possível regravar settings.json migrado (%s); a migração vale só nesta sessão",
+                        exc)
+
+    def save(self) -> None:
+        with self._lock:
+            payload = self.settings.to_dict()
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, self.path)
+
+    def update(self, **values: Any) -> list[str]:
+        with self._lock:
+            changed = self.settings.apply(values, source="runtime")
+            if changed:
+                self.save()
+            listeners = list(self._listeners)
+        for listener in listeners:
+            try:
+                listener(changed, self.settings)
+            except Exception:  # um ouvinte com erro não impede os demais
+                log.exception("ouvinte de configuração falhou")
+        return changed
+
+    def on_change(self, callback) -> None:
+        with self._lock:
+            self._listeners.append(callback)
+
+    # Preferências de hardware e a calibração da voz: "restaurar padrões" não as apaga.
+    KEEP_ON_RESET = ("mic_name", "mic_index", "mic_backend", "wake_variants", "wake_weak_variants", "wake_names",
+                     "audio_output_name", "audio_output_index", "timezone")
+
+    def reset_to_defaults(self, *, keep: tuple = KEEP_ON_RESET) -> Path | None:
+        """Restaura os padrões. Antes, o arquivo atual é copiado para ``settings.backup-AAAAMMDD-HHMMSS.json``
+        (devolvido). Microfone, saída de áudio e calibração da voz são mantidos."""
+        import time as _time
+        backup = None
+        with self._lock:
+            if self.path.is_file():
+                backup = self.path.with_name(f"settings.backup-{_time.strftime('%Y%m%d-%H%M%S')}.json")
+                backup.write_text(self.path.read_text(encoding="utf-8"), encoding="utf-8")
+            kept = {name: getattr(self.settings, name) for name in keep if hasattr(self.settings, name)}
+            old = self.settings.to_dict()
+            fresh = Settings()
+            fresh.apply(kept, source="mantido")
+            self.settings = fresh
+            self.save()
+            changed = [k for k, v in fresh.to_dict().items() if old.get(k) != v]
+            listeners = list(self._listeners)
+        for listener in listeners:
+            try:
+                listener(changed, self.settings)
+            except Exception:
+                log.exception("ouvinte de configuração falhou")
+        return backup
+
+
+_manager: SettingsManager | None = None
+_manager_lock = threading.Lock()
+
+
+def manager() -> SettingsManager:
+    global _manager
+    with _manager_lock:
+        if _manager is None:
+            _manager = SettingsManager()
+            _manager.load()
+        return _manager
+
+
+def get() -> Settings:
+    return manager().settings

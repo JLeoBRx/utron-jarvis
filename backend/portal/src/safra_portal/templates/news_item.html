@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_blocks.html" import render_blocks %}
+{% block main %}
+<article class="pagina pagina--noticia">
+  <header class="pagina__cabecalho">
+    <div class="pagina__interior">
+      <p class="sobretitulo"><a href="/atualizacoes">Atualizações</a>{% if category %} · {{ category.name }}{% endif %}</p>
+      <h1>{{ page.title }}</h1>
+      {% if page.published_at %}<p class="noticia__data"><time datetime="{{ page.published_at | iso_date }}">{{ page.published_at | long_date }}</time></p>{% endif %}
+      {% if page.summary %}<p class="pagina__resumo">{{ page.summary }}</p>{% endif %}
+    </div>
+  </header>
+  <div class="pagina__interior prosa">
+    {% if cover %}<figure class="figura figura--capa"><img src="{{ cover.url }}" alt="{{ cover.alt }}" {% if cover.width %}width="{{ cover.width }}" height="{{ cover.height }}"{% endif %}></figure>{% endif %}
+    {{ render_blocks(page.blocks, media) }}
+    <p class="voltar"><a class="elo" href="/atualizacoes">Todas as atualizações</a></p>
+  </div>
+</article>
+{% endblock %}

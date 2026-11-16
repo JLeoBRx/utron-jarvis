@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  participant U as Usuário
+  participant C as NeuralCore
+  participant O as Orchestrator
+  participant I as IntentEngine
+  participant R as Reasoning / ModelRouter
+  participant X as ExecutionEngine
+  participant A as Autorização
+  participant V as Verificação
+  participant M as Memória (SQLite)
+  participant B as Event Bus → Interface
+  U->>C: submit(texto, origem)
+  C->>B: USER_INPUT · estado PERCEBENDO
+  C->>O: processa no worker "ai"
+  O->>I: intenção (regras em português)
+  alt comando reconhecido
+    I-->>O: intenção + skill + argumentos
+  else pergunta ou pedido aberto
+    O->>R: contexto (memória, mundo) + ferramentas oferecidas
+    R-->>O: resposta ou chamada de ferramenta
+  end
+  opt há ação a executar
+    O->>X: Action(skill, args, origem)
+    X->>X: valida argumentos · recusa antecipada (pastas protegidas)
+    X->>A: política = confirmar?
+    A-->>X: autorizado / negado / expirou
+    X->>X: executa com prazo
+    X->>V: relê o efeito no mundo
+    V-->>O: verificado / sem confirmação / falhou
+  end
+  O->>M: episódio, fatos, atividade, auditoria
+  O-->>C: Response(texto, procedência, verificado)
+  C->>B: RESPONSE_READY · estado FALANDO → REPOUSO

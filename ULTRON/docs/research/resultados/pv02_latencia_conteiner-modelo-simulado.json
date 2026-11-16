@@ -1,0 +1,1476 @@
+{
+  "protocolo": "PV-02",
+  "modelo_real": false,
+  "modelo": "qwen2.5:3b",
+  "real": [
+    "NeuralCore completo (orquestrador, intenções, memória, executor, Event Bus, SQLite)"
+  ],
+  "simulado": [
+    "inferência do modelo (servidor local que responde em 0 ms)"
+  ],
+  "ambiente": {
+    "sistema": "Linux 6.18.44-fc-v378",
+    "maquina": "x86_64",
+    "processador": "x86_64",
+    "cpus_logicas": 4,
+    "memoria_gb": 15.7,
+    "python": "3.13.18",
+    "pacotes": {
+      "PySide6-Essentials": "6.8.3",
+      "vosk": "0.3.45",
+      "piper-tts": "1.8.0",
+      "numpy": "2.5.4",
+      "psutil": "7.2.2"
+    },
+    "commit": "35a7554",
+    "data_utc": "2026-11-11T02:50:08Z"
+  },
+  "rapido": false,
+  "metricas": {
+    "inicializacao_nucleo_s": 0.052,
+    "deterministico": {
+      "n": 120,
+      "media": 0.0049,
+      "desvio": 0.0034,
+      "mediana": 0.0052,
+      "p95": 0.0093,
+      "min": 0.0009,
+      "max": 0.0211,
+      "ic95": [
+        0.0043,
+        0.0055
+      ],
+      "sem_resposta": 0
+    },
+    "deterministico_por_frase": {
+      "anote uma ideia: horta vertical na varanda": {
+        "n": 20,
+        "media": 0.0057,
+        "desvio": 0.0006,
+        "mediana": 0.0054,
+        "p95": 0.0069,
+        "min": 0.0051,
+        "max": 0.007,
+        "ic95": [
+          0.0054,
+          0.006
+        ]
+      },
+      "liste minhas ideias": {
+        "n": 20,
+        "media": 0.0057,
+        "desvio": 0.0006,
+        "mediana": 0.0057,
+        "p95": 0.0066,
+        "min": 0.0045,
+        "max": 0.0066,
+        "ic95": [
+          0.0054,
+          0.0059
+        ]
+      },
+      "o que eu tenho amanhã": {
+        "n": 20,
+        "media": 0.0099,
+        "desvio": 0.0031,
+        "mediana": 0.0089,
+        "p95": 0.0164,
+        "min": 0.0085,
+        "max": 0.0211,
+        "ic95": [
+          0.0085,
+          0.0113
+        ]
+      },
+      "que dia é hoje": {
+        "n": 20,
+        "media": 0.0011,
+        "desvio": 0.0004,
+        "mediana": 0.001,
+        "p95": 0.0017,
+        "min": 0.0009,
+        "max": 0.0024,
+        "ic95": [
+          0.001,
+          0.0013
+        ]
+      },
+      "que horas são": {
+        "n": 20,
+        "media": 0.0016,
+        "desvio": 0.0023,
+        "mediana": 0.0011,
+        "p95": 0.0014,
+        "min": 0.001,
+        "max": 0.0113,
+        "ic95": [
+          0.0006,
+          0.0026
+        ]
+      },
+      "status do sistema": {
+        "n": 20,
+        "media": 0.0054,
+        "desvio": 0.0022,
+        "mediana": 0.0044,
+        "p95": 0.0094,
+        "min": 0.0042,
+        "max": 0.0125,
+        "ic95": [
+          0.0044,
+          0.0063
+        ]
+      }
+    },
+    "modelo": {
+      "n": 40,
+      "media": 0.0118,
+      "desvio": 0.0039,
+      "mediana": 0.0112,
+      "p95": 0.0207,
+      "min": 0.0082,
+      "max": 0.0263,
+      "ic95": [
+        0.0106,
+        0.013
+      ],
+      "sem_resposta": 0
+    },
+    "modelo_por_frase": {
+      "explique em uma frase o que é fotossíntese": {
+        "n": 10,
+        "media": 0.0095,
+        "desvio": 0.0018,
+        "mediana": 0.009,
+        "p95": 0.0146,
+        "min": 0.0082,
+        "max": 0.0146,
+        "ic95": [
+          0.0083,
+          0.0106
+        ]
+      },
+      "qual a diferença entre RAM e armazenamento": {
+        "n": 10,
+        "media": 0.0103,
+        "desvio": 0.0038,
+        "mediana": 0.0089,
+        "p95": 0.0207,
+        "min": 0.0085,
+        "max": 0.0207,
+        "ic95": [
+          0.008,
+          0.0127
+        ]
+      },
+      "resuma em uma frase o que é um banco de dados": {
+        "n": 10,
+        "media": 0.0139,
+        "desvio": 0.0046,
+        "mediana": 0.0123,
+        "p95": 0.0263,
+        "min": 0.011,
+        "max": 0.0263,
+        "ic95": [
+          0.0111,
+          0.0168
+        ]
+      },
+      "sugira um nome para um projeto de horta": {
+        "n": 10,
+        "media": 0.0134,
+        "desvio": 0.0035,
+        "mediana": 0.0126,
+        "p95": 0.0229,
+        "min": 0.0108,
+        "max": 0.0229,
+        "ic95": [
+          0.0113,
+          0.0156
+        ]
+      }
+    }
+  },
+  "amostras": [
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 0,
+      "s": 0.0113,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 0,
+      "s": 0.0024,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 0,
+      "s": 0.007,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 0,
+      "s": 0.0211,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 0,
+      "s": 0.0045,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 0,
+      "s": 0.0084,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 1,
+      "s": 0.0012,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 1,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 1,
+      "s": 0.0056,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 1,
+      "s": 0.0091,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 1,
+      "s": 0.0063,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 1,
+      "s": 0.0043,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 2,
+      "s": 0.0012,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 2,
+      "s": 0.0009,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 2,
+      "s": 0.0053,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 2,
+      "s": 0.0086,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 2,
+      "s": 0.0049,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 2,
+      "s": 0.0042,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 3,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 3,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 3,
+      "s": 0.0056,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 3,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 3,
+      "s": 0.005,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 3,
+      "s": 0.0049,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 4,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 4,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 4,
+      "s": 0.0055,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 4,
+      "s": 0.0088,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 4,
+      "s": 0.0051,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 4,
+      "s": 0.0047,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 5,
+      "s": 0.0014,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 5,
+      "s": 0.0014,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 5,
+      "s": 0.0067,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 5,
+      "s": 0.0096,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 5,
+      "s": 0.0062,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 5,
+      "s": 0.0048,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 6,
+      "s": 0.0014,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 6,
+      "s": 0.0013,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 6,
+      "s": 0.0069,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 6,
+      "s": 0.0092,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 6,
+      "s": 0.0066,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 6,
+      "s": 0.0125,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 7,
+      "s": 0.0013,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 7,
+      "s": 0.0017,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 7,
+      "s": 0.0065,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 7,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 7,
+      "s": 0.0066,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 7,
+      "s": 0.0057,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 8,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 8,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 8,
+      "s": 0.0061,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 8,
+      "s": 0.0092,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 8,
+      "s": 0.0058,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 8,
+      "s": 0.0045,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 9,
+      "s": 0.0012,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 9,
+      "s": 0.0012,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 9,
+      "s": 0.0061,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 9,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 9,
+      "s": 0.0054,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 9,
+      "s": 0.0046,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 10,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 10,
+      "s": 0.0009,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 10,
+      "s": 0.0053,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 10,
+      "s": 0.0088,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 10,
+      "s": 0.0054,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 10,
+      "s": 0.0043,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 11,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 11,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 11,
+      "s": 0.0053,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 11,
+      "s": 0.0164,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 11,
+      "s": 0.0055,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 11,
+      "s": 0.0044,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 12,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 12,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 12,
+      "s": 0.0052,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 12,
+      "s": 0.0086,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 12,
+      "s": 0.0055,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 12,
+      "s": 0.0042,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 13,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 13,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 13,
+      "s": 0.0052,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 13,
+      "s": 0.0085,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 13,
+      "s": 0.0055,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 13,
+      "s": 0.0044,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 14,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 14,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 14,
+      "s": 0.0053,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 14,
+      "s": 0.0085,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 14,
+      "s": 0.0056,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 14,
+      "s": 0.0094,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 15,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 15,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 15,
+      "s": 0.0054,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 15,
+      "s": 0.009,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 15,
+      "s": 0.0057,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 15,
+      "s": 0.0049,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 16,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 16,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 16,
+      "s": 0.0051,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 16,
+      "s": 0.0087,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 16,
+      "s": 0.006,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 16,
+      "s": 0.0043,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 17,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 17,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 17,
+      "s": 0.0054,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 17,
+      "s": 0.0093,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 17,
+      "s": 0.0059,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 17,
+      "s": 0.0044,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 18,
+      "s": 0.0011,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 18,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 18,
+      "s": 0.0053,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 18,
+      "s": 0.0086,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 18,
+      "s": 0.006,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 18,
+      "s": 0.0044,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que horas são",
+      "rep": 19,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "que dia é hoje",
+      "rep": 19,
+      "s": 0.001,
+      "procedencia": "dados do próprio SAFRA",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "anote uma ideia: horta vertical na varanda",
+      "rep": 19,
+      "s": 0.0054,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "o que eu tenho amanhã",
+      "rep": 19,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "liste minhas ideias",
+      "rep": 19,
+      "s": 0.0061,
+      "procedencia": "memória pessoal",
+      "tipo": "result"
+    },
+    {
+      "grupo": "deterministico",
+      "frase": "status do sistema",
+      "rep": 19,
+      "s": 0.0042,
+      "procedencia": "ação verificada",
+      "tipo": "result"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 0,
+      "s": 0.0091,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 0,
+      "s": 0.0093,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 0,
+      "s": 0.0129,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 0,
+      "s": 0.012,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 1,
+      "s": 0.0092,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 1,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 1,
+      "s": 0.0229,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 1,
+      "s": 0.0113,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 2,
+      "s": 0.0086,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 2,
+      "s": 0.0087,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 2,
+      "s": 0.0124,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 2,
+      "s": 0.0125,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 3,
+      "s": 0.009,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 3,
+      "s": 0.0085,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 3,
+      "s": 0.0108,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 3,
+      "s": 0.0113,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 4,
+      "s": 0.0093,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 4,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 4,
+      "s": 0.0119,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 4,
+      "s": 0.0115,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 5,
+      "s": 0.0091,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 5,
+      "s": 0.0207,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 5,
+      "s": 0.0132,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 5,
+      "s": 0.0133,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 6,
+      "s": 0.0089,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 6,
+      "s": 0.009,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 6,
+      "s": 0.0112,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 6,
+      "s": 0.011,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 7,
+      "s": 0.0082,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 7,
+      "s": 0.0088,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 7,
+      "s": 0.0132,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 7,
+      "s": 0.0138,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 8,
+      "s": 0.0088,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 8,
+      "s": 0.0087,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 8,
+      "s": 0.012,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 8,
+      "s": 0.0263,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "explique em uma frase o que é fotossíntese",
+      "rep": 9,
+      "s": 0.0146,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "qual a diferença entre RAM e armazenamento",
+      "rep": 9,
+      "s": 0.0117,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "sugira um nome para um projeto de horta",
+      "rep": 9,
+      "s": 0.0139,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    },
+    {
+      "grupo": "modelo",
+      "frase": "resuma em uma frase o que é um banco de dados",
+      "rep": 9,
+      "s": 0.0164,
+      "procedencia": "inferência — modelo local qwen2.5:3b",
+      "tipo": "answer"
+    }
+  ]
+}

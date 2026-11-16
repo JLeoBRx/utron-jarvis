@@ -1,0 +1,7 @@
+{# GERADO por packages/design-tokens/build.py a partir da fonte única. Não edite este arquivo. #}
+{# Símbolo do SAFRA (estudo "Sulcos"). Tamanho "pequeno" usa a versão de ícone, com três sulcos. #}
+{% macro symbol(size="medio", label="", state="") %}
+<svg class="simbolo simbolo--{{ size }}{% if state %} simbolo--{{ state }}{% endif %}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true" focusable="false"{% endif %}><rect class="simbolo__fundo" x="5" y="7" width="54" height="54" rx="14"/><rect class="simbolo__placa" x="3" y="3" width="54" height="54" rx="14"/>
+{% if size == "pequeno" %}<g class="simbolo__sulcos" fill="none" stroke-linecap="round" stroke-width="4.6"><path class="sulco sulco--1" d="M12.5 20 C 22.5 13.5, 37.5 26.5, 47.5 19"/><path class="sulco sulco--2" d="M12.5 30 C 22.5 23.5, 37.5 36.5, 47.5 29"/><path class="sulco sulco--3" d="M12.5 40 C 22.5 33.5, 37.5 46.5, 47.5 39"/></g>{% else %}<g class="simbolo__sulcos" fill="none" stroke-linecap="round" stroke-width="3.4"><path class="sulco sulco--1" d="M13 17 C 23 11, 37 23, 47 16"/><path class="sulco sulco--2" d="M13 25 C 23 19, 37 31, 47 24"/><path class="sulco sulco--3" d="M13 33 C 23 27, 37 39, 47 32"/><path class="sulco sulco--4" d="M13 41 C 23 35, 37 47, 47 40"/></g>{% endif %}
+</svg>
+{% endmacro %}

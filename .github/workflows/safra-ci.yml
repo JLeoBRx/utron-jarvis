@@ -1,0 +1,275 @@
+name: SAFRA CI
+
+# Nova geração do SAFRA. O legado em ULTRON/ continua com o seu próprio fluxo.
+on:
+  push:
+    branches:
+      - "claude/adoring-brahmagupta-vcejpt"
+    paths:
+      - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "tests/**"
+      - "scripts/e2e/**"
+      - "scripts/web/**"
+      - "scripts/perf/**"
+      - "package.json"
+      - "package-lock.json"
+      - "desktop/**"
+      - ".github/workflows/safra-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "apps/**"
+      - "packages/**"
+      - "tests/**"
+      - "desktop/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/safra-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: safra-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend · ${{ matrix.os }} · Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    steps:
+      - name: Checkout (só a nova plataforma)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            apps
+            packages
+            scripts
+            tests
+            .github
+
+      - name: Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: backend/*/pyproject.toml
+
+      - name: Instalar os três pacotes
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/foundation -e "backend/assistant[dev]" -e "backend/portal[dev]"
+
+      - name: Testes da biblioteca de base
+        working-directory: backend/foundation
+        run: python -m pytest
+
+      - name: Testes do Assistant
+        working-directory: backend/assistant
+        run: python -m pytest
+
+      - name: Testes do Portal
+        working-directory: backend/portal
+        run: python -m pytest
+
+      - name: Testes de isolamento entre os serviços e regras do repositório
+        run: python -m pytest tests
+
+      - name: Linha de comando dos dois serviços (pastas temporárias)
+        env:
+          SAFRA_DATA_DIR: ${{ runner.temp }}/safra-assistant
+          SAFRA_ENVIRONMENT: test
+          SAFRA_PORTAL_DATA_DIR: ${{ runner.temp }}/safra-portal
+          SAFRA_PORTAL_ENVIRONMENT: test
+        run: |
+          safra-assistant --version
+          safra-assistant --check
+          safra-portal --version
+          safra-portal check
+          safra-portal seed
+
+  portal-postgres:
+    name: Portal · PostgreSQL 16
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: safra
+          POSTGRES_PASSWORD: apenas-para-o-ci
+          POSTGRES_DB: portal_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U safra -d portal_teste"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/*/pyproject.toml
+      - name: Instalar o Portal com o driver do PostgreSQL
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/foundation -e "backend/portal[dev,postgres]"
+      - name: Migrações e fluxo do CMS sobre PostgreSQL
+        working-directory: backend/portal
+        env:
+          SAFRA_PORTAL_TEST_POSTGRES_URL: postgresql+psycopg://safra:apenas-para-o-ci@localhost:5432/portal_teste
+        run: python -m pytest tests/test_postgres.py -rs
+
+  interfaces:
+    name: Interfaces · design system, painel e Assistant (tipos, testes, compilação)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            apps
+            packages
+            scripts
+            backend/portal/src/safra_portal/static
+            backend/portal/src/safra_portal/templates
+            .github
+            package.json
+            package-lock.json
+            .npmrc
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar pelo arquivo de trava único do workspace
+        run: npm ci --no-audit --no-fund
+      - name: Artefatos da identidade visual sincronizados com a fonte única
+        run: python3 packages/design-tokens/build.py --check
+      - name: Verificação de tipos (todos os pacotes)
+        run: npm run typecheck
+      - name: Testes de componente, acessibilidade e unidade (todos os pacotes)
+        run: npm test
+      - name: Compilação do painel e da interface do Assistant
+        run: npm run build
+      - name: Sem script embutido no HTML compilado (exigência das CSPs)
+        run: |
+          ! grep -E '<script>|<script [^>]*>[^<]' apps/admin/dist/index.html
+          ! grep -E '<script>|<script [^>]*>[^<]' apps/assistant/dist/index.html
+      - name: Avisos de licença das bibliotecas e fontes incluídas
+        run: |
+          for app in admin assistant; do
+            grep -q "react .* — MIT" apps/$app/dist/licencas-de-terceiros.txt
+            grep -q "Fonte Inter — OFL-1.1" apps/$app/dist/licencas-de-terceiros.txt
+            grep -q "Licenças de terceiros" apps/$app/dist/assets/*.js
+          done
+      - name: Tamanho dos pacotes compilados
+        run: node scripts/perf/bundle_report.mjs >> "$GITHUB_STEP_SUMMARY"
+
+  portal-e2e:
+    name: Portal · ponta a ponta no navegador
+    runs-on: ubuntu-latest
+    needs: interfaces
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            apps
+            packages
+            scripts
+            .github
+            package.json
+            package-lock.json
+            .npmrc
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/*/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar o Portal
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/foundation -e backend/portal
+      - name: Compilar o painel
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build -w @safra/admin
+      - name: Playwright e Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Teste de ponta a ponta contra o Portal real
+        run: python scripts/e2e/portal_e2e.py --node-path node_modules --shots e2e-capturas/portal
+      - name: Capturas de tela
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-e2e-capturas
+          path: e2e-capturas/portal
+          if-no-files-found: ignore
+
+  desktop-poc:
+    name: Casca do desktop · prova de conceito no Windows (Tauri × QtWebEngine)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            backend
+            desktop
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/*/pyproject.toml
+      - name: Instalar o Assistant, o instrumento de medição e a casca Qt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/foundation -e backend/assistant psutil "PySide6-Essentials>=6.8.1,<6.9" "PySide6-Addons>=6.8.1,<6.9"
+      - name: Compilar a prova de conceito em Tauri
+        working-directory: desktop/poc-tauri
+        run: cargo build --release --locked
+      - name: Tamanho do executável
+        shell: pwsh
+        run: (Get-Item desktop/poc-tauri/target/release/safra-poc-tauri.exe).Length
+      - name: Medir as duas cascas, com o Assistant iniciado por elas
+        continue-on-error: true
+        shell: pwsh
+        env:
+          SAFRA_ENVIRONMENT: test
+          SAFRA_LOG_TO_FILE: "0"
+          SAFRA_DATA_DIR: ${{ runner.temp }}\safra-assistant
+        run: |
+          $env:SAFRA_POC_BACKEND = (Get-Command safra-assistant).Source
+          python desktop/measure_shell.py --name tauri --runs 3 --out cascas-tauri-windows.json -- desktop/poc-tauri/target/release/safra-poc-tauri.exe
+          python desktop/measure_shell.py --name qtwebengine --runs 3 --out cascas-qt-windows.json -- python desktop/poc-qt/shell.py
+      - name: Resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cascas-windows
+          path: cascas-*-windows.json
+          if-no-files-found: ignore
+

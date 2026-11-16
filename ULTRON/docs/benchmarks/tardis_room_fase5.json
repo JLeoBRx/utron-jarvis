@@ -1,0 +1,284 @@
+{
+  "machine": {
+    "python": "3.13.16",
+    "system": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "cpus": 4,
+    "qt_platform": "offscreen"
+  },
+  "frames_per_case": 45,
+  "render": {
+    "1280x720": {
+      "economy": {
+        "repouso": {
+          "mean_ms": 8.14,
+          "p50_ms": 7.74,
+          "p95_ms": 10.8,
+          "max_fps_if_alone": 122.9
+        },
+        "processando": {
+          "mean_ms": 8.61,
+          "p50_ms": 8.32,
+          "p95_ms": 11.41,
+          "max_fps_if_alone": 116.1
+        },
+        "consulta_jarvis": {
+          "mean_ms": 9.32,
+          "p50_ms": 8.38,
+          "p95_ms": 12.39,
+          "max_fps_if_alone": 107.4
+        },
+        "falha": {
+          "mean_ms": 9.17,
+          "p50_ms": 8.43,
+          "p95_ms": 12.94,
+          "max_fps_if_alone": 109.0
+        }
+      },
+      "balanced": {
+        "repouso": {
+          "mean_ms": 9.25,
+          "p50_ms": 8.75,
+          "p95_ms": 11.84,
+          "max_fps_if_alone": 108.1
+        },
+        "processando": {
+          "mean_ms": 11.13,
+          "p50_ms": 10.99,
+          "p95_ms": 15.38,
+          "max_fps_if_alone": 89.9
+        },
+        "consulta_jarvis": {
+          "mean_ms": 10.6,
+          "p50_ms": 9.67,
+          "p95_ms": 14.37,
+          "max_fps_if_alone": 94.4
+        },
+        "falha": {
+          "mean_ms": 9.56,
+          "p50_ms": 8.69,
+          "p95_ms": 13.85,
+          "max_fps_if_alone": 104.6
+        }
+      },
+      "high": {
+        "repouso": {
+          "mean_ms": 8.58,
+          "p50_ms": 8.22,
+          "p95_ms": 10.37,
+          "max_fps_if_alone": 116.6
+        },
+        "processando": {
+          "mean_ms": 10.37,
+          "p50_ms": 9.88,
+          "p95_ms": 13.33,
+          "max_fps_if_alone": 96.5
+        },
+        "consulta_jarvis": {
+          "mean_ms": 8.97,
+          "p50_ms": 8.63,
+          "p95_ms": 11.83,
+          "max_fps_if_alone": 111.4
+        },
+        "falha": {
+          "mean_ms": 9.78,
+          "p50_ms": 8.93,
+          "p95_ms": 13.88,
+          "max_fps_if_alone": 102.2
+        }
+      },
+      "cinematic": {
+        "repouso": {
+          "mean_ms": 8.34,
+          "p50_ms": 8.16,
+          "p95_ms": 9.53,
+          "max_fps_if_alone": 119.9
+        },
+        "processando": {
+          "mean_ms": 9.98,
+          "p50_ms": 9.21,
+          "p95_ms": 12.97,
+          "max_fps_if_alone": 100.2
+        },
+        "consulta_jarvis": {
+          "mean_ms": 10.6,
+          "p50_ms": 10.97,
+          "p95_ms": 14.01,
+          "max_fps_if_alone": 94.4
+        },
+        "falha": {
+          "mean_ms": 10.82,
+          "p50_ms": 10.22,
+          "p95_ms": 14.08,
+          "max_fps_if_alone": 92.5
+        }
+      }
+    },
+    "1920x1080": {
+      "economy": {
+        "repouso": {
+          "mean_ms": 9.46,
+          "p50_ms": 8.92,
+          "p95_ms": 13.46,
+          "max_fps_if_alone": 105.7
+        },
+        "processando": {
+          "mean_ms": 11.11,
+          "p50_ms": 10.1,
+          "p95_ms": 14.48,
+          "max_fps_if_alone": 90.0
+        },
+        "consulta_jarvis": {
+          "mean_ms": 10.25,
+          "p50_ms": 9.83,
+          "p95_ms": 12.78,
+          "max_fps_if_alone": 97.6
+        },
+        "falha": {
+          "mean_ms": 10.58,
+          "p50_ms": 9.9,
+          "p95_ms": 13.88,
+          "max_fps_if_alone": 94.6
+        }
+      },
+      "balanced": {
+        "repouso": {
+          "mean_ms": 10.51,
+          "p50_ms": 9.98,
+          "p95_ms": 13.62,
+          "max_fps_if_alone": 95.1
+        },
+        "processando": {
+          "mean_ms": 12.69,
+          "p50_ms": 11.62,
+          "p95_ms": 17.32,
+          "max_fps_if_alone": 78.8
+        },
+        "consulta_jarvis": {
+          "mean_ms": 13.04,
+          "p50_ms": 12.75,
+          "p95_ms": 16.24,
+          "max_fps_if_alone": 76.7
+        },
+        "falha": {
+          "mean_ms": 12.65,
+          "p50_ms": 11.35,
+          "p95_ms": 19.1,
+          "max_fps_if_alone": 79.0
+        }
+      },
+      "high": {
+        "repouso": {
+          "mean_ms": 10.85,
+          "p50_ms": 10.21,
+          "p95_ms": 13.44,
+          "max_fps_if_alone": 92.2
+        },
+        "processando": {
+          "mean_ms": 13.86,
+          "p50_ms": 13.99,
+          "p95_ms": 17.32,
+          "max_fps_if_alone": 72.1
+        },
+        "consulta_jarvis": {
+          "mean_ms": 14.5,
+          "p50_ms": 12.95,
+          "p95_ms": 21.12,
+          "max_fps_if_alone": 69.0
+        },
+        "falha": {
+          "mean_ms": 12.4,
+          "p50_ms": 11.6,
+          "p95_ms": 17.62,
+          "max_fps_if_alone": 80.6
+        }
+      },
+      "cinematic": {
+        "repouso": {
+          "mean_ms": 11.29,
+          "p50_ms": 10.5,
+          "p95_ms": 14.49,
+          "max_fps_if_alone": 88.6
+        },
+        "processando": {
+          "mean_ms": 13.07,
+          "p50_ms": 12.62,
+          "p95_ms": 16.81,
+          "max_fps_if_alone": 76.5
+        },
+        "consulta_jarvis": {
+          "mean_ms": 14.28,
+          "p50_ms": 14.38,
+          "p95_ms": 20.09,
+          "max_fps_if_alone": 70.0
+        },
+        "falha": {
+          "mean_ms": 12.62,
+          "p50_ms": 11.39,
+          "p95_ms": 18.29,
+          "max_fps_if_alone": 79.2
+        }
+      }
+    }
+  },
+  "camera_turn": {
+    "1280x720": {
+      "economy": {
+        "mean_ms": 29.65,
+        "p50_ms": 30.48,
+        "p95_ms": 35.37,
+        "max_fps_if_alone": 33.7
+      },
+      "balanced": {
+        "mean_ms": 27.34,
+        "p50_ms": 25.78,
+        "p95_ms": 36.56,
+        "max_fps_if_alone": 36.6
+      },
+      "high": {
+        "mean_ms": 23.92,
+        "p50_ms": 23.52,
+        "p95_ms": 28.73,
+        "max_fps_if_alone": 41.8
+      },
+      "cinematic": {
+        "mean_ms": 26.62,
+        "p50_ms": 25.82,
+        "p95_ms": 33.47,
+        "max_fps_if_alone": 37.6
+      }
+    },
+    "1920x1080": {
+      "economy": {
+        "mean_ms": 33.2,
+        "p50_ms": 31.8,
+        "p95_ms": 40.38,
+        "max_fps_if_alone": 30.1
+      },
+      "balanced": {
+        "mean_ms": 35.49,
+        "p50_ms": 34.92,
+        "p95_ms": 45.57,
+        "max_fps_if_alone": 28.2
+      },
+      "high": {
+        "mean_ms": 35.33,
+        "p50_ms": 34.34,
+        "p95_ms": 46.59,
+        "max_fps_if_alone": 28.3
+      },
+      "cinematic": {
+        "mean_ms": 37.62,
+        "p50_ms": 36.11,
+        "p95_ms": 49.39,
+        "max_fps_if_alone": 26.6
+      }
+    }
+  },
+  "engine_round_trip": {
+    "mean_ms": 0.96,
+    "p50_ms": 0.81,
+    "p95_ms": 1.23,
+    "max_fps_if_alone": 1043.3
+  }
+}

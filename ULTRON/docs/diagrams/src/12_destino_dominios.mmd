@@ -1,0 +1,19 @@
+flowchart TB
+  FE["frontend · desktop<br/>só falam pela API"]
+  API["api<br/>rotas, WebSocket, sessões"]
+  COM["communication<br/>modelos do contrato v1, catálogo de eventos"]
+  BOOT["core/bootstrap<br/>composição e fachada do núcleo"]
+  D2["domínios de aplicação<br/>intelligence · projects · skills"]
+  D1["domínios de base<br/>security · memory · voice · platform · health"]
+  STO["storage<br/>banco, migrações, backup, caminhos"]
+  KER["core (kernel)<br/>eventos, barramento, estado, ciclo de vida, erros, logs"]
+  FE -->|"HTTP e WebSocket"| API
+  API --> COM
+  API --> BOOT
+  BOOT --> D2
+  BOOT --> D1
+  D2 --> D1
+  D2 --> STO
+  D1 --> STO
+  STO --> KER
+  COM --> KER

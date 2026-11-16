@@ -1,0 +1,525 @@
+# JARVIS — Registro de mudanças
+
+Transformação do ULTRON em JARVIS, na ordem obrigatória das fases (A → I). Cada fase foi
+testada antes do commit; os commits estão na branch `claude/adoring-brahmagupta-vcejpt`.
+
+## Fase A — Auditoria (commit `1b4b8e2`)
+* Mapa real dos subsistemas, testes existentes (131 OK em Python 3.13 e 3.11), inicialização
+  real sem exceções. Relatório: `docs/JARVIS_AUDITORIA_E_PLANO.md`.
+* Voz **medida**: o Vosk transcreve "Jarvis" como "aviso", "aves", "já vi", "davis";
+  gramática restrita descartada (22/22 falsos positivos no modelo grande, 0/14 no pequeno).
+* Linha de base de desempenho gravada (`docs/benchmarks/before_jarvis.json`).
+
+## Fase B — Plano
+* Prioridades P0 (voz, identidade, Event Bus), P1 (tema, TARDIS, desempenho, memória, rede),
+  P2 (autonomia escopada, entrega). Preservar o que funciona; mudar só o necessário.
+
+## Fase C — Estabilização (commits `369d368`, `e692875`)
+* **Voz restaurada**: palavra de ativação "Jarvis" com formas medidas (fortes; nomes só no
+  início; fracas só com comando reconhecido); formas do ULTRON migradas; calibração ao vivo.
+* **Microfone**: PyAudio e, na falta ou falha, **sounddevice**; dispositivos que recusam 16 kHz
+  abrem na taxa nativa com reamostragem (filtro FIR); silêncio absoluto detectado
+  (privacidade do Windows); escolha de microfone na interface e no console.
+* **Diagnóstico de voz em 8 etapas** (interface, `--voice-test`, `--diagnose`, "diagnóstico de
+  voz"), que espera o modelo carregar e mostra evidência por etapa.
+* Encerramento ordenado de fala e saída de áudio (threads com `join`).
+* **Event Bus**: aviso de descarte agregado a cada 5 s (antes: uma linha de log por evento).
+* Configurações v2 com migração da identidade ULTRON e cópia de segurança
+  (`settings.ultron-backup.json`); variáveis `JARVIS_*` (aceita `ULTRON_*`).
+* Pedidos de autorização citam o recurso exato (registro, quantidade, URL).
+
+## Fase D — Desempenho (commit `a706c27`)
+Medido com `tools/benchmark.py` (agora cobre TARDIS, perfis e orbe). Detalhes e números
+finais em `PERFORMANCE_REPORT.md`.
+* Causa do CORE "nunca em repouso": a verificação de saúde de rotina (a cada 15 s) fazia a
+  sinapse de TELEMETRIA crescer e prendia o teto de quadros por ~4 s. Agora só mudanças reais
+  de saúde animam (assinatura do quadro de problemas).
+* Repouso com giro mais lento e cadência ociosa menor (Econômico 10, Equilibrado 15, Alto 24,
+  Cinematográfico 40 quadros/s).
+* Hub atrás do outro (CORE atrás do TARDIS e vice-versa) cai para a cadência de fundo.
+* TARDIS: camada estrutural em cache (fundo, anéis, corredores, portais, textos), traços
+  cosméticos de 1 px (caminho rápido do QPainter), marcas dos anéis giradas por
+  transformação, desenho direto durante a viagem da câmera.
+* Percepção relaxa os intervalos com o usuário ausente (> 5 min) e restaura ao voltar.
+
+## Fase E — Identidade JARVIS (commits `369d368`, `329a37c`)
+* Nome JARVIS em janelas, textos, mensagens, notificações, bandeja, voz, prompts e scripts;
+  pacote `ultron`, pasta de dados e mutex preservados por compatibilidade.
+* Personalidade: inteligente, serena, confiante, analítica, elegante, ligeiramente
+  espirituosa e profissional; uma pergunta objetiva quando falta o essencial; nunca afirma
+  execução sem verificação.
+* Voz masculina, grave e natural (perfil JARVIS), mais inteligível que a anterior (medido).
+* Tema único azul profundo/ciano com fonte única (`hud/palette.py` → `hud/theme.py`).
+* Estados visuais ligados a sinais reais: repouso azul profundo, escuta (halo pelo nível do
+  microfone), percepção (ondas por análise real), planejamento (conexões acesas conforme as
+  etapas terminam), execução (pulsos das operações), memória (nós em azul), fala (anéis pelo
+  nível da voz), imaginação (profundidade), erro (contorno fixo, sem alarme).
+* Ícone novo em vários tamanhos.
+
+## Fase F — TARDIS e memória pessoal (commits `e692875`, `a706c27`)
+* **TARDIS**: câmara central (hoje), anéis concêntricos, corredores e portais com registros
+  reais, partículas com orçamento, pulsos só para eventos reais, câmera com transição suave,
+  painel lateral de consulta/edição, captura rápida, som ambiente opcional, volta ao CORE sem
+  perder o estado.
+* **Conflitos de agenda** informados (nunca bloqueados) na captura, edição, TARDIS e linha do
+  tempo.
+* **Exportação** JSON/CSV para arquivo novo; **backup** consistente diário com rotação;
+  restauração segura só com o JARVIS fechado.
+* Filtros de prioridade e período (30 dias, sem data) nas tarefas.
+
+## Fase G — Rede local (commit `9b5aba1`)
+* Observação honesta por aparelho (respondeu recentemente / inferido / conhecido antes / sem
+  resposta / este computador), gateway, interface, primeira e última vez, origem e
+  confiabilidade; desconhecido aparece como desconhecido.
+* **Descobrir ≠ administrar**, explícito por aparelho e na tela.
+
+## Fase H — Validação (commit `10b0ab6` e seguintes)
+* **Autorização permanente escopada** ("sim, sempre" / SEMPRE 24 h): mesma ação + mesmo
+  recurso + validade; nunca para sensível, crítico, irreversível ou proativo; revalidada a
+  cada uso; revogável. Aba **AUTONOMIA** com histórico e registro de ações.
+* Falhas de varredura de rede sempre registradas como limitação visível.
+* Novos testes: memória pessoal completa, dois hubs com núcleo real, desempenho/cadência,
+  identidade de estados, autorização escopada, integridade (todos os módulos importam),
+  falha de rede, parada limpa por `--stop`.
+
+## Fase I — Entrega
+* `README_JARVIS.md`, `ARCHITECTURE_JARVIS.md`, `PERFORMANCE_REPORT.md`,
+  `VOICE_DIAGNOSTICS.md`, `TEST_REPORT.md`.
+* Scripts: `INSTALL_JARVIS.bat` (não apaga nada; copia modelos de uma instalação anterior só
+  quando faltam), `START_JARVIS.bat` (`--status`, `--stop`, `--diagnose`, `--voice-test`,
+  `--backup`…), `ATUALIZAR_JARVIS.bat` (para, faz backup, atualiza, diagnostica),
+  `DIAGNOSTICO_JARVIS.bat` (componentes ausentes, saúde, voz, backups); `START_ULTRON.bat`,
+  `INSTALL_ULTRON.bat` e `TEST_ULTRON.py` mantidos como atalhos de compatibilidade.
+* `--status` e `--stop` (parada normal pedida à instância em execução, sem forçar).
+* Dependências: `sounddevice` obrigatório (funciona sem PyAudio), `tzdata` no Windows.
+* `JARVIS_FINAL.zip` sem `.venv`, caches, dados pessoais nem modelos grandes.
+* `tools/build_release.py`: o pacote sai só de arquivos versionados no Git, é validado
+  (conteúdo obrigatório, nada proibido, `.bat` em ASCII com CRLF, tamanho) e foi **testado depois
+  de extraído** numa pasta nova.
+* Esse teste encontrou um defeito: o diagnóstico de voz acusava "modelo ausente" quando os
+  arquivos não estavam no disco, mesmo com o reconhecedor carregado e em uso. Agora a etapa 5
+  confia primeiro no reconhecedor em uso; teste de regressão em `test_jarvis_voice.py`.
+
+---
+
+# JARVIS ULTIMATE — JARVIS original + TARDIS + Noctário
+
+## Fases 1 e 2 — Auditoria e arquitetura (commit `a725f56`)
+* `INVENTARIO_JARVIS_ORIGINAL.md` (e `docs/inventario/`): o que o JARVIS original tinha, o que
+  funcionava, o que estava quebrado e o que precisava voltar. `ARQUITETURA_ULTIMATE.md` e
+  `DESIGN_VISUAL.md`: módulos, protocolos, estados, identidades visuais.
+
+## Fase 3, parte 1 — Recuperação do original no núcleo (commit `fb55f2d`)
+* Observador (desligado ao iniciar, pausar/retomar), **modo privacidade** que fecha o microfone
+  de verdade, automações do original reparadas (nomes antigos mapeados), personalidade do
+  original, frases de encerramento, teclas e apelidos do original, mutex do original respeitado,
+  `--autostart-check`, importação de modelos sem sobrescrever, **OpenAI** opcional (Responses
+  API, chave no cofre do sistema, LOCAL MODE bloqueia, falha → Ollama), notas de sessão.
+
+## Fase 3, parte 2 — Permissões, histórico e a plataforma (commits `bab7370` e seguinte)
+* **Permissões por categoria** aplicadas pelo executor, com pisos (apagar dados e robô nunca
+  abaixo de "confirmar") e parada de emergência sempre liberada.
+* **Histórico de atividades** no mesmo banco (migração v4), alimentado pelo núcleo, pelo
+  executor e pelos eventos; skills `activity.recent` e `activity.clear`.
+* **Plataforma**: janela única com navegação F1–F7, páginas preservadas, transição
+  holográfica, barra superior com estado e indicadores reais, conversa do original (horários,
+  STATUS, HORAS, PARAR, COPIAR RESPOSTA, LIMPAR, Ctrl+L), Esc como no original, histórico ↑/↓
+  com rascunho, ENVIAR.
+* Páginas **ATIVIDADES**, **CONFIGURAÇÕES** e **DIAGNÓSTICOS** (console de eventos, log,
+  serviços e GPU); TARDIS e Sistemas embutidos sem perder estado.
+* Bandeja: Reiniciar voz, Modo privacidade, Observador (modos e pausa), Iniciar com o Windows.
+* **Saída de áudio** selecionável; orbe lembra a posição; a interface informa quando cobre a
+  tela (observação suspensa); "encerre o JARVIS" fecha a interface e o modo console;
+  exceções não tratadas vão para o log.
+* Testes: 263 aprovados em Python 3.13 e 3.11 (novos: permissões, histórico, plataforma).
+
+## Fase 4 — Rosto holográfico, boca sincronizada, 12 estados e legendas
+* `hud/avatar/`: geometria esculpida (NumPy; normais em repouso calculadas uma vez, só a parte de
+  baixo recalculada quando a mandíbula abre), os 12 estados por sinais reais (função pura, prioridade
+  da arquitetura), animador (cabeça, olhar, piscadas, expressões, montagem pelo progresso real do
+  boot, pulsos de conexão/desconexão), renderização por camadas com QPainter (fundo em cache, grade
+  3D, anéis de dados, partículas, varredura, brilho em NumPy) e widget CPU ou GPU (QOpenGLWidget com
+  o mesmo desenho; volta para a CPU com o motivo).
+* `voice/lipsync.py`: visemas pelos fonemas do Piper sobre os trechos sonoros do áudio real
+  (alinhamento do modelo quando existir; espectro quando não há fonemas); abertura pela energia real.
+* `Speaker`: síntese por frase com fonemas; `mouth()`, `caption()` e `audible()` pela posição real de
+  reprodução; interromper fecha a boca no mesmo quadro. Indicador "reconhecendo" na voz.
+* Indicador de estado da barra superior = estado resolvido do avatar.
+* Otimização medida: traços longos com caneta de 1 px (o caminho rápido do QPainter) — 21–29 ms →
+  11–15 ms por quadro no perfil equilibrado a 1280×760.
+* `tools/benchmark_avatar.py` e `docs/benchmarks/avatar_fase4.json`.
+* Testes: `test_avatar.py` (12) e `test_lipsync.py` (8, inclusive com a voz Piper real quando
+  instalada).
+
+
+## Fase 5 — TARDIS: segundo cérebro, sala de controle 3D e rotor ligado ao estado real
+* `tardis/`: módulo lógico com protocolo de tarefas (`id`, entrada, estado, resultado, erros, tempos,
+  origem, cadeia, registro de operações e modelo usado), fila e thread próprias, prazo por tipo,
+  cancelamento imediato, análise travada abandonada com TIMEOUT sem parar a fila, tarefas
+  interrompidas marcadas na abertura seguinte. Cadeia de delegação verificada na entrada: no máximo
+  2 saltos, nenhum repetido, a TARDIS nunca devolve tarefas ao JARVIS.
+* Persistência no **mesmo banco** (migração v5: `tardis_tasks` e `project_notes`); textos que parecem
+  segredo redigidos; a memória de projeto recusa senhas e tokens. Cada tarefa entra no histórico de
+  atividades, ligada à ação e ao pedido que a originaram (o executor agora leva o vínculo do histórico
+  para a thread da skill).
+* Analisadores: consulta contextual com fontes (segue os registros de um projeto encontrado; nunca usa o
+  próprio pedido como fonte), planejamento (exige o modelo), organização, rotinas, telemetria do
+  Noctário (tempo, RMS do erro, oscilação por cruzamentos e FFT, saturação, perdas, cruzamentos,
+  comparação entre voltas; voltas do simulador rotuladas e nunca viram comando), diagnóstico e
+  coordenação. Sem dado → FAILED com o motivo. Linguagem natural com o **mesmo modelo do JARVIS**,
+  identificado em cada resultado; sem modelo, "sem modelo: análise determinística".
+* A TARDIS só **propõe** ações. Pelo JARVIS, a proposta vira sugestão ("sim"/"não"); comandos ao robô e
+  apagar dados não são pré-aprovados — o executor pede a confirmação da categoria.
+* Skills `tardis.consult` e `tardis.note`; intenções "consulte/pergunte à TARDIS…", "TARDIS, organize/
+  planeje/diagnostique…", "anote na TARDIS…", "memória de projeto…"; "abra a TARDIS" (sala) e "abra o
+  segundo cérebro" (ARQUIVO). "Cancelar" para as consultas do JARVIS à TARDIS.
+* Núcleo: TARDIS no ciclo de vida e no monitor de saúde; backups, exportações e escritas acendem o modo
+  OPERAÇÃO do rotor (o backup automático também).
+* `hud/tardis_room/`: sala de controle 3D em QPainter — console hexagonal com seis painéis clicáveis,
+  rotor de vidro que sobe e desce pelo modo REAL (repouso, processando, consulta do JARVIS com o feixe
+  JARVIS ⇄ TARDIS, operação, falha com anel no piso), paredes com círculos, piso, colunas, telas
+  flutuantes com a fila e o último resultado. Painéis laterais por tipo de análise, resultado com fontes
+  (texto do modelo sempre escapado), **APLICAR** pelo executor, **CANCELAR**, lista de tarefas.
+* Página TARDIS = sala de controle + ARQUIVO (a memória espacial anterior, intacta; "← SALA DE
+  CONTROLE"). Cada vista preserva o próprio estado; Esc solta o painel ou fecha a região.
+* Desempenho medido (contêiner Linux, Qt offscreen, CPU; medianas): câmera parada 7,7–11,0 ms por
+  quadro a 1280×720 e 8,9–14,4 ms a 1920×1080; volta da câmera até um painel 23,5–36,1 ms (só durante
+  ~1 s); ida e volta de uma tarefa no motor 0,8 ms. A sala anima a no máximo 24 quadros/s e usa no máximo 25% da
+  thread da interface. `tools/benchmark_tardis_room.py` e `docs/benchmarks/tardis_room_fase5.json`.
+* Testes: `test_tardis_logic.py` (33) e `test_tardis_room.py` (12); `test_tardis.py` e
+  `test_platform.py` atualizados para o ARQUIVO dentro da página TARDIS.
+
+## Fase 6 — Noctário: firmware ESP32, protocolo Bluetooth, serviço, skills e painel
+> O código original do Noctário **não foi fornecido**. O firmware foi escrito a partir da especificação
+> (pinagem, parâmetros iniciais, comportamentos); o que só o original confirma virou parâmetro ajustável
+> e está listado em `firmware/noctario/README.md` (A CONFIRMAR), junto com o pedido do código.
+
+* **Firmware** (`firmware/noctario/`): núcleo sem Arduino (`noct_core.cpp`: protocolo, 12 estados, posição
+  da linha com 8 QTR, linha branca em pista preta, PD com velocidade adaptativa e rampas, 4 cruzamentos com
+  filtro, perda de linha com recuperação limitada, cão de guarda do link com política `stop`/`continue`,
+  parada imediata pelo byte `!`, teste de bancada) e camada da ESP32 (`main.cpp`: pinagem exata recebida,
+  STBY baixo antes de tudo, PWM 20 kHz para arduino-esp32 2.x e 3.x, Bluetooth Clássico SPP, NVS, LED,
+  laço em ritmo fixo). Parâmetros lidos da NVS passam pelos limites do protocolo (memória corrompida →
+  padrões); calibração interrompida não permite partida.
+* **Protocolo NOCT/1** (`PROTOCOLO_NOCT1.md`): linhas ASCII até 240 bytes, `!` de emergência em qualquer
+  ponto, batimento, comandos com sequência e resposta única (ACK/NAK com código), STA/TEL/EVT/PAR/SEN,
+  limites validados nos dois lados, `SET` tudo-ou-nada.
+* **Serviço no PC** (`ultron/noctario/`): transportes porta COM (pyserial), RFCOMM direto e SIMULADOR
+  (sempre rotulado; só conecta ao que foi configurado, sem varredura); estado **solicitado × confirmado**
+  ("aguardando confirmação", "sem confirmação do robô — estado desconhecido"); prazo por comando (TIMEOUT
+  nunca vira "feito"); PARADA direto no transporte, repetida até o ESTOP confirmado; reconexão com espera
+  crescente que nunca dá partida; voltas gravadas no mesmo banco (migração v6, amostras comprimidas,
+  volta parcial marcada) e entregues à TARDIS; alertas; operações registradas; taxa de telemetria das
+  configurações aplicada a cada conexão.
+* **Simulador** (`simulator.py`): a mesma lógica do núcleo C++ em Python + física de uma pista de TESTE
+  inventada. `tests/test_noctario_firmware.py` compila o núcleo com g++ e compara os dois **linha a linha**
+  numa sessão de 62 s simulados (31 071 ciclos: mensagens, eventos, telemetria e PWM de cada ciclo).
+* **Skills e voz**: 18 skills (`noctario.*`) e frases ("pare o Noctário", "calibre o Noctário", "dê a
+  partida no Noctário", "teste o motor esquerdo do Noctário", "ajuste o Kd do Noctário para 0,12"…).
+  Paradas são emergência (nenhuma permissão as bloqueia; "pare o Noctário" sai na hora, sem fila nem
+  modelo; "pare"/"cancelar" com o robô andando também param). Tudo que move ou reconfigura o robô pede
+  confirmação a cada vez e não é oferecido ao modelo de linguagem.
+* **Página NOCTÁRIO (F4)**: SEM CONEXÃO / SIMULADOR / CONECTADO, estado informado pelo robô e pedido em
+  andamento, valores, barras dos sensores, gráfico de 20 s (posição, PWM, mapa dos sensores, cruzamentos),
+  PARADA DE EMERGÊNCIA (F12) sempre visível com o aviso do botão físico, comandos, parâmetros com limites
+  (inclusive os de fiação a confirmar), voltas gravadas com ANALISAR NA TARDIS, alertas. CONFIGURAÇÕES >
+  NOCTÁRIO ganhou "Reconectar se o link cair".
+* **Defeitos encontrados pelos testes novos e corrigidos**:
+  * **F12 e Esc da plataforma nunca disparavam** (PySide6 6.8: sinal passado como `activated=` do atalho
+    não é chamado); F2/F3/Esc da janela antiga tinham o mesmo defeito. Agora `.emit`, com teste.
+  * O modo agêntico executava **ferramentas que não tinham sido oferecidas ao modelo** (inclusive as
+    reservadas a pedidos diretos, como dar partida no robô — o executor ainda pediria confirmação); e o
+    planejador listava essas skills. Agora são recusadas e ficam fora da lista.
+  * Pedido em que nada foi executado respondia "Feito e verificado. 0 etapa(s) verificada(s)." Agora diz
+    "Nenhuma ação foi executada." e não marca verificado.
+  * Sem Bluetooth no PC, abrir o RFCOMM derrubava a thread do link e a mensagem culpava o robô; agora o
+    motivo real chega à interface.
+  * A volta era anunciada antes de gravada no banco; o ACK de `SET`/`TEL` não atualizava o parâmetro no
+    PC; o indicador da barra superior dizia "DESCONECTADO" em vez de "SEM CONEXÃO".
+  * Argumentos numéricos NaN ou infinitos passavam pela validação das skills (toda comparação com NaN é
+    falsa); agora são recusados.
+  * Frases que só **mencionam** o robô viravam comando a ele ("lembre-me de calibrar o robô amanhã" →
+    calibrar; "crie uma tarefa para testar os motores do Noctário" → teste de motores). Ainda pediriam
+    confirmação, mas um "sim" distraído moveria o robô. Lembretes, tarefas, notas, pesquisas e perguntas
+    agora seguem para as regras certas; as frases de parada continuam valendo sempre.
+  * `STOP` durante o teste de bancada ou a calibração passava por `STOPPING`, e o PC gravava isso como
+    uma "volta interrompida" falsa. Agora o robô para na hora e volta a pronto/sem calibração; só o
+    percurso de verdade (RUN) abre uma volta.
+* **Medido** (`tools/benchmark_noctario.py`, `docs/benchmarks/noctario_fase6.json`; contêiner Linux, CPU,
+  Qt offscreen, **simulador — não é Bluetooth nem o robô**): PARADA até o ESTOP confirmado 2,0 ms
+  (mediana; máx. 8,1 ms); PING ida e volta 10,5 ms (o simulador processa em lotes de 10 ms); atualização
+  da página 0,43 ms; pintura do gráfico com a janela cheia (400 amostras) 6,8 ms (p95 13 ms) — o mapa dos
+  sensores virou uma imagem única: nos mesmos dados (400 amostras, 1000×300) 16,2 → 5,5 ms (p95 22,9 →
+  6,6 ms); uma volta da pista de teste (27,4 s simulados, 548 amostras a 20 Hz) ocupa 6,6 KB no banco.
+* **Não verificado**: compilação real do `main.cpp` para a ESP32 (o ambiente bloqueou o download do
+  toolchain; o `main.cpp` foi conferido contra cabeçalhos com as assinaturas do arduino-esp32 2.x e 3.x) e
+  qualquer comportamento no robô real.
+* Testes: `test_noctario.py` (33), `test_noctario_firmware.py` (3) e `firmware/noctario/test/host`
+  (10 grupos); `test_platform.py`, `test_permissions.py` e `test_tardis_room.py` atualizados.
+
+## PR #2 integrada — segurança do repositório, CI e os sketches originais do Noctário
+Trabalho do proprietário sobre `d16c9d1`, integrado sem alterações (avanço rápido, a pedido):
+* cópia de segurança integral antes das Fases 7 e 8 (branch `safety/backup-before-phase-7-8-20261029`,
+  manifesto em `SEGURANCA_BACKUP/`), guia `SEGURANCA_E_BACKUP.md` e `.gitignore` que impede enviar bancos,
+  credenciais, `.env`, caches e builds;
+* CI (`.github/workflows/jarvis-validation.yml`): Python 3.11 e 3.13 no Linux, **Windows** (runner do GitHub,
+  Windows Server 2025: dependências e suíte), testes C++ do firmware, **compilação real do firmware para a
+  ESP32 (PlatformIO)** e pacotes ZIP extraídos numa pasta limpa e testados; `CI_E_RELEASE.md`;
+* PyAudio opcional (o `sounddevice` basta), Qt limitado à série 6.8 testada, backend de áudio desconhecido
+  recusado, caminhos de ZIP no estilo Windows (`..\`) recusados em qualquer sistema;
+* Noctário alinhado aos sketches originais: sensor de cruzamento ativo em **LOW** e laço de **100 Hz**
+  como padrão, migração da NVS antiga preservando a calibração; simulador e testes acompanham.
+
+## Fase 7 — Testes de segurança, falhas, transições, voz e linha de comando
+* Cobertura medida antes de escrever testes (74 % das linhas); os testes novos miraram os menos cobertos e
+  o que a fase pede: **39 testes novos** — `test_security.py` (17), `test_failures.py` (7),
+  `test_transitions.py` (6), `test_cli.py` (4), perguntas sobre a memória pessoal (+3), calibração da voz
+  com Piper e Vosk reais (+1), cancelamento do modelo (+1). Total: **404 testes**, todos aprovados em
+  Python 3.13 e 3.11. Detalhes, o que é real e o que é simulado: `TEST_REPORT.md`.
+* **Defeitos encontrados pelos testes e corrigidos:**
+  * as skills de arquivos podiam criar, alterar, mover ou apagar dentro do sistema operacional, da
+    inicialização automática e do próprio JARVIS — um `.py` gravado na pasta de plugins seria executado na
+    próxima partida. Agora é recusado antes de qualquer autorização (novo gancho `refuse_reason`, conferido
+    pelo executor); ler e listar continuam livres;
+  * a segunda edição de um arquivo sobrescrevia a cópia `.ultron.bak` (o original do usuário se perdia);
+  * "cancelar" com o modelo ainda carregando deixava o JARVIS preso até o primeiro token; agora a conexão
+    é encerrada e ele volta ao repouso na hora;
+  * o modelo que quebra no meio do pedido não acendia o estado de erro do rosto nem entrava no histórico;
+  * banco de memória danificado derrubava o início com um traceback (sem console, a janela simplesmente
+    não abria); agora a mensagem diz o que houve, que o arquivo não foi tocado e como restaurar (código 3);
+  * `settings.json` ilegível era substituído na gravação seguinte; agora o original é guardado antes;
+  * banco que recusa gravação respondia "Falha interna (OperationalError)"; backup que falhava deixava
+    um `.partial`;
+  * um título de janela com quebras de linha podia simular uma seção nova no prompt do sistema;
+  * achados pelo CI no **Windows** (Server 2025, o runner do GitHub): o cancelamento dependia de encerrar
+    o socket de outra thread (no Windows isso não acorda quem espera; agora a espera é numa fila e não
+    depende do sistema), os testes da linha de comando liam UTF-8 de um pipe em cp1252, e o
+    `TEST_JARVIS.py` caía ao imprimir as falhas. Depois das correções: 404/404 também no Windows.
+* A cobertura depois: 75 % no total; skills de arquivos 36 % → 61 %, perguntas sobre a memória 21 % → 84 %,
+  calibração da voz 22 % → 58 %. Os testes da linha de comando rodam `main.py` em processos separados,
+  fora da medição.
+
+## JARVIS 2.0 — a janela não abria no Windows; modo console completo
+Correção prioritária, antes de continuar a Fase 8. Auditoria com as 10 perguntas: `AUDITORIA_INICIALIZACAO.md`.
+* **Causa**: `HudController` criava a bandeja do sistema antes de `state_cache`; com bandeja (todo Windows de
+  mesa) o menu chamava o submenu do Observador e a interface caía com `AttributeError: 'HudController' object
+  has no attribute 'state_cache'` — com o `pythonw`, sem mensagem nenhuma. Os testes não pegavam porque o Qt
+  offscreen não tem bandeja. Corrigido (o mesmo cache, criado antes) e coberto por teste que declara a
+  bandeja disponível — o teste reproduz o traceback sem a correção.
+* **Falha da interface** não some mais: traceback no registro, motivo na tela (terminal ou caixa de mensagem
+  do Windows), oferta do modo console (no terminal, com o mesmo núcleo; sem terminal, numa janela nova depois
+  de liberar a instância). Mensagens do Qt, inclusive as fatais, vão para o registro.
+* **Já em execução**: abrir de novo traz a janela para a frente, ou explica o que fazer.
+* **`--stop` enviado enquanto a janela montava era perdido** (a janela apagava o pedido ao terminar de abrir):
+  corrigido; teste novo reprova sem a correção.
+* **Diagnóstico por etapas** (`ultron/diagnose.py`), cada uma com prazo e impressa ao terminar, incluindo a
+  interface montada de verdade (`--gui-check`, processo separado). Antes ele só imprimia no fim — parecia
+  travado em "Diagnostico do sistema:" — e, com a saída redirecionada, caía com `UnicodeEncodeError` (achado
+  pelo CI no Windows). Nenhum caractere derruba mais a saída do programa.
+* **Modo console** (`START_JARVIS.bat --console`, `ultron/console.py`): o mesmo núcleo, banco, memória, TARDIS,
+  permissões e executor; cabeçalho com o estado real, prompt com o nome configurado, confirmações, Ctrl+C
+  cancela, `sair` e `--stop` encerram em ordem; segunda abertura recusada com aviso.
+* `START_JARVIS.bat --foreground` (a janela com o terminal mostrando erros) e `--gui-check`.
+* **O `chcp` do Windows consumia a entrada redirecionada**: no CI, `START_JARVIS.bat --console` com a entrada
+  vinda de um arquivo recebia fim de entrada no primeiro prompt. Sondas no Windows isolaram a causa (o mesmo
+  `.bat` sem o `chcp` conversou; com ele, não). Todos os `.bat` usam agora `chcp 65001 <nul >nul`; teste confere.
+* **Processos filhos não leem mais a entrada do usuário**: a verificação da GPU chamava o PowerShell sem
+  `stdin`, e ele consumia a entrada padrão quando ela era redirecionada — no CI do Windows, as linhas enviadas
+  ao console sumiam antes do primeiro prompt. Todas as chamadas agora fecham a entrada; teste confere.
+* **Voz com áudio muito curto**: o efeito de voz quebrava ("could not broadcast input array") quando a
+  síntese devolvia quase nada — a voz do Windows sem vozes SAPI instaladas, no CI. Agora qualquer comprimento
+  passa e áudio vazio é informado como tal.
+* **Boca no limite entre quadros**: por ponto flutuante, um instante logo depois do fim da fala misturava o
+  quadro anterior e a boca "abria" em 1e-15 no silêncio; o teste da voz Piper real falhou uma vez no CI do
+  Windows por isso. Corrigido, com teste determinístico.
+* Teste do Noctário que lia o histórico de operações antes de ele ser gravado: agora espera a gravação.
+* Testes: `test_startup.py` (9, processos reais: janela com bandeja, segunda abertura, `--stop` durante a
+  abertura, falha da interface, console com conversa, memória, TARDIS e autorização, `--stop`, reabertura,
+  diagnóstico com etapa sem resposta, saída sem quebra de codificação) e `test_platform.TrayStartupTest`.
+
+## JARVIS 2.0 — central 3D premium (holograma de corpo inteiro, ORBE e TARDIS)
+* **Cena 3D única** (Three.js r170 embutido, MIT) num `QWebEngineView` na página JARVIS, emprestada à página
+  TARDIS — um motor só; o resto da interface continua Qt. Auditoria, decisões e evidências:
+  `AUDITORIA_VISUAL_3D.md`.
+* **Holograma de corpo inteiro** (esqueleto de 51 ossos, dedos com três falanges, malha contínua com dobra
+  suave nas juntas, *skinning* na GPU), base de projeção com anéis, feixe e partículas; animações por estado
+  REAL (os mesmos 12 estados resolvidos pelo `states.resolve`), boca pela trilha labial do áudio real, gestos
+  só com energia real da fala.
+* **ORBE 3D** (vista NÚCLEO): rede neural coerente (vizinhos mais próximos em três cascas), pulsos, filamentos,
+  anéis orbitais com marcas, partículas que entram/saem do núcleo; estado SEM CONEXÃO quando o Python não
+  envia sinal. O botão ORBE (orbe flutuante 2D) não mudou.
+* **TARDIS**: cabine azul por fora (portas que abrem, janelas, letreiro, lâmpada pelo modo real) e sala por
+  dentro (paredes de roundels, galeria, console de 6 painéis com botões, alavancas, mostradores, luzes e telas;
+  rotor do tempo com vidro, anéis e cilindros). Painéis e rotor seguem só tarefas e modos REAIS do motor;
+  passagem pela porta entre JARVIS e TARDIS.
+* **Desempenho**: teto de quadros por perfil, qualidade adaptativa medida, instâncias, materiais
+  compartilhados, partículas na GPU, perda de contexto WebGL tratada; `tools/benchmark_scene3d.py`.
+* **Reserva 2D automática** (sem QtWebEngine, sem WebGL 2, página sem resposta, processo de desenho encerrado,
+  contexto perdido): volta ao rosto 2D na hora, com o motivo no registro, em DIAGNÓSTICOS e no `--gui-check`.
+  CONFIGURAÇÕES > APARÊNCIA > **Cena 3D** (Automática/Desligada).
+* **Segurança**: página só local (interceptador bloqueia qualquer outro endereço), navegação restrita, ações
+  da página limitadas a `tardis`, `jarvis` e `mic` e decididas pelo Python.
+* `requirements.txt`: `PySide6-Addons` (mesma versão do Essentials). Testes: `tests/test_scene3d.py` (inclui a
+  cena real num processo próprio: Windows nativo e Linux com Xvfb no CI).
+
+
+## Operação Phoenix — Fase A: auditoria e remoção do Noctário
+* Auditoria e plano técnico: `PHOENIX_AUDITORIA_E_PLANO.md`.
+* O Noctário saiu do produto (página, F4, F12, indicador, serviço no NeuralCore, intenções de voz, skills,
+  categoria de permissão, configurações, firmware, testes exclusivos, `pyserial`, jobs de CI). Manifesto
+  completo: `REMOCAO_NOCTARIO.md`. Dados do usuário e tabelas antigas do banco preservados.
+* TARDIS > TELEMETRIA agora mede o próprio JARVIS (processo, latência real dos modelos e respostas, interface,
+  Event Bus, workers), com pontos de atenção explicados e nenhuma alteração automática.
+* Complemento (commit `7385b99`): menções restantes em textos, exemplos e documentos de usuário.
+
+## Operação Phoenix — Fase B: holograma androide, ORBE minimizado 3D e design system
+* Holograma: rosto androide (olhos amendoados com íris, joia na testa, sobrancelhas, maçãs, mandíbula),
+  placas anatômicas (esterno, peitorais, clavículas, abdômen, coluna, escápulas), circuitos com pulsos que
+  seguem a anatomia, pescoço afinado; vista **LATERAL**.
+* ORBE recolhido = a **mesma** cena 3D em modo compacto (emprestada da página e devolvida ao expandir; sem
+  segunda engine, sem segundo núcleo); sem cena pronta ou com falha, o orbe 2D continua.
+* Rotor da TARDIS com hélice de energia azul ligada à atividade real.
+* Design system: `ultron/hud/design/tokens.json` como fonte única → `tokens.css` (gerado) e paletas Qt/3D
+  conferidas por teste; `DESIGN_SYSTEM.md`.
+* Qualidade adaptativa com período de aquecimento (não reage à compilação de shaders).
+
+## Operação Phoenix — Fase C: Protocolo ULTRON (evento visual)
+* `ultron/hud/ultron_protocol.py` (lógica pura): ativação manual, ocasional (probabilidade por hora em repouso,
+  intervalo mínimo, uma checagem por minuto), demonstração, término automático, histórico
+  (`protocolo_ultron.json`); bloqueado com autorização pendente, ação em execução, verificação/recuperação ou
+  modo privacidade — e encerrado na hora se uma delas surgir durante o evento.
+* "Protocolo ULTRON" não é mais trocado por "JARVIS" pelo corretor de identidade (autorreferências continuam
+  corrigidas).
+* Interface: estilo da aplicação e dos painéis, título da janela, marca, ORBE e cena 3D (holograma, olhos,
+  convés, TARDIS, cabine, interferência, mensagens, botão RESTAURAR JARVIS) — tudo salvo antes e restaurado
+  exatamente; Esc restaura primeiro.
+* Frases: "iniciar protocolo ULTRON", "protocolo ULTRON demonstração", "encerrar protocolo ULTRON",
+  "restaurar JARVIS". No console: explica que não tem efeito.
+* CONFIGURAÇÕES > APARÊNCIA: controles, DEMONSTRAÇÃO e histórico.
+* `tests/test_ultron_protocol.py`: lógica, frases, console e, com a interface real (Qt offscreen), que
+  configurações, permissões, autorizações permanentes e o executor ficam intactos e que a aparência volta
+  exatamente como era.
+
+## Operação Phoenix — Fase D: inteligência por tarefa, consumo, autorização, procedência e memória
+* `ultron/models/profiles.py` (lógica pura): perfis LOCAL/HÍBRIDO/AVANÇADO/ECONÔMICO/PRIVACIDADE, avaliação da tarefa
+  (complexidade, finalidade, conteúdo sensível, contexto pessoal, imagens) e decisão determinística entre modelo local
+  rápido/robusto e nuvem rápida/robusta, com o motivo.
+* Roteador: nuvem só pronta de fato (chave, modelo, privacidade) e dentro do limite; **autorização no primeiro uso
+  pago** (mesmo AuthorizationManager); falha da nuvem → local **com aviso**; memória pessoal, tela, histórico,
+  ferramentas e imagens não saem sem opção explícita; modelo local robusto automático.
+* `ultron/models/usage.py` + migração v7 (`model_usage`, mesmo banco): tokens, duração, custo estimado (só com preço
+  configurado), limites mensais em US$ e tokens.
+* Procedência em cada resposta (`ultron/cognition/provenance.py`), na conversa e no console.
+* Memória: perguntas gerais ("quais ideias salvei?", "liste minhas notas"), todas as decisões (incluindo a memória
+  de projeto da TARDIS) e relações entre projetos (ligações, itens, etiquetas em comum, citações).
+* CONFIGURAÇÕES > INTELIGÊNCIA: perfil, modelos por tarefa, limites, preços, envio de contexto/imagens (com
+  confirmação), autorização do uso pago e consumo do mês. Voz: "qual o consumo da IA?", "use o perfil local".
+* `tests/test_intelligence.py` (22): roteamento, perfis, limite, consumo, autorização, privacidade do que é enviado,
+  procedência, memória — sempre com servidores falsos locais (nenhum serviço pago real foi chamado).
+
+## Aprimoramento 1 — Protocolo ULTRON com identidade completa e perfil ULTRON_OPERATOR
+* Pedido novo do usuário substitui a restrição anterior ("o ULTRON não executa nada"): persona no núcleo
+  (`ultron/personality/persona.py`) troca voz (`JARVIS_VOICE_PROFILE`/`ULTRON_VOICE_PROFILE`), tom das respostas e a
+  política de permissões; estado `persona` publicado para a interface, a cena 3D e a ORBE remota.
+* `ULTRON_OPERATOR`: mesma AutonomyPolicy/PermissionPolicy/AuthorizationManager/executor; política por categoria
+  configurável que nunca desbloqueia o bloqueado, mantém o piso de apagar dados, confirma risco alto, envio externo e
+  ações administrativas; atividades marcadas [ULTRON].
+* Tecla de emergência configurável (padrão Ctrl+Shift+U) que restaura e interrompe; restauração por comando/botão/Esc
+  também interrompe; fim por tempo não corta tarefas. Autorizações e ações durante o ULTRON continuam visíveis (o
+  evento não termina mais por causa delas); rótulos honestos (identidade × operador ativo).
+* Console: o protocolo agora troca voz, tom e perfil (sem os efeitos visuais).
+* `tests/test_ultron_protocol.py` (21): política do operador, executor real, histórico, voz/tom, tecla de emergência,
+  identidade x operador, restauração.
+
+## Aprimoramento 2 — Voz mais humana e as duas identidades vocais
+* `ultron/voice/prosody.py`: normalização para fala em pt-BR, planejamento em frases e respirações, pausas pela
+  pontuação, alongamento final, perguntas, variação determinística de ritmo, expressividade do Piper
+  (`noise_scale`/`noise_w_scale`) por identidade.
+* `PiperSynth.synthesize_plan`: síntese por trecho com a pausa planejada (descontando o silêncio do modelo, para o
+  alinhamento dos fonemas da boca continuar exato).
+* `ULTRON_VOICE_PROFILE` com textura metálica (`dsp.metallic`), mais grave e deliberado; `JARVIS_VOICE_PROFILE`.
+* Medido na voz Faber: variação de entonação do JARVIS 2,97 → 3,41 semitons; pausas médias 0,15 → 0,36 s; ULTRON
+  ~2,3 semitons abaixo do JARVIS na mesma frase. Amostras WAV entregues para avaliação de ouvido.
+* Escolha da voz Piper instalada nas configurações. Outras vozes não puderam ser baixadas neste ambiente (acesso ao
+  HuggingFace bloqueado); avaliação de ouvido fica com o usuário.
+* `tests/test_voice_prosody.py` (10): normalização, planejamento, perfis, estilo por persona e síntese REAL pelo
+  Piper — pausas, alinhamento da boca e inteligibilidade do ULTRON reconhecida pelo Vosk.
+
+## Aprimoramento 3 — Sons da TARDIS (originais, substituíveis por arquivos autorizados)
+* `ultron/audio/tardis_sfx.py`: materialização, desmaterialização, portas, rotor, alerta e ambiente sintetizados
+  (determinísticos, ~0,1 s para gerar todos); WAV do usuário em `sons_tardis` substitui o original (qualquer taxa,
+  mono/estéreo); arquivo ilegível volta ao original com aviso. Nenhum áudio protegido incluído.
+* `NeuralAudio`: gatilhos por eventos reais (tarefa da TARDIS começou/terminou/falhou, modo do rotor), portas ao
+  entrar/sair da sala, ambiente da sala como leito; `tardis_sfx`, `tardis_sfx_volume`.
+* `tests/test_tardis_sfx.py` (5).
+
+## Aprimoramento 4/5 — Holograma humanoide e a TARDIS habitada
+* `materials.js`: `holoSolidMaterial` (superfície sólida holográfica com luz principal, preenchimento, brilho especular,
+  borda e trama de tecido; escreve profundidade) e `hairMaterial` (fios com balanço no shader).
+* `avatar_dress.js` (novo): jaqueta (gola, zíper, recortes, punhos, caimento lateral), calça, calçados, cabelo
+  masculino (~2 400 fios + massa sólida) e sobrancelhas em ossos próprios — tudo no MESMO esqueleto do corpo.
+* `avatar.js`: pele sólida (as linhas ficam por cima, só onde visíveis), expressões (sobrancelhas, apertar os olhos),
+  íris que seguem o olhar, olhar para o usuário (câmera) ao ouvir/falar, boca que abre de verdade; no ULTRON roupas
+  grafite metálicas.
+* TARDIS: o MESMO holograma é levado para dentro da sala (junto ao console), olha o painel real em uso e opera o
+  console enquanto o motor trabalha; mobiliário integrado; giroscópio no rotor; pintura com desgaste na cabine.
+* Verificado no Chromium (Playwright) e no QtWebEngine real (Xvfb): 0 erros de JavaScript, sala e holograma
+  desenhados; o desempenho no computador do usuário (GPU real) ainda não foi medido.
+
+## Aprimoramento 6 — JARVIS WEB ORB (gateway, agente da matriz-mãe, pareamento e site da ORBE)
+* `gateway/` (serviço separado, aiohttp): site da ORBE, pareamento por QR/código com confirmação no computador,
+  sessões por cookie HttpOnly/Secure/SameSite=Strict, CSRF, origem conferida, limites de tentativas, CSP estrita,
+  auditoria sem conteúdo de conversa, banco próprio (nunca a memória pessoal). Docker (usuário sem privilégios,
+  somente leitura, HEALTHCHECK) e compose com HTTPS automático (Caddy). `WEB_ORB.md`: publicação, atualização e
+  rollback; nada foi publicado (depende de servidor e domínio do usuário).
+* `ultron/remote/agent.py`: conexão de SAÍDA com reconexão, o MESMO NeuralCore (`source="remoto"`), estado real e
+  persona para a ORBE, histórico da conversa, autorizações (sensíveis só no computador), voz pela mesma identidade
+  vocal, microfone do navegador reconhecido pelo mesmo Vosk.
+* CONFIGURAÇÕES › REDE REMOTA: endereço, inscrição (token no cofre do sistema), conexão, pareamento com QR Code,
+  confirmação, lista de dispositivos e revogação. `requirements.txt`: websockets, segno.
+* Testes: `tests/test_web_orb.py` (7) — de ponta a ponta com gateway real, agente e NeuralCore; também validado no
+  Chromium (celular) e a imagem Docker construída e executada. CI instala as dependências do gateway e passa o lint
+  também nele; imports sem uso de testes anteriores corrigidos.
+
+
+# SAFRA (versão 3.0) — transformação em TCC técnico
+
+Detalhe completo em `docs/technical/RELATORIO_TECNICO.md`; marcos em `docs/technical/CHANGELOG.md`.
+
+## SAFRA 1 — auditoria (`07fcda6`)
+* Auditoria do repositório, inventário de 84 funcionalidades com nível de evidência, arquitetura com 9 diagramas
+  desenhados do código, análise de dependências do NOCTARIO (sem dependência funcional), linha de base da suíte.
+
+## SAFRA 2 — escopo, requisitos e cronograma (`c5f8313`)
+* Problema, hipótese (H1–H4 com critério de decisão), justificativa e objetivos; RF01–RF37, RNF01–RNF16 (metas),
+  RS01–RS11, RT01–RT08, CA01–CA05; cronograma mensal até 2027 com congelamento em maio.
+
+## SAFRA 3 — identidade (`35a7554`)
+* Nome SAFRA, versão 3.0.0, paleta vermelha nos tokens (contraste AA), folhas de estilo do Qt geradas da paleta,
+  cena 3D e WEB ORB recoloridas (cabine da TARDIS mantida azul), ULTRON em violeta e cromo; "safra" como palavra de
+  ativação com "jarvis" aceita; migração de configurações v2 → v3 com cópia; identificadores internos preservados.
+
+## SAFRA 4 — medições (`456fe23`)
+* `tools/experimentos` (PV-01…PV-07), protocolos, resultados no contêiner; correções da recuperação de memória
+  (palavra inteira, sem acentos, sem bônus para fatos sem relação) e da calibração ("faça" proibida como forma forte).
+
+## SAFRA 5 — TCC e relatório
+* `docs/academic` (capítulos 1–13, referências verificadas, apêndices), `tools/montar_documentos.py`, DOCX e PDF em
+  `docs/export`, relatório técnico completo.
+
+## Transformação em SAFRA — Fase 1: auditoria (13/11/2026)
+* **Nenhuma mudança de código.** Documento novo: `docs/technical/AUDITORIA_TRANSFORMACAO_SAFRA.md` (diagnóstico,
+  mapa dos módulos e das dependências, funcionalidades, problemas, riscos, arquitetura proposta, plano por
+  etapas, preservação de dados, plano de testes e as onze decisões que dependem de aprovação).
+* Linha de base registrada: 475 testes, 0 falhas, 1 pulado no commit `34c712b`
+  (`docs/research/resultados/linha_de_base_34c712b.txt`).
+* A migração estrutural só começa depois da aprovação da auditoria.
+
+## Transformação em SAFRA — Fase 2: especificação (14/11/2026)
+* **Nenhuma mudança de código.** Pasta nova `docs/especificacao/`: registro de decisões (27), arquitetura de
+  destino, contrato de comunicação v1, requisitos do novo escopo, especificação da interface e do símbolo e
+  plano de migração (etapas M3 a M8, mapas de código, banco v8, configurações v4, reversão).
+* Sete diagramas novos (11 a 17) em `docs/diagrams/`.
+* Incorporadas as sete decisões do autor: função da TARDIS e do ULTRON preservada com nomes próprios;
+  exportação das tabelas do NOCTARIO antes da remoção; troca gradual dos nomes internos; ativação só por
+  "Safra" com tecla de atalho; documentos históricos em `legado/`; TCC reescrito; painel local primeiro.

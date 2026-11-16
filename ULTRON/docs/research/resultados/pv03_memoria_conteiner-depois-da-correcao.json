@@ -1,0 +1,778 @@
+{
+  "protocolo": "PV-03",
+  "conjunto": "sintético (definido neste script)",
+  "real": [
+    "MemorySystem/Retriever e SecondBrainService sobre SQLite em arquivo"
+  ],
+  "simulado": [],
+  "ambiente": {
+    "sistema": "Linux 6.18.44-fc-v378",
+    "maquina": "x86_64",
+    "processador": "x86_64",
+    "cpus_logicas": 4,
+    "memoria_gb": 15.7,
+    "python": "3.13.18",
+    "pacotes": {
+      "PySide6-Essentials": "6.8.3",
+      "vosk": "0.3.45",
+      "piper-tts": "1.8.0",
+      "numpy": "2.5.4",
+      "psutil": "7.2.2"
+    },
+    "commit": "35a7554+alterações",
+    "data_utc": "2026-11-11T03:21:47Z"
+  },
+  "metricas": {
+    "lexical_recall@1": {
+      "acertos": 20,
+      "total": 20,
+      "taxa": 1.0,
+      "ic95_wilson": [
+        0.8389,
+        1.0
+      ]
+    },
+    "lexical_recall@3": {
+      "acertos": 20,
+      "total": 20,
+      "taxa": 1.0,
+      "ic95_wilson": [
+        0.8389,
+        1.0
+      ]
+    },
+    "parafrase_recall@1": {
+      "acertos": 9,
+      "total": 20,
+      "taxa": 0.45,
+      "ic95_wilson": [
+        0.2582,
+        0.6579
+      ]
+    },
+    "parafrase_recall@3": {
+      "acertos": 9,
+      "total": 20,
+      "taxa": 0.45,
+      "ic95_wilson": [
+        0.2582,
+        0.6579
+      ]
+    },
+    "ausente_recuperacao_indevida": {
+      "acertos": 7,
+      "total": 10,
+      "taxa": 0.7,
+      "ic95_wilson": [
+        0.3968,
+        0.8922
+      ]
+    },
+    "memoria_pessoal_exata@3": {
+      "acertos": 8,
+      "total": 8,
+      "taxa": 1.0,
+      "ic95_wilson": [
+        0.6756,
+        1.0
+      ]
+    },
+    "memoria_pessoal_variacao@3": {
+      "acertos": 7,
+      "total": 8,
+      "taxa": 0.875,
+      "ic95_wilson": [
+        0.5291,
+        0.9776
+      ]
+    }
+  },
+  "amostras": [
+    {
+      "tipo": "lexical",
+      "assunto": "aniversário da Ana",
+      "pergunta": "quando é o aniversário da Ana?",
+      "posicao": 1,
+      "recuperados": [
+        "aniversário da Ana: 12 de março"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "aniversário da Ana",
+      "pergunta": "em que dia a Ana faz anos?",
+      "posicao": 1,
+      "recuperados": [
+        "aniversário da Ana: 12 de março",
+        "dia da coleta de lixo reciclável: quinta-feira"
+      ],
+      "scores": [
+        0.385,
+        0.375
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "roteador do wi-fi",
+      "pergunta": "onde está o roteador do wi-fi?",
+      "posicao": 1,
+      "recuperados": [
+        "roteador do wi-fi: fica atrás da estante da sala"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "roteador do wi-fi",
+      "pergunta": "onde fica o aparelho da internet sem fio?",
+      "posicao": 1,
+      "recuperados": [
+        "roteador do wi-fi: fica atrás da estante da sala"
+      ],
+      "scores": [
+        0.35
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "médico da família",
+      "pergunta": "quem é o médico da família?",
+      "posicao": 1,
+      "recuperados": [
+        "médico da família: doutor Paulo, clínica Santa Luzia"
+      ],
+      "scores": [
+        0.667
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "médico da família",
+      "pergunta": "qual doutor cuida da gente?",
+      "posicao": 1,
+      "recuperados": [
+        "médico da família: doutor Paulo, clínica Santa Luzia",
+        "dentista: doutora Carla, consultório no centro"
+      ],
+      "scores": [
+        0.443,
+        0.433
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "time do Pedro",
+      "pergunta": "qual é o time do Pedro?",
+      "posicao": 1,
+      "recuperados": [
+        "time do Pedro: Palmeiras"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "time do Pedro",
+      "pergunta": "para quem o Pedro torce no futebol?",
+      "posicao": 1,
+      "recuperados": [
+        "time do Pedro: Palmeiras"
+      ],
+      "scores": [
+        0.385
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "alergia da Júlia",
+      "pergunta": "a Júlia tem alergia a quê?",
+      "posicao": 1,
+      "recuperados": [
+        "alergia da Júlia: camarão"
+      ],
+      "scores": [
+        0.667
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "alergia da Júlia",
+      "pergunta": "o que a Júlia não pode comer?",
+      "posicao": 1,
+      "recuperados": [
+        "alergia da Júlia: camarão"
+      ],
+      "scores": [
+        0.385
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "horário da academia",
+      "pergunta": "qual o horário da academia?",
+      "posicao": 1,
+      "recuperados": [
+        "horário da academia: segunda a sexta às 7 horas"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "horário da academia",
+      "pergunta": "que horas eu treino durante a semana?",
+      "posicao": 1,
+      "recuperados": [
+        "horário da academia: segunda a sexta às 7 horas",
+        "remédio da pressão: losartana às 8 horas"
+      ],
+      "scores": [
+        0.385,
+        0.375
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "placa do carro",
+      "pergunta": "qual é a placa do carro?",
+      "posicao": 1,
+      "recuperados": [
+        "placa do carro: ABC1D23"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "placa do carro",
+      "pergunta": "como é a identificação do veículo?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "escola do Lucas",
+      "pergunta": "em qual escola o Lucas estuda?",
+      "posicao": 1,
+      "recuperados": [
+        "escola do Lucas: Colégio Estadual Monteiro Lobato"
+      ],
+      "scores": [
+        0.667
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "escola do Lucas",
+      "pergunta": "onde o Lucas tem aula?",
+      "posicao": 1,
+      "recuperados": [
+        "escola do Lucas: Colégio Estadual Monteiro Lobato"
+      ],
+      "scores": [
+        0.443
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "tamanho do sapato",
+      "pergunta": "qual o tamanho do meu sapato?",
+      "posicao": 1,
+      "recuperados": [
+        "tamanho do sapato: 41"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "tamanho do sapato",
+      "pergunta": "que número eu calço?",
+      "posicao": null,
+      "recuperados": [
+        "número do apartamento da avó: 302"
+      ],
+      "scores": [
+        0.55
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "cor preferida da Marina",
+      "pergunta": "qual é a cor preferida da Marina?",
+      "posicao": 1,
+      "recuperados": [
+        "cor preferida da Marina: verde",
+        "pizzaria preferida: Forno a Lenha, na rua 7"
+      ],
+      "scores": [
+        0.9,
+        0.433
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "cor preferida da Marina",
+      "pergunta": "de que tom a Marina mais gosta?",
+      "posicao": 1,
+      "recuperados": [
+        "cor preferida da Marina: verde"
+      ],
+      "scores": [
+        0.385
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "vacina do cachorro",
+      "pergunta": "quando vence a vacina do cachorro?",
+      "posicao": 1,
+      "recuperados": [
+        "vacina do cachorro: vence em agosto"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "vacina do cachorro",
+      "pergunta": "quando o Thor precisa voltar ao veterinário para a dose?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "projeto do TCC",
+      "pergunta": "qual é o projeto do TCC?",
+      "posicao": 1,
+      "recuperados": [
+        "projeto do TCC: SAFRA, entrega em 2027",
+        "linguagem do projeto: Python 3.11"
+      ],
+      "scores": [
+        0.9,
+        0.55
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "projeto do TCC",
+      "pergunta": "qual trabalho eu apresento para formar?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "pizzaria preferida",
+      "pergunta": "qual é a pizzaria preferida?",
+      "posicao": 1,
+      "recuperados": [
+        "pizzaria preferida: Forno a Lenha, na rua 7",
+        "cor preferida da Marina: verde"
+      ],
+      "scores": [
+        0.91,
+        0.57
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "pizzaria preferida",
+      "pergunta": "de onde a gente costuma pedir comida no sábado?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "dentista",
+      "pergunta": "quem é a dentista?",
+      "posicao": 1,
+      "recuperados": [
+        "dentista: doutora Carla, consultório no centro"
+      ],
+      "scores": [
+        0.56
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "dentista",
+      "pergunta": "quem cuida dos meus dentes?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "número do apartamento da avó",
+      "pergunta": "qual o número do apartamento da avó?",
+      "posicao": 1,
+      "recuperados": [
+        "número do apartamento da avó: 302"
+      ],
+      "scores": [
+        0.91
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "número do apartamento da avó",
+      "pergunta": "onde a vovó mora no prédio?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "linguagem do projeto",
+      "pergunta": "qual a linguagem do projeto?",
+      "posicao": 1,
+      "recuperados": [
+        "linguagem do projeto: Python 3.11",
+        "projeto do TCC: SAFRA, entrega em 2027"
+      ],
+      "scores": [
+        0.91,
+        0.56
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "linguagem do projeto",
+      "pergunta": "em que o sistema foi programado?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "dia da coleta de lixo reciclável",
+      "pergunta": "qual o dia da coleta de lixo reciclável?",
+      "posicao": 1,
+      "recuperados": [
+        "dia da coleta de lixo reciclável: quinta-feira"
+      ],
+      "scores": [
+        0.91
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "dia da coleta de lixo reciclável",
+      "pergunta": "quando passa o caminhão da reciclagem?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "filme favorito do Rafa",
+      "pergunta": "qual o filme favorito do Rafa?",
+      "posicao": 1,
+      "recuperados": [
+        "filme favorito do Rafa: Interestelar"
+      ],
+      "scores": [
+        0.9
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "filme favorito do Rafa",
+      "pergunta": "a que obra de cinema o Rafa mais assiste?",
+      "posicao": 1,
+      "recuperados": [
+        "filme favorito do Rafa: Interestelar"
+      ],
+      "scores": [
+        0.35
+      ]
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "remédio da pressão",
+      "pergunta": "qual é o remédio da pressão?",
+      "posicao": 1,
+      "recuperados": [
+        "remédio da pressão: losartana às 8 horas"
+      ],
+      "scores": [
+        0.91
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "remédio da pressão",
+      "pergunta": "o que eu tomo de manhã para hipertensão?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "lexical",
+      "assunto": "professor de matemática",
+      "pergunta": "quem é o professor de matemática?",
+      "posicao": 1,
+      "recuperados": [
+        "professor de matemática: professor Henrique"
+      ],
+      "scores": [
+        0.667
+      ]
+    },
+    {
+      "tipo": "parafrase",
+      "assunto": "professor de matemática",
+      "pergunta": "quem dá aula de cálculo?",
+      "posicao": null,
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual o tipo sanguíneo do Pedro?",
+      "recuperados": [
+        "time do Pedro: Palmeiras"
+      ],
+      "scores": [
+        0.453
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "onde fica a farmácia mais próxima?",
+      "recuperados": [
+        "roteador do wi-fi: fica atrás da estante da sala"
+      ],
+      "scores": [
+        0.395
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual a altura da Ana?",
+      "recuperados": [
+        "aniversário da Ana: 12 de março"
+      ],
+      "scores": [
+        0.57
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "quanto custou a geladeira?",
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual o nome do vizinho?",
+      "recuperados": [],
+      "scores": []
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "quando é a formatura da Marina?",
+      "recuperados": [
+        "cor preferida da Marina: verde"
+      ],
+      "scores": [
+        0.58
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual o CEP da casa da avó?",
+      "recuperados": [
+        "número do apartamento da avó: 302"
+      ],
+      "scores": [
+        0.453
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual a marca do celular do Lucas?",
+      "recuperados": [
+        "escola do Lucas: Colégio Estadual Monteiro Lobato"
+      ],
+      "scores": [
+        0.453
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "quem é o técnico do Palmeiras?",
+      "recuperados": [
+        "time do Pedro: Palmeiras"
+      ],
+      "scores": [
+        0.463
+      ]
+    },
+    {
+      "tipo": "ausente",
+      "pergunta": "qual a senha do banco?",
+      "recuperados": [],
+      "scores": []
+    }
+  ],
+  "memoria_pessoal": [
+    {
+      "modo": "exata",
+      "consulta": "carteira de motorista",
+      "esperado": "Renovar a carteira de motorista",
+      "achados": [
+        "Renovar a carteira de motorista"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "renovacao carteira",
+      "esperado": "Renovar a carteira de motorista",
+      "achados": [],
+      "acerto": false
+    },
+    {
+      "modo": "exata",
+      "consulta": "horta vertical",
+      "esperado": "Horta vertical na varanda",
+      "achados": [
+        "Horta vertical na varanda"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "horta na varanda",
+      "esperado": "Horta vertical na varanda",
+      "achados": [
+        "Horta vertical na varanda"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "orientadora",
+      "esperado": "Reunião com a orientadora do TCC",
+      "achados": [
+        "Reunião com a orientadora do TCC"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "reuniao orientadora",
+      "esperado": "Reunião com a orientadora do TCC",
+      "achados": [
+        "Reunião com a orientadora do TCC"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "ração",
+      "esperado": "Comprar ração do Thor",
+      "achados": [
+        "Comprar ração do Thor"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "racao",
+      "esperado": "Comprar ração do Thor",
+      "achados": [
+        "Comprar ração do Thor"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "painel solar",
+      "esperado": "Painel solar na garagem",
+      "achados": [
+        "Painel solar na garagem"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "solar garagem",
+      "esperado": "Painel solar na garagem",
+      "achados": [
+        "Painel solar na garagem"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "fundamentação",
+      "esperado": "Estudar fundamentação teórica",
+      "achados": [
+        "Estudar fundamentação teórica"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "fundamentacao teorica",
+      "esperado": "Estudar fundamentação teórica",
+      "achados": [
+        "Estudar fundamentação teórica"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "dentista",
+      "esperado": "Dentista às 14h",
+      "achados": [
+        "Dentista às 14h"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "dentista",
+      "esperado": "Dentista às 14h",
+      "achados": [
+        "Dentista às 14h"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "exata",
+      "consulta": "robô de limpeza",
+      "esperado": "Robô de limpeza da escola",
+      "achados": [
+        "Robô de limpeza da escola"
+      ],
+      "acerto": true
+    },
+    {
+      "modo": "variacao",
+      "consulta": "robo limpeza",
+      "esperado": "Robô de limpeza da escola",
+      "achados": [
+        "Robô de limpeza da escola"
+      ],
+      "acerto": true
+    }
+  ]
+}

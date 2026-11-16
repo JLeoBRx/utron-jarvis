@@ -1,0 +1,123 @@
+{
+  "runs": [
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 305,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": false,
+          "error": "sem conexão com o Assistant: <urlopen error [Errno 111] Connection refused>"
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 0.402,
+      "idle_seconds": 15.0,
+      "processes": 4,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python"
+      ],
+      "rss_total_mb": {
+        "median": 482.5,
+        "max": 482.6
+      },
+      "cpu_idle_percent": {
+        "mean": 0.0,
+        "max": 0.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 360,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": false,
+          "error": "sem conexão com o Assistant: <urlopen error [Errno 111] Connection refused>"
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 0.452,
+      "idle_seconds": 15.0,
+      "processes": 4,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python"
+      ],
+      "rss_total_mb": {
+        "median": 481.2,
+        "max": 481.2
+      },
+      "cpu_idle_percent": {
+        "mean": 0.0,
+        "max": 0.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    },
+    {
+      "shell": "qtwebengine",
+      "command": [
+        "<py313>/bin/python",
+        "desktop/poc-qt/shell.py"
+      ],
+      "platform": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+      "python": "3.13.18",
+      "cpus": 4,
+      "report": {
+        "shell": "qtwebengine",
+        "ready_ms": 294,
+        "page_loaded": true,
+        "tray": "bandeja do sistema indisponível neste ambiente",
+        "notification": "notificação indisponível neste ambiente",
+        "backend": {
+          "ok": false,
+          "error": "sem conexão com o Assistant: <urlopen error [Errno 111] Connection refused>"
+        },
+        "platform": "linux"
+      },
+      "ready_seen_by_harness_s": 0.352,
+      "idle_seconds": 15.0,
+      "processes": 4,
+      "process_names": [
+        "QtWebEngineProcess",
+        "python"
+      ],
+      "rss_total_mb": {
+        "median": 478.6,
+        "max": 478.7
+      },
+      "cpu_idle_percent": {
+        "mean": 0.2,
+        "max": 3.0,
+        "note": "100 = um núcleo lógico, somando todos os processos da árvore"
+      },
+      "left_running_after_terminate": 0
+    }
+  ],
+  "ambiente": "contêiner Linux 6.18, 4 CPUs, Xvfb, renderização por software; sem GPU, sem área de notificação real",
+  "data": "2026-11-15"
+}

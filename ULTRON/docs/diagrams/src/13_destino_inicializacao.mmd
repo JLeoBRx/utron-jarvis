@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant U as Usuário / Windows
+  participant N as Núcleo
+  participant S as Armazenamento
+  participant C as Componentes
+  participant A as API local
+  participant K as Casca
+  U->>N: START_SAFRA.bat (ou início automático)
+  N->>N: instância única
+  N->>S: abrir o banco
+  opt migração pendente
+    S->>S: backup verificado
+    S->>S: migrar
+  end
+  N->>C: iniciar pelo ciclo de vida (voz, memória, tecla de atalho…)
+  N->>A: subir em 127.0.0.1
+  A-->>N: porta em uso
+  N->>K: iniciar processo (porta + bilhete pela entrada padrão)
+  K->>A: trocar bilhete por sessão
+  A-->>K: sessão
+  K->>A: carregar a interface e abrir os eventos
+  A-->>K: estado atual
+  Note over N,K: sem --headless. Com --boot a casca começa na bandeja.

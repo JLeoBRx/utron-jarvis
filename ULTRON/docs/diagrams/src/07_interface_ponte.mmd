@@ -1,0 +1,16 @@
+flowchart LR
+  subgraph PY["Processo Python"]
+    BUS[("Event Bus")] --> CTRL["HudController<br/>fila limitada · drena em lotes<br/>na thread da interface"]
+    ST[("StateStore")] -->|"STATE_CHANGED<br/>(só campos alterados)"| CTRL
+    CTRL --> PAGES["Páginas Qt<br/>SAFRA · TARDIS · ATIVIDADES<br/>CONFIGURAÇÕES · DIAGNÓSTICOS"]
+    CTRL --> VIEW["Scene3DView<br/>(QWebEngineView)"]
+    CTRL -->|"run_skill() no worker 'actions'"| CORE["NeuralCore"]
+  end
+  subgraph JS["Página local (Three.js, rede bloqueada)"]
+    REC["receive(estado, evento, trilha labial)"] --> AV["Holograma"]
+    REC --> ORB["ORBE"]
+    REC --> ROOM["Sala TARDIS"]
+    REQ["request(tardis | jarvis | mic | restore)"]
+  end
+  VIEW -->|"runJavaScript"| REC
+  REQ -->|"QWebChannel<br/>(só pedidos da lista branca)"| VIEW

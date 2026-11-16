@@ -1,0 +1,48 @@
+erDiagram
+  projects ||--o{ project_notes : "tem"
+  projects ||--o{ project_links : "liga"
+  project_links }o--|| sb_records : "registro de memória"
+  project_links }o--|| analysis_tasks : "tarefa de análise"
+  project_links }o--|| activity : "atividade"
+  projects {
+    text id PK
+    text name
+    text description
+    text state
+    real created_at
+    real updated_at
+    real archived_at
+  }
+  project_links {
+    integer id PK
+    text project_id FK
+    text item_type
+    text item_id
+    real created_at
+  }
+  project_notes {
+    integer id PK
+    text project_id FK
+    text project
+    text kind
+    text text
+    real created
+  }
+  analysis_tasks {
+    text id PK
+    text kind
+    text state
+    text result
+    real created
+  }
+  sb_records {
+    text id PK
+    text kind
+    text title
+  }
+  activity {
+    text id PK
+    text kind
+    text title
+    text state
+  }

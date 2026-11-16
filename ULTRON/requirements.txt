@@ -1,0 +1,33 @@
+# JARVIS — dependências (Python 3.11 recomendado, Windows 10/11 64 bits)
+# Instale com INSTALL_JARVIS.bat ou: python -m pip install -r requirements.txt
+
+# Núcleo
+# PyAudio é opcional: sounddevice é o backend primário e inclui PortAudio.
+numpy>=1.24
+psutil>=5.9
+tzdata>=2024.1; sys_platform == "win32"         # fusos IANA (ex.: America/Sao_Paulo) no Windows
+
+# Interface (JARVIS CORE e TARDIS; sem ela o JARVIS roda em modo console)
+PySide6-Essentials>=6.8.1,<6.9
+PySide6-Addons>=6.8.1,<6.9                      # QtWebEngine: central 3D (sem ele, a interface usa a vista 2D)
+
+# Voz: reconhecimento offline, microfone/saída de áudio e voz neural
+vosk>=0.3.45
+sounddevice>=0.4.6                              # microfone e saída (PortAudio embutido) — funciona sem PyAudio
+piper-tts>=1.2
+pyttsx3>=2.90                                   # voz alternativa (SAPI) se a voz neural faltar
+pywin32>=306; sys_platform == "win32"           # COM na thread da voz SAPI (como no JARVIS original)
+keyring>=24; sys_platform == "win32"            # chave da OpenAI no Gerenciador de Credenciais (nunca em arquivo)
+
+# JARVIS WEB ORB (agente da matriz-mãe: conexão de SAÍDA para o seu gateway; QR Code do pareamento)
+websockets>=12
+segno>=1.5
+
+# Percepção e controle do Windows (cada skill informa quando a sua dependência falta)
+mss>=9.0                                        # captura de tela
+Pillow>=10.0
+pyautogui>=0.9.54                               # teclado, mouse e teclas de mídia
+send2trash>=1.8                                 # exclusão sempre pela Lixeira
+pywinauto>=0.6.8; sys_platform == "win32"       # elementos de interface (UI Automation)
+pycaw>=20240210; sys_platform == "win32"        # volume do sistema com leitura verificável
+comtypes>=1.2; sys_platform == "win32"

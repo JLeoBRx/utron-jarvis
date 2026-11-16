@@ -1,0 +1,16 @@
+flowchart TD
+  S["Início"] --> Q{"PySide6 disponível?"}
+  Q -- "não" --> CON["modo console"]
+  Q -- "sim" --> W{"WebGL abriu?"}
+  W -- "sim" --> G3["interface com cena 3D"]
+  W -- "não" --> G2["interface com vista 2D<br/>(motivo registrado)"]
+  S --> DBQ{"banco íntegro?"}
+  DBQ -- "não" --> STOP["para com mensagem clara<br/>(código 3, arquivo intacto)"]
+  DBQ -- "somente leitura" --> RO["conversa continua;<br/>resposta diz o que não foi gravado"]
+  S --> LLM{"Ollama respondendo?"}
+  LLM -- "não" --> DET["comandos determinísticos continuam;<br/>pergunta aberta: resposta honesta"]
+  S --> TTS{"Piper disponível?"}
+  TTS -- "não" --> SAPI{"SAPI?"}
+  SAPI -- "não" --> TXT["resposta só em texto"]
+  S --> STT{"Vosk e microfone?"}
+  STT -- "não" --> TX2["entrada só por texto"]

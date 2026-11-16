@@ -1,0 +1,284 @@
+{
+  "protocolo": "PV-07",
+  "real": [
+    "NeuralCore completo sem voz/percepção/plugins"
+  ],
+  "simulado": [
+    "inferência do modelo (servidor local de 0 ms)"
+  ],
+  "ambiente": {
+    "sistema": "Linux 6.18.44-fc-v378",
+    "maquina": "x86_64",
+    "processador": "x86_64",
+    "cpus_logicas": 4,
+    "memoria_gb": 15.7,
+    "python": "3.13.18",
+    "pacotes": {
+      "PySide6-Essentials": "6.8.3",
+      "vosk": "0.3.45",
+      "piper-tts": "1.8.0",
+      "numpy": "2.5.4",
+      "psutil": "7.2.2"
+    },
+    "commit": "35a7554+alterações",
+    "data_utc": "2026-11-11T03:24:42Z"
+  },
+  "rapido": false,
+  "metricas": {
+    "duracao_min": 30.0,
+    "pedidos_enviados": 1785,
+    "respostas": 1785,
+    "sem_resposta": 0,
+    "erros": 0,
+    "rss_inicial_mb": 55.6,
+    "rss_final_mb": 74.3,
+    "crescimento_mb_por_hora": 19.24,
+    "threads_restantes_apos_encerrar": [],
+    "aquecimento_min": 5.0,
+    "crescimento_mb_por_hora_apos_aquecimento": 8.42
+  },
+  "amostras": [
+    {
+      "t_min": 0.0,
+      "rss_mb": 55.6,
+      "threads": 16,
+      "enviados": 5,
+      "respostas": 5,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 1.01,
+      "rss_mb": 62.5,
+      "threads": 15,
+      "enviados": 65,
+      "respostas": 64,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 2.02,
+      "rss_mb": 67.1,
+      "threads": 15,
+      "enviados": 125,
+      "respostas": 124,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 3.02,
+      "rss_mb": 69.7,
+      "threads": 15,
+      "enviados": 185,
+      "respostas": 184,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 4.03,
+      "rss_mb": 70.0,
+      "threads": 15,
+      "enviados": 245,
+      "respostas": 244,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 5.04,
+      "rss_mb": 70.9,
+      "threads": 15,
+      "enviados": 305,
+      "respostas": 304,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 6.05,
+      "rss_mb": 71.1,
+      "threads": 15,
+      "enviados": 365,
+      "respostas": 364,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 7.06,
+      "rss_mb": 71.4,
+      "threads": 15,
+      "enviados": 425,
+      "respostas": 424,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 8.07,
+      "rss_mb": 71.6,
+      "threads": 15,
+      "enviados": 485,
+      "respostas": 484,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 9.08,
+      "rss_mb": 71.8,
+      "threads": 15,
+      "enviados": 545,
+      "respostas": 544,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 10.01,
+      "rss_mb": 72.0,
+      "threads": 15,
+      "enviados": 600,
+      "respostas": 599,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 11.01,
+      "rss_mb": 72.3,
+      "threads": 15,
+      "enviados": 660,
+      "respostas": 659,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 12.02,
+      "rss_mb": 72.4,
+      "threads": 15,
+      "enviados": 720,
+      "respostas": 719,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 13.03,
+      "rss_mb": 72.6,
+      "threads": 15,
+      "enviados": 780,
+      "respostas": 779,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 14.04,
+      "rss_mb": 72.8,
+      "threads": 15,
+      "enviados": 840,
+      "respostas": 839,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 15.05,
+      "rss_mb": 73.0,
+      "threads": 15,
+      "enviados": 900,
+      "respostas": 899,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 16.06,
+      "rss_mb": 73.1,
+      "threads": 15,
+      "enviados": 960,
+      "respostas": 959,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 17.07,
+      "rss_mb": 73.3,
+      "threads": 15,
+      "enviados": 1020,
+      "respostas": 1019,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 18.08,
+      "rss_mb": 73.5,
+      "threads": 15,
+      "enviados": 1080,
+      "respostas": 1079,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 19.01,
+      "rss_mb": 73.6,
+      "threads": 15,
+      "enviados": 1135,
+      "respostas": 1134,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 20.02,
+      "rss_mb": 73.7,
+      "threads": 15,
+      "enviados": 1195,
+      "respostas": 1194,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 21.03,
+      "rss_mb": 73.7,
+      "threads": 15,
+      "enviados": 1255,
+      "respostas": 1254,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 22.04,
+      "rss_mb": 73.8,
+      "threads": 15,
+      "enviados": 1315,
+      "respostas": 1314,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 23.05,
+      "rss_mb": 73.9,
+      "threads": 15,
+      "enviados": 1375,
+      "respostas": 1374,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 24.06,
+      "rss_mb": 74.0,
+      "threads": 15,
+      "enviados": 1435,
+      "respostas": 1434,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 25.07,
+      "rss_mb": 74.0,
+      "threads": 15,
+      "enviados": 1495,
+      "respostas": 1494,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 26.08,
+      "rss_mb": 74.1,
+      "threads": 15,
+      "enviados": 1555,
+      "respostas": 1554,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 27.01,
+      "rss_mb": 74.2,
+      "threads": 15,
+      "enviados": 1610,
+      "respostas": 1609,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 28.02,
+      "rss_mb": 74.2,
+      "threads": 15,
+      "enviados": 1670,
+      "respostas": 1669,
+      "descartes_bus": 0
+    },
+    {
+      "t_min": 29.03,
+      "rss_mb": 74.3,
+      "threads": 15,
+      "enviados": 1730,
+      "respostas": 1729,
+      "descartes_bus": 0
+    }
+  ],
+  "erros": [],
+  "nota": "métricas de memória recalculadas dos dados brutos com a separação do aquecimento (instrumento revisado em 11/11/2026)"
+}

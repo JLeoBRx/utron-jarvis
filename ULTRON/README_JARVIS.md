@@ -1,0 +1,622 @@
+# SAFRA
+
+Inteligência local para Windows: percebe o computador, entende pedidos em português por voz
+ou texto, planeja, executa com **verificação independente**, guarda a sua memória pessoal
+(tarefas, compromissos, ideias, projetos, lembretes) e mostra tudo em dois hubs:
+
+* **SAFRA CORE** — o hub principal: o cérebro neural em 3D com o estado real de percepção,
+  decisão, planejamento, execução, verificação, memória, voz e saúde.
+* **TARDIS** — a memória espacial: um espaço interior navegável onde cada região é a sua
+  memória pessoal real (compromissos, tarefas, projetos, ideias, memórias, lembretes).
+
+É **local-first**: o cérebro é o Ollama nesta máquina; reconhecimento de fala e voz são
+offline; nada sai do computador sem que você peça.
+
+> **SAFRA é o novo nome do JARVIS** (versão 3.0). A palavra de ativação passa a ser **"Safra"**; "Jarvis"
+> continua aceita. Os scripts mantêm os nomes antigos (`START_JARVIS.bat`, `INSTALL_JARVIS.bat`…) e ganharam
+> atalhos com o nome novo (`START_SAFRA.bat`, `INSTALL_SAFRA.bat`, `ATUALIZAR_SAFRA.bat`, `DIAGNOSTICO_SAFRA.bat`).
+> O pacote interno continua `ultron` e os dados continuam em `%LOCALAPPDATA%\ULTRON`. É de propósito: suas
+> memórias, lembretes, configurações, chaves no cofre do Windows e o inventário da rede seguem onde estão.
+> Documentação técnica e do TCC: `docs/README.md`.
+
+---
+
+## 1. Instalação
+
+Requisitos: Windows 10/11 64 bits, **Python 3.11** (python.org, marque *Add python.exe to
+PATH*), **Ollama** (ollama.com/download). 8 GB de RAM ou mais recomendados.
+
+### Instalação nova
+1. Extraia `JARVIS_FINAL.zip` (pasta `JARVIS` — nome mantido por compatibilidade).
+2. Execute **`INSTALL_JARVIS.bat`**. Ele:
+   * cria `.venv` (nunca apaga um existente) e instala `requirements.txt` — inclusive o
+     `PySide6-Addons` (QtWebEngine, ~122 MB no Windows) da **central 3D**; numa instalação existente,
+     `ATUALIZAR_JARVIS.bat` instala o que faltar;
+   * verifica os modelos locais em `assets\` — o pacote **não** inclui modelos grandes. Se
+     você tem uma instalação anterior, informe a pasta dela e os modelos que faltam são
+     copiados (nada é sobrescrito ou apagado); senão, ele mostra de onde baixar;
+   * oferece baixar os modelos do Ollama (`qwen2.5:3b` texto, `qwen2.5vl:3b` visão, ~5 GB);
+   * pergunta se o SAFRA deve iniciar com o Windows;
+   * termina com o diagnóstico completo (componentes ausentes e voz em 8 etapas).
+3. Inicie com **`START_JARVIS.bat`**.
+
+### Atualizando uma instalação existente (ULTRON ou JARVIS)
+1. Feche o SAFRA: bandeja > **Sair** (ou `START_JARVIS.bat --stop`).
+2. Extraia o conteúdo da pasta `SAFRA` do ZIP **por cima** da pasta atual do programa
+   (substituir arquivos). `.venv`, `assets` (modelos) e os seus dados não são tocados.
+3. Execute **`ATUALIZAR_JARVIS.bat`**: encerra o SAFRA se ainda estiver aberto, faz um
+   **backup** do banco, atualiza as dependências e roda o diagnóstico.
+
+Na primeira execução, as configurações das identidades anteriores são migradas passo a passo: ULTRON → JARVIS
+(palavra de ativação "ultron" → "jarvis", tema dourado → azul; cópia em `settings.ultron-backup.json`) e
+JARVIS → SAFRA ("safra" passa a ser a primeira palavra de ativação e "jarvis" continua aceita; tema azul →
+vermelho; cópia em `settings.jarvis-backup.json`). Personalizações suas (microfone, volume, modelos, formas
+calibradas, horários) são mantidas. Atalhos antigos (`START_ULTRON.bat`, `INSTALL_ULTRON.bat`, `TEST_ULTRON.py`)
+abrem o SAFRA.
+
+### Modelos locais (não incluídos no ZIP)
+
+| Arquivo | Onde colocar | Fonte oficial |
+|---|---|---|
+| `vosk-model-small-pt-0.3` (≈ 50 MB) | `assets\stt\vosk-model-small-pt-0.3\` | alphacephei.com/vosk/models |
+| `vosk-model-pt-fb-v0.1.1-20220516_2113` (opcional, mais preciso) | `assets\stt\…\` | alphacephei.com/vosk/models |
+| `pt_BR-faber-medium.onnx` + `.onnx.json` (voz) | `assets\voices\` | huggingface.co/rhasspy/piper-voices (pt/pt_BR/faber/medium) |
+
+Sem o modelo de fala, o SAFRA funciona por texto; sem a voz neural, usa a voz do Windows.
+
+---
+
+## 2. Iniciar, parar, atualizar, recuperar
+
+| Comando | Efeito |
+|---|---|
+| `START_JARVIS.bat` | abre o SAFRA (TARDIS e as outras páginas pela navegação, F1–F7 ou por voz). Se ele já estiver aberto, traz a janela para a frente |
+| `START_JARVIS.bat --console` | **modo console**: conversa pelo terminal com o MESMO núcleo, memória, TARDIS, permissões e confirmações da janela (`sair` encerra; "cancelar" ou Ctrl+C interrompe; "sim"/"não" respondem às confirmações) |
+| `START_JARVIS.bat --foreground` | abre a janela pelo `python.exe`, com o terminal visível mostrando avisos e erros (para investigar quando a janela não abre) |
+| `START_JARVIS.bat --gui-check` | monta a interface sem mostrá-la e diz se ela abre nesta máquina |
+| `START_JARVIS.bat --status` | diz se está em execução |
+| `START_JARVIS.bat --stop` | pede ao SAFRA em execução que **encerre normalmente** (lembretes, banco e microfone fechados em ordem); não força nada |
+| `START_JARVIS.bat --diagnose` · `DIAGNOSTICO_JARVIS.bat` | diagnóstico **por etapas** (`[OK]`/`[AVISO]`/`[FALHA]`/`[TEMPO]`): configurações, banco, núcleo, Ollama, modelos, memória, TARDIS, voz em 8 etapas, percepção, plugins, sistema e a interface gráfica montada de verdade. Cada etapa tem prazo; a que não responde é nomeada e as outras continuam |
+| `START_JARVIS.bat --voice-test` | teste de voz falando ("Safra, que horas são?") |
+| `START_JARVIS.bat --backup` | backup do banco agora |
+| `START_JARVIS.bat --autostart` / `--no-autostart` | liga/desliga o início com o Windows |
+| `ATUALIZAR_JARVIS.bat` | atualização segura (para, faz backup, atualiza dependências, diagnostica) |
+| `.venv\Scripts\python.exe main.py --help` | todos os comandos |
+
+**Recuperação**
+
+* *Backups*: um automático por dia (os 10 mais recentes ficam em
+  `%LOCALAPPDATA%\ULTRON\backups`), além de `--backup` e do botão BACKUP do TARDIS.
+  Para voltar: `START_JARVIS.bat --stop`, depois `python main.py --list-backups` e
+  `python main.py --restore-backup ARQUIVO`. A restauração só roda com o SAFRA fechado,
+  verifica a integridade do arquivo e **guarda o banco atual** como
+  `ultron.sqlite3.antes-da-restauracao-<data>` antes de trocar.
+* *Configurações*: renomeie `%LOCALAPPDATA%\ULTRON\settings.json` para recriar os padrões.
+* *Modo seguro*: `python main.py --no-voice --no-perception --no-plugins`.
+* *Registro*: `%LOCALAPPDATA%\ULTRON\logs\ultron.log`.
+* *Travou*: bandeja > Sair; se não responder, finalize `pythonw.exe` do SAFRA pelo
+  Gerenciador de Tarefas — os dados ficam íntegros (banco em modo WAL) e lembretes perdidos
+  são avisados uma vez na próxima abertura.
+
+---
+
+## 3. A plataforma: SAFRA · TARDIS · ATIVIDADES · CONFIGURAÇÕES · DIAGNÓSTICOS
+
+Uma janela com cinco módulos. Trocar de módulo não perde nada: câmera e região do TARDIS,
+filtros, rolagem e textos digitados ficam como estavam.
+
+| Atalho | Efeito |
+|---|---|
+| F1 | SAFRA (núcleo e conversa) |
+| F2 | TARDIS (sala de controle e ARQUIVO da memória pessoal) |
+| F5 | ATIVIDADES (histórico) |
+| F6 | CONFIGURAÇÕES |
+| F3 ou F7 | DIAGNÓSTICOS (voz, rede, autonomia, desempenho, eventos, log, serviços e GPU) |
+| F11 | tela cheia |
+| Esc | como no original: interrompe a fala; senão cancela o pedido ou a autorização pendente; senão sai da tela cheia. Nunca minimiza. Na TARDIS, solta o painel da sala ou fecha a região aberta do ARQUIVO |
+| Ctrl+M | microfone |
+| Ctrl+L | limpa a conversa da tela |
+
+Por voz: *"abra a TARDIS"*, *"abra o segundo cérebro"* (o ARQUIVO), *"abra as configurações do SAFRA"* (sem "do SAFRA", abre as
+configurações do Windows, como no original), *"mostre o histórico de atividades"*, *"abra o
+console de eventos"*, *"abra o log do SAFRA"*, *"volte para o SAFRA"*,
+*"o que você fez hoje?"*.
+
+**Barra superior**: mini-reator e identidade, navegação, relógio e data; na segunda linha o
+estado (LED, nome e cinco barras com o nível REAL do microfone ou da fala) e os indicadores MIC,
+VOZ, IA, REDE (Wi-Fi e tráfego), BATERIA (só se houver), OBSERVADOR e SESSÃO (tempo de
+execução e modo de privacidade). Passe o mouse para detalhes; clique para agir (ligar/desligar
+microfone e voz, modos do Observador, abrir a página certa). Indicador sem dado real mostra "—".
+
+**Barra inferior** (vale em qualquer página): campo de pedido com histórico ↑/↓ (guarda o
+rascunho), **ENVIAR**, **MIC**, **VOZ**, **ORBE** (recolhe para o orbe compacto; clique duplo no
+orbe expande; o orbe lembra onde foi deixado; com a central 3D aberta, o orbe recolhido é a **mesma cena 3D**
+em modo compacto — o mesmo ORBE, com o estado real — e, sem ela, o orbe 2D). Autorizações e sugestões aparecem
+logo acima.
+Fechar a janela mantém o SAFRA na bandeja; **Sair** encerra.
+
+**Conversa** (página SAFRA): cada mensagem com horário (`[HH:MM] VOCÊ ▸`, `S.A.F.R.A. ▸`,
+`// sistema`), **STATUS**, **HORAS**, **PARAR**, **COPIAR RESPOSTA** e **LIMPAR** (Ctrl+L).
+
+**Transições**: holográficas (~300 ms) com "efeitos pesados" ligados e fora do perfil
+econômico; senão, imediatas.
+
+**Observação da tela**: quando a janela do SAFRA cobre a maior parte da tela, a observação fica
+suspensa (o indicador mostra SUSPENSO), como no original. Pedidos explícitos ("o que há na
+tela?") continuam funcionando.
+
+**Bandeja**: abrir cada página, diagnóstico de voz, orbe, microfone, voz, **Reiniciar voz**,
+**Modo privacidade**, **Observador** (modos, pausar/retomar), **Iniciar com o Windows** (só por
+clique; se o Registro recusar, a marcação volta), qualidade visual, diagnóstico e Sair.
+
+### A central 3D (página SAFRA e sala da TARDIS)
+
+Quando o computador tem **QtWebEngine** (pacote `PySide6-Addons`, instalado pelo `requirements.txt`) e
+**WebGL 2**, a página SAFRA e a sala da TARDIS viram uma **cena 3D única** (Three.js embutido, sem internet):
+
+* **holograma de corpo inteiro** do SAFRA (cabeça, pescoço, ombros, tronco, braços, mãos com dedos, quadril,
+  pernas, pés) sobre uma base de projeção com anéis, feixe e partículas; linhas topológicas, nós luminosos,
+  casca translúcida e esqueleto interno. Respira, olha, pisca, gesticula com a energia real da fala e mexe a
+  boca pela trilha labial do áudio real — **cada movimento vem de um estado real** (tabela abaixo; detalhes em
+  `AUDITORIA_VISUAL_3D.md`);
+* vistas **FRENTE** e **LATERAL** (corpo inteiro). O holograma é um **androide humanoide sólido** (pele
+  holográfica com luz, não um esqueleto de linhas): rosto com olhos e íris que acompanham o olhar, sobrancelhas
+  que erguem na atenção e baixam no foco, boca que abre com a voz real, joia na testa; **cabelo** com volume e
+  fios que balançam; **jaqueta** (gola alta, zíper, recortes, punhos), **calça** e **calçados**; linhas
+  topológicas e circuitos por cima. Ao ouvir e falar, ele **olha para você** (a câmera). No ULTRON, roupas
+  grafite metálicas, olhos vermelhos, sobrancelhas baixas e punhos cerrados;
+* o **ORBE** (núcleo de inteligência) flutua ao lado: rede neural de três camadas com pulsos, filamentos,
+  anéis orbitais e partículas que entram (escuta) ou saem (fala) do núcleo. Botão **NÚCLEO** amplia com
+  órbita/zoom; sem sinal do SAFRA ele apaga e diz "SEM CONEXÃO";
+* a **cabine azul** da TARDIS no convés (portas, janelas, letreiro iluminado, lâmpada que pulsa com o modo
+  real do motor). **ENTRAR NA TARDIS** (ou clique na cabine) passa pela porta para a sala de controle;
+* na página **TARDIS**, a mesma cena mostra a sala por dentro: rotor do tempo (com giroscópio interno que gira
+  no ritmo real do motor), console de seis painéis com botões, alavancas, mostradores, luzes e uma tela por
+  painel — tudo ligado às tarefas REAIS do motor — e mobiliário integrado (bancos de couro, estante embutida,
+  bancada com monitores, cabideiro, feixes de cabos). **O mesmo holograma do SAFRA entra na sala**: fica sobre
+  o tablado, junto ao console, olha o painel escolhido ou o que está trabalhando de verdade e opera o console
+  enquanto o motor trabalha;
+  escolher uma aba à direita (ou clicar no painel 3D) leva a câmera ao painel.
+
+Mouse: arrastar gira, rolar aproxima, duplo clique volta ao enquadramento; clique na cabeça do holograma
+liga/desliga o microfone. CONFIGURAÇÕES > APARÊNCIA > **Cena 3D**: Automática ou Desligada (vista 2D). Se a
+cena não puder abrir (sem QtWebEngine, sem WebGL 2, falha da placa de vídeo), a interface usa o rosto 2D
+abaixo e DIAGNÓSTICOS diz por quê; depois de uma falha, Desligada → Automática tenta de novo. Para medir no
+seu computador: `python tools/benchmark_scene3d.py`.
+
+### Protocolo ULTRON (identidade alternativa e perfil ULTRON_OPERATOR)
+
+Por um tempo, o assistente assume a identidade **ULTRON**: holograma com postura dura e olhos vermelhos, ORBE
+vermelho, TARDIS em alerta, painéis em vermelho/vinho, título **U.L.T.R.O.N.**, voz própria
+(`ULTRON_VOICE_PROFILE`: mais grave, fria, ritmo deliberado, textura metálica) e tom frio nas respostas. É o MESMO
+SAFRA por dentro: um NeuralCore, uma memória.
+
+* **Ativar**: "SAFRA, iniciar protocolo ULTRON" (voz ou texto; também no console, sem os efeitos visuais).
+  "protocolo ULTRON demonstração" mostra 20 s, só a identidade.
+* **Perfil `ULTRON_OPERATOR`** (na ativação pedida por você, se `ultron_operator` estiver ligado): o ULTRON usa as
+  mesmas ferramentas, o mesmo executor e o mesmo sistema de autorização, com autonomia para as rotinas liberadas no
+  perfil do operador (CONFIGURAÇÕES > APARÊNCIA > PROTOCOLO ULTRON, por categoria). Continua valendo: categoria
+  bloqueada na política normal continua bloqueada; apagar dados e risco alto sempre pedem confirmação; pesquisas
+  na internet, abrir endereços, baixar pacotes, desligar o computador e páginas de administração sempre pedem
+  confirmação; nada contorna o UAC nem desativa proteções. Cada ação aparece em ATIVIDADES como **[ULTRON]**; o
+  indicador de estado mostra o estado real ("ULTRON · EXECUTANDO"); a tela diz "ULTRON_OPERATOR ATIVO — ações
+  reais sob as suas permissões".
+* **Sair**: "restaurar SAFRA", botão **RESTAURAR SAFRA**, **Esc** ou a **tecla de emergência** (padrão
+  `Ctrl+Shift+U`, configurável), que também interrompe a tarefa, a autorização e a fala em curso. Aparência, voz,
+  cores, tom e permissões voltam ao SAFRA. O fim automático por tempo não corta uma tarefa no meio.
+* **Ocasional** (desligado por padrão): raro, só em repouso, com probabilidade por hora e intervalo mínimo; troca só
+  a identidade, a menos que `ultron_operator_occasional` esteja ligado.
+* **Nunca começa** com autorização pendente, ação em execução, verificação ou recuperação em andamento, ou modo
+  privacidade. Histórico das ocorrências em `protocolo_ultron.json` (pasta de dados).
+
+### O rosto holográfico 2D (reserva da central 3D)
+
+Um rosto robótico 3D renderizado **em tempo real** (não é imagem nem vídeo): malha esculpida com
+iluminação, olhos com íris, sobrancelhas, nariz, orelhas, colar com reator, plataforma de projeção,
+anéis de dados, partículas e varredura. CONFIGURAÇÕES > APARÊNCIA troca para o núcleo neural
+anterior ("Vista do SAFRA") e escolhe CPU ou GPU (OpenGL; se não abrir, volta para a CPU e
+DIAGNÓSTICOS > SERVIÇOS E GPU diz por quê). Clique no rosto liga/desliga o microfone.
+
+**A boca acompanha o áudio real da fala**: a voz Piper informa os fonemas de cada frase; os visemas
+são distribuídos só pelos trechos sonoros do áudio (as pausas caem nos silêncios reais) e a abertura
+é a energia real do som. Se o modelo de voz exportar o tempo de cada fonema, ele é usado; com a voz
+do Windows (sem fonemas) a forma vem do espectro do áudio. No silêncio a boca fecha; interrompida a
+fala (Esc, "pare", PARAR), fecha no mesmo quadro. **Legendas** sincronizadas destacam as palavras já
+ditas (desligue em CONFIGURAÇÕES > VOZ E ÁUDIO).
+
+**Os 12 estados** (o mesmo estado aparece no indicador da barra superior), do mais prioritário:
+
+| Estado | Sinal real | Visual |
+|---|---|---|
+| Privacidade | modo privacidade ativo | viseira de linhas sobre os olhos, brilho baixo |
+| Erro de integração | componente falhou ou modelo indisponível (8 s) | tom coral e leve "falha" de projeção |
+| Aguardando confirmação | autorização pendente | âmbar, sobrancelhas erguidas, olhar direto |
+| Falando | áudio saindo agora (posição real de reprodução) | boca sincronizada, acenos nas sílabas fortes, anéis pela saída real |
+| Alerta | lembrete devido (6 s) | âmbar, atenção súbita; tinge os estados abaixo |
+| Reconhecendo | parciais do reconhecimento com a escuta aberta | olhos focados, micro-movimentos |
+| Escutando | escuta aberta | atenção, cabeça inclinada, halo pelo nível real do microfone |
+| Consultando a TARDIS | tarefa da TARDIS pedida pelo SAFRA | olhar para o lado, íris âmbar |
+| Executando | execução, verificação, recuperação | expressão firme, varredura rápida |
+| Pensando | contexto, decisão, planejamento | olhar que varre, sobrancelhas franzidas |
+| Inicializando | progresso real do boot | o rosto se monta por um plano de varredura; olhos abrem ao fim |
+| Em espera | nenhum dos anteriores | respiração lenta, piscadas naturais |
+
+Desempenho medido (`tools/benchmark_avatar.py`, CPU, Qt offscreen, no contêiner de
+desenvolvimento — numa máquina Windows os números serão outros): 1280×720 equilibrado ≈ 12–16 ms
+por quadro; 1920×1080 equilibrado ≈ 16–19 ms; econômico ≈ 8–13 ms. A interface limita sozinha os
+quadros por segundo pelo custo medido para não roubar tempo do núcleo. Resultados completos em
+`docs/benchmarks/avatar_fase4.json`.
+
+### O núcleo neural (vista alternativa)
+
+Cada estado tem um visual próprio, sempre ligado a um sinal real:
+
+| Estado | Visual |
+|---|---|
+| Repouso | azul profundo discreto, giro lento |
+| Escuta | halo ciano que respira com o nível real do microfone |
+| Percepção | ondas sutis a cada análise real (visão, OCR, rede) |
+| Contexto/memória | mergulho no hipocampo; lembranças recuperadas acendem em **azul** |
+| Planejamento | etapas reais do plano no arco superior; conexões acendem conforme cada etapa termina |
+| Execução | pulsos e sinais das operações reais; subsistema usado recebe a sinapse |
+| Fala | anéis sincronizados com o nível real da voz |
+| Imaginação | profundidade cognitiva maior, estruturas internas reveladas |
+| Erro | contorno fixo no tom de falha + rótulo ERRO, sem piscar |
+
+O anel mostra os subsistemas (OLLAMA, MEMÓRIA, VISÃO, PERCEPÇÃO, VOZ, TELEMETRIA, REDE,
+IMAGINAÇÃO, OBJETIVOS, CÓDIGO, WEB, AUTOMAÇÃO, WINDOWS, ARQUIVOS, AGENDA) com o estado real
+da saúde. Módulos (plano, autorização com contagem regressiva, memória, saúde, rede…) só
+aparecem enquanto há algo real a mostrar. O raciocínio interno nunca é exibido — só fases,
+estados e resultados.
+
+### ATIVIDADES
+
+Tudo o que o SAFRA recebeu, decidiu e fez, com origem, estado, duração e o resultado ou o erro
+reais: pedidos (voz, texto, sugestões aceitas), ações ligadas ao pedido, confirmações,
+verificações, lembretes e falhas. Filtros por tipo e estado, busca, detalhe de cada registro,
+**COPIAR** e **LIMPAR HISTÓRICO** (categoria "apagar dados": pede confirmação). Textos que parecem
+senha ou token são redigidos antes de gravar. Desligue ou limite em CONFIGURAÇÕES > HISTÓRICO.
+
+### CONFIGURAÇÕES
+
+Geral e início (página inicial, início recolhido, **Iniciar com o Windows**, modo privacidade ao
+iniciar, Observador ao iniciar) · Voz e áudio (voz, timbre, volume, velocidade, legendas,
+palavras de ativação, **microfone** e **saída de áudio**) · Inteligência (Ollama ou **OpenAI**, com
+aviso e confirmação explícitos; chave no cofre do sistema, nunca exibida inteira; TESTAR) ·
+Privacidade e Observador (LOCAL/PADRÃO, modelos externos, modos, intervalo, **apps sem
+monitoramento**) · **Permissões** · Aparência e desempenho · Histórico e registros ·
+**Restaurar padrões** (guarda uma cópia antes; mantém microfone, saída de áudio, calibração da voz e
+fuso).
+
+**Permissões por categoria**: consultar, alterar configurações, executar programas e comandos
+do sistema, modificar arquivos e dados pessoais e apagar dados — cada uma em *permitir* (decide pelo
+risco), *confirmar sempre* ou *bloquear*. Apagar dados nunca fica abaixo de *confirmar*.
+
+### DIAGNÓSTICOS (F3 / F7)
+
+* **VOZ** — microfones disponíveis e escolha (USAR ESTE), TESTAR, TESTAR FALANDO, CALIBRAR,
+  contadores ao vivo. Detalhes em `VOICE_DIAGNOSTICS.md`.
+* **REDE LOCAL** — aparelhos da sua rede (seção 8).
+* **AUTONOMIA** — nível de autonomia, autorizações permanentes (revogar), histórico de pedidos
+  de autorização e registro das ações executadas.
+* **DESEMPENHO E SAÚDE** — saúde dos componentes, quadros por segundo, perfil visual.
+* **EVENTOS** — console de eventos do original: 300 entradas `[HH:MM:SS] ▸ texto`, filtro,
+  PAUSAR, COPIAR (linhas visíveis) e LIMPAR; inclui os eventos desde a abertura do SAFRA.
+* **LOG** — fim do arquivo de log com filtro de nível. Exceções não tratadas (inclusive em
+  threads e na pintura da interface) também vão para o log.
+* **SERVIÇOS E GPU** — componentes, workers, Ollama, OpenAI, privacidade, GPUs do sistema e
+  DETECTAR OPENGL (para a renderização 3D opcional por GPU).
+
+---
+
+## 4. TARDIS — o segundo cérebro (sala de controle e ARQUIVO)
+
+A TARDIS é um **módulo lógico** do SAFRA com fila, protocolo, analisadores e memória de projeto
+próprios. **Não é um segundo modelo de IA**: quando precisa de linguagem natural, usa o **mesmo
+modelo do SAFRA** com instruções próprias — e cada resultado diz qual modelo usou (*"qwen2.5:3b (o
+mesmo do SAFRA)"*) ou *"sem modelo: análise determinística"*. A TARDIS **nunca executa ações**:
+devolve **ações propostas**, que só rodam com a sua confirmação, pelo mesmo executor do SAFRA
+(permissões, risco, autorização e verificação).
+
+Abra por **F2**, pelo botão TARDIS ou dizendo *"abra a TARDIS"*. A página tem duas vistas, e cada uma
+guarda o próprio estado quando você troca de módulo:
+
+### Sala de controle
+
+Um console hexagonal com seis painéis em volta do **rotor** de vidro. Clique num painel (no console
+3D ou nas abas à direita) e a câmera gira até ele; **Esc** solta o painel (sem painel, o Esc faz o que
+faz no resto da plataforma).
+
+| Painel | O que faz |
+|---|---|
+| ANÁLISE | consulta contextual na memória pessoal, fatos, notas de projeto e histórico — **com a fonte de cada item**; e a memória de projeto (gravar e ler notas, decisões e parâmetros) |
+| PLANEJAMENTO | decompõe um objetivo em etapas verificáveis e aponta riscos (exige o modelo; sem ele, falha com o motivo). Nenhuma etapa é executada |
+| ARQUIVO | organização da memória pessoal (atrasados, conflitos, duplicados, tarefas sem data, registros aguardando revisão) e a entrada da memória espacial |
+| ROTINAS | lembretes futuros, registros recorrentes e automações |
+| TELEMETRIA | telemetria do próprio SAFRA medida pelo núcleo: CPU e memória do processo, latência real dos modelos e das respostas, fluidez da interface, Event Bus e workers, com pontos de atenção explicados (nada é alterado) |
+| DIAGNÓSTICO | saúde, componentes, workers e voz, com gravidade e fonte (diagnóstico); e a fotografia do estado de cada módulo agora (coordenação) |
+
+O **rotor** mostra o estado REAL do motor da TARDIS:
+
+| Modo | Quando |
+|---|---|
+| REPOUSO | fila vazia — respiração lenta, âmbar escuro |
+| PROCESSANDO | uma análise roda ou espera na fila — o rotor sobe e desce, âmbar |
+| CONSULTA DO SAFRA | a análise em execução foi pedida pelo SAFRA — ciano, com o feixe **SAFRA ⇄ TARDIS** (e o rosto do SAFRA mostra "CONSULTANDO A TARDIS") |
+| OPERAÇÃO | o SAFRA está gravando ou exportando dados (backup, exportação, escrita de arquivos) — verde-água |
+| FALHA | uma análise falhou há menos de 8 s — vermelho, anel no piso e o motivo no canto |
+
+Cada painel acende enquanto uma tarefa REAL do seu tipo roda e pulsa ao terminar (vermelho se falhou).
+As telas flutuantes mostram a fila e o último resultado. Sem evento, a sala fica em repouso.
+
+O lado direito mostra o **RESULTADO** da tarefa escolhida: resumo, itens com a fonte de cada um,
+modelo usado, o registro de operações e as **ações propostas** com o botão **APLICAR** (executa pelo
+SAFRA, que pede confirmação quando a categoria exige — apagar dados sempre pede).
+**CANCELAR** interrompe uma análise na fila ou em execução. **TAREFAS** lista as desta sessão e as
+anteriores (lidas do banco).
+
+### Pelo SAFRA (voz ou texto)
+
+*"Safra, consulte a TARDIS sobre o projeto Atlas"*, *"pergunte à TARDIS o que eu decidi sobre o
+projeto Phoenix"*, *"TARDIS, organize minha memória"*, *"peça à TARDIS um plano para montar a pista"*,
+*"TARDIS, diagnostique o sistema"*, *"peça à TARDIS para analisar a telemetria do sistema"*,
+*"TARDIS, quais são minhas rotinas?"*, *"TARDIS, estado dos módulos"*, *"anote na TARDIS uma
+decisão: usar pista de 3 metros"*, *"mostre a memória de projeto do Phoenix"*.
+
+A resposta diz qual análise rodou, o modelo e as fontes. Se a TARDIS propõe uma ação, o SAFRA
+pergunta: diga **"sim"** para executar ou **"não"** para descartar (a proposta expira em 90 s). Para
+apagar dados, o "sim" ainda passa pela confirmação própria da categoria. **"Cancelar"** para as
+consultas que o SAFRA fez à TARDIS (as análises pedidas na sala continuam).
+
+### Protocolo e garantias
+
+Toda tarefa tem `id`, entrada, estado (`QUEUED → RUNNING → DONE | FAILED | REJECTED | CANCELLED`),
+resultado (resumo, itens, fontes, ações propostas), erro (código e mensagem), tempos (criada,
+iniciada, terminada, duração), origem (SAFRA, usuário, TARDIS, agendador), cadeia de delegação,
+registro de operações e o modelo usado. Tudo fica no **mesmo banco** do SAFRA e no histórico de
+atividades (pedido → ação → tarefa da TARDIS, ligados).
+
+* **Sem ciclos**: no máximo 2 saltos na cadeia, nenhum salto repetido, e a TARDIS nunca devolve
+  tarefas ao SAFRA — o que violar isso é **recusado** na entrada.
+* **Prazos por tipo** (consulta 60 s, planejamento 120 s, organização 20 s, rotinas 10 s,
+  telemetria 20 s, diagnóstico 30 s, coordenação 5 s, memória de projeto 10 s); uma análise que
+  trava é abandonada com TIMEOUT e a fila segue.
+* **Sem dado, sem resultado**: nada encontrado → FAILED com o motivo (`NO_DATA`); sem modelo para
+  planejar → `NO_MODEL`. A TELEMETRIA mede o próprio SAFRA (processo, latência real dos modelos e das
+  respostas, interface, Event Bus e workers); sem métrica coletada ainda, diz que não há dado.
+* A memória de projeto **recusa senhas, tokens e dados sensíveis**; textos que parecem segredo são
+  redigidos antes de gravar.
+* Tarefas que estavam na fila quando o SAFRA fechou viram CANCELLED (`INTERRUPTED`) na próxima abertura.
+
+### ARQUIVO (memória espacial)
+
+Pelo painel ARQUIVO (**ABRIR MEMÓRIA ESPACIAL**), pelo botão de memória da barra inferior ou dizendo
+*"abra o segundo cérebro"* / *"abra a memória espacial"*. No centro, a **câmara de energia** (HOJE:
+prioridades, compromissos, atrasados); em volta, portais para as regiões:
+
+| Região | O que mostra |
+|---|---|
+| COMPROMISSOS | próximos 14 dias; **conflitos de horário** em destaque |
+| TAREFAS E PRAZOS | abertas, atrasadas (alerta), filtros por período, tipo e prioridade |
+| PROJETOS | projetos com contagem de itens abertos |
+| IDEIAS | ideias recentes |
+| MEMÓRIAS | notas, pessoas e busca (Ctrl+F) |
+| LEMBRETES | próximos lembretes e a central de notificações |
+| REVISÃO | o que foi inferido automaticamente e aguarda sua confirmação; lixeira |
+
+Os pontos em volta de cada portal são registros reais (passe o mouse para ver o título).
+Clique num portal: a câmera viaja até ele e o painel lateral abre para consultar, criar
+(**+ NOVO**), editar, concluir, arquivar ou mandar para a lixeira. **Esc** volta à visão
+geral; **Ctrl+N** vai para a captura rápida ("reunião com a equipe quarta às 14h",
+"ideia: …", "o que está atrasado?"). **← SALA DE CONTROLE** volta à sala sem perder
+câmera, região ou filtros. **EXPORTAR** (JSON/CSV) e **BACKUP** ficam na barra superior;
+**SOM AMBIENTE** é opcional (desligado por padrão).
+
+Pulsos percorrem os corredores só quando algo real acontece (registro criado, editado,
+concluído, lembrete disparado).
+
+### Desempenho da sala
+
+Paredes, piso, colunas e console ficam em imagens em cache, refeitas só quando a câmera gira até um
+painel; com a câmera parada, cada quadro desenha só o rotor, as luzes dos painéis, as telas, os
+rótulos e as partículas. Com animação a sala desenha no máximo 24 quadros/s e nunca ocupa mais de 25%
+da thread da interface (a pintura segura o GIL e atrasaria as análises); em repouso cai para a cadência
+econômica do perfil e, fora da tela, não desenha nada.
+
+Medido num contêiner Linux (Qt offscreen, CPU, 4 núcleos — não é uma máquina Windows real): câmera
+parada 7,7–11,0 ms por quadro (mediana) a 1280×720 e 8,9–14,4 ms a 1920×1080, em qualquer perfil e modo
+do rotor; a volta da câmera até um painel custa 23,5–36,1 ms por quadro durante ~1 s; ida e volta de uma
+tarefa no motor, 0,8 ms (mediana). Números completos em `docs/benchmarks/tardis_room_fase5.json`
+(`python tools/benchmark_tardis_room.py` mede na sua máquina).
+
+---
+
+## 5. Falando com o SAFRA
+
+**Voz.** Diga **"Safra"** no início: *"Safra, abra o bloco de notas"*. Depois de uma
+resposta há 12 s de continuação sem repetir o nome. *"Pare"* interrompe a fala;
+*"fique quieto"* / *"pode falar"* desligam/religam a voz. Se ele não entende o seu "Safra",
+use DIAGNÓSTICOS > VOZ > **CALIBRAR**.
+
+**Texto.** Digite na barra inferior (↑/↓ percorrem o histórico).
+
+Exemplos: *"o que tenho para hoje?"*, *"lembre-me de pagar a conta amanhã às 9h"*,
+*"anote uma ideia: horta vertical"*, *"tenho conflito de horário na agenda?"*,
+*"exporte minhas tarefas em planilha"*, *"faça um backup da memória"*, *"quais dispositivos
+estão na rede?"*, *"diagnóstico de voz"*, *"revogue as autorizações"*, *"prepare meu projeto
+Atlas"*, *"o que está na tela?"*, *"consulte a TARDIS sobre o projeto Atlas"*.
+
+Quando falta informação essencial, ele faz **uma** pergunta objetiva; quando há evidência
+suficiente no contexto, completa o pedido; nunca diz que fez algo sem verificar.
+
+---
+
+### Perfis de inteligência, consumo e procedência
+
+CONFIGURAÇÕES > INTELIGÊNCIA > **Perfil**: **LOCAL** (só Ollama) · **HÍBRIDO** (local no dia a dia, nuvem para
+raciocínio pesado e planejamento) · **AVANÇADO** (nuvem para o que não for trivial) · **ECONÔMICO** (local primeiro;
+nuvem só como reserva, modelo rápido) · **PRIVACIDADE** (só local, sem pesquisa na internet). Sem escolha, vale o
+comportamento anterior (Ollama → LOCAL; OpenAI escolhida → AVANÇADO).
+
+* **Por tarefa**: o SAFRA estima a complexidade do pedido (raciocínio, planejamento, tamanho, código) e escolhe
+  modelo local rápido, local robusto (`model_robust`, ou o maior instalado — ex.: `ollama pull qwen2.5:7b`) ou nuvem
+  rápida/robusta (`openai_model_fast` / `openai_model`).
+* **Nunca vai para a nuvem**: conteúdo sensível (senhas, documentos, banco, saúde); memória pessoal, tela, histórico
+  da conversa e resultados de ferramentas (salvo com "Enviar contexto pessoal à nuvem" ligado); imagens (salvo com
+  "Enviar imagens" ligado).
+* **Primeiro uso pago**: o SAFRA pede autorização (barra de autorização, voz "sim/não" ou console); recusado, a
+  resposta vem do modelo local e diz isso. "REVOGAR AUTORIZAÇÃO" volta a pedir.
+* **Consumo**: cada chamada fica no mesmo banco (tabela `model_usage`, só números); limite mensal em US$ e em
+  tokens (0 = nenhum gasto). O custo só é calculado com o preço configurado — sem preço, diz "custo desconhecido".
+  "Qual o consumo da IA?" responde o resumo do mês. Por voz: "use o perfil local/privacidade" (perfis com nuvem só
+  pelas configurações, com confirmação).
+* **Procedência**: cada resposta mostra de onde veio — memória pessoal, ação verificada, internet, inferência
+  (modelo local ou nuvem, com o nome), hipótese ou indisponível — e avisa trocas de provedor ("a nuvem falhou;
+  respondido pelo modelo local").
+
+### Sons da TARDIS
+
+Efeitos **originais** (sintetizados pelo próprio SAFRA — o áudio da série é protegido e não é distribuído):
+partida da nave quando uma tarefa da TARDIS começa, chegada quando ela termina com resultado, rotor ganhando energia,
+alerta quando uma tarefa falha, portas ao entrar e sair da sala e o ambiente da sala (só com a página TARDIS à frente
+e "Som ambiente" ligado). CONFIGURAÇÕES > APARÊNCIA: **Sons da TARDIS** (liga/desliga) e **volume próprio**; o
+liga/desliga geral dos efeitos também vale. Para usar um arquivo com licença, coloque o `.wav` na pasta
+`sons_tardis` dos dados do SAFRA (`%LOCALAPPDATA%\ULTRON\sons_tardis`) com um destes nomes: `materializacao`,
+`desmaterializacao`, `porta_abrir`, `porta_fechar`, `rotor`, `alerta`, `ambiente` — ele substitui o efeito original
+ao reiniciar (a tela mostra a origem de cada som).
+
+### Voz do SAFRA (e do ULTRON)
+
+* **Prosódia** (`ultron/voice/prosody.py`): o texto vira fala em português (abreviações, horas, moedas, por cento,
+  unidades, endereços pelo domínio, parênteses como inserção); frases longas respiram nas vírgulas; pausas pela
+  pontuação; fim de frase e perguntas um pouco mais lentos; variação pequena de velocidade entre frases; mais
+  variação de entonação e ritmo no Piper. A boca do holograma segue o áudio final (fonemas).
+* **Duas identidades**: `JARVIS_VOICE_PROFILE` (natural, levemente grave) e `ULTRON_VOICE_PROFILE` (mais grave,
+  fria, ritmo deliberado, pausas longas, textura metálica). A troca acompanha o Protocolo ULTRON.
+* **Outras vozes**: coloque uma voz Piper pt-BR (`.onnx` + `.onnx.json`, ex.: `pt_BR-cadu-medium`,
+  `pt_BR-jeff-medium`) em `assets\voices` e escolha em CONFIGURAÇÕES > VOZ > Voz neural. Vozes neurais na nuvem
+  (melhor qualidade) mandariam o texto falado para fora do computador — não estão ativas.
+
+### SAFRA WEB ORB (a ORBE no celular)
+
+Uma página com só a ORBE, ligada a ESTE SAFRA (a matriz-mãe) por um gateway seu, com conexão de SAÍDA do computador
+(nenhuma porta aberta). Conversa, voz, interromper, autorizações comuns e a identidade ULTRON chegam da matriz-mãe;
+ações sensíveis só se confirmam aqui. Pareamento por QR Code/código com confirmação NESTE computador; revogação na
+hora. CONFIGURAÇÕES › **REDE REMOTA (ORBE WEB)**. Publicação, segurança e o que depende de hospedagem/domínio:
+**`WEB_ORB.md`**.
+
+## 6. Memória pessoal e lembretes
+
+* Categorias: tarefa, compromisso, estudo, projeto, ideia, nota, pessoa, rotina, prazo.
+* Datas e horas em português ("amanhã às 15h", "sexta", "dia 12 às 9h30", "toda segunda").
+  Se a expressão for **ambígua** ("às 3" — manhã ou tarde?), ele **pergunta** e nada é gravado
+  antes da resposta. Nenhuma data é inventada.
+* Lembretes: aviso antecipado configurável (padrão 10 min para compromissos), repetição
+  limitada se ignorado, adiar ("adie por 15 minutos"), concluir, dispensar; recorrência
+  diária, dias úteis, semanal e mensal; horário de silêncio (`quiet_hours`, ex.: 22:00-07:00
+  — o aviso fica na central, sem som).
+* **Não dependem da IA**: o agendador é determinístico e persistente. Lembretes que venceram
+  com o SAFRA fechado são avisados **uma vez** na próxima abertura (recorrentes não geram
+  rajada).
+* Notificações do Windows pela bandeja, fala (se permitido) e central de notificações.
+* **Conflitos**: compromissos com horário sobrepostos são informados ao registrar ou editar,
+  no TARDIS e na linha do tempo — nunca bloqueados (você decide).
+* Captura automática só com intenção clara ("tenho dentista amanhã às 15h") e marcada como
+  **inferida** até você confirmar em REVISÃO. Hipóteses ("talvez…"), perguntas e qualquer dado
+  sensível nunca são capturados.
+* Busca sem acentos, filtros por categoria, prioridade e data, lixeira recuperável;
+  exclusão definitiva pede autorização específica.
+* Exportação: JSON (completa) ou CSV (planilha) para um arquivo **novo** — nada é
+  sobrescrito. Backup diário automático do banco inteiro.
+
+---
+
+## 7. Rede local
+
+DIAGNÓSTICOS > **REDE LOCAL** lista os aparelhos com IP, MAC, nome, fabricante (OUI), tipo,
+**observação**, confiabilidade, origem, interface, primeira e última vez. Observação é o que
+se sabe agora: *respondeu recentemente*, *presença inferida — dados incompletos*, *conhecido
+anteriormente — não confirmado agora*, *sem resposta no momento* ou *informação do próprio
+computador*. O gateway é marcado. O que não se sabe aparece como **desconhecido**.
+
+Fontes: tabela de vizinhos do sistema, ping de um pacote, DNS reverso e, se você ativar
+(`network_ssdp`), anúncios SSDP — só na sub-rede privada da interface ativa. **Descobrir não é
+administrar**: o SAFRA não acessa, não controla e não altera aparelhos; o roteador só pela
+página oficial dele, aberta por você, com as suas credenciais (que o SAFRA não guarda).
+
+---
+
+## 8. Autonomia e segurança
+
+| Situação | Comportamento |
+|---|---|
+| Comum, reversível, baixo risco (abrir app, pesquisar, registrar nota) | executa e verifica |
+| Moderado escolhido pelo agente, modo restrito, ou iniciado pela proatividade | pede confirmação |
+| Sensível (exclusão definitiva, configuração do sistema, segurança, administração de rede, envio de dados, credenciais, terceiros) | **autorização específica**, válida uma única vez |
+
+* Responda *"sim"*/*"não"* por voz, texto ou botões; sem resposta em 30 s = não.
+* *"Sim, sempre"* ou o botão **SEMPRE (24 h)**: autorização permanente **escopada** — só a
+  mesma ação com o mesmo recurso, por 24 h; **nunca** para ações sensíveis, críticas,
+  irreversíveis ou proativas. Veja e revogue em DIAGNÓSTICOS > AUTONOMIA ou diga *"revogue as
+  autorizações"*.
+* *"Pare"* cancela o que estiver em andamento. Toda ação fica registrada (DIAGNÓSTICOS >
+  AUTONOMIA).
+* Texto da tela, de arquivos e de páginas é **dado**, nunca instrução: entra no contexto do modelo numa
+  linha só, entre aspas e rotulado como dado observado.
+* **Arquivos**: o SAFRA não cria, altera, move nem apaga nada nas pastas do sistema operacional, da
+  inicialização automática e do próprio SAFRA (programa, plugins e memória pessoal) — nem com "sim": a
+  recusa vem antes do pedido de autorização. Ler e listar continuam livres. Excluir vai sempre para a
+  Lixeira; editar guarda uma cópia `.ultron.bak` (as anteriores nunca são sobrescritas).
+* O modelo de linguagem só executa as ferramentas oferecidas naquele pedido; as reservadas a pedidos
+  diretos não são oferecidas e são recusadas se ele as inventar.
+* O SAFRA não desativa Defender, Firewall ou UAC, não contorna monitoramento e não faz
+  invasão, captura de credenciais, exploração ou interceptação.
+
+---
+
+## 9. Qualidade visual e desempenho
+
+Bandeja > *Qualidade visual*: **Econômico**, **Equilibrado** (padrão), **Alto**,
+**Cinematográfico**. O perfil muda só o custo visual (quadros, partículas, densidade) —
+memória, lembretes, execução e segurança funcionam igual. Em repouso o SAFRA desenha
+poucos quadros; o hub que fica atrás do outro (CORE atrás do TARDIS e vice-versa) cai para
+a cadência de fundo; minimizado ou oculto, não desenha. Números medidos em
+`PERFORMANCE_REPORT.md`.
+
+---
+
+## 10. Dados e privacidade
+
+Tudo em `%LOCALAPPDATA%\ULTRON\`: `ultron.sqlite3` (memórias, Second Brain, lembretes,
+grafo, rede, auditoria), `settings.json`, `world_model.json`, `backups\`, `exports\`,
+`logs\ultron.log`, `autorizacoes_permanentes.json`. Senhas, tokens, dados financeiros e de
+autenticação são recusados antes de qualquer gravação. LOCAL MODE (padrão): só o Ollama
+desta máquina; conexões externas automáticas são bloqueadas e registradas.
+
+---
+
+## 11. Problemas comuns
+
+| Sintoma | O que fazer |
+|---|---|
+| Não responde ao "Safra" | `START_JARVIS.bat --voice-test`; DIAGNÓSTICOS > VOZ > CALIBRAR; veja `VOICE_DIAGNOSTICS.md` |
+| "Silêncio absoluto" no microfone | Configurações do Windows > Privacidade > Microfone: permitir aplicativos da área de trabalho |
+| Responde só por texto | botão VOZ ligado? voz neural instalada (`assets\voices`)? |
+| "Ollama indisponível" | instale/abra o Ollama e baixe `qwen2.5:3b` |
+| Interface pesada | perfil Econômico; feche o TARDIS quando não estiver usando |
+| Lembrete não tocou | horário de silêncio? central de notificações (TARDIS > LEMBRETES) |
+| Algo estranho depois de atualizar | `DIAGNOSTICO_JARVIS.bat`; se preciso, restaure o backup feito pela atualização |
+| "O banco de memória do SAFRA não abriu" | o arquivo não foi alterado. Com o SAFRA fechado: `START_JARVIS.bat --list-backups` e `START_JARVIS.bat --restore-backup ARQUIVO` (o banco danificado fica guardado ao lado) |
+| As configurações voltaram ao padrão | o `settings.json` estava ilegível; o original foi guardado como `settings.ilegivel-AAAAMMDD-HHMMSS.json` na mesma pasta |
+| "Não consegui gravar na memória do SAFRA" | disco cheio ou pasta de dados sem permissão de gravação; nada foi registrado |
+| Demora para responder / quero parar | *"cancelar"*, *"pare"* ou Esc interrompem na hora, mesmo com o modelo ainda carregando |
+| A janela não abre | o SAFRA agora mostra o motivo numa mensagem e oferece o modo console (`START_JARVIS.bat --console`). Para ver o erro no terminal: `START_JARVIS.bat --foreground`; para conferir sem abrir: `START_JARVIS.bat --gui-check`. O erro completo fica em `%LOCALAPPDATA%\ULTRON\logs\ultron.log`. Histórico do defeito corrigido: `AUDITORIA_INICIALIZACAO.md` |
+| A central 3D não aparece (rosto 2D no lugar) | DIAGNÓSTICOS e `START_JARVIS.bat --gui-check` dizem o motivo ("cena 3D …"). Sem `PySide6-Addons`: `ATUALIZAR_JARVIS.bat`. Depois de uma falha da placa de vídeo, CONFIGURAÇÕES > APARÊNCIA > Cena 3D: Desligada e depois Automática tenta de novo |
+| A central 3D está lenta | perfil Econômico ou Equilibrado (a qualidade também desce sozinha); `python tools/benchmark_scene3d.py` mede no seu computador |
+| "O SAFRA já está em execução" | ele está aberto (talvez recolhido na bandeja, ou em modo console em outra janela). Feche com `START_JARVIS.bat --stop` ou bandeja > Sair |
+
+## 12. Documentos
+
+`CHANGELOG_JARVIS.md` · `ARCHITECTURE_JARVIS.md` (mapa de integração) ·
+`PERFORMANCE_REPORT.md` · `VOICE_DIAGNOSTICS.md` · `TEST_REPORT.md` ·
+`docs/JARVIS_AUDITORIA_E_PLANO.md` (auditoria e plano). Testes: `python TEST_JARVIS.py`.

@@ -1,0 +1,19 @@
+{% extends "page.html" %}
+{% block after_content %}
+{% if releases %}
+<ul class="versoes">
+  {% for release in releases %}
+  <li class="versao">
+    <h2>SAFRA {{ release.version }} <span class="selo selo--canal">{{ {"stable": "estável", "beta": "beta", "experimental": "experimental"}[release.channel] }}</span></h2>
+    <p class="noticia__data">{{ release.platform | capitalize }} · <time datetime="{{ release.published_at | iso_date }}">{{ release.published_at | long_date }}</time></p>
+    {% if release.notes %}<p>{{ release.notes }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<aside class="aviso aviso--status">
+  <p class="aviso__titulo">Ainda não há instaladores publicados</p>
+  <p>A geração 4 do SAFRA está em desenvolvimento{% if not publication_enabled %}, e a publicação de instaladores está suspensa até a conclusão da análise de licenças das bibliotecas usadas{% endif %}.</p>
+</aside>
+{% endif %}
+{% endblock %}

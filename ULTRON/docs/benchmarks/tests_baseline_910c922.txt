@@ -1,0 +1,46 @@
+ULTRON 1.0.0 · Python 3.13.16 · Linux 6.18.44-fc-v114
+  [ok] numpy        numpy
+  [ok] psutil       psutil
+  [ok] PySide6      HUB neural (sem ele: modo console)
+  [ok] vosk         reconhecimento de fala offline
+  [ — ] pyaudio      microfone e saída de áudio
+  [ok] piper        voz neural do ULTRON
+  [ — ] pyttsx3      voz alternativa (SAPI)
+  [ — ] sounddevice  saída de áudio alternativa
+  [ — ] pyautogui    teclado, mouse e mídia
+  [ — ] pywinauto    elementos de interface do Windows
+  [ — ] pycaw        volume do sistema
+  [ — ] send2trash   exclusão segura (Lixeira)
+  [ — ] mss          captura de tela
+  [ok] PIL          imagens (Pillow)
+  [ — ] pytesseract  OCR (requer Tesseract OCR)
+  [ok] modelo de fala grande (vosk-model-pt-fb-v0.1.1-20220516_2113)
+  [ok] modelo de fala pequeno (vosk-model-small-pt-0.3)
+  [ok] voz pt_BR-faber-medium
+  [ — ] Ollama local não está em execução (os testes não precisam dele)
+
+Executando 127 testes…
+
+...............................................................................................................................
+----------------------------------------------------------------------
+Ran 127 tests in 25.781s
+
+OK
+
+Resumo por módulo (ok / falhas / pulados):
+  test_core               15 /  0 /  0   ok
+  test_event_bus           7 /  0 /  0   ok
+  test_executor            9 /  0 /  0   ok
+  test_hud                16 /  0 /  0   ok
+  test_imagination         6 /  0 /  0   ok
+  test_memory              8 /  0 /  0   ok
+  test_model_router        8 /  0 /  0   ok
+  test_network             9 /  0 /  0   ok
+  test_planner             8 /  0 /  0   ok
+  test_plugins             4 /  0 /  0   ok
+  test_recovery            7 /  0 /  0   ok
+  test_verifier            5 /  0 /  0   ok
+  test_voice              20 /  0 /  0   ok
+  test_world_model         5 /  0 /  0   ok
+
+APROVADO: 127 testes em 25.8s · 0 falha(s) · 0 pulado(s)

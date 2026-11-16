@@ -1,0 +1,140 @@
+{
+  "root": "/tmp/claude-0/-home-user-utron-jarvis/55e153fa-07e9-5106-8609-261de0c37c0b/scratchpad/baseline/wt/ULTRON",
+  "version": "1.0.0",
+  "python": "3.13.16",
+  "platform": "Linux 6.18.44-fc-v114",
+  "cpus": 4,
+  "when": "2026-10-12 00:38:35",
+  "render": {
+    "idle_young": {
+      "n": 600,
+      "mean": 6.393,
+      "p50": 5.816,
+      "p95": 9.031,
+      "p99": 10.42,
+      "max": 13.423,
+      "over_16ms": 0
+    },
+    "idle_mature": {
+      "n": 600,
+      "mean": 9.917,
+      "p50": 9.178,
+      "p95": 13.61,
+      "p99": 14.939,
+      "max": 18.556,
+      "over_16ms": 3
+    },
+    "active_mature": {
+      "n": 600,
+      "mean": 28.345,
+      "p50": 26.63,
+      "p95": 41.749,
+      "p99": 47.03,
+      "max": 91.976,
+      "over_16ms": 600
+    },
+    "camera_moves": {
+      "n": 600,
+      "mean": 11.713,
+      "p50": 11.073,
+      "p95": 16.468,
+      "p99": 17.499,
+      "max": 22.009,
+      "over_16ms": 21
+    }
+  },
+  "core": {
+    "state_as_dict": {
+      "n": 400,
+      "mean": 0.508,
+      "p50": 0.499,
+      "p95": 0.603,
+      "p99": 0.674,
+      "max": 0.771
+    },
+    "graph_snapshot_800": {
+      "n": 20,
+      "mean": 5.327,
+      "p50": 4.972,
+      "p95": 6.868,
+      "p99": 7.763,
+      "max": 7.763
+    }
+  },
+  "ui": {
+    "idle": {
+      "event_loop_lag": {
+        "n": 1061,
+        "mean": 6.374,
+        "p50": 6.664,
+        "p95": 13.009,
+        "p99": 15.416,
+        "max": 20.101
+      },
+      "cpu_percent": 70.7,
+      "rss_mb": 139.7,
+      "ticks_per_s": 62.5,
+      "paints_per_s": 64.0,
+      "paint_ms": {
+        "n": 768,
+        "mean": 9.792,
+        "p50": 9.199,
+        "p95": 13.761,
+        "p99": 16.502,
+        "max": 19.687
+      },
+      "ui_busy_ms_per_s": {
+        "_on_event": 0.01,
+        "paintEvent": 626.5,
+        "_tick": 13.51,
+        "_pull_telemetry": 1.03,
+        "_pull_state": 0.38
+      },
+      "threads": 12
+    },
+    "busy": {
+      "event_loop_lag": {
+        "n": 713,
+        "mean": 11.831,
+        "p50": 11.405,
+        "p95": 21.885,
+        "p99": 30.25,
+        "max": 53.639
+      },
+      "cpu_percent": 89.4,
+      "rss_mb": 142.2,
+      "ticks_per_s": 53.2,
+      "paints_per_s": 53.8,
+      "paint_ms": {
+        "n": 646,
+        "mean": 14.93,
+        "p50": 13.707,
+        "p95": 24.656,
+        "p99": 35.024,
+        "max": 56.372
+      },
+      "ui_busy_ms_per_s": {
+        "_on_event": 1.29,
+        "paintEvent": 803.56,
+        "_tick": 11.61,
+        "_pull_telemetry": 0.93,
+        "_pull_state": 1.64
+      },
+      "threads": 12
+    },
+    "response_latency": {
+      "n": 5,
+      "mean": 187.771,
+      "p50": 272.913,
+      "p95": 281.85,
+      "p99": 281.85,
+      "max": 281.85
+    },
+    "simulated_inference_ms": 250.0,
+    "threads_before_shutdown": 12,
+    "threads_after_shutdown": 2,
+    "threads_left": [
+      "Thread-1 (serve_forever)"
+    ]
+  }
+}

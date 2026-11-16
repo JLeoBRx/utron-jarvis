@@ -1,0 +1,11 @@
+{% extends "page.html" %}
+{% block after_content %}
+{% if site.contact_email or site.contact_links %}
+<ul class="contatos">
+  {% if site.contact_email %}<li><span class="contatos__rotulo">E-mail</span> <a href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a></li>{% endif %}
+  {% for link in site.contact_links %}<li><span class="contatos__rotulo">{{ link.label }}</span> <a href="{{ link.href }}" {% if link.href.startswith('http') %}rel="noopener noreferrer"{% endif %}>{{ link.href }}</a></li>{% endfor %}
+</ul>
+{% else %}
+<aside class="aviso aviso--info"><p>Os canais de contato ainda não foram publicados.</p></aside>
+{% endif %}
+{% endblock %}

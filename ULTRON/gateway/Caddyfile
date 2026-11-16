@@ -1,0 +1,8 @@
+# HTTPS automático para o domínio da ORBE; tudo vai para o gateway (WebSocket incluído).
+{$JARVIS_DOMAIN} {
+	encode gzip
+	reverse_proxy gateway:8080 {
+		header_up X-Forwarded-For {remote_host}
+	}
+	header -Server
+}

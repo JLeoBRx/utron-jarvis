@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Dados do usuário nunca vão para o repositório (ficam em %LOCALAPPDATA%\ULTRON)
+*.sqlite3
+*.sqlite3-*
+settings.json
+world_model.json
+hud_cortex.npz
+logs/
+images/
+
+# Sistema
+Thumbs.db
+.DS_Store
+
+# Local identity backup and private data
+settings.*.json
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-*
+*.sqlite
+*.sqlite3-*

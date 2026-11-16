@@ -1,0 +1,137 @@
+{
+  "protocolo": "PV-01 (análise exploratória)",
+  "origem": "pv01_ativacao_conteiner-sintetico.json",
+  "formas_fracas_extras": [
+    "faca"
+  ],
+  "aproximacao": "forma fraca conta como ativação quando há qualquer texto depois dela",
+  "modelos": {
+    "pequeno": {
+      "padrao_ativacao_safra": {
+        "acertos": 7,
+        "total": 180,
+        "taxa": 0.0389,
+        "ic95_wilson": [
+          0.019,
+          0.0781
+        ]
+      },
+      "padrao_ativacao_jarvis": {
+        "acertos": 31,
+        "total": 180,
+        "taxa": 0.1722,
+        "ic95_wilson": [
+          0.1241,
+          0.2341
+        ]
+      },
+      "padrao_ativacao_indevida": {
+        "acertos": 2,
+        "total": 432,
+        "taxa": 0.0046,
+        "ic95_wilson": [
+          0.0013,
+          0.0167
+        ]
+      },
+      "padrao_indevidas_exemplos": [
+        "aves voltaram para o jardim",
+        "aves voltaram para o jardim"
+      ],
+      "com_extras_ativacao_safra": {
+        "acertos": 7,
+        "total": 180,
+        "taxa": 0.0389,
+        "ic95_wilson": [
+          0.019,
+          0.0781
+        ]
+      },
+      "com_extras_ativacao_jarvis": {
+        "acertos": 31,
+        "total": 180,
+        "taxa": 0.1722,
+        "ic95_wilson": [
+          0.1241,
+          0.2341
+        ]
+      },
+      "com_extras_ativacao_indevida": {
+        "acertos": 2,
+        "total": 432,
+        "taxa": 0.0046,
+        "ic95_wilson": [
+          0.0013,
+          0.0167
+        ]
+      },
+      "com_extras_indevidas_exemplos": [
+        "aves voltaram para o jardim",
+        "aves voltaram para o jardim"
+      ]
+    },
+    "grande": {
+      "padrao_ativacao_safra": {
+        "acertos": 4,
+        "total": 180,
+        "taxa": 0.0222,
+        "ic95_wilson": [
+          0.0087,
+          0.0557
+        ]
+      },
+      "padrao_ativacao_jarvis": {
+        "acertos": 33,
+        "total": 180,
+        "taxa": 0.1833,
+        "ic95_wilson": [
+          0.1336,
+          0.2463
+        ]
+      },
+      "padrao_ativacao_indevida": {
+        "acertos": 0,
+        "total": 432,
+        "taxa": 0.0,
+        "ic95_wilson": [
+          0.0,
+          0.0088
+        ]
+      },
+      "padrao_indevidas_exemplos": [],
+      "com_extras_ativacao_safra": {
+        "acertos": 160,
+        "total": 180,
+        "taxa": 0.8889,
+        "ic95_wilson": [
+          0.8346,
+          0.9269
+        ]
+      },
+      "com_extras_ativacao_jarvis": {
+        "acertos": 33,
+        "total": 180,
+        "taxa": 0.1833,
+        "ic95_wilson": [
+          0.1336,
+          0.2463
+        ]
+      },
+      "com_extras_ativacao_indevida": {
+        "acertos": 4,
+        "total": 432,
+        "taxa": 0.0093,
+        "ic95_wilson": [
+          0.0036,
+          0.0236
+        ]
+      },
+      "com_extras_indevidas_exemplos": [
+        "faça física feliciano foi",
+        "faça este ano foi ruim",
+        "faça-se de este ano foi juntos",
+        "faça de fez este ano foi bom"
+      ]
+    }
+  }
+}

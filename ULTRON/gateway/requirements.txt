@@ -1,0 +1,2 @@
+# JARVIS Gateway (serviço da JARVIS WEB ORB) — roda no servidor, separado do JARVIS do computador
+aiohttp>=3.9,<4
