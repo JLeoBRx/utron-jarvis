@@ -187,3 +187,31 @@ test('módulos futuros informam a fase, sem ações simuladas', async ({ page })
   await page.goto('/rota-que-nao-existe');
   await expect(page.getByText('Página não encontrada')).toBeVisible();
 });
+
+test('restaura um backup na tela de início (migração entre navegadores/contas)', async ({ page, browser }) => {
+  await completeOnboarding(page);
+  await createExam(page, 'Biologia 2', 'Avaliação de genética');
+  await page.getByLabel('Adicionar conteúdos cobrados').fill('Leis de Mendel');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('list', { name: 'Conteúdos da prova' }).getByRole('listitem')).toHaveCount(1);
+  await page.goto('/configuracoes#dados');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar backup (JSON)' }).click();
+  const backupPath = (await (await downloadPromise).path())!;
+
+  // Outro navegador (banco vazio): restaura o backup pela tela de início.
+  const context = await browser.newContext();
+  const other = await context.newPage();
+  const otherErrors = trackConsoleErrors(other);
+  await other.goto('/');
+  await expect(other.getByRole('heading', { name: 'Bem-vindo à Central de Estudos' })).toBeVisible();
+  await other.getByLabel('Arquivo de backup').setInputFiles(backupPath);
+  await expect(other.getByText(/Backup restaurado/)).toBeVisible();
+  await expect(other.getByRole('link', { name: /^Disciplinas 20/ })).toBeVisible();
+  await other.goto('/provas');
+  await other.getByRole('main').getByRole('link', { name: /Avaliação de genética/ }).click();
+  await other.getByRole('navigation', { name: 'Seções da prova' }).getByRole('link', { name: /^Conteúdos/ }).click();
+  await expect(other.getByText('Leis de Mendel')).toBeVisible();
+  expect(otherErrors).toEqual([]);
+  await context.close();
+});

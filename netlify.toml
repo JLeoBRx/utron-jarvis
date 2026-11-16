@@ -1,5 +1,8 @@
 # Netlify — Central de Estudos
+# O app fica na pasta central-de-estudos/ deste repositório.
+# `publish` é relativo a `base`.
 [build]
+  base = "central-de-estudos"
   command = "npm run build"
   publish = "dist"
 

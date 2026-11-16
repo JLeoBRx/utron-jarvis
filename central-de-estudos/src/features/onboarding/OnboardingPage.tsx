@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Cloud, HardDrive } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, Cloud, HardDrive, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { LogoMark } from '@/components/layout/Logo';
@@ -12,7 +13,9 @@ import { useBackend } from '@/data/DataContext';
 import { useAction } from '@/data/hooks';
 import { academicYearSchema } from '@/data/schemas';
 import { OFFICIAL_SUBJECTS } from '@/data/seed/officialSubjects';
+import { importBackup, parseBackupFile } from '@/data/services/backup';
 import { createAcademicYear, saveProfile } from '@/data/services/workspace';
+import { errorMessage } from '@/lib/errors';
 import { CATEGORY_LABELS } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +51,27 @@ export function OnboardingPage() {
         seeded.length ? `Tudo pronto! ${seeded.length} disciplinas cadastradas.` : 'Ano letivo criado.',
     },
   );
+
+  const fileInput = useRef<HTMLInputElement>(null);
+  const restore = useAction((backend, text: string) => importBackup(backend, parseBackupFile(text)), {
+    success: (report) => {
+      const total = Object.values(report.inserted).reduce((sum, n) => sum + (n ?? 0), 0);
+      return `Backup restaurado: ${total} registros importados.`;
+    },
+    onSuccess: (report) => {
+      if (report.failed.length) toast.warning(`${report.failed.length} registro(s) não puderam ser importados.`);
+    },
+  });
+  const onBackupFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      restore.mutate(await file.text());
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
 
   const year = new Date().getFullYear();
 
@@ -151,10 +175,24 @@ export function OnboardingPage() {
             )}
           </div>
 
-          <Button type="submit" variant="primary" size="lg" className="w-full" loading={start.isPending}>
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={start.isPending} disabled={restore.isPending}>
             Começar
           </Button>
         </form>
+
+        <div className="mt-5 text-center">
+          <Button variant="ghost" size="sm" onClick={() => fileInput.current?.click()} loading={restore.isPending} disabled={start.isPending}>
+            <Upload /> Já tenho um backup — restaurar
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label="Arquivo de backup"
+            onChange={(e) => void onBackupFile(e.target.files?.[0])}
+          />
+        </div>
       </div>
     </div>
   );
