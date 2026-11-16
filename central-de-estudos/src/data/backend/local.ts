@@ -63,8 +63,11 @@ function normalize(value: unknown, caseInsensitive: boolean): unknown {
 
 class LocalStorageBackend implements StorageBackend {
   private urls = new Map<string, string>();
+  private readonly db: LocalDatabase;
 
-  constructor(private readonly db: LocalDatabase) {}
+  constructor(db: LocalDatabase) {
+    this.db = db;
+  }
 
   async upload(path: string, file: Blob, options?: { contentType?: string; upsert?: boolean }): Promise<void> {
     const existing = await this.db.files.get(path);
@@ -116,8 +119,10 @@ export class LocalBackend implements DataBackend {
   readonly mode = 'local' as const;
   readonly userId = LOCAL_USER_ID;
   readonly storage: StorageBackend;
+  readonly db: LocalDatabase;
 
-  constructor(readonly db: LocalDatabase = new LocalDatabase()) {
+  constructor(db: LocalDatabase = new LocalDatabase()) {
+    this.db = db;
     this.storage = new LocalStorageBackend(db);
   }
 

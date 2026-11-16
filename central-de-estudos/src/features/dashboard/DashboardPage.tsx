@@ -10,6 +10,7 @@ import {
   FileText,
   FolderOpen,
   HardDrive,
+  Info,
   Layers,
   NotebookPen,
   Plus,
@@ -123,9 +124,10 @@ function ActivityList({ items, subjects }: { items: ActivityItem[]; subjects: Ma
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13px] text-fg">{item.title}</span>
-              <span className="mt-0.5 flex items-center gap-2 text-[11px] text-fg-subtle">
-                {subject ? <SubjectTag subject={subject} className="max-w-[55%] text-[11px] font-normal" /> : null}
-                <span>{item.detail ? `${item.detail} · ` : ''}{timeAgo(item.at)}</span>
+              {subject ? <SubjectTag subject={subject} className="mt-0.5 flex max-w-full text-[11px] font-normal" /> : null}
+              <span className="mt-0.5 block truncate text-[11px] text-fg-subtle">
+                {item.detail ? `${item.detail} · ` : ''}
+                {timeAgo(item.at)}
               </span>
             </span>
           </>
@@ -308,8 +310,8 @@ export function DashboardPage() {
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-fg-muted">Progresso geral</span>
               <Tooltip content="Média do status de estudo dos conteúdos das provas pendentes (não estudado, estudando, revisado, dominado).">
-                <button type="button" className="text-[11px] text-fg-subtle underline decoration-dotted underline-offset-2">
-                  como é calculado?
+                <button type="button" className="rounded text-fg-subtle hover:text-fg" aria-label="Como o progresso geral é calculado">
+                  <Info className="size-4" />
                 </button>
               </Tooltip>
             </div>
@@ -332,7 +334,7 @@ export function DashboardPage() {
         </section>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <Card className="animate-rise">
           <CardHeader
             title="Próximas provas"

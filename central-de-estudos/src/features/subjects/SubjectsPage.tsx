@@ -161,12 +161,12 @@ export function SubjectsPage() {
       />
 
       <div className="mb-5 flex animate-rise flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative md:w-72">
+        <div className="relative md:w-80">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome, código ou professor"
+            placeholder="Nome, código ou professor"
             className="pr-8 pl-9"
             aria-label="Buscar disciplinas"
           />

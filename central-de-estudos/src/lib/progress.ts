@@ -84,3 +84,21 @@ export function upcomingExams(exams: Exam[], now: Date = new Date()): Exam[] {
     .filter((exam) => exam.status !== 'realizada' && exam.exam_date && daysUntil(exam.exam_date, now) >= 0)
     .sort((a, b) => (a.exam_date! < b.exam_date! ? -1 : a.exam_date! > b.exam_date! ? 1 : 0));
 }
+
+/** Próximas primeiro (por data), depois sem data, depois passadas/realizadas (mais recentes primeiro). */
+export function sortExamsForDisplay(exams: Exam[]): Exam[] {
+  const rank = (e: Exam) => {
+    if (e.status === 'realizada') return 3;
+    if (!e.exam_date) return 1;
+    return daysUntil(e.exam_date) >= 0 ? 0 : 2;
+  };
+  return [...exams].sort((a, b) => {
+    const r = rank(a) - rank(b);
+    if (r !== 0) return r;
+    if (a.exam_date && b.exam_date) {
+      const cmp = a.exam_date.localeCompare(b.exam_date);
+      return rank(a) >= 2 ? -cmp : cmp;
+    }
+    return a.created_at.localeCompare(b.created_at);
+  });
+}

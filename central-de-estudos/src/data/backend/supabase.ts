@@ -83,7 +83,11 @@ function applyWhere(builder: AnyFilterBuilder, where: Where | undefined): AnyFil
 }
 
 class SupabaseStorageBackend implements StorageBackend {
-  constructor(private readonly client: AnyClient) {}
+  private readonly client: AnyClient;
+
+  constructor(client: AnyClient) {
+    this.client = client;
+  }
 
   private bucket() {
     return this.client.storage.from(STORAGE_BUCKET);
@@ -130,11 +134,12 @@ class SupabaseStorageBackend implements StorageBackend {
 export class SupabaseBackend implements DataBackend {
   readonly mode = 'supabase' as const;
   readonly storage: StorageBackend;
+  readonly userId: UUID;
+  private readonly client: AnyClient;
 
-  constructor(
-    private readonly client: AnyClient,
-    readonly userId: UUID,
-  ) {
+  constructor(client: AnyClient, userId: UUID) {
+    this.client = client;
+    this.userId = userId;
     this.storage = new SupabaseStorageBackend(client);
   }
 
@@ -206,7 +211,7 @@ export class SupabaseBackend implements DataBackend {
 
   async update<T extends TableName>(table: T, id: UUID, patch: Patch<T>): Promise<Row<T>> {
     const data = await this.exec(table, () =>
-      this.client.from(table).update(patch).eq('id', id).select('*').maybeSingle(),
+      this.client.from(table).update(patch as never).eq('id', id).select('*').maybeSingle(),
     );
     if (!data) throw new AppError('not_found', `Registro não encontrado (${FRIENDLY_TABLE_NAMES[table]}).`);
     return data as Row<T>;

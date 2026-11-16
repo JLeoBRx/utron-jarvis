@@ -1,10 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { env } from '@/config/env';
 import { LocalBackend } from '@/data/backend/local';
 import { SupabaseBackend } from '@/data/backend/supabase';
 import type { DataBackend } from '@/data/backend/types';
 import { getSupabase } from '@/lib/supabase';
+import { queryClient } from './queryClient';
 
 export type SessionState =
   | { status: 'config_error'; reason: string }
@@ -17,6 +18,7 @@ interface SessionContextValue {
   /** O usuário chegou por um link de redefinição de senha. */
   passwordRecovery: boolean;
   clearPasswordRecovery: () => void;
+  signOut: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -76,9 +78,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  /**
+   * Sair: primeiro desmonta a área de dados (nenhuma consulta nova é disparada
+   * sem sessão), cancela as pendentes e limpa o cache; depois encerra a sessão.
+   */
+  const signOut = useCallback(async () => {
+    setState({ status: 'signed_out' });
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await getSupabase()?.auth.signOut();
+  }, []);
+
   const value = useMemo(
-    () => ({ state, passwordRecovery, clearPasswordRecovery: () => setPasswordRecovery(false) }),
-    [state, passwordRecovery],
+    () => ({ state, passwordRecovery, clearPasswordRecovery: () => setPasswordRecovery(false), signOut }),
+    [state, passwordRecovery, signOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
@@ -87,8 +100,4 @@ export function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession precisa estar dentro de <SessionProvider>.');
   return ctx;
-}
-
-export async function signOut(): Promise<void> {
-  await getSupabase()?.auth.signOut();
 }

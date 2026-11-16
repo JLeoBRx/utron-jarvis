@@ -22,7 +22,7 @@ export function ExamRow({ exam, subject, topics, showSubject = true }: ExamRowPr
     <Link
       to={`/provas/${exam.id}`}
       style={subjectColorStyle(subject?.color)}
-      className="sc group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-surface-2/60 sm:px-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_auto]"
+      className="sc group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-surface-2/60 sm:px-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_140px_150px] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_140px_220px]"
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function ExamRow({ exam, subject, topics, showSubject = true }: ExamRowPr
         </span>
       </div>
 
-      <div className="col-start-2 row-start-1 flex items-center gap-2 md:col-start-auto md:row-start-auto">
+      <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 md:col-start-auto md:row-start-auto">
         <span className="hidden lg:inline-flex">
           <PriorityBadge priority={exam.priority} compact />
         </span>

@@ -145,3 +145,23 @@ export function useAction<TArgs, TResult>(
     },
   });
 }
+
+/** Contagens reais dos itens vinculados a uma prova (abas da página da prova). */
+export function useExamCounts(examId: UUID | undefined) {
+  const db = useBackend();
+  return useQuery({
+    queryKey: [...scopeKey(db), 'exam_counts', examId],
+    enabled: Boolean(examId),
+    queryFn: async () => {
+      const where = { exam_id: examId! };
+      const [materials, summaries, flashcards, questions, quizzes] = await Promise.all([
+        db.count('materials', where),
+        db.count('summaries', where),
+        db.count('flashcards', where),
+        db.count('questions', where),
+        db.count('quizzes', where),
+      ]);
+      return { materials, summaries, flashcards, questions, quizzes };
+    },
+  });
+}

@@ -13,6 +13,18 @@ export default defineConfig({
   preview: { host: '127.0.0.1', port: 4173 },
   build: {
     sourcemap: true,
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 600,
+    rolldownOptions: {
+      output: {
+        // Bibliotecas em pacotes separados: mudam pouco e ficam em cache entre deploys.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+            { name: 'vendor', test: /node_modules[\\/]/ },
+          ],
+        },
+      },
+    },
   },
 });

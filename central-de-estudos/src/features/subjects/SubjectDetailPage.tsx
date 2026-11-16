@@ -10,35 +10,15 @@ import { EmptyState, ErrorState, Skeleton } from '@/components/ui/misc';
 import { ProgressRing } from '@/components/ui/Progress';
 import { useAction, useMaterialCounts, useYearData } from '@/data/hooks';
 import { setSubjectArchived } from '@/data/services/subjects';
-import type { Exam } from '@/data/types';
 import { subjectColorStyle } from '@/lib/colors';
-import { daysUntil } from '@/lib/dates';
 import { CATEGORY_LABELS } from '@/lib/labels';
-import { pendingExamsProgress } from '@/lib/progress';
+import { pendingExamsProgress, sortExamsForDisplay } from '@/lib/progress';
 import { pluralize } from '@/lib/utils';
 import { NotFoundPage } from '../modules/NotFoundPage';
 import { ExamFormDialog } from '../exams/ExamFormDialog';
 import { ExamRow } from '../exams/ExamRow';
 import { DeleteSubjectDialog } from './SubjectDialogs';
 import { SubjectFormDialog } from './SubjectFormDialog';
-
-/** Próximas primeiro (por data), depois sem data, depois passadas/realizadas (mais recentes primeiro). */
-export function sortExamsForDisplay(exams: Exam[]): Exam[] {
-  const rank = (e: Exam) => {
-    if (e.status === 'realizada') return 3;
-    if (!e.exam_date) return 1;
-    return daysUntil(e.exam_date) >= 0 ? 0 : 2;
-  };
-  return [...exams].sort((a, b) => {
-    const r = rank(a) - rank(b);
-    if (r !== 0) return r;
-    if (a.exam_date && b.exam_date) {
-      const cmp = a.exam_date.localeCompare(b.exam_date);
-      return rank(a) >= 2 ? -cmp : cmp;
-    }
-    return a.created_at.localeCompare(b.created_at);
-  });
-}
 
 function MiniStat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: string; value: string | number }) {
   return (

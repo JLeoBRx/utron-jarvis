@@ -1,7 +1,7 @@
 import { Check, ChevronsUpDown, Cloud, HardDrive, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router';
 import { NAV_SECTIONS, SETTINGS_ITEM, type NavItem } from '@/app/navigation';
-import { signOut, useSession } from '@/app/session';
+import { useSession } from '@/app/session';
 import { useTheme } from '@/app/theme';
 import { useBackend } from '@/data/DataContext';
 import { useAction, useWorkspace } from '@/data/hooks';
@@ -108,7 +108,8 @@ function YearSwitcher({ collapsed }: { collapsed?: boolean }) {
 
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: SidebarProps) {
   const db = useBackend();
-  const { state } = useSession();
+  const navigate = useNavigate();
+  const { state, signOut } = useSession();
   const { resolved, toggle } = useTheme();
   const email = state.status === 'ready' ? state.email : null;
 
@@ -120,7 +121,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
   return (
     <aside
       className={cn('flex h-full flex-col border-r border-border bg-sidebar', collapsed ? 'w-[60px] items-center' : 'w-60', className)}
-      aria-label="Menu principal"
     >
       <div className={cn('w-full pt-4 pb-2', collapsed ? 'flex flex-col items-center px-2' : 'px-3')}>
         <NavLink to="/" onClick={onNavigate} className="flex h-8 items-center rounded-lg px-1" aria-label="Central de Estudos — início">
@@ -129,7 +129,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
         <YearSwitcher collapsed={collapsed} />
       </div>
 
-      <nav className={cn('flex w-full flex-1 flex-col gap-4 overflow-y-auto py-3', collapsed ? 'items-center px-2' : 'px-3')}>
+      <nav
+        aria-label="Menu principal"
+        className={cn('flex w-full flex-1 flex-col gap-4 overflow-y-auto py-3', collapsed ? 'items-center px-2' : 'px-3')}
+      >
         {NAV_SECTIONS.map((section, index) => (
           <div key={section.label ?? index} className={cn('flex flex-col gap-0.5', collapsed && 'items-center')}>
             {section.label && !collapsed ? (
@@ -153,7 +156,15 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
         </Tooltip>
         {db.mode === 'supabase' ? (
           <Tooltip content="Sair" side="right" disabled={!collapsed}>
-            <button type="button" onClick={() => void signOut()} className={footerButton} aria-label="Sair da conta">
+            <button
+              type="button"
+              onClick={() => {
+                // Depois de sair, volta ao início: o próximo login não reabre a última página da conta anterior.
+                void signOut().then(() => navigate('/', { replace: true }));
+              }}
+              className={footerButton}
+              aria-label="Sair da conta"
+            >
               <LogOut />
               {!collapsed ? <span>Sair</span> : null}
             </button>
