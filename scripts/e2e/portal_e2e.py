@@ -35,7 +35,7 @@ def main() -> int:
     parser.add_argument("--node-path", default=os.environ.get("NODE_PATH", ""), help="onde está o pacote playwright")
     args = parser.parse_args()
     if not (REPO / "apps" / "admin" / "dist" / "index.html").is_file():
-        print("Compile o painel antes: cd apps/admin && npm ci && npm run build", file=sys.stderr)
+        print("Compile o painel antes: npm ci && npm run build -w @safra/admin (na raiz)", file=sys.stderr)
         return 2
     folder = Path(tempfile.mkdtemp(prefix="safra-portal-e2e-"))
     port = free_port()

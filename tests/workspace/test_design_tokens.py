@@ -31,9 +31,10 @@ def test_generated_css_is_in_sync_with_the_source():
 def test_stylesheets_use_tokens_instead_of_loose_colours():
     """Nos estilos, cor só vem de variável. Exceções: transparências em rgba() e o arquivo de tokens gerado."""
     sheets = [REPO / "backend" / "portal" / "src" / "safra_portal" / "static" / "css" / "site.css"]
-    admin = REPO / "apps" / "admin" / "src"
-    if admin.is_dir():
-        sheets += [p for p in admin.rglob("*.css") if p.name != "tokens.css"]
+    for folder in (REPO / "apps" / "admin" / "src", REPO / "apps" / "assistant" / "src", REPO / "packages" / "ui" / "src"):
+        if folder.is_dir():
+            sheets += [p for p in folder.rglob("*.css") if p.name != "tokens.css"]
+    assert len(sheets) >= 4
     for sheet in sheets:
         text = re.sub(r"/\*.*?\*/", "", sheet.read_text(encoding="utf-8"), flags=re.S)
         loose = re.findall(r"#[0-9a-fA-F]{3,8}\b", text)

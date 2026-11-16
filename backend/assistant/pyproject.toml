@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "safra-foundation",        # biblioteca de base (backend/foundation)
     "uvicorn>=0.30,<1",        # servidor ASGI local
+    "psutil>=6,<8",            # uso de recursos do processo e do computador (console)
 ]
 
 [project.optional-dependencies]

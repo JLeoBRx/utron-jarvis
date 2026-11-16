@@ -11,6 +11,10 @@ on:
       - "packages/**"
       - "tests/**"
       - "scripts/e2e/**"
+      - "scripts/web/**"
+      - "scripts/perf/**"
+      - "package.json"
+      - "package-lock.json"
       - "desktop/**"
       - ".github/workflows/safra-ci.yml"
   pull_request:
@@ -20,6 +24,9 @@ on:
       - "packages/**"
       - "tests/**"
       - "desktop/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/safra-ci.yml"
   workflow_dispatch:
 
@@ -47,6 +54,7 @@ jobs:
             backend
             apps
             packages
+            scripts
             tests
             .github
 
@@ -126,54 +134,69 @@ jobs:
           SAFRA_PORTAL_TEST_POSTGRES_URL: postgresql+psycopg://safra:apenas-para-o-ci@localhost:5432/portal_teste
         run: python -m pytest tests/test_postgres.py -rs
 
-  admin:
-    name: Painel administrativo · tipos, testes e compilação
+  interfaces:
+    name: Interfaces · design system, painel e Assistant (tipos, testes, compilação)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/admin
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             apps
             packages
+            scripts
+            backend/portal/src/safra_portal/static
+            backend/portal/src/safra_portal/templates
             .github
+            package.json
+            package-lock.json
+            .npmrc
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: apps/admin/package-lock.json
-      - name: Instalar pelo arquivo de trava
+          cache-dependency-path: package-lock.json
+      - name: Instalar pelo arquivo de trava único do workspace
         run: npm ci --no-audit --no-fund
-      - name: Tokens de design sincronizados
-        working-directory: .
+      - name: Artefatos da identidade visual sincronizados com a fonte única
         run: python3 packages/design-tokens/build.py --check
-      - name: Verificação de tipos
+      - name: Verificação de tipos (todos os pacotes)
         run: npm run typecheck
-      - name: Testes de unidade e de componente
+      - name: Testes de componente, acessibilidade e unidade (todos os pacotes)
         run: npm test
-      - name: Compilação
+      - name: Compilação do painel e da interface do Assistant
         run: npm run build
-      - name: Sem script embutido no HTML compilado (exigência da CSP do Portal)
-        run: "! grep -E '<script>|<script [^>]*>[^<]' dist/index.html"
-      - name: Avisos de licença das bibliotecas incluídas na compilação
+      - name: Sem script embutido no HTML compilado (exigência das CSPs)
         run: |
-          grep -q "react .* — MIT" dist/licencas-de-terceiros.txt
-          grep -q "Licenças de terceiros" dist/assets/*.js
+          ! grep -E '<script>|<script [^>]*>[^<]' apps/admin/dist/index.html
+          ! grep -E '<script>|<script [^>]*>[^<]' apps/assistant/dist/index.html
+      - name: Avisos de licença das bibliotecas e fontes incluídas
+        run: |
+          for app in admin assistant; do
+            grep -q "react .* — MIT" apps/$app/dist/licencas-de-terceiros.txt
+            grep -q "Fonte Inter — OFL-1.1" apps/$app/dist/licencas-de-terceiros.txt
+            grep -q "Licenças de terceiros" apps/$app/dist/assets/*.js
+          done
+      - name: Tamanho dos pacotes compilados
+        run: node scripts/perf/bundle_report.mjs >> "$GITHUB_STEP_SUMMARY"
 
   portal-e2e:
     name: Portal · ponta a ponta no navegador
     runs-on: ubuntu-latest
-    needs: admin
+    needs: interfaces
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             backend
             apps
+            packages
             scripts
             .github
+            package.json
+            package-lock.json
+            .npmrc
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -183,29 +206,27 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Instalar o Portal
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e backend/foundation -e backend/portal
       - name: Compilar o painel
-        working-directory: apps/admin
         run: |
           npm ci --no-audit --no-fund
-          npm run build
+          npm run build -w @safra/admin
       - name: Playwright e Chromium
-        working-directory: apps/admin
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.63.0
           npx playwright install --with-deps chromium
       - name: Teste de ponta a ponta contra o Portal real
-        run: python scripts/e2e/portal_e2e.py --node-path apps/admin/node_modules --shots apps/admin/e2e-capturas
+        run: python scripts/e2e/portal_e2e.py --node-path node_modules --shots e2e-capturas/portal
       - name: Capturas de tela
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: portal-e2e-capturas
-          path: apps/admin/e2e-capturas
+          path: e2e-capturas/portal
           if-no-files-found: ignore
 
   desktop-poc:

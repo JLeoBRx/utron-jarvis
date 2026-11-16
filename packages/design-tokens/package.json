@@ -1,0 +1,16 @@
+{
+  "name": "@safra/design-tokens",
+  "private": true,
+  "version": "4.0.0-dev.0",
+  "description": "Identidade visual do SAFRA: cores, tipografia, medidas, ícones e símbolo. Os arquivos em generated/ saem de build.py.",
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./generated/tokens.css",
+    "./fonts.css": "./generated/fonts.css",
+    "./tokens": "./generated/tokens.ts",
+    "./icons": "./generated/icons.ts",
+    "./symbol": "./generated/symbol.ts",
+    "./symbol.svg": "./generated/symbol.svg"
+  },
+  "files": ["generated", "fonts"]
+}

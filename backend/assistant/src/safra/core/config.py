@@ -29,6 +29,7 @@ class Settings(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_to_file: bool = True
     migrate_on_start: bool = True
+    ui_dist: Path | None = None          # interface compilada; sem valor, procura no pacote e no repositório
 
     @field_validator("api_host")
     @classmethod
@@ -64,6 +65,11 @@ class Settings(BaseModel):
     def allowed_hosts(self) -> tuple[str, ...]:
         """Valores aceitos no cabeçalho ``Host`` (defesa contra *DNS rebinding*)."""
         return tuple(f"{name}:{self.api_port}" for name in ("127.0.0.1", "localhost", "[::1]"))
+
+    @property
+    def allowed_origins(self) -> tuple[str, ...]:
+        """Origens aceitas em pedidos que alteram dados: só a própria interface, servida por este processo."""
+        return tuple(f"http://{host}" for host in self.allowed_hosts)
 
 
 def load_settings(env: Mapping[str, str] | None = None, **overrides: Any) -> Settings:

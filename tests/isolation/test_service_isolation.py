@@ -163,7 +163,9 @@ def test_no_route_is_shared_and_no_route_crosses_over(tmp_path):
     _, portal_app = _portal(tmp_path)
     assistant, portal = _paths(assistant_app), _paths(portal_app)
     assert "/api/v1/health" in assistant and "/healthz" in portal and "/admin/api/pages" in portal
-    assert not assistant & portal
+    # A raiz "/" é a porta de entrada de cada serviço, cada um no seu endereço (site público no Portal, interface
+    # local no Assistant). É o único caminho que coincide; nenhum outro pode coincidir.
+    assert assistant & portal <= {"/"}
     assert not any(p.startswith(("/admin", "/media", "/static", "/sitemap", "/robots")) for p in assistant)
     assert not any(p.startswith("/api/v1") for p in portal)
     private = ("conversation", "message", "memory", "memories", "tool", "voice", "project", "command", "assistant")

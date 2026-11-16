@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-NEW_PLATFORM = ("backend", "apps", "packages", "deployment", "desktop", "scripts/e2e", "scripts/licenses", "tests")
+NEW_PLATFORM = ("backend", "apps", "packages", "deployment", "desktop", "scripts/e2e", "scripts/licenses", "scripts/web", "tests")
 SKIP_PARTS = {"node_modules", ".venv", "__pycache__", "dist", "target", ".pytest_cache", "gen"}
 _FOREIGN = [part.replace("_", "") for part in ("tar_dis", "noc_tario", "jar_vis", "ult_ron", "doctor_who", "gal_lifrey")]
 FOREIGN_NAMES = re.compile("|".join(_FOREIGN), re.IGNORECASE)

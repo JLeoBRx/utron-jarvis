@@ -1,0 +1,20 @@
+{
+  "name": "safra-workspace",
+  "private": true,
+  "version": "4.0.0-dev.0",
+  "description": "SAFRA — workspace das interfaces (npm workspaces). Cada interface é compilada para arquivos estáticos servidos pelo próprio serviço; nenhum Node.js em produção.",
+  "workspaces": [
+    "packages/design-tokens",
+    "packages/ui",
+    "apps/admin",
+    "apps/assistant"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build -w @safra/admin && npm run build -w @safra/assistant-ui"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

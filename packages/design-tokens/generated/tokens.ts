@@ -1,0 +1,157 @@
+// GERADO por packages/design-tokens/build.py a partir da fonte única. Não edite este arquivo.
+export const tokens = {
+  "color": {
+    "fundo": "#101114",
+    "superficie": "#191B20",
+    "superficie-elevada": "#23262D",
+    "vermelho": "#E32636",
+    "vermelho-profundo": "#8F1725",
+    "texto": "#F2F2F2",
+    "texto-secundario": "#A6A8AF",
+    "vermelho-texto": "#EB5E6A",
+    "sobre-vermelho": "#FFFFFF",
+    "vermelho-ativo": "#C81F2E",
+    "borda": "#2E323A",
+    "borda-forte": "#6E727C",
+    "foco": "#FF6B78",
+    "sucesso": "#3FB984",
+    "atencao": "#F2B544",
+    "informacao": "#5AA9E6",
+    "erro": "#FF8A3D",
+    "sobreposicao": "rgba(6, 7, 9, 0.72)",
+    "vermelho-suave": "rgba(227, 38, 54, 0.14)",
+    "realce": "rgba(255, 255, 255, 0.05)",
+    "realce-forte": "rgba(255, 255, 255, 0.09)"
+  },
+  "space": {
+    "1": "4px",
+    "2": "8px",
+    "3": "12px",
+    "4": "16px",
+    "5": "24px",
+    "6": "32px",
+    "7": "48px",
+    "8": "64px"
+  },
+  "radius": {
+    "pequeno": "4px",
+    "medio": "8px",
+    "grande": "12px",
+    "pilula": "999px"
+  },
+  "font": {
+    "interface": "\"Inter Variable\", Inter, \"Segoe UI Variable\", \"Segoe UI\", system-ui, -apple-system, Roboto, \"Helvetica Neue\", Arial, sans-serif",
+    "dados": "\"JetBrains Mono Variable\", \"JetBrains Mono\", \"Cascadia Mono\", Consolas, ui-monospace, \"SFMono-Regular\", Menlo, monospace"
+  },
+  "type": {
+    "hero": {
+      "tamanho": "48px",
+      "linha": "56px",
+      "peso": 650,
+      "fonte": "interface",
+      "espacamento": "-0.02em"
+    },
+    "destaque": {
+      "tamanho": "32px",
+      "linha": "40px",
+      "peso": 600,
+      "fonte": "interface",
+      "espacamento": "-0.015em"
+    },
+    "titulo": {
+      "tamanho": "24px",
+      "linha": "32px",
+      "peso": 600,
+      "fonte": "interface",
+      "espacamento": "-0.01em"
+    },
+    "secao": {
+      "tamanho": "18px",
+      "linha": "26px",
+      "peso": 600,
+      "fonte": "interface",
+      "espacamento": "0"
+    },
+    "corpo": {
+      "tamanho": "16px",
+      "linha": "24px",
+      "peso": 400,
+      "fonte": "interface",
+      "espacamento": "0"
+    },
+    "corpo-denso": {
+      "tamanho": "14px",
+      "linha": "20px",
+      "peso": 400,
+      "fonte": "interface",
+      "espacamento": "0"
+    },
+    "rotulo": {
+      "tamanho": "14px",
+      "linha": "20px",
+      "peso": 500,
+      "fonte": "interface",
+      "espacamento": "0"
+    },
+    "apoio": {
+      "tamanho": "12px",
+      "linha": "16px",
+      "peso": 400,
+      "fonte": "interface",
+      "espacamento": "0.01em"
+    },
+    "dados": {
+      "tamanho": "13px",
+      "linha": "18px",
+      "peso": 400,
+      "fonte": "dados",
+      "espacamento": "0"
+    },
+    "estado": {
+      "tamanho": "20px",
+      "linha": "28px",
+      "peso": 500,
+      "fonte": "interface",
+      "espacamento": "0"
+    }
+  },
+  "shadow": {
+    "realce": "inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    "elevada": "0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
+    "cartao": "0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+    "foco": "0 0 0 2px #101114, 0 0 0 4px #FF6B78"
+  },
+  "motion": {
+    "rapido": "120ms",
+    "padrao": "200ms",
+    "painel": "320ms",
+    "simbolo": "600ms"
+  },
+  "easing": {
+    "saida": "cubic-bezier(0.2, 0, 0, 1)",
+    "suave": "cubic-bezier(0.4, 0, 0.2, 1)"
+  },
+  "layer": {
+    "cabecalho": "10",
+    "menu": "30",
+    "modal": "40",
+    "aviso": "50"
+  },
+  "width": {
+    "estreita": "600px",
+    "media": "900px",
+    "larga": "1200px",
+    "maxima": "1600px",
+    "leitura": "72ch"
+  },
+  "size": {
+    "alvo-toque": "44px",
+    "icone": "20px",
+    "icone-grande": "24px",
+    "borda": "1px",
+    "foco": "2px"
+  }
+} as const;
+
+/** Larguras em que o leiaute muda (px), as mesmas das regras de CSS. */
+export const breakpoints = { estreita: 600, media: 900, larga: 1200, maxima: 1600 } as const;
