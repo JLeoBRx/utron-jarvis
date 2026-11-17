@@ -1,6 +1,6 @@
-import { Archive, ArchiveRestore, BookOpen, Camera, ClipboardCheck, Cpu, FolderOpen, ListChecks, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, BookOpen, ClipboardCheck, Cpu, FolderOpen, ListChecks, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/misc';
 import { ProgressRing } from '@/components/ui/Progress';
-import { useAction, useMaterialCounts, useYearData } from '@/data/hooks';
+import { useAction, useMaterialCounts, useMaterials, useYearData } from '@/data/hooks';
 import { setSubjectArchived } from '@/data/services/subjects';
 import { subjectColorStyle } from '@/lib/colors';
 import { CATEGORY_LABELS } from '@/lib/labels';
@@ -17,6 +17,8 @@ import { pluralize } from '@/lib/utils';
 import { NotFoundPage } from '../modules/NotFoundPage';
 import { ExamFormDialog } from '../exams/ExamFormDialog';
 import { ExamRow } from '../exams/ExamRow';
+import { AddMaterialActions } from '../library/AddMaterialActions';
+import { MaterialList } from '../library/MaterialList';
 import { DeleteSubjectDialog } from './SubjectDialogs';
 import { SubjectFormDialog } from './SubjectFormDialog';
 
@@ -35,7 +37,10 @@ function MiniStat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: 
 export function SubjectDetailPage() {
   const { subjectId } = useParams();
   const navigate = useNavigate();
-  const { subjects, exams, topicsByExam, isLoading, error, refetch } = useYearData();
+  const { subjects, subjectById, exams, topicsByExam, isLoading, error, refetch } = useYearData();
+  const materials = useMaterials(subjectId ? [subjectId] : []);
+  const subjectMaterials = materials.data ?? [];
+  const examById = useMemo(() => new Map(exams.map((e) => [e.id, e])), [exams]);
   const subject = subjects.find((s) => s.id === subjectId);
   const materialCounts = useMaterialCounts(subject ? [subject.id] : []);
   const [editing, setEditing] = useState(false);
@@ -182,15 +187,34 @@ export function SubjectDetailPage() {
           </Card>
 
           <Card className="animate-rise">
-            <CardHeader title="Materiais da disciplina" icon={<FolderOpen />} />
-            <div className="px-4 pb-4 text-xs leading-relaxed text-fg-muted sm:px-5">
-              <p>
-                Envie slides, PDFs e documentos para a disciplina ou para uma prova específica. A biblioteca chega na{' '}
-                <strong className="font-medium text-fg">Fase 3</strong>.
+            <CardHeader
+              title="Materiais da disciplina"
+              icon={<FolderOpen />}
+              description={subjectMaterials.length ? pluralize(subjectMaterials.length, 'material', 'materiais') : undefined}
+              actions={
+                subjectMaterials.length ? (
+                  <Link to={`/biblioteca?disciplina=${subject.id}`} className="text-xs font-medium text-accent-text hover:underline">
+                    Ver todos
+                  </Link>
+                ) : null
+              }
+            />
+            {subjectMaterials.length ? (
+              <div className="border-t border-border">
+                <MaterialList
+                  materials={subjectMaterials.slice(0, 5)}
+                  subjectById={subjectById}
+                  examById={examById}
+                  showSubject={false}
+                />
+              </div>
+            ) : (
+              <p className="px-4 pb-3 text-xs leading-relaxed text-fg-muted sm:px-5">
+                Envie os materiais para começar a construir seu resumo.
               </p>
-              <p className="mt-2 flex items-center gap-1.5 text-fg-subtle">
-                <Camera className="size-3.5" aria-hidden /> “Fotografar meu caderno” também estará disponível aqui.
-              </p>
+            )}
+            <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3 sm:px-5">
+              <AddMaterialActions subjectId={subject.id} size="sm" />
             </div>
           </Card>
         </div>

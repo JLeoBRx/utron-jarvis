@@ -13,7 +13,7 @@ import { useBackend } from '@/data/DataContext';
 import { useAction } from '@/data/hooks';
 import { academicYearSchema } from '@/data/schemas';
 import { OFFICIAL_SUBJECTS } from '@/data/seed/officialSubjects';
-import { importBackup, parseBackupFile } from '@/data/services/backup';
+import { importBackup, readBackupBundle } from '@/data/services/backup';
 import { createAcademicYear, saveProfile } from '@/data/services/workspace';
 import { errorMessage } from '@/lib/errors';
 import { CATEGORY_LABELS } from '@/lib/labels';
@@ -53,7 +53,7 @@ export function OnboardingPage() {
   );
 
   const fileInput = useRef<HTMLInputElement>(null);
-  const restore = useAction((backend, text: string) => importBackup(backend, parseBackupFile(text)), {
+  const restore = useAction(async (backend, file: File) => importBackup(backend, await readBackupBundle(file)), {
     success: (report) => {
       const total = Object.values(report.inserted).reduce((sum, n) => sum + (n ?? 0), 0);
       return `Backup restaurado: ${total} registros importados.`;
@@ -65,7 +65,7 @@ export function OnboardingPage() {
   const onBackupFile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      restore.mutate(await file.text());
+      restore.mutate(file);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -187,7 +187,7 @@ export function OnboardingPage() {
           <input
             ref={fileInput}
             type="file"
-            accept="application/json,.json"
+            accept=".zip,application/zip,application/json,.json"
             className="hidden"
             aria-label="Arquivo de backup"
             onChange={(e) => void onBackupFile(e.target.files?.[0])}

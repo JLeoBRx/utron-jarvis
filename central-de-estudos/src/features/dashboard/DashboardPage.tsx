@@ -23,7 +23,6 @@ import { Link } from 'react-router';
 import { ExamDate, ExamStatusBadge, PriorityBadge } from '@/components/domain/badges';
 import { SubjectTag } from '@/components/domain/SubjectTag';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Badge } from '@/components/ui/Badge';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/misc';
@@ -38,6 +37,7 @@ import { formatPercent, pendingExamsProgress, topicsProgress, upcomingExams } fr
 import { subjectColorStyle } from '@/lib/colors';
 import { capitalize, cn, pluralize } from '@/lib/utils';
 import { ExamFormDialog } from '../exams/ExamFormDialog';
+import { UploadDialog } from '../library/MaterialDialogs';
 
 const LOCAL_NOTICE_KEY = 'ce:local-notice-dismissed';
 
@@ -233,6 +233,7 @@ export function DashboardPage() {
   const counts = useContentCounts(subjectIds);
   const activity = useRecentActivity(subjectIds);
   const [examDialog, setExamDialog] = useState(false);
+  const [uploadDialog, setUploadDialog] = useState(false);
 
   const upcoming = useMemo(() => upcomingExams(exams), [exams]);
   const overall = useMemo(() => pendingExamsProgress(exams, topicsByExam), [exams, topicsByExam]);
@@ -329,7 +330,7 @@ export function DashboardPage() {
             value={counts.data?.summariesDone ?? 0}
             detail={`de ${counts.data?.summaries ?? 0} resumos`}
           />
-          <Stat icon={FolderOpen} label="Materiais armazenados" value={counts.data?.materials ?? 0} detail="Biblioteca · Fase 3" />
+          <Stat icon={FolderOpen} label="Materiais armazenados" value={counts.data?.materials ?? 0} detail="Arquivos, links e cadernos" to="/biblioteca" />
           <Stat icon={Layers} label="Flashcards disponíveis" value={counts.data?.flashcards ?? 0} detail="Flashcards · Fase 5" />
         </section>
       )}
@@ -397,7 +398,7 @@ export function DashboardPage() {
             <CardHeader title="Acesso rápido" />
             <div className="grid gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
               <QuickAction icon={ClipboardCheck} label="Cadastrar prova" onClick={activeSubjects.length ? () => setExamDialog(true) : undefined} />
-              <QuickAction icon={FilePlus2} label="Adicionar material" phase={3} />
+              <QuickAction icon={FilePlus2} label="Adicionar material" onClick={activeSubjects.length ? () => setUploadDialog(true) : undefined} />
               <QuickAction icon={NotebookPen} label="Criar resumo" phase={4} />
               <QuickAction icon={Timer} label="Iniciar simulado" phase={5} />
             </div>
@@ -411,14 +412,14 @@ export function DashboardPage() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-fg">Fotografar meu caderno</p>
                 <p className="mt-1 text-xs leading-relaxed text-fg-muted">
-                  Transforme fotos das páginas do caderno em resumos organizados. A captura chega na Fase 3 e a leitura por IA, na
-                  Fase 7.
+                  Fotografe várias páginas em sequência, ajuste recorte e iluminação e guarde tudo na disciplina certa. A leitura
+                  automática por IA chega na Fase 7.
                 </p>
-                <Badge tone="accent" className="mt-2.5">
-                  <Clock aria-hidden /> Em desenvolvimento
-                </Badge>
               </div>
             </div>
+            <ButtonLink to="/scanner" variant="primary" className="mt-3 w-full">
+              <Camera /> Fotografar meu caderno
+            </ButtonLink>
           </div>
         </div>
       </div>
@@ -479,6 +480,7 @@ export function DashboardPage() {
       </div>
 
       <ExamFormDialog open={examDialog} onOpenChange={setExamDialog} subjects={subjects} />
+      <UploadDialog open={uploadDialog} onOpenChange={setUploadDialog} />
     </>
   );
 }

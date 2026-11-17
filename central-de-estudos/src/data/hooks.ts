@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
 import { groupTopicsByExam } from '@/lib/progress';
@@ -7,6 +7,8 @@ import { useBackend } from './DataContext';
 import type { DataBackend } from './backend/types';
 import { listRecentActivity } from './services/activity';
 import { listExams } from './services/exams';
+import { listMaterials, listMaterialVersions } from './services/materials';
+import { listScanPages } from './services/scans';
 import { getContentCounts, getMaterialCountsBySubject } from './services/stats';
 import { listSubjects } from './services/subjects';
 import { listTopics } from './services/topics';
@@ -164,4 +166,66 @@ export function useExamCounts(examId: UUID | undefined) {
       return { materials, summaries, flashcards, questions, quizzes };
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Biblioteca
+// ---------------------------------------------------------------------------
+export function useMaterials(subjectIds: UUID[]) {
+  const db = useBackend();
+  return useQuery({
+    queryKey: [...scopeKey(db), 'materials', subjectIds],
+    queryFn: () => listMaterials(db, subjectIds),
+    enabled: subjectIds.length > 0,
+  });
+}
+
+export function useMaterial(id: UUID | undefined) {
+  const db = useBackend();
+  return useQuery({
+    queryKey: [...scopeKey(db), 'material', id],
+    queryFn: () => db.get('materials', id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useMaterialVersions(id: UUID | undefined) {
+  const db = useBackend();
+  return useQuery({
+    queryKey: [...scopeKey(db), 'material_versions', id],
+    queryFn: () => listMaterialVersions(db, id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useScan(scanId: UUID | null | undefined) {
+  const db = useBackend();
+  return useQuery({
+    queryKey: [...scopeKey(db), 'scan', scanId],
+    queryFn: async () => {
+      const [scan, pages] = await Promise.all([db.get('notebook_scans', scanId!), listScanPages(db, scanId!)]);
+      return { scan, pages };
+    },
+    enabled: Boolean(scanId),
+  });
+}
+
+/**
+ * Conteúdo de um arquivo do Storage, baixado pela sessão do usuário (o
+ * arquivo nunca fica público). Retorna também uma URL local para exibição.
+ */
+export function useStoredFile(path: string | null | undefined) {
+  const db = useBackend();
+  const query = useQuery({
+    queryKey: [...scopeKey(db), 'file', path],
+    queryFn: () => db.storage.download(path!),
+    enabled: Boolean(path),
+    staleTime: 5 * 60_000,
+    gcTime: 5 * 60_000,
+  });
+  const url = useMemo(() => (query.data ? URL.createObjectURL(query.data) : null), [query.data]);
+  useEffect(() => () => {
+    if (url) URL.revokeObjectURL(url);
+  }, [url]);
+  return { ...query, url };
 }

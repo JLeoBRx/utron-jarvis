@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 
-export type ModuleKey = 'biblioteca' | 'resumos' | 'flashcards' | 'exercicios' | 'simulados' | 'calendario' | 'desempenho';
+export type ModuleKey = 'resumos' | 'flashcards' | 'exercicios' | 'simulados' | 'calendario' | 'desempenho';
 
 interface ModuleInfo {
   title: string;
@@ -17,20 +17,6 @@ interface ModuleInfo {
 
 /** Descrição honesta dos módulos que ainda serão entregues (sem ações simuladas). */
 const MODULES: Record<ModuleKey, ModuleInfo> = {
-  biblioteca: {
-    title: 'Biblioteca de materiais',
-    phase: 3,
-    summary:
-      'Envio e organização de slides, PDFs, documentos, imagens e fotos do caderno — sempre vinculados à disciplina e à prova corretas.',
-    features: [
-      'Upload de PDF, DOCX, PPTX, TXT, PNG, JPG/JPEG e WEBP, além de links de vídeos e sites',
-      'Visualização, download, substituição (preservando o original) e exclusão',
-      'Categorias: slides do professor, caderno, exercícios, atividades, provas anteriores, apostilas e complementares',
-      'Busca e filtros por disciplina, prova, categoria e tipo',
-      '“Fotografar meu caderno”: captura de várias páginas pela câmera ou galeria, com recorte, rotação e reordenação',
-    ],
-    meanwhile: { label: 'Cadastrar provas e conteúdos', to: '/provas' },
-  },
   resumos: {
     title: 'Resumos',
     phase: 4,

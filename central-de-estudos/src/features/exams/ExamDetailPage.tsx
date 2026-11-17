@@ -40,6 +40,7 @@ import { EXAM_STATUS_LABELS, EXAM_STATUS_ORDER } from '@/lib/labels';
 import { pluralize } from '@/lib/utils';
 import { NotFoundPage } from '../modules/NotFoundPage';
 import { ExamFormDialog } from './ExamFormDialog';
+import { MaterialsTab } from './tabs/MaterialsTab';
 import { ModuleTab } from './tabs/ModuleTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
@@ -227,16 +228,7 @@ export function ExamDetailPage() {
 
       {tab === 'visao-geral' ? <OverviewTab exam={exam} subject={subject} topics={topics} /> : null}
       {tab === 'conteudos' ? <TopicsTab exam={exam} topics={topics} /> : null}
-      {tab === 'materiais' ? (
-        <ModuleTab
-          icon={FolderOpen}
-          title="Envie os materiais para começar a construir seu resumo."
-          description="Slides, PDFs, fotos do caderno e atividades desta prova ficarão aqui — separados das demais avaliações. O envio de arquivos chega na Fase 3."
-          phase={3}
-          count={c?.materials ?? 0}
-          noun={['material', 'materiais']}
-        />
-      ) : null}
+      {tab === 'materiais' ? <MaterialsTab exam={exam} /> : null}
       {tab === 'resumo' ? (
         <ModuleTab
           icon={FileText}

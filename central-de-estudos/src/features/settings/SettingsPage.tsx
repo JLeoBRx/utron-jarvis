@@ -39,7 +39,15 @@ import { useBackend } from '@/data/DataContext';
 import { useAction, useProfile, useWorkspace } from '@/data/hooks';
 import { LocalBackend } from '@/data/backend/local';
 import { academicYearSchema, type AcademicYearInput, type AcademicYearValues } from '@/data/schemas';
-import { backupFileName, exportBackup, importBackup, parseBackupFile, type BackupFile, type ImportReport } from '@/data/services/backup';
+import {
+  backupFileName,
+  exportBackupArchive,
+  importBackup,
+  readBackupBundle,
+  referencedFilePaths,
+  type BackupBundle,
+  type ImportReport,
+} from '@/data/services/backup';
 import {
   createAcademicYear,
   deleteAcademicYear,
@@ -256,30 +264,32 @@ function YearsManager() {
 // ---------------------------------------------------------------------------
 function BackupTools() {
   const db = useBackend();
-  const [exporting, setExporting] = useState(false);
-  const [pending, setPending] = useState<BackupFile | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [pending, setPending] = useState<BackupBundle | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [wipeOpen, setWipeOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const doExport = async () => {
-    setExporting(true);
+    setExporting('Preparando…');
     try {
-      const backup = await exportBackup(db);
-      downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }), backupFileName());
+      const { blob, backup } = await exportBackupArchive(db, (done, total) => setExporting(total ? `Arquivos ${done}/${total}` : 'Preparando…'));
+      downloadBlob(blob, backupFileName());
       const total = Object.values(backup.counts).reduce((sum, n) => sum + (n ?? 0), 0);
-      toast.success(`Backup exportado (${total} registros).`);
+      const missing = backup.missing_files?.length ?? 0;
+      toast.success(`Backup exportado: ${total} registros e ${referencedFilePaths(backup).length - missing} arquivos.`);
+      if (missing) toast.warning(`${missing} arquivo(s) não puderam ser lidos e ficaram fora do backup.`);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      setPending(parseBackupFile(await file.text()));
+      setPending(await readBackupBundle(file));
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -287,7 +297,7 @@ function BackupTools() {
     }
   };
 
-  const runImport = useAction((backend, backup: BackupFile) => importBackup(backend, backup), {
+  const runImport = useAction((backend, bundle: BackupBundle) => importBackup(backend, bundle), {
     onSuccess: (result) => {
       setPending(null);
       setReport(result);
@@ -330,17 +340,25 @@ function BackupTools() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => void doExport()} loading={exporting}>
-          <Download /> Exportar backup (JSON)
+        <Button onClick={() => void doExport()} loading={Boolean(exporting)}>
+          {exporting ? null : <Download />} {exporting ?? 'Exportar backup (.zip)'}
         </Button>
         <Button onClick={() => fileInput.current?.click()}>
           <Upload /> Importar backup
         </Button>
-        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".zip,application/zip,application/json,.json"
+          className="hidden"
+          aria-label="Arquivo de backup para importar"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+        />
       </div>
       <p className="text-[11px] leading-relaxed text-fg-subtle">
-        A importação nunca sobrescreve: registros que já existem são mantidos e apenas os ausentes são adicionados. Arquivos (PDFs e
-        imagens) passarão a ser incluídos no backup junto com a Biblioteca (Fase 3).
+        O backup (.zip) inclui todos os registros e arquivos: PDFs, imagens e as fotos originais e tratadas do caderno. A importação
+        nunca sobrescreve — registros que já existem são mantidos e apenas os ausentes são adicionados. Backups antigos (.json) também
+        são aceitos.
       </p>
 
       {report ? (
@@ -348,6 +366,10 @@ function BackupTools() {
           <p className="font-medium text-fg">Resultado da importação</p>
           <p className="mt-1 text-fg-muted">Adicionados: {summarize(report.inserted) || 'nenhum registro'}</p>
           <p className="mt-0.5 text-fg-muted">Já existentes (mantidos): {summarize(report.skipped) || 'nenhum'}</p>
+          <p className="mt-0.5 text-fg-muted">
+            Arquivos enviados: {report.filesUploaded}
+            {report.filesMissing ? ` · ${report.filesMissing} ausentes no backup` : ''}
+          </p>
           {report.failed.length ? (
             <details className="mt-1 text-danger">
               <summary className="cursor-pointer">{report.failed.length} registro(s) não importado(s)</summary>
@@ -384,8 +406,12 @@ function BackupTools() {
       >
         {pending ? (
           <div className="space-y-1 text-xs text-fg-muted">
-            <p>Exportado em {formatDate(pending.exported_at, "dd/MM/yyyy 'às' HH:mm")} ({pending.source_mode === 'local' ? 'modo local' : 'nuvem'}).</p>
-            <p>{summarize(pending.counts) || 'Backup vazio.'}</p>
+            <p>
+              Exportado em {formatDate(pending.backup.exported_at, "dd/MM/yyyy 'às' HH:mm")} (
+              {pending.backup.source_mode === 'local' ? 'modo local' : 'nuvem'}).
+            </p>
+            <p>{summarize(pending.backup.counts) || 'Backup vazio.'}</p>
+            <p>{pending.files.size ? `${pending.files.size} arquivos incluídos.` : 'Este backup não contém arquivos (somente dados).'}</p>
             <p className="pt-1 text-fg-subtle">Nada existente será sobrescrito.</p>
           </div>
         ) : null}
@@ -427,7 +453,7 @@ function StorageInfo() {
           conta, e são abertos por links temporários assinados.
         </p>
       )}
-      <p className="text-fg-subtle">Envio, visualização e organização de arquivos chegam com a Biblioteca, na Fase 3.</p>
+      <p className="text-fg-subtle">Limite de 50 MB por arquivo. Fotos do caderno guardam o original e a versão tratada.</p>
     </div>
   );
 }

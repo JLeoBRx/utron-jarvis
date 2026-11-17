@@ -35,7 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/disciplinas', label: 'Disciplinas', icon: BookOpen },
       { to: '/provas', label: 'Provas', icon: ClipboardCheck },
-      { to: '/biblioteca', label: 'Biblioteca', icon: FolderOpen, phase: 3 },
+      { to: '/biblioteca', label: 'Biblioteca', icon: FolderOpen },
     ],
   },
   {
