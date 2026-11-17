@@ -24,12 +24,16 @@ As migrações estão em `supabase/migrations/` e devem ser aplicadas **nesta or
 |---|---|---|
 | 1 | `20261116120000_esquema_inicial.sql` | 19 tabelas, chaves, índices e políticas RLS |
 | 2 | `20261116120100_storage_materiais.sql` | bucket privado `materiais` e suas políticas |
+| 3 | `20261117120000_biblioteca_scanner.sql` | Fase 3: versões de materiais, cadernos digitalizados, metadados das páginas, HEIC |
+
+> A migração 3 é **aditiva**: não apaga nem altera dados existentes. Se você já
+> aplicou as duas primeiras, aplique apenas a terceira.
 
 Escolha **uma** das formas:
 
 **A) Pelo painel (mais simples)**
 1. No Supabase, abra **SQL Editor → New query**.
-2. Cole o conteúdo do arquivo 1 e clique em **Run**. Repita com o arquivo 2.
+2. Cole o conteúdo do arquivo 1 e clique em **Run**. Repita com os arquivos 2 e 3.
 
 **B) Pela Supabase CLI**
 ```bash
@@ -98,7 +102,7 @@ npm run dev
 ## 7. Migrar os dados do modo local para a nuvem
 
 1. No navegador onde você usou o modo local: **Configurações → Dados e backup →
-   Exportar backup (JSON)**.
+   Exportar backup (.zip)** — inclui PDFs, imagens e as fotos do caderno.
 2. Abra o site já conectado ao Supabase e crie sua conta.
 3. Na tela de boas-vindas, **não** preencha o formulário: clique em
    **“Já tenho um backup — restaurar”** e selecione o arquivo. O ano letivo, as
@@ -120,3 +124,12 @@ Ainda **não** é preciso configurar nada. Quando a Fase 7 for implementada:
 | `ANTHROPIC_MODEL` | modelo a usar (configurável, sem alterar código) |
 
 Essas variáveis **não** usam o prefixo `VITE_` e nunca chegam ao navegador.
+
+## Câmera no celular
+
+- A câmera do navegador exige **HTTPS** (a Netlify já fornece). Em
+  `http://192.168.x.x` (rede local) o app oferece a câmera do sistema e a galeria.
+- O `netlify.toml` define `Permissions-Policy: camera=(self)`: só o próprio site
+  pode usar a câmera.
+- Se a permissão for negada, o app explica como liberar (cadeado → Permissões →
+  Câmera no Chrome/Android; "aA" → Configurações do site no Safari/iPhone).

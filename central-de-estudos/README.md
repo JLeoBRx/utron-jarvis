@@ -7,17 +7,17 @@ ANO LETIVO → DISCIPLINA → PROVA → CONTEÚDOS → MATERIAIS → RESUMOS
            → FLASHCARDS → EXERCÍCIOS → SIMULADOS → RESULTADOS
 ```
 
-## Estado atual (Fases 1 e 2 concluídas)
+## Estado atual (Fases 1, 2 e 3 concluídas)
 
 | Disponível agora | Próximas fases |
 |---|---|
-| Dashboard com indicadores reais, próximas provas, preparação por disciplina e atividades | Biblioteca de materiais e captura do caderno (Fase 3) |
-| 20 disciplinas oficiais (Formação Geral / Técnica), com busca, filtros, edição e arquivamento | Resumos com versões (Fase 4) |
-| Provas: cadastro, filtros, página própria com 8 abas, status, prioridade, nota | Flashcards, exercícios, simulados e desempenho (Fase 5) |
-| Conteúdos por prova, com status de estudo, anotações e reordenação | Calendário e metas (Fase 6) |
-| Progresso baseado no estudo registrado (não na quantidade de resumos) | PDFs e IA com Claude (Fase 7) |
-| Anos letivos, tema claro/escuro, backup/restauração em JSON | Testes finais e publicação (Fase 8) |
-| Banco PostgreSQL (Supabase) com RLS **ou** modo local (IndexedDB) | |
+| Dashboard com indicadores reais, próximas provas, preparação por disciplina e atividades | Resumos com versões e modo manual de IA (Fase 4) |
+| 20 disciplinas oficiais (Formação Geral / Técnica), com busca, filtros, edição e arquivamento | Flashcards, exercícios, simulados e desempenho (Fase 5) |
+| Provas: cadastro, filtros, página própria com 8 abas, status, prioridade, nota | Calendário e metas (Fase 6) |
+| Conteúdos por prova, com status de estudo, anotações e reordenação | PDFs e leitura/geração com Claude (Fase 7) |
+| **Biblioteca**: PDF, DOCX, PPTX, TXT, imagens e links; visualização, download, substituição preservando o original, filtros | Testes finais e publicação (Fase 8) |
+| **Fotografar meu caderno**: câmera ao vivo, galeria, recorte com perspectiva, iluminação, reordenação, rascunho automático | |
+| Banco PostgreSQL (Supabase) com RLS **ou** modo local (IndexedDB); backup .zip com arquivos | |
 
 Veja o checklist completo em [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -49,7 +49,8 @@ Detalhes em [`docs/TESTES.md`](docs/TESTES.md).
 
 ## Documentação
 
-- [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) — stack, camadas, banco de dados, segurança, plano da IA e do scanner de cadernos
+- [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) — stack, camadas, banco de dados, segurança, biblioteca e plano da IA
+- [`docs/SCANNER.md`](docs/SCANNER.md) — uso e funcionamento do “Fotografar meu caderno” e o contrato para a leitura por IA
 - [`docs/CONFIGURACAO.md`](docs/CONFIGURACAO.md) — Supabase, Netlify e variáveis de ambiente
 - [`docs/TESTES.md`](docs/TESTES.md) — como testar
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — tarefas concluídas e pendentes
@@ -63,12 +64,14 @@ central-de-estudos/
 │   ├── app/               providers, rotas, sessão, tema, menu
 │   ├── components/        ui/ (kit), layout/ (shell), domain/ (selos, tags)
 │   ├── data/
+│   │   ├── ai/            contrato da leitura de cadernos por IA (Fase 7)
 │   │   ├── backend/       interface única + adaptadores Supabase e local
 │   │   ├── services/      regras de negócio (disciplinas, provas, backup…)
 │   │   ├── seed/          as 20 disciplinas oficiais
 │   │   ├── schemas.ts     validação (zod) = restrições do banco
 │   │   └── types.ts       tipos das tabelas
-│   ├── features/          páginas (dashboard, disciplinas, provas, …)
+│   ├── features/          páginas (dashboard, disciplinas, provas, biblioteca, scanner, …)
+│   │   └── scanner/imaging/  processamento de imagem (perspectiva, iluminação, detecção)
 │   └── lib/               datas, progresso, cores, erros, utilitários
 ├── tests/
 │   ├── db/                integração com Supabase real

@@ -2,10 +2,19 @@
 
 | Suíte | Comando | O que cobre |
 |---|---|---|
-| Unitários | `npm run test` | regras de dados no adaptador local (chaves, cascata, unicidade), cadastro das 20 disciplinas, backup, progresso, datas |
-| Banco real | `npm run test:db` | migrações, RLS entre usuários, chaves compostas, SET NULL, erros traduzidos, Storage privado, migração local → nuvem |
-| Ponta a ponta | `npm run test:e2e` | fluxos completos no navegador (modo local + celular) |
-| Ponta a ponta (nuvem) | ver abaixo | cadastro, login, persistência e logout com Supabase real |
+| Unitários | `npm run test` | regras de dados (chaves, cascata, unicidade), 20 disciplinas, backup .zip, progresso, datas, materiais (envio/versões/exclusão), scanner (salvamento idempotente), contrato da IA, processamento de imagem (perspectiva, sombras, detecção), atualização do banco local v1→v2 |
+| Banco real | `npm run test:db` | migrações, RLS, chaves compostas, Storage privado, upload de PDF/DOCX/PPTX/imagem, versões, scanner, HEIC, backup local → nuvem com arquivos |
+| Ponta a ponta | `npm run test:e2e` | fluxos completos: modo local, biblioteca, scanner, **câmera** (concedida e negada), celular |
+| Ponta a ponta (nuvem) | ver abaixo | cadastro, login, biblioteca e scanner com Supabase real |
+
+### Câmera nos testes
+
+O Chromium usa uma **câmera falsa** que transmite um vídeo sintético de uma página
+de caderno (gerado em `tests/e2e/fixtures/images.ts`, nenhuma foto real):
+- projetos `camera` e `camera-celular`: permissão concedida — fotografa várias
+  páginas, verifica o recorte automático e salva;
+- projeto `camera-negada`: Chromium completo com a câmera **bloqueada** para o site
+  (o navegador devolve `NotAllowedError`) — verifica a orientação e as alternativas.
 
 ## Supabase local de teste (Docker)
 
@@ -28,9 +37,9 @@ E2E_SUPABASE=1 E2E_SUPABASE_ANON_KEY=$(node -e "import('./tests/supabase-local/k
 Para apagar os dados de teste e recomeçar: `npm run supabase:local:reset`.
 As chaves desse ambiente são fixas e **servem só para testes locais**.
 
-## Resultado da última execução
+## Resultado da última execução (Fase 3)
 
-- Unitários: 22/22 ✔
-- Banco real: 15/15 ✔
-- E2E: 11/11 ✔ (local 9, celular 1, Supabase 1). O fluxo da nuvem foi repetido 12
-  vezes seguidas sem falhas, sem respostas 401/403/5xx nem erros no console.
+- Unitários + banco real: **77/77** ✔
+- E2E: **25/25** ✔ — local (biblioteca, scanner, fluxos anteriores), celular,
+  câmera (desktop e celular), câmera negada e nuvem (Supabase).
+- Build de produção conferido: visualizadores e Web Worker carregam sob demanda.

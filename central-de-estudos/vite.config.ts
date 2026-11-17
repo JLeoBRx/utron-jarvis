@@ -21,7 +21,8 @@ export default defineConfig({
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
             { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
-            { name: 'vendor', test: /node_modules[\\/]/ },
+            // Visualizadores pesados (PDF/DOCX) ficam FORA: só são baixados ao abrir um arquivo.
+            { name: 'vendor', test: /node_modules[\\/](?!pdfjs-dist|docx-preview|jszip)/ },
           ],
         },
       },

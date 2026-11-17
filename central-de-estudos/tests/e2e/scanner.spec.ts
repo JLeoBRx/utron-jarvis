@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { completeOnboarding, futureDate, trackConsoleErrors } from './helpers';
+import { completeOnboarding, expectCropAlignedWithImage, futureDate, trackConsoleErrors } from './helpers';
 import { notebookPng } from './fixtures/images';
 
 let consoleErrors: string[] = [];
@@ -49,6 +49,7 @@ test('fluxo completo pela galeria: editar, reordenar, excluir, adicionar, organi
   await editor.getByRole('radio', { name: 'P&B' }).click();
   await editor.getByRole('radio', { name: 'Recorte' }).click();
   await expect(editor.getByTestId('crop-overlay')).toBeVisible();
+  await expectCropAlignedWithImage(page);
   const handle = editor.getByRole('slider', { name: 'Canto superior esquerdo' });
   await handle.focus();
   await page.keyboard.press('ArrowRight');

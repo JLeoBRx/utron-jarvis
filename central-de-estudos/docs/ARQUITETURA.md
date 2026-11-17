@@ -33,6 +33,8 @@
 | Banco | Supabase (PostgreSQL 15+/17, Auth, Storage) | RLS por usuário, bucket privado |
 | Modo local | Dexie (IndexedDB) | uso imediato sem servidor; **não** usa localStorage como banco |
 | Hospedagem | Netlify (`netlify.toml` na raiz do repositório) | SPA + cabeçalhos de segurança |
+| Visualizadores | pdf.js (PDF), docx-preview (Word) — carregados sob demanda | PDF funciona também no celular (o Chrome do Android não exibe PDF embutido) |
+| Compactação | fflate | backup .zip com arquivos; download das páginas do caderno |
 
 ## Camada de dados
 
@@ -54,12 +56,12 @@ entrada com os esquemas zod de `schemas.ts`, cujos limites espelham as restriç�
 
 ## Banco de dados
 
-Migrações em `supabase/migrations/`. 19 tabelas:
+Migrações em `supabase/migrations/` (aplicar em ordem). 20 tabelas:
 
 | Grupo | Tabelas |
 |---|---|
 | Organização | `profiles`, `academic_years`, `subjects`, `exams`, `exam_topics` |
-| Biblioteca | `materials` |
+| Biblioteca | `materials` (arquivo, link ou caderno digitalizado), `material_versions` (arquivos substituídos) |
 | Resumos | `summaries`, `summary_versions`, `summary_sources` |
 | Aprendizado | `flashcards`, `flashcard_reviews`, `questions`, `quizzes`, `quiz_attempts` |
 | Planejamento | `study_sessions`, `calendar_events` |
@@ -79,6 +81,8 @@ Migrações em `supabase/migrations/`. 19 tabelas:
 - **Mover prova de disciplina** só é permitido se não houver itens vinculados a ela.
 - **Unicidade**: um nome de disciplina por ano letivo; um ano letivo ativo por usuário.
 - **Código institucional**: `NULL` significa "a confirmar" — nunca é inventado.
+- **Caderno digitalizado**: o material `digitalizacao` aponta para `(scan_id, subject_id)` — a
+  digitalização e o material pertencem obrigatoriamente à mesma disciplina.
 
 ### Segurança
 
@@ -111,19 +115,28 @@ cada disciplina consideram apenas provas **pendentes**. Sem conteúdos, o progre
 - **Modo manual** (Fase 4, sem API): exportar materiais, copiar prompts prontos e
   importar resumos/questões produzidos no Claude.
 
-## Scanner de cadernos (planejado — Fases 3 e 7)
+## Biblioteca (Fase 3)
 
-1. **Captura (Fase 3)**: câmera (`<input capture>` / `getUserMedia`) ou galeria; várias
-   páginas; recorte, rotação, ajuste de perspectiva e contraste em `<canvas>`;
-   reordenação e exclusão; prévia antes de enviar. A foto **original** é sempre
-   guardada (`notebook_scan_pages.original_path`) e a versão tratada fica em
-   `processed_path`.
-2. **Leitura (Fase 7)**: modelo multimodal do Claude interpreta as páginas na ordem
-   (manuscrito, fórmulas em LaTeX, tabelas, diagramas, destaques) e devolve blocos com
-   nível de confiança. Trechos duvidosos viram itens de revisão — nada é presumido.
-3. **Conferência**: texto reconhecido ao lado da foto original, edição antes de gerar.
-4. **Resumo**: gerado a partir do conteúdo conferido; salvo como novo resumo, novo
-   capítulo ou atualização de um existente (com prévia das mudanças e nova versão).
+- **Envio**: o arquivo vai primeiro ao Storage e só então o registro é criado; se o
+  registro falhar, o arquivo é removido (nada fica órfão). Tipo identificado pela
+  extensão quando o celular não informa o MIME; o Blob é reetiquetado com o tipo
+  correto antes do envio (exigência do bucket).
+- **Caminhos**: `<user>/<disciplina>/materiais/<material>/v<versão>-<nome-seguro>` —
+  o primeiro segmento é o usuário (verificado pelas políticas do bucket).
+- **Substituição**: o arquivo atual é registrado em `material_versions` e continua
+  disponível; o material passa a apontar para o novo arquivo (versão + 1).
+- **Exclusão**: remove registro, versões e arquivos (inclusive fotos de cadernos).
+- **Visualização**: arquivos são baixados pela sessão do usuário (bucket privado);
+  "Abrir" usa URL assinada temporária.
+- **Backup v2 (.zip)**: `backup.json` + `arquivos/…`. Na importação, os caminhos são
+  transferidos para a pasta do usuário atual e cada arquivo é enviado antes do
+  registro que aponta para ele. Backups v1 (.json) continuam aceitos.
 
-Tudo isso já tem estrutura no banco (`notebook_scans`, `notebook_scan_pages`,
-`summaries`, `summary_versions`, `summary_sources`).
+## Scanner de cadernos (Fase 3) e leitura por IA (Fase 7)
+
+Detalhes em [`SCANNER.md`](SCANNER.md). Resumo: captura (câmera ao vivo, câmera do
+sistema, galeria), processamento no aparelho em Web Worker (perspectiva, iluminação,
+detecção automática), rascunho em IndexedDB, salvamento idempotente com a foto
+**original** e a versão tratada, e o contrato de dados (`src/data/ai/scanReading.ts`)
+que a Fase 7 usará para enviar as imagens a um modelo multimodal — nada de IA é
+simulado.

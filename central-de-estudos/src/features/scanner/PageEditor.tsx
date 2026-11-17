@@ -1,6 +1,6 @@
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { Crop, Maximize, RotateCcw, RotateCw, ScanLine, Sparkles, Undo2, X } from 'lucide-react';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Segmented, Spinner } from '@/components/ui/misc';
@@ -88,6 +88,22 @@ export function PageEditor({ open, pageNumber, total, initialEdits, loadSource, 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const observer = useRef<ResizeObserver | null>(null);
+
+  // Mede a área disponível: imagem e moldura do recorte recebem EXATAMENTE o
+  // mesmo tamanho (senão os cantos não coincidem com a foto). Callback ref:
+  // o conteúdo do diálogo só existe depois que o Portal monta.
+  const stage = useCallback((el: HTMLDivElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!el) return;
+    observer.current = new ResizeObserver(([entry]) => {
+      if (entry) setStageSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.current.observe(el);
+  }, []);
+  useEffect(() => () => observer.current?.disconnect(), []);
 
   // Montado uma vez por página (key = id da página): carrega a imagem-base.
   const loader = useRef(loadSource);
@@ -159,6 +175,15 @@ export function PageEditor({ open, pageNumber, total, initialEdits, loadSource, 
   };
 
   const quad = edits.quad ?? FULL_QUAD;
+  const rotated = edits.rotation === 90 || edits.rotation === 270;
+  const baseWidth = source ? (rotated ? source.height : source.width) : 0;
+  const baseHeight = source ? (rotated ? source.width : source.height) : 0;
+  const fit = (w: number, h: number) => {
+    if (!w || !h || !stageSize.width || !stageSize.height) return undefined;
+    const scale = Math.min(stageSize.width / w, stageSize.height / h);
+    return { width: Math.floor(w * scale), height: Math.floor(h * scale) };
+  };
+  const baseBox = fit(baseWidth, baseHeight);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={(o) => !o && onCancel()}>
@@ -188,28 +213,30 @@ export function PageEditor({ open, pageNumber, total, initialEdits, loadSource, 
             />
           </div>
 
-          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-surface-2 p-4">
-            {!source ? (
-              <Spinner label="Abrindo página…" />
-            ) : view === 'recorte' ? (
-              baseUrl ? (
-                <div className="relative inline-block max-h-full max-w-full">
-                  <img src={baseUrl} alt="Página para recortar" className="block max-h-[calc(100dvh-300px)] max-w-full select-none" draggable={false} />
-                  <CropOverlay quad={quad} onChange={(q) => setEdits((e) => ({ ...e, quad: q }))} />
-                </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-surface-2">
+            <div ref={stage} className="absolute inset-4 flex items-center justify-center">
+              {!source ? (
+                <Spinner label="Abrindo página…" />
+              ) : view === 'recorte' ? (
+                baseUrl && baseBox ? (
+                  <div className="relative shrink-0" style={baseBox} data-testid="crop-stage">
+                    <img src={baseUrl} alt="Página para recortar" className="block h-full w-full select-none" draggable={false} />
+                    <CropOverlay quad={quad} onChange={(q) => setEdits((e) => ({ ...e, quad: q }))} />
+                  </div>
+                ) : (
+                  <Spinner />
+                )
+              ) : resultUrl ? (
+                <img
+                  src={resultUrl}
+                  alt="Resultado da página"
+                  className={cn('block max-h-full max-w-full object-contain shadow-pop transition-opacity', processing && 'opacity-70')}
+                  data-testid="editor-result"
+                />
               ) : (
                 <Spinner />
-              )
-            ) : resultUrl ? (
-              <img
-                src={resultUrl}
-                alt="Resultado da página"
-                className={cn('block max-h-[calc(100dvh-300px)] max-w-full shadow-pop transition-opacity', processing && 'opacity-70')}
-                data-testid="editor-result"
-              />
-            ) : (
-              <Spinner />
-            )}
+              )}
+            </div>
             {processing && view === 'resultado' && resultUrl ? (
               <span className="absolute top-3 right-3 rounded-md bg-elevated/90 px-2 py-1 text-[11px] text-fg-muted shadow-card">Processando…</span>
             ) : null}

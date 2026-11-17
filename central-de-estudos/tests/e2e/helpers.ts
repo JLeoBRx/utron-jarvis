@@ -30,3 +30,14 @@ export function futureDate(days: number): string {
   const [y, m, d] = today.split('-').map(Number);
   return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
 }
+
+/** A moldura do recorte precisa coincidir exatamente com a imagem (cantos no lugar certo). */
+export async function expectCropAlignedWithImage(page: Page) {
+  const image = await page.getByRole('img', { name: 'Página para recortar' }).boundingBox();
+  const overlay = await page.getByTestId('crop-overlay').boundingBox();
+  expect(image).not.toBeNull();
+  expect(overlay).not.toBeNull();
+  for (const key of ['x', 'y', 'width', 'height'] as const) {
+    expect(Math.abs(image![key] - overlay![key]), `desalinhamento em ${key}`).toBeLessThanOrEqual(1);
+  }
+}

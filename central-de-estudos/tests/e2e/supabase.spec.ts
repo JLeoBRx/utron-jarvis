@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { completeOnboarding, futureDate, trackConsoleErrors } from './helpers';
+import { minimalPdf, notebookPng } from './fixtures/images';
 
 /**
  * Fluxo completo no MODO NUVEM contra o Supabase local (Auth + PostgREST + RLS).
@@ -42,6 +43,28 @@ test('cadastro, onboarding, prova persistida no banco e novo login', async ({ pa
   await page.keyboard.press('Enter');
   await expect(page.getByRole('list', { name: 'Conteúdos da prova' }).getByRole('listitem')).toHaveCount(1);
 
+  // Biblioteca na nuvem: arquivo no bucket privado do Supabase Storage
+  await page.getByRole('link', { name: /^Materiais/ }).click();
+  await page.getByRole('button', { name: 'Enviar arquivos' }).click();
+  const upload = page.getByRole('dialog', { name: 'Enviar materiais' });
+  await upload.getByLabel('Arquivos para enviar').setInputFiles({ name: 'contadores.pdf', mimeType: 'application/pdf', buffer: minimalPdf('Contadores') });
+  await upload.getByRole('button', { name: 'Enviar' }).click();
+  await expect(page.getByText('1 material enviado.')).toBeVisible();
+  await page.getByRole('list', { name: 'Materiais' }).getByText('contadores').click();
+  await expect(page.getByTestId('pdf-viewer').locator('canvas')).toHaveCount(1);
+
+  // Scanner na nuvem: fotos originais + tratadas no Storage
+  await page.goto('/scanner');
+  await page.getByLabel('Escolher fotos da galeria').setInputFiles({ name: 'pagina.png', mimeType: 'image/png', buffer: notebookPng(600, 800) });
+  await expect(page.getByText('1 página pronta')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Revisar e salvar/ }).click();
+  await page.getByLabel('Disciplina').selectOption({ label: 'Sistemas Digitais' });
+  await page.getByLabel('Nome ou assunto do conteúdo').fill('Flip-flops JK');
+  await page.getByRole('button', { name: 'Salvar caderno' }).click();
+  await expect(page.getByRole('heading', { name: 'Caderno salvo!' })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('link', { name: 'Ver o caderno salvo' }).click();
+  await expect(page.getByTestId('scan-page').getByRole('img')).toBeVisible();
+
   // Sair e entrar novamente: dados vêm do banco
   await page.getByRole('button', { name: 'Sair da conta' }).click();
   await expect(page.getByRole('heading', { name: 'Entrar na Central de Estudos' })).toBeVisible();
@@ -55,6 +78,10 @@ test('cadastro, onboarding, prova persistida no banco e novo login', async ({ pa
   await expect(page.getByRole('link', { name: /^Disciplinas 20/ })).toBeVisible();
   await page.goto('/provas');
   await expect(page.getByRole('main').getByRole('link', { name: /Avaliação 3/ })).toBeVisible();
+  await page.goto('/biblioteca');
+  await expect(page.getByRole('list', { name: 'Materiais' }).getByRole('listitem')).toHaveCount(2);
+  await page.getByRole('link', { name: /Flip-flops JK/ }).click();
+  await expect(page.getByTestId('scan-page').getByRole('img')).toBeVisible();
   // Login com credenciais inválidas gera um 400 esperado no console; os demais erros não são aceitos.
   expect(errors.filter((e) => !e.includes('400'))).toEqual([]);
   expect(failed).toEqual([]);
