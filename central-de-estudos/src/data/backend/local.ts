@@ -26,7 +26,8 @@ const TABLE_INDEXES: Record<TableName, string> = {
   subjects: 'id, academic_year_id',
   exams: 'id, subject_id',
   exam_topics: 'id, exam_id',
-  materials: 'id, subject_id, exam_id',
+  materials: 'id, subject_id, exam_id, scan_id',
+  material_versions: 'id, material_id',
   summaries: 'id, subject_id, exam_id',
   summary_versions: 'id, summary_id',
   summary_sources: 'id, summary_id, material_id',
@@ -47,7 +48,11 @@ export class LocalDatabase extends Dexie {
 
   constructor(name = LOCAL_DB_NAME) {
     super(name);
-    this.version(1).stores({ ...TABLE_INDEXES, files: 'path' });
+    // v1 → v2 (Fase 3): nova tabela de versões e índice scan_id.
+    // Dexie migra automaticamente preservando todos os dados existentes.
+    const { material_versions: _v, ...v1Indexes } = TABLE_INDEXES;
+    this.version(1).stores({ ...v1Indexes, materials: 'id, subject_id, exam_id', files: 'path' });
+    this.version(2).stores({ ...TABLE_INDEXES, files: 'path' });
   }
 }
 
@@ -249,6 +254,8 @@ export class LocalBackend implements DataBackend {
     for (const rule of UNIQUE_RULES) {
       if (rule.table !== table) continue;
       if (rule.whereTrue && !row[rule.whereTrue]) continue;
+      // Como no SQL: valores NULL nunca conflitam em índices únicos.
+      if (rule.columns.some((column) => row[column] === null || row[column] === undefined)) continue;
       const others = await this.t(table).toArray();
       const conflict = others.find(
         (other) =>

@@ -26,6 +26,9 @@ export const RELATIONS: Relation[] = [
 
   { table: 'materials', column: 'subject_id', parent: 'subjects', onDelete: 'cascade' },
   { table: 'materials', column: 'exam_id', parent: 'exams', onDelete: 'set_null', match: ['subject_id'] },
+  { table: 'materials', column: 'scan_id', parent: 'notebook_scans', onDelete: 'cascade', match: ['subject_id'] },
+
+  { table: 'material_versions', column: 'material_id', parent: 'materials', onDelete: 'cascade' },
 
   { table: 'summaries', column: 'subject_id', parent: 'subjects', onDelete: 'cascade' },
   { table: 'summaries', column: 'exam_id', parent: 'exams', onDelete: 'set_null', match: ['subject_id'] },
@@ -105,6 +108,18 @@ export const UNIQUE_RULES: UniqueRule[] = [
     constraint: 'subjects_unique_name_per_year',
   },
   {
+    table: 'material_versions',
+    columns: ['material_id', 'version_number'],
+    message: 'Esta versão do material já existe.',
+    constraint: 'material_versions_material_id_version_number_key',
+  },
+  {
+    table: 'materials',
+    columns: ['scan_id'],
+    message: 'Esta digitalização já está na biblioteca.',
+    constraint: 'materials_scan_id_key',
+  },
+  {
     table: 'summary_versions',
     columns: ['summary_id', 'version_number'],
     message: 'Esta versão do resumo já existe.',
@@ -121,6 +136,7 @@ export const UNIQUE_RULES: UniqueRule[] = [
 /** Colunas que apontam para arquivos no Storage (limpeza ao excluir). */
 export const STORAGE_PATH_COLUMNS: Partial<Record<TableName, string[]>> = {
   materials: ['storage_path'],
+  material_versions: ['storage_path'],
   notebook_scan_pages: ['original_path', 'processed_path'],
 };
 
@@ -131,6 +147,7 @@ export const FRIENDLY_TABLE_NAMES: Record<TableName, string> = {
   exams: 'prova',
   exam_topics: 'conteúdo',
   materials: 'material',
+  material_versions: 'versão de material',
   summaries: 'resumo',
   summary_versions: 'versão do resumo',
   summary_sources: 'fonte do resumo',

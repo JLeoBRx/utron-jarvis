@@ -6,9 +6,7 @@
  * (não misturar provas/disciplinas), cascata/SET NULL, tradução de erros e
  * políticas do bucket privado. Pré-requisito: `npm run supabase:local:up`.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { SupabaseBackend } from '@/data/backend/supabase';
 import { createAcademicYear } from '@/data/services/workspace';
 import { listSubjects } from '@/data/services/subjects';
 import { createExam, deleteExam, updateExam } from '@/data/services/exams';
@@ -16,35 +14,12 @@ import { createTopics, moveTopic, listTopics } from '@/data/services/topics';
 import { exportBackup, importBackup } from '@/data/services/backup';
 import type { ExamInput } from '@/data/schemas';
 import { newId } from '@/lib/ids';
-// @ts-expect-error — módulo JS sem tipos (ambiente de teste)
-import { ANON_KEY } from '../supabase-local/keys.mjs';
+import { newClient, signUp, stackAvailable, SUPABASE_URL } from './helpers';
 
-const URL = process.env.SUPABASE_TEST_URL ?? 'http://127.0.0.1:54321';
-
-async function stackAvailable(): Promise<boolean> {
-  try {
-    const res = await fetch(`${URL}/auth/v1/health`);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
+const URL = SUPABASE_URL;
 const available = await stackAvailable();
 if (!available) {
   console.warn(`[db] Supabase local indisponível em ${URL} — rode "npm run supabase:local:up". Testes ignorados.`);
-}
-
-function newClient(): SupabaseClient {
-  return createClient(URL, ANON_KEY as string, { auth: { persistSession: false, autoRefreshToken: false } });
-}
-
-async function signUp(): Promise<{ client: SupabaseClient; db: SupabaseBackend; userId: string }> {
-  const client = newClient();
-  const email = `teste-${newId().slice(0, 8)}@central.local`;
-  const { data, error } = await client.auth.signUp({ email, password: 'senha-de-teste-123' });
-  if (error || !data.user || !data.session) throw error ?? new Error('cadastro sem sessão');
-  return { client, db: new SupabaseBackend(client, data.user.id), userId: data.user.id };
 }
 
 const examInput = (subject_id: string, title = 'Avaliação 1'): ExamInput => ({
@@ -75,6 +50,7 @@ const linkMaterial = (subject_id: string, exam_id: string | null) => ({
   url: 'https://exemplo.org/aula',
   version: 1,
   replaced_at: null,
+  scan_id: null,
 });
 
 describe.skipIf(!available)('Supabase real — banco, RLS e storage', () => {

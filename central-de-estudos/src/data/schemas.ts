@@ -92,6 +92,51 @@ export const topicSchema = z.object({
   status: z.enum(['nao_estudado', 'estudando', 'revisado', 'dominado']),
 });
 
+const MATERIAL_CATEGORIES = [
+  'slides',
+  'caderno',
+  'exercicios',
+  'atividades',
+  'provas_anteriores',
+  'apostilas',
+  'complementares',
+] as const;
+
+/** Dados descritivos de um material (arquivo, link ou caderno digitalizado). */
+export const materialMetaSchema = z.object({
+  subject_id: z.string().min(1, 'Selecione a disciplina.'),
+  exam_id: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => (value ? value : null)),
+  category: z.enum(MATERIAL_CATEGORIES, { error: 'Selecione a categoria.' }),
+  title: requiredText(200, 'Informe o nome do material.'),
+  description: optionalText(4000),
+  origin: optionalText(200),
+});
+
+export const linkSchema = materialMetaSchema.extend({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'Informe o endereço.')
+    .max(2000, 'Endereço muito longo.')
+    .refine((value) => {
+      try {
+        const u = new URL(value);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }, 'Informe um endereço completo, começando com https://'),
+});
+
+export type MaterialMetaInput = z.input<typeof materialMetaSchema>;
+export type MaterialMetaValues = z.output<typeof materialMetaSchema>;
+export type LinkInput = z.input<typeof linkSchema>;
+export type LinkValues = z.output<typeof linkSchema>;
+
 export const profileSchema = z.object({
   display_name: optionalText(80),
 });

@@ -49,6 +49,7 @@ function materialFor(subject_id: string, exam_id: string | null) {
     url: 'https://exemplo.org/aula',
     version: 1,
     replaced_at: null,
+    scan_id: null,
   };
 }
 

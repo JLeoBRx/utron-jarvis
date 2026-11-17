@@ -101,8 +101,13 @@ class SupabaseStorageBackend implements StorageBackend {
   }
 
   async upload(path: string, file: Blob, options?: { contentType?: string; upsert?: boolean }): Promise<void> {
-    const { error } = await this.bucket().upload(path, file, {
-      contentType: options?.contentType ?? (file.type || undefined),
+    // Para Blobs, o supabase-js envia o tipo do PRÓPRIO Blob (ignora `contentType`).
+    // Celulares costumam entregar DOCX/PPTX sem tipo ou como octet-stream, o que o
+    // bucket recusaria — por isso o Blob é reetiquetado (slice não copia os bytes).
+    const contentType = options?.contentType ?? (file.type || undefined);
+    const body = contentType && file.type !== contentType ? file.slice(0, file.size, contentType) : file;
+    const { error } = await this.bucket().upload(path, body, {
+      contentType,
       upsert: options?.upsert ?? false,
     });
     if (error) this.fail(error, 'Não foi possível enviar o arquivo');

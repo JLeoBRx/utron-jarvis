@@ -29,7 +29,7 @@ export type ExamStatus =
   | 'preparacao_concluida'
   | 'realizada';
 export type TopicStatus = 'nao_estudado' | 'estudando' | 'revisado' | 'dominado';
-export type MaterialKind = 'arquivo' | 'link';
+export type MaterialKind = 'arquivo' | 'link' | 'digitalizacao';
 export type MaterialCategory =
   | 'slides'
   | 'caderno'
@@ -134,6 +134,19 @@ export interface Material extends BaseRow {
   url: string | null;
   version: number;
   replaced_at: ISODateTime | null;
+  /** Preenchido quando o material é um caderno digitalizado. */
+  scan_id: UUID | null;
+}
+
+/** Arquivo anterior de um material (preservado ao substituir). */
+export interface MaterialVersion extends BaseRow {
+  material_id: UUID;
+  version_number: number;
+  storage_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  replaced_at: ISODateTime;
 }
 
 export interface Summary extends BaseRow {
@@ -259,13 +272,24 @@ export interface NotebookScan extends BaseRow {
 export interface NotebookScanPage extends BaseRow {
   scan_id: UUID;
   position: number;
+  /** Fotografia original, exatamente como capturada/enviada. */
   original_path: string;
+  /** Versão tratada (recorte, perspectiva, iluminação) usada para leitura. */
   processed_path: string | null;
   material_id: UUID | null;
   recognized_text: string | null;
   confidence: number | null;
   needs_review: boolean;
   review_notes: unknown;
+  source: 'camera' | 'galeria';
+  original_file_name: string | null;
+  original_mime_type: string | null;
+  original_size_bytes: number | null;
+  processed_mime_type: string | null;
+  processed_size_bytes: number | null;
+  width: number | null;
+  height: number | null;
+  edits: Record<string, unknown>;
 }
 
 export interface AiOperation extends BaseRow {
@@ -291,6 +315,7 @@ export interface TableMap {
   exams: Exam;
   exam_topics: ExamTopic;
   materials: Material;
+  material_versions: MaterialVersion;
   summaries: Summary;
   summary_versions: SummaryVersion;
   summary_sources: SummarySource;
@@ -322,9 +347,12 @@ export const TABLES_IN_DEPENDENCY_ORDER: TableName[] = [
   'subjects',
   'exams',
   'exam_topics',
-  'materials',
   'summaries',
   'summary_versions',
+  'notebook_scans',
+  'materials',
+  'material_versions',
+  'notebook_scan_pages',
   'summary_sources',
   'flashcards',
   'flashcard_reviews',
@@ -333,6 +361,4 @@ export const TABLES_IN_DEPENDENCY_ORDER: TableName[] = [
   'quiz_attempts',
   'study_sessions',
   'calendar_events',
-  'notebook_scans',
-  'notebook_scan_pages',
 ];
