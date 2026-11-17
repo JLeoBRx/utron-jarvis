@@ -118,6 +118,23 @@ describe('detecção da página', () => {
     });
   });
 
+  it('mantém confiança alta com sombra forte e muito texto sobre a folha', () => {
+    const photo = notebookPhoto({ corners: tilted, shadow: true });
+    const found = detectDocument(photo);
+    expect(found!.confidence).toBeGreaterThan(0.9);
+  });
+
+  it('confiança baixa para formas que não são uma folha (não recorta errado)', () => {
+    const img = createRaster(300, 300, [50, 50, 50, 255]);
+    for (let y = 0; y < 300; y++) {
+      for (let x = 0; x < 300; x++) {
+        if ((x - 150) ** 2 + (y - 150) ** 2 < 100 ** 2) img.data.set([235, 235, 235, 255], (y * 300 + x) * 4);
+      }
+    }
+    const found = detectDocument(img);
+    expect(found === null || found.confidence < 0.75).toBe(true);
+  });
+
   it('não inventa recorte quando a folha ocupa a foto inteira', () => {
     expect(detectDocument(createRaster(200, 150, [240, 240, 240, 255]))).toBeNull();
   });

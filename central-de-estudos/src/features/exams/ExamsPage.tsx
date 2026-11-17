@@ -1,6 +1,6 @@
 import { ClipboardCheck, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -11,6 +11,7 @@ import type { Exam, ExamPriority, ExamStatus } from '@/data/types';
 import { daysUntil } from '@/lib/dates';
 import { CATEGORY_LABELS, EXAM_STATUS_LABELS, EXAM_STATUS_ORDER, PRIORITY_LABELS, PRIORITY_ORDER } from '@/lib/labels';
 import { sortExamsForDisplay } from '@/lib/progress';
+import { useUrlFilters } from '@/lib/useUrlFilters';
 import { pluralize, searchable } from '@/lib/utils';
 import { ExamFormDialog } from './ExamFormDialog';
 import { ExamRow } from './ExamRow';
@@ -26,7 +27,7 @@ function periodOf(exam: Exam): Exclude<Period, 'todas'> {
 export function ExamsPage() {
   const navigate = useNavigate();
   const { subjects, subjectById, exams, topicsByExam, isLoading, error, refetch } = useYearData();
-  const [params, setParams] = useSearchParams();
+  const { params, update, clear } = useUrlFilters();
   const [dialog, setDialog] = useState(false);
 
   // Filtros ficam na URL: voltar da página da prova mantém a seleção.
@@ -36,12 +37,7 @@ export function ExamsPage() {
   const priorityFilter = (params.get('prioridade') as ExamPriority | null) ?? '';
   const query = params.get('q') ?? '';
 
-  const setParam = (key: string, value: string) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setParams(next, { replace: true });
-  };
+  const setParam = (key: string, value: string) => update({ [key]: value });
 
   const counts = useMemo(() => {
     const result = { proximas: 0, sem_data: 0, passadas: 0, todas: exams.length };
@@ -142,7 +138,7 @@ export function ExamsPage() {
             ))}
           </Select>
           {hasFilters ? (
-            <Button variant="ghost" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
+            <Button variant="ghost" onClick={clear}>
               <X /> Limpar
             </Button>
           ) : null}

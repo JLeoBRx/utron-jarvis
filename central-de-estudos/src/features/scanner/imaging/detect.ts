@@ -123,8 +123,38 @@ export function detectDocument(img: RasterImage): Detection | null {
   const quadPx = orderQuad([tl, tr, br, bl].map(({ x, y }) => ({ x, y })));
   const quadArea = polygonArea(quadPx);
   if (quadArea < 1) return null;
-  // Região quase retangular → área da região ≈ área do quadrilátero.
-  const fill = Math.min(1, bestSize / quadArea);
+
+  // Preenche os "buracos" da região (escrita, pautas, sombra sobre o papel):
+  // tudo que não é alcançável a partir da borda da foto pertence à folha.
+  const outside = new Uint8Array(w * h);
+  const queue: number[] = [];
+  const pushIfOutside = (p: number) => {
+    if (!outside[p] && label[p] !== bestStart) {
+      outside[p] = 1;
+      queue.push(p);
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    pushIfOutside(x);
+    pushIfOutside((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    pushIfOutside(y * w);
+    pushIfOutside(y * w + w - 1);
+  }
+  let outsideCount = 0;
+  while (queue.length) {
+    const p = queue.pop()!;
+    outsideCount++;
+    const x = p % w;
+    if (x > 0) pushIfOutside(p - 1);
+    if (x < w - 1) pushIfOutside(p + 1);
+    if (p >= w) pushIfOutside(p - w);
+    if (p < w * (h - 1)) pushIfOutside(p + w);
+  }
+  const filledArea = w * h - outsideCount;
+  // Região quase retangular → área preenchida ≈ área do quadrilátero.
+  const fill = Math.min(1, filledArea / quadArea) * Math.min(1, quadArea / filledArea);
   const coverage = quadArea / (w * h);
   const confidence = Math.max(0, Math.min(1, fill * (coverage > 0.95 ? 0.5 : 1)));
   // Recua 1% em direção ao centro: evita sobrar uma faixa da mesa nas bordas.

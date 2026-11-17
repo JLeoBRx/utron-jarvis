@@ -33,3 +33,4 @@ dist-ssr
 /playwright-report/
 /blob-report/
 /tests/e2e/.artifacts/
+/tests/e2e/.fixtures-cache/

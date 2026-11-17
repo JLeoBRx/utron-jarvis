@@ -19,10 +19,14 @@ export async function completeOnboarding(page: Page, opts: { name?: string; year
   await expect(page.getByText('20 disciplinas cadastradas')).toBeVisible();
 }
 
-/** Data futura (YYYY-MM-DD) a N dias de hoje, no fuso local. */
+/**
+ * Data futura (YYYY-MM-DD) a N dias de "hoje" no fuso do NAVEGADOR dos testes
+ * (America/Sao_Paulo, ver playwright.config.ts) — não no fuso do servidor.
+ */
+export const TEST_TIMEZONE = 'America/Sao_Paulo';
+
 export function futureDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: TEST_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [y, m, d] = today.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
 }

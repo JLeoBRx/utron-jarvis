@@ -75,6 +75,10 @@ export function CameraCapture({ pageCount, lastThumbnail, onCapture, onDone, onU
     (async () => {
       if (!window.isSecureContext) return setState('inseguro');
       if (!navigator.mediaDevices?.getUserMedia) return setState('indisponivel');
+      // Câmera bloqueada antes para este site: orienta direto (o navegador nem pergunta).
+      const permission = await navigator.permissions?.query({ name: 'camera' as PermissionName }).catch(() => null);
+      if (cancelled) return;
+      if (permission?.state === 'denied') return setState('negada');
       try {
         const media = await navigator.mediaDevices.getUserMedia({
           audio: false,

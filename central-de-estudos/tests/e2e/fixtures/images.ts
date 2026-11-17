@@ -4,6 +4,7 @@
  */
 import { deflateSync } from 'node:zlib';
 import { writeFileSync } from 'node:fs';
+import { strToU8, zipSync } from 'fflate';
 
 const CRC_TABLE = new Uint32Array(256).map((_, n) => {
   let c = n;
@@ -129,11 +130,12 @@ export function writeNotebookY4m(path: string, width = 640, height = 480, frames
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 3;
       const [r, g, b] = [rgb[i]!, rgb[i + 1]!, rgb[i + 2]!];
-      frame[y * width + x] = Math.max(0, Math.min(255, 0.257 * r + 0.504 * g + 0.098 * b + 16));
+      // "C420jpeg" = YCbCr de faixa completa (JPEG/JFIF)
+      frame[y * width + x] = Math.max(0, Math.min(255, 0.299 * r + 0.587 * g + 0.114 * b));
       if (y % 2 === 0 && x % 2 === 0) {
         const ci = (y / 2) * (width / 2) + x / 2;
-        frame[ySize + ci] = Math.max(0, Math.min(255, -0.148 * r - 0.291 * g + 0.439 * b + 128));
-        frame[ySize + cSize + ci] = Math.max(0, Math.min(255, 0.439 * r - 0.368 * g - 0.071 * b + 128));
+        frame[ySize + ci] = Math.max(0, Math.min(255, 128 - 0.168736 * r - 0.331264 * g + 0.5 * b));
+        frame[ySize + cSize + ci] = Math.max(0, Math.min(255, 128 + 0.5 * r - 0.418688 * g - 0.081312 * b));
       }
     }
   }
@@ -164,4 +166,23 @@ export function minimalPdf(text = 'Central de Estudos - teste'): Buffer {
   for (const off of offsets) pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
   return Buffer.from(pdf, 'latin1');
+}
+
+/** DOCX mínimo válido (Word) com um parágrafo. */
+export function minimalDocx(text = 'Resumo de Física: velocidade média'): Buffer {
+  const files = {
+    '[Content_Types].xml': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    ),
+    '_rels/.rels': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    ),
+    'word/_rels/document.xml.rels': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>',
+    ),
+    'word/document.xml': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:body></w:document>`,
+    ),
+  };
+  return Buffer.from(zipSync(files));
 }

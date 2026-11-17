@@ -1,6 +1,5 @@
 import { FolderOpen, Search, X } from 'lucide-react';
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -10,6 +9,7 @@ import { useMaterials, useYearData } from '@/data/hooks';
 import type { MaterialCategory } from '@/data/types';
 import { formatBytes } from '@/lib/files';
 import { CATEGORY_LABELS, MATERIAL_CATEGORY_LABELS } from '@/lib/labels';
+import { useUrlFilters } from '@/lib/useUrlFilters';
 import { pluralize, searchable } from '@/lib/utils';
 import { AddMaterialActions } from './AddMaterialActions';
 import { MaterialList } from './MaterialList';
@@ -26,7 +26,7 @@ export function LibraryPage() {
   const { subjects, subjectById, exams, isLoading: yearLoading, error: yearError } = useYearData();
   const subjectIds = useMemo(() => subjects.map((s) => s.id), [subjects]);
   const materials = useMaterials(subjectIds);
-  const [params, setParams] = useSearchParams();
+  const { params, update, clear } = useUrlFilters();
 
   const subjectFilter = params.get('disciplina') ?? '';
   const examFilter = params.get('prova') ?? '';
@@ -34,16 +34,7 @@ export function LibraryPage() {
   const typeFilter = params.get('tipo') ?? '';
   const query = params.get('q') ?? '';
 
-  const setParam = (key: string, value: string, extra?: Record<string, string>) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    for (const [k, v] of Object.entries(extra ?? {})) {
-      if (v) next.set(k, v);
-      else next.delete(k);
-    }
-    setParams(next, { replace: true });
-  };
+  const setParam = (key: string, value: string, extra?: Record<string, string>) => update({ [key]: value, ...extra });
 
   const examById = useMemo(() => new Map(exams.map((e) => [e.id, e])), [exams]);
   const term = searchable(query.trim());
@@ -80,11 +71,19 @@ export function LibraryPage() {
         actions={<AddMaterialActions subjectId={subjectFilter || undefined} examId={examFilter && examFilter !== 'geral' ? examFilter : undefined} />}
       />
 
-      <div className="mb-4 grid animate-rise gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-        <div className="relative sm:col-span-2 lg:col-span-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
-          <Input value={query} onChange={(e) => setParam('q', e.target.value)} placeholder="Buscar materiais" className="pl-9" aria-label="Buscar materiais" />
+      <div className="mb-4 animate-rise space-y-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
+            <Input value={query} onChange={(e) => setParam('q', e.target.value)} placeholder="Buscar materiais" className="pl-9" aria-label="Buscar materiais" />
+          </div>
+          {hasFilters ? (
+            <Button variant="ghost" onClick={clear}>
+              <X /> Limpar
+            </Button>
+          ) : null}
         </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Select value={subjectFilter} onChange={(e) => setParam('disciplina', e.target.value, { prova: '' })} aria-label="Filtrar por disciplina">
           <option value="">Todas as disciplinas</option>
           {(['formacao_geral', 'formacao_tecnica'] as const).map((category) => (
@@ -124,11 +123,7 @@ export function LibraryPage() {
             </option>
           ))}
         </Select>
-        {hasFilters ? (
-          <Button variant="ghost" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
-            <X /> Limpar
-          </Button>
-        ) : null}
+        </div>
       </div>
 
       {yearLoading || materials.isLoading ? (

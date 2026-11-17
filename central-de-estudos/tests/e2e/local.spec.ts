@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { strFromU8, unzipSync } from 'fflate';
 import { completeOnboarding, futureDate, trackConsoleErrors } from './helpers';
 
 let consoleErrors: string[] = [];
@@ -166,23 +167,24 @@ test('tema e menu recolhido são preferências persistentes', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Expandir menu' })).toBeVisible();
 });
 
-test('backup: exporta JSON com todas as disciplinas', async ({ page }) => {
+test('backup: exporta .zip com os dados de todas as disciplinas', async ({ page }) => {
   await completeOnboarding(page);
   await page.goto('/configuracoes#dados');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar backup (JSON)' }).click();
+  await page.getByRole('button', { name: 'Exportar backup (.zip)' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^central-de-estudos-backup-.*\.json$/);
-  const backup = JSON.parse(readFileSync((await download.path())!, 'utf8'));
-  expect(backup.app).toBe('central-de-estudos');
+  expect(download.suggestedFilename()).toMatch(/^central-de-estudos-backup-.*\.zip$/);
+  const entries = unzipSync(new Uint8Array(readFileSync((await download.path())!)));
+  const backup = JSON.parse(strFromU8(entries['backup.json']!));
+  expect(backup).toMatchObject({ app: 'central-de-estudos', format_version: 2, files_included: true });
   expect(backup.counts.subjects).toBe(20);
   expect(backup.counts.academic_years).toBe(1);
 });
 
 test('módulos futuros informam a fase, sem ações simuladas', async ({ page }) => {
   await completeOnboarding(page);
-  await page.goto('/biblioteca');
-  await expect(page.getByText('Chega na Fase 3')).toBeVisible();
+  await page.goto('/resumos');
+  await expect(page.getByText('Chega na Fase 4')).toBeVisible();
   await expect(page.getByText('nenhuma função aqui é simulada', { exact: false })).toBeVisible();
   await page.goto('/rota-que-nao-existe');
   await expect(page.getByText('Página não encontrada')).toBeVisible();
@@ -196,7 +198,7 @@ test('restaura um backup na tela de início (migração entre navegadores/contas
   await expect(page.getByRole('list', { name: 'Conteúdos da prova' }).getByRole('listitem')).toHaveCount(1);
   await page.goto('/configuracoes#dados');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar backup (JSON)' }).click();
+  await page.getByRole('button', { name: 'Exportar backup (.zip)' }).click();
   const backupPath = (await (await downloadPromise).path())!;
 
   // Outro navegador (banco vazio): restaura o backup pela tela de início.
